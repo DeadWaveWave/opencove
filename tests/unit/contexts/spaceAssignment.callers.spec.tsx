@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
 import { WEBSITE_WINDOW_OPEN_URL_EVENT_NAME } from '../../../src/shared/contracts/websiteWindowCanvas'
 import { assignNodeToSpaceAndExpand } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useInteractions.spaceAssignment'
+import { useWorkspaceCanvasInteractions } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useInteractions'
 import { useWorkspaceCanvasFlowNodeCreation } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useInteractions.flowNodeCreation'
 import { useWebsiteNodeContextMenuCreation } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useInteractions.websiteContextMenu'
 import { useWorkspaceCanvasQuickMenuActions } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useInteractions.quickMenuActions'
@@ -14,6 +15,9 @@ import { useWorkspaceCanvasShortcutActions } from '../../../src/contexts/workspa
 import { useWorkspaceCanvasShortcuts } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useShortcuts'
 import { useWorkspaceCanvasTerminalCreation } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useInteractions.terminalCreation'
 import { createTerminalNodeAtFlowPosition } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useInteractions.paneNodeCreation'
+import { useWorkspaceCanvasAgentSupport } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasAgentSupport'
+import { useWorkspaceCanvasRoleUi } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasRoleUi'
+import { useWorkspaceCanvasTaskUi } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasTaskUi'
 import { useWorkspaceCanvasAgentLauncher } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useAgentLauncher'
 import { useWorkspaceCanvasTaskNodeCreation } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useTaskNodeCreation'
 import { useWorkspaceCanvasTaskActions } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useTaskActions'
@@ -48,7 +52,7 @@ import {
 
 // The canvas store is rebuilt with the workspace, so `ui`, `readUi` and `readSelection` change on a
 // switch and would make every callback rebuild: the writer could then be missing from a dependency
-// list unseen. These three keep the value of the first render, so only the writer can make a
+// list unseen. These four keep the value of the first render, so only the writer can make a
 // callback follow a switch.
 const firstRender = vi.hoisted(() => ({ values: new Map<string, unknown>() }))
 vi.mock(
@@ -65,6 +69,7 @@ vi.mock(
     return {
       ...original,
       useCanvasUiCommands: stable('useCanvasUiCommands'),
+      useCanvasDocumentCommands: stable('useCanvasDocumentCommands'),
       useReadCanvasUi: stable('useReadCanvasUi'),
       useReadCanvasSelection: stable('useReadCanvasSelection'),
     }
@@ -132,6 +137,17 @@ const createImageNode = vi.fn(() => CREATED)
 const createTaskNode = vi.fn(() => CREATED)
 const createRoleNode = vi.fn(() => CREATED)
 const metrics = { fontSize: 13 }
+const launcherSettings = { ...DEFAULT_AGENT_SETTINGS, defaultProvider: 'codex' }
+const roleSettings = {
+  ...DEFAULT_AGENT_SETTINGS,
+  projectRolesByWorkspaceId: { workspace: [{ id: 'role', name: 'Role', promptTemplate: 'x' }] },
+}
+const buildAgentNodeTitle = () => 'Agent'
+const launchAgentInNode = vi.fn()
+const updateRoleProvider = vi.fn()
+const updateRoleInput = vi.fn()
+const appendRoleRunRecord = vi.fn()
+const taskTagOptions: string[] = []
 const reactFlow = { screenToFlowPosition: () => ({ x: 400, y: 300 }) }
 const canvasRef = { current: document.createElement('div') }
 
@@ -146,6 +162,131 @@ const TERMINAL_ABSENT = ['setNodes', 'onSpacesChange']
 beforeEach(() => {
   vi.clearAllMocks()
   firstRender.values.clear()
+})
+
+describe('the push-away of the interactions as the canvas composes them', () => {
+  const paneEvent = (() => {
+    const pane = document.createElement('div')
+    pane.className = 'react-flow__pane'
+    const target = document.createElement('div')
+    pane.append(target)
+    return { button: 0, target, clientX: 400, clientY: 300 }
+  })()
+  const clipboard = {
+    clipboardData: { items: [], files: [], getData: () => 'https://example.com' },
+    defaultPrevented: false,
+    target: document.createElement('div'),
+    preventDefault: vi.fn(),
+    stopPropagation: vi.fn(),
+  }
+  const selectionDraftRef = { current: null }
+  const isShiftPressedRef = { current: false }
+  const interactionParams = {
+    canvasRef,
+    isTrackpadCanvasMode: false,
+    focusNodeOnClick: false,
+    focusNodeTargetZoom: 1,
+    websiteWindowsEnabled: true,
+    websiteWindowPasteEnabled: true,
+    isShiftPressedRef,
+    selectionDraftRef,
+    setSelectionDraftUi: vi.fn(),
+    reactFlow: { ...reactFlow, getNodes: () => [], getNode: () => undefined },
+    setNodes,
+    workspaceId: 'workspace',
+    workspacePath: '/repo',
+    defaultTerminalProfileId: null,
+    terminalFontSize: 13,
+    terminalDisplayMetrics: metrics,
+    spacesRef,
+    nodesRef,
+    standardWindowSizeBucket: 'regular',
+    browserDefaultMode: 'iframe',
+    createNodeForSession,
+    createNoteNode,
+    createImageNode,
+    createWebsiteNode,
+    onShowMessage,
+  }
+  const useInteractionsUnderTest = (updateCanvasDocument: Updater) =>
+    useWorkspaceCanvasInteractions({ ...interactionParams, updateCanvasDocument } as never)
+
+  it('gives the note created by a double click its workspace writer', async () => {
+    await expectsWriterOfTheRender({
+      assign: assignMock,
+      useHook: useInteractionsUnderTest,
+      invoke: ({ hook }) => hook.handleCanvasDoubleClickCapture(paneEvent as never),
+      argsOf: assignArgs,
+    })
+  })
+
+  type Composed = ReturnType<typeof useInteractionsUnderTest>
+  type OpenMenu = (menu: typeof PANE_MENU) => void
+  const composedCases: Array<[string, (hook: Composed, openMenu: OpenMenu) => unknown]> = [
+    ['note at a flow point', hook => hook.createNoteNodeAtFlowPoint({ x: 400, y: 300 })],
+    ['website at a flow point', hook => hook.createWebsiteNodeAtFlowPoint({ x: 400, y: 300 })],
+    ['pasted website', hook => hook.handleCanvasPaste(clipboard as never)],
+    [
+      'note from the pane menu',
+      (hook, openMenu) => {
+        openMenu(PANE_MENU)
+        return hook.createNoteNodeFromContextMenu()
+      },
+    ],
+    [
+      'website from the pane menu',
+      (hook, openMenu) => {
+        openMenu(PANE_MENU)
+        return hook.createWebsiteNodeFromContextMenu()
+      },
+    ],
+    [
+      'quick URL command',
+      (hook, openMenu) => {
+        openMenu(PANE_MENU)
+        return hook.runQuickCommand({
+          kind: 'url',
+          url: 'https://example.com',
+          title: 'x',
+        } as never)
+      },
+    ],
+    [
+      'quick phrase',
+      (hook, openMenu) => {
+        openMenu(PANE_MENU)
+        return hook.insertQuickPhrase({ content: 'hello' } as never)
+      },
+    ],
+    [
+      'website opened from a website window',
+      () =>
+        window.dispatchEvent(
+          new CustomEvent(WEBSITE_WINDOW_OPEN_URL_EVENT_NAME, {
+            detail: { type: 'open-url', url: 'https://example.com', sourceNodeId: 'none' },
+          }),
+        ),
+    ],
+  ]
+
+  it.each(composedCases)('gives the %s its workspace writer', async (_name, invokeOn) => {
+    await expectsWriterOfTheRender({
+      assign: assignMock,
+      useHook: useInteractionsUnderTest,
+      invoke: ({ hook, ui }) => invokeOn(hook, ui.openContextMenu),
+      argsOf: assignArgs,
+    })
+  })
+
+  it('gives the pane terminal its workspace writer', async () => {
+    await expectsWriterOfTheRender({
+      assign: assignMock,
+      useHook: useInteractionsUnderTest,
+      invoke: ({ hook }) => hook.createTerminalNodeAtFlowPoint({ x: 1, y: 2 }),
+      argsOf: terminalArgs,
+      absent: TERMINAL_ABSENT,
+    })
+  })
 })
 
 describe('the push-away of the interaction callers', () => {
@@ -472,12 +613,12 @@ describe('the push-away of the task and role callers', () => {
         setNodes,
         onSpacesChange,
         createNodeForSession,
-        buildAgentNodeTitle: () => 'Agent',
-        launchAgentInNode: vi.fn(),
+        buildAgentNodeTitle,
+        launchAgentInNode,
         agentSettings: DEFAULT_AGENT_SETTINGS,
         workspaceId: 'workspace',
         workspacePath: '/repo',
-        taskTagOptions: [],
+        taskTagOptions,
         terminalDisplayMetrics: metrics,
         updateCanvasDocument,
         ...refs,
@@ -532,24 +673,25 @@ describe('the push-away of the task and role callers', () => {
   })
 
   describe('the role', () => {
-    function useRoleActionsUnderTest(updateCanvasDocument: Updater) {
-      const actionRefs = new Proxy(
+    function makeActionRefs() {
+      return new Proxy(
         {},
         {
           get(target: Record<string, unknown>, key: string) {
             return (target[key] ??= { current: vi.fn() })
           },
         },
-      )
-      const hook = useWorkspaceCanvasRoleActions({
+      ) as unknown as Record<string, { current: Mock }>
+    }
+
+    function useRoleActionsUnderTest(
+      updateCanvasDocument: Updater,
+      actionRefs: Record<string, { current: Mock }>,
+    ) {
+      return useWorkspaceCanvasRoleActions({
         workspaceId: 'workspace',
         workspacePath: '/repo',
-        agentSettings: {
-          ...DEFAULT_AGENT_SETTINGS,
-          projectRolesByWorkspaceId: {
-            workspace: [{ id: 'role', name: 'Role', promptTemplate: 'x' }],
-          },
-        },
+        agentSettings: roleSettings,
         nodesRef,
         spacesRef,
         setNodes,
@@ -559,23 +701,23 @@ describe('the push-away of the task and role callers', () => {
         standardWindowSizeBucket: 'regular',
         createRoleNode,
         createNodeForSession,
-        updateRoleProvider: vi.fn(),
-        updateRoleInput: vi.fn(),
-        appendRoleRunRecord: vi.fn(),
+        updateRoleProvider,
+        updateRoleInput,
+        appendRoleRunRecord,
         actionRefs,
-        buildAgentNodeTitle: () => 'Role',
+        buildAgentNodeTitle,
         updateCanvasDocument,
       } as never)
-      return { hook, actionRefs: actionRefs as unknown as Record<string, { current: Mock }> }
     }
 
     it('gives the role created from the pane menu its workspace writer', async () => {
+      const actionRefs = makeActionRefs()
       await expectsWriterOfTheRender({
         assign: assignMock,
-        useHook: updateCanvasDocument => useRoleActionsUnderTest(updateCanvasDocument),
+        useHook: updateCanvasDocument => useRoleActionsUnderTest(updateCanvasDocument, actionRefs),
         invoke: ({ hook, ui }) => {
           ui.openContextMenu(PANE_MENU)
-          return hook.hook.runProjectRoleFromContextMenu('role')
+          return hook.runProjectRoleFromContextMenu('role')
         },
         argsOf: assignArgs,
         flush: onRequestPersistFlush,
@@ -583,15 +725,11 @@ describe('the push-away of the task and role callers', () => {
     })
 
     it('gives the role run its workspace writer', async () => {
-      let refs: Record<string, { current: Mock }> | null = null
+      const actionRefs = makeActionRefs()
       await expectsWriterOfTheRender({
         assign: assignMock,
-        useHook: updateCanvasDocument => {
-          const result = useRoleActionsUnderTest(updateCanvasDocument)
-          refs = result.actionRefs
-          return result
-        },
-        invoke: () => refs!.runRoleRef.current('role'),
+        useHook: updateCanvasDocument => useRoleActionsUnderTest(updateCanvasDocument, actionRefs),
+        invoke: () => actionRefs.runRoleRef.current('role'),
         argsOf: () => lastCall(runRoleNodeAction)[2] as Record<string, unknown> | undefined,
         absent: ['onSpacesChange'],
       })
@@ -645,13 +783,143 @@ describe('the push-away of the task and role callers', () => {
   })
 })
 
+// The hooks that carry the writer from the canvas to the callers above: a carrier that passes a
+// writer that does nothing, none, or one of an earlier render fails here, not only in E2E.
+describe('the push-away through the carriers of the canvas', () => {
+  it('gives the role of the role UI its workspace writer', async () => {
+    const actionRefs = new Proxy(
+      {},
+      {
+        get(target: Record<string, unknown>, key: string) {
+          return (target[key] ??= { current: vi.fn() })
+        },
+      },
+    )
+    const canvasState = { spacesRef }
+    const agentSupport = { buildAgentNodeTitle }
+    await expectsWriterOfTheRender({
+      assign: assignMock,
+      useHook: updateCanvasDocument =>
+        useWorkspaceCanvasRoleUi({
+          workspaceId: 'workspace',
+          workspacePath: '/repo',
+          agentSettings: roleSettings,
+          canvasState,
+          nodeStore: {
+            nodesRef,
+            setNodes,
+            updateCanvasDocument,
+            createRoleNode,
+            createNodeForSession,
+            updateRoleProvider,
+            updateRoleInput,
+            appendRoleRunRecord,
+          },
+          agentSupport,
+          onShowMessage,
+          onRequestPersistFlush,
+          actionRefs,
+        } as never),
+      invoke: ({ hook, ui }) => {
+        ui.openContextMenu(PANE_MENU)
+        return hook.runProjectRoleFromContextMenu('role')
+      },
+      argsOf: assignArgs,
+      flush: onRequestPersistFlush,
+    })
+  })
+
+  describe('the task UI', () => {
+    const makeActionRefs = () =>
+      new Proxy(
+        {},
+        {
+          get(target: Record<string, unknown>, key: string) {
+            return (target[key] ??= { current: vi.fn() })
+          },
+        },
+      ) as unknown as Record<string, { current: Mock }>
+    const useTaskUiUnderTest = (
+      updateCanvasDocument: Updater,
+      actionRefs: Record<string, { current: Mock }>,
+    ) =>
+      useWorkspaceCanvasTaskUi({
+        agentTaskTagOptions: taskTagOptions,
+        nodesRef,
+        spacesRef,
+        updateCanvasDocument,
+        setNodes,
+        createNodeForSession,
+        buildAgentNodeTitle,
+        launchAgentInNode,
+        agentSettings: DEFAULT_AGENT_SETTINGS,
+        workspaceId: 'workspace',
+        workspacePath: '/repo',
+        onRequestPersistFlush,
+        actionRefs,
+        terminalDisplayMetrics: metrics,
+        standardWindowSizeBucket: 'regular',
+        createTaskNode,
+        closeNode: vi.fn(),
+      } as never)
+
+    it('gives the task created at a point its workspace writer', async () => {
+      const actionRefs = makeActionRefs()
+      await expectsWriterOfTheRender({
+        assign: assignMock,
+        useHook: updateCanvasDocument => useTaskUiUnderTest(updateCanvasDocument, actionRefs),
+        invoke: ({ hook }) => hook.createTaskAtPoint({ x: 400, y: 300 }),
+        argsOf: assignArgs,
+        flush: onRequestPersistFlush,
+      })
+    })
+
+    it('gives the task run its workspace writer', async () => {
+      const actionRefs = makeActionRefs()
+      await expectsWriterOfTheRender({
+        assign: assignMock,
+        useHook: updateCanvasDocument => useTaskUiUnderTest(updateCanvasDocument, actionRefs),
+        invoke: () => actionRefs.runTaskAgentRef.current('task'),
+        argsOf: () => lastCall(runTaskAgentAction)[1] as Record<string, unknown> | undefined,
+        absent: ['onSpacesChange'],
+      })
+    })
+  })
+
+  it('gives the launched agent of the agent support its workspace writer', async () => {
+    await expectsWriterOfTheRender({
+      assign: assignMock,
+      useHook: updateCanvasDocument =>
+        useWorkspaceCanvasAgentSupport({
+          nodesRef,
+          setNodes,
+          bumpAgentLaunchToken: () => 1,
+          isAgentLaunchTokenCurrent: () => true,
+          agentSettings: launcherSettings,
+          workspaceId: 'workspace',
+          workspacePath: '/repo',
+          spacesRef,
+          updateCanvasDocument,
+          onRequestPersistFlush,
+          onShowMessage,
+          createNodeForSession,
+          standardWindowSizeBucket: 'regular',
+          terminalDisplayMetrics: metrics,
+        } as never),
+      invoke: ({ hook }) => hook.launchAgentAtFlowPosition({ x: 400, y: 300 }),
+      argsOf: assignArgs,
+      flush: onRequestPersistFlush,
+    })
+  })
+})
+
 describe('the push-away of the agent launcher', () => {
   it('gives the launched agent its workspace writer and flushes once after it', async () => {
     await expectsWriterOfTheRender({
       assign: assignMock,
       useHook: updateCanvasDocument =>
         useWorkspaceCanvasAgentLauncher({
-          agentSettings: { ...DEFAULT_AGENT_SETTINGS, defaultProvider: 'codex' },
+          agentSettings: launcherSettings,
           workspaceId: 'workspace',
           workspacePath: '/repo',
           nodesRef,
@@ -662,7 +930,7 @@ describe('the push-away of the agent launcher', () => {
           onShowMessage,
           createNodeForSession,
           standardWindowSizeBucket: 'regular',
-          buildAgentNodeTitle: () => 'Agent',
+          buildAgentNodeTitle,
           updateCanvasDocument,
         } as never),
       invoke: ({ hook }) => hook.launchAgentAtFlowPosition({ x: 400, y: 300 }),

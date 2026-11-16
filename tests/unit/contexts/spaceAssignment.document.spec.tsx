@@ -2,6 +2,8 @@ import { act } from '@testing-library/react'
 import type { Node } from '@xyflow/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
+import { useCanvasCollapseStore } from '../../../src/contexts/workspace/presentation/renderer/store/useCanvasCollapseStore'
+import { EMPTY_CANVAS_COLLAPSE } from '../../../src/contexts/workspace/presentation/renderer/utils/canvasCollapse'
 import { TERMINAL_LAYOUT_SYNC_EVENT } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/constants'
 import { useWorkspaceCanvasNodesStore } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore'
 import { assignNodeToSpaceAndExpand } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useInteractions.spaceAssignment'
@@ -87,6 +89,7 @@ function listenForLayoutSync() {
 
 afterEach(() => {
   window.removeEventListener(TERMINAL_LAYOUT_SYNC_EVENT, layoutSyncs)
+  useCanvasCollapseStore.setState(useCanvasCollapseStore.getInitialState(), true)
 })
 
 describe('assignNodeToSpaceAndExpand as one store write', () => {
@@ -136,6 +139,36 @@ describe('assignNodeToSpaceAndExpand as one store write', () => {
     )
   })
 
+  it('pushes a node that was stored between two assignments of the same call', () => {
+    // The second node reaches further to the right than the first, so the Space grows again.
+    const wider = node('wider', { x: 1000, y: 240 }, { width: 700, height: 300 })
+    const farBystander = node('bystander', { x: 1500, y: 250 }, { width: 200, height: 100 })
+    const { harness, update } = setup([seedNote, wide, wider], [space()])
+    const assignCreated = (created: Node<TerminalNodeData>) =>
+      assign(update(), {
+        workspaceId: harness.workspaceId,
+        createdNodeId: created.id,
+        createdNode: created,
+        targetSpaceId: 'space-a',
+      })
+
+    act(() => {
+      assignCreated(wide)
+      // Nothing was in the way of the first assignment; this node is stored after it.
+      replaceWorkspaceNodes(harness.workspaceId, [
+        ...harness.readStoreDocument().nodes,
+        farBystander,
+      ])
+      assignCreated(wider)
+    })
+
+    const [stored] = harness.readStoreDocument().spaces
+    expect(stored.rect!.x + stored.rect!.width).toBeGreaterThanOrEqual(1700)
+    expect(storedNode(harness, 'bystander').position.x).toBeGreaterThanOrEqual(
+      stored.rect!.x + stored.rect!.width,
+    )
+  })
+
   it('writes only the Spaces when no node moves, and keeps the node array and the terminals', () => {
     const inside = node('inside', { x: 300, y: 300 }, { width: 100, height: 100 })
     const roomy = { x: 200, y: 200, width: 800, height: 600 }
@@ -160,6 +193,45 @@ describe('assignNodeToSpaceAndExpand as one store write', () => {
     expect(harness.notifications).toHaveBeenCalledTimes(1)
     expect(layoutSyncs).not.toHaveBeenCalled()
     expect(harness.flush).not.toHaveBeenCalled()
+  })
+
+  it('keeps the node array when the collapse projection restores hidden nodes in place', () => {
+    // A collapsed Space hides its node: the layout restores that node's own position, so the move
+    // list is not empty although nothing moves.
+    const hidden = node('hidden-note', { x: 3000, y: 3000 }, { width: 100, height: 100 })
+    const collapsedSpace = space({
+      id: 'space-hidden',
+      nodeIds: ['hidden-note'],
+      rect: { x: 2900, y: 2900, width: 400, height: 400 },
+    })
+    const inside = node('inside', { x: 300, y: 300 }, { width: 100, height: 100 })
+    const roomy = { x: 200, y: 200, width: 800, height: 600 }
+    const { harness, update } = setup(
+      [seedNote, inside, hidden],
+      [space({ rect: roomy }), collapsedSpace],
+    )
+    useCanvasCollapseStore.setState({
+      workspaces: {
+        [harness.workspaceId]: {
+          ...EMPTY_CANVAS_COLLAPSE,
+          collapsedSpaceIds: { 'space-hidden': true },
+        },
+      },
+    })
+    const nodesBefore = harness.readStoreDocument().nodes
+    harness.notifications.mockClear()
+
+    act(() => {
+      assign(update(), {
+        workspaceId: harness.workspaceId,
+        createdNodeId: inside.id,
+        createdNode: inside,
+        targetSpaceId: 'space-a',
+      })
+    })
+
+    expect(harness.readStoreDocument().nodes).toBe(nodesBefore)
+    expect(harness.notifications).toHaveBeenCalledTimes(1)
   })
 
   it('moves the created node out of every other Space', () => {

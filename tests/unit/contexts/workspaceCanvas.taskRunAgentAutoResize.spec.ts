@@ -104,6 +104,11 @@ describe('WorkspaceCanvas task run agent auto resize', () => {
       const { result } = renderCanvasNodeStore(harness)
       const { nodeStore, canvasState } = result.current
       const { setNodes } = nodeStore
+      // The run flushes once, after the push-away: the Space holds the agent by then.
+      let spacesAtFlush: WorkspaceSpaceState[] = []
+      const onRequestPersistFlush = vi.fn(() => {
+        spacesAtFlush = harness.readStoreDocument().spaces
+      })
 
       await act(async () => {
         await runTaskAgentAction(taskNode.id, {
@@ -146,7 +151,7 @@ describe('WorkspaceCanvas task run agent auto resize', () => {
           terminalDisplayMetrics,
           workspaceId: 'workspace-1',
           workspacePath: '/tmp',
-          onRequestPersistFlush: vi.fn(),
+          onRequestPersistFlush,
         })
       })
       const geometry = resolveDefaultAgentLaunchGeometry({
@@ -157,6 +162,8 @@ describe('WorkspaceCanvas task run agent auto resize', () => {
 
       expect(launch).toHaveBeenCalledWith(expect.objectContaining(geometry))
       const stored = harness.readStoreDocument()
+      expect(onRequestPersistFlush).toHaveBeenCalledTimes(1)
+      expect(spacesAtFlush[0].nodeIds).toContain('agent-1')
       expect(stored.spaces).not.toEqual(spaces)
       expect(stored.nodes.find(node => node.id === 'agent-1')?.data.agent).toMatchObject({
         resumeSessionId: provider === 'claude-code' ? 'assigned-task-session' : null,
