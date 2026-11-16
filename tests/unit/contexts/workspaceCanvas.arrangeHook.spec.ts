@@ -8,10 +8,7 @@ import {
 import { TERMINAL_LAYOUT_SYNC_EVENT } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/constants'
 import { useCanvasSelectionCommands } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
 import { replaceWorkspaceNodes } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
-import type {
-  TerminalNodeData,
-  WorkspaceSpaceState,
-} from '../../../src/contexts/workspace/presentation/renderer/types'
+import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
 import {
   createCanvasDocumentHarness,
   renderCanvasNodeStore,
