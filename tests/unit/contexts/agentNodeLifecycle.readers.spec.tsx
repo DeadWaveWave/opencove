@@ -49,12 +49,16 @@ vi.mock('@app/renderer/i18n', () => ({ useTranslation: () => translation }))
 const agentEnvByProvider = DEFAULT_AGENT_ENV_BY_PROVIDER
 const terminalDisplayMetrics = { fontSize: 13 }
 
-function renderLifecycle(documents: Parameters<typeof renderInTwoWorkspaces>[1]) {
-  return renderInTwoWorkspaces(({ workspaceId, nodeStore }) => {
+// `stable` pins the reader's place in the dependency lists: the writer then keeps its identity.
+function renderLifecycle(
+  documents: Parameters<typeof renderInTwoWorkspaces>[1],
+  { stable = false } = {},
+) {
+  return renderInTwoWorkspaces(({ workspaceId, nodeStore, stableSetNodes }) => {
     return useWorkspaceCanvasAgentNodeLifecycle({
       workspaceId,
       workspacePath: `/tmp/${workspaceId}`,
-      setNodes: nodeStore.setNodes,
+      setNodes: stable ? stableSetNodes : nodeStore.setNodes,
       bumpAgentLaunchToken: nodeStore.bumpAgentLaunchToken,
       isAgentLaunchTokenCurrent: nodeStore.isAgentLaunchTokenCurrent,
       agentFullAccess: true,
@@ -160,10 +164,13 @@ describe('the agent lifecycle in two workspaces', () => {
   it('launches a node of the shown workspace after a switch', async () => {
     const launched = stubLaunch('runtime-b')
     launched.resolve()
-    const { view, showB } = renderLifecycle({
-      a: { nodes: [agentNode('agent-a', { sessionId: '' })] },
-      b: { nodes: [agentNode('agent-b', { sessionId: '' })] },
-    })
+    const { view, showB } = renderLifecycle(
+      {
+        a: { nodes: [agentNode('agent-a', { sessionId: '' })] },
+        b: { nodes: [agentNode('agent-b', { sessionId: '' })] },
+      },
+      { stable: true },
+    )
     showB()
 
     await act(async () => {
@@ -195,7 +202,7 @@ describe('the agent lifecycle in two workspaces', () => {
   it('reloads a node the store gained in the same call, in the shown workspace', async () => {
     const launched = stubLaunch('runtime-reloaded')
     launched.resolve()
-    const { view, showB } = renderLifecycle({})
+    const { view, showB } = renderLifecycle({}, { stable: true })
     showB()
 
     await act(async () => {

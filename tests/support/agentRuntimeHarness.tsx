@@ -1,4 +1,5 @@
 import { act, type RenderHookResult } from '@testing-library/react'
+import { useCallback, useRef } from 'react'
 import type { Node } from '@xyflow/react'
 import { vi } from 'vitest'
 import { useAppStore } from '../../src/app/renderer/shell/store/useAppStore'
@@ -122,6 +123,12 @@ export interface RuntimeCanvasContext {
   workspaceId: string
   canvasState: ReturnType<typeof useWorkspaceCanvasState>
   nodeStore: ReturnType<typeof useWorkspaceCanvasNodesStore>
+  /**
+   * A writer whose identity never changes and that writes through the node store of the latest
+   * render. A case that pins a reader's place in a dependency list uses it, so that the writer
+   * changing with the workspace cannot rebuild the callback and hide a missing reader.
+   */
+  stableSetNodes: ReturnType<typeof useWorkspaceCanvasNodesStore>['setNodes']
 }
 
 export interface FlushRecord {
@@ -190,7 +197,13 @@ export function renderInTwoWorkspaces<Result>(
         standardWindowSizeBucket: 'regular',
         browserDefaultMode: 'iframe',
       })
-      return useHook({ workspaceId, canvasState, nodeStore })
+      const latestSetNodes = useRef(nodeStore.setNodes)
+      latestSetNodes.current = nodeStore.setNodes
+      const stableSetNodes = useCallback<typeof nodeStore.setNodes>(
+        (updater, options) => latestSetNodes.current(updater, options),
+        [],
+      )
+      return useHook({ workspaceId, canvasState, nodeStore, stableSetNodes })
     },
     { workspaceId: () => shown },
   )

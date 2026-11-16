@@ -73,10 +73,11 @@ afterEach(() => {
 })
 
 describe('the agent session controls', () => {
-  function renderControls() {
-    return renderInTwoWorkspaces(({ nodeStore }) =>
+  // `stable` pins the reader's place in the dependency list: the writer then keeps its identity.
+  function renderControls({ stable = true } = {}) {
+    return renderInTwoWorkspaces(({ nodeStore, stableSetNodes }) =>
       useAgentNodeSessionControls({
-        setNodes: nodeStore.setNodes,
+        setNodes: stable ? stableSetNodes : nodeStore.setNodes,
         bumpAgentLaunchToken: nodeStore.bumpAgentLaunchToken,
       }),
     )
@@ -122,7 +123,7 @@ describe('the agent session controls', () => {
   it('stops an agent the store gained in the same call, and marks it stopped in its own workspace', async () => {
     const kill = vi.fn(async () => undefined)
     stubOpencoveApi({ pty: { kill } })
-    const { view, showB } = renderControls()
+    const { view, showB } = renderControls({ stable: false })
 
     await act(async () => {
       replaceWorkspaceNodes(A, [agentNode('agent-a')])
@@ -158,17 +159,21 @@ describe('the agent session switch', () => {
   function renderSwitch(
     relaunchAgentNode: () => Promise<undefined>,
     documents?: Parameters<typeof renderInTwoWorkspaces>[1],
+    { stable = false } = {},
   ) {
     return renderInTwoWorkspaces(
-      ({ nodeStore }) =>
-        useAgentNodeSessionSwitch({ setNodes: nodeStore.setNodes, relaunchAgentNode }),
+      ({ nodeStore, stableSetNodes }) =>
+        useAgentNodeSessionSwitch({
+          setNodes: stable ? stableSetNodes : nodeStore.setNodes,
+          relaunchAgentNode,
+        }),
       documents,
     )
   }
 
   it('relaunches an agent the store gained in the same call, in the shown workspace', async () => {
     const relaunch = vi.fn(async () => undefined)
-    const { view, showB } = renderSwitch(relaunch)
+    const { view, showB } = renderSwitch(relaunch, undefined, { stable: true })
 
     await act(async () => {
       replaceWorkspaceNodes(A, [agentNode('agent-a')])
@@ -330,8 +335,8 @@ describe('the terminal agent session actions', () => {
       status: 'reexecuted' as const,
     }))
     stubOpencoveApi({ pty: { reexecAgent }, agent: { listSessions: vi.fn() } })
-    const { view, showB } = renderInTwoWorkspaces(({ nodeStore }) =>
-      useTerminalAgentSessionActions({ setNodes: nodeStore.setNodes }),
+    const { view, showB } = renderInTwoWorkspaces(({ stableSetNodes }) =>
+      useTerminalAgentSessionActions({ setNodes: stableSetNodes }),
     )
 
     await act(async () => {
@@ -352,8 +357,8 @@ describe('the terminal agent session actions', () => {
   it('lists the sessions of a terminal the store gained in the same call', async () => {
     const listSessions = vi.fn(async () => ({ provider: 'codex', cwd: '', sessions: [] }))
     stubOpencoveApi({ agent: { listSessions } })
-    const { view } = renderInTwoWorkspaces(({ nodeStore }) =>
-      useTerminalAgentSessionActions({ setNodes: nodeStore.setNodes }),
+    const { view } = renderInTwoWorkspaces(({ stableSetNodes }) =>
+      useTerminalAgentSessionActions({ setNodes: stableSetNodes }),
     )
 
     let sessions: unknown
@@ -379,8 +384,8 @@ describe('the terminal agent session actions', () => {
       }),
     )
     stubOpencoveApi({ pty: { reexecAgent } })
-    const { view } = renderInTwoWorkspaces(({ nodeStore }) =>
-      useTerminalAgentSessionActions({ setNodes: nodeStore.setNodes }),
+    const { view } = renderInTwoWorkspaces(({ stableSetNodes }) =>
+      useTerminalAgentSessionActions({ setNodes: stableSetNodes }),
     )
 
     let handled = false
@@ -411,6 +416,9 @@ function renderViewportRefs(
   setCenter: () => void,
   documents?: Parameters<typeof renderInTwoWorkspaces>[1],
 ) {
+  // React Flow's instance keeps its identity, as in the app, so that only the reader can rebuild
+  // the viewport callback on a switch.
+  const reactFlow = { setCenter } as never
   return renderInTwoWorkspaces(() => {
     const actionRefs = useWorkspaceCanvasActionRefs()
     useWorkspaceCanvasSyncActionRefs({
@@ -435,7 +443,7 @@ function renderViewportRefs(
       renameTerminalTitle: noopCallback,
       focusNodeOnClick: true,
       focusNodeTargetZoom: 1,
-      reactFlow: { setCenter } as never,
+      reactFlow,
     } as never)
     return actionRefs
   }, documents)
@@ -486,9 +494,9 @@ describe('a render of workspace A while workspace B is displayed', () => {
     const listSessions = vi.fn(async () => ({ sessions: [] }))
     stubOpencoveApi({ agent: { listSessions } })
     const { view } = renderInTwoWorkspaces(
-      ({ nodeStore }) =>
+      ({ nodeStore, stableSetNodes }) =>
         useAgentNodeSessionControls({
-          setNodes: nodeStore.setNodes,
+          setNodes: stableSetNodes,
           bumpAgentLaunchToken: nodeStore.bumpAgentLaunchToken,
         }),
       inA,
@@ -505,8 +513,8 @@ describe('a render of workspace A while workspace B is displayed', () => {
   it('relaunches an agent of A through the session switch', async () => {
     const relaunch = vi.fn(async () => undefined)
     const { view } = renderInTwoWorkspaces(
-      ({ nodeStore }) =>
-        useAgentNodeSessionSwitch({ setNodes: nodeStore.setNodes, relaunchAgentNode: relaunch }),
+      ({ stableSetNodes }) =>
+        useAgentNodeSessionSwitch({ setNodes: stableSetNodes, relaunchAgentNode: relaunch }),
       inA,
     )
     displayB()
@@ -550,7 +558,7 @@ describe('a render of workspace A while workspace B is displayed', () => {
     const listSessions = vi.fn(async () => ({ provider: 'codex', cwd: '', sessions: [] }))
     stubOpencoveApi({ agent: { listSessions } })
     const { view } = renderInTwoWorkspaces(
-      ({ nodeStore }) => useTerminalAgentSessionActions({ setNodes: nodeStore.setNodes }),
+      ({ stableSetNodes }) => useTerminalAgentSessionActions({ setNodes: stableSetNodes }),
       {
         a: {
           nodes: [
