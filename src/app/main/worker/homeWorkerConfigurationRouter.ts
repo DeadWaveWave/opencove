@@ -18,7 +18,10 @@ import {
   setHomeWorkerWebUiSettings,
 } from '../../../contexts/settings/infrastructure/homeWorker/homeWorkerConfigMutations'
 import { invokeLocalWorkerConfiguration } from './localWorkerConfigurationClient'
-import { withHomeWorkerConfigLease } from '../../../contexts/settings/infrastructure/homeWorker/homeWorkerConfigLease'
+import {
+  createLeaseReleaseErrorReporter,
+  withHomeWorkerConfigLease,
+} from '../../../contexts/settings/infrastructure/homeWorker/homeWorkerConfigLease'
 import { resolveOwnedLocalWorkerConfigurationState } from './localWorkerManager'
 
 async function readLiveConfig(connection: WorkerConnectionInfoDto) {
@@ -71,10 +74,18 @@ export function createHomeWorkerConfigurationRouter(options: {
     if (connection) {
       return await mutateLiveOwner(connection)
     }
-    return await withHomeWorkerConfigLease(options.userDataPath, async () => {
-      const ownerConnection = await resolveMutationConnection()
-      return ownerConnection ? await mutateLiveOwner(ownerConnection) : await mutateOffline()
-    })
+    return await withHomeWorkerConfigLease(
+      options.userDataPath,
+      async () => {
+        const ownerConnection = await resolveMutationConnection()
+        return ownerConnection ? await mutateLiveOwner(ownerConnection) : await mutateOffline()
+      },
+      {
+        onReleaseError: createLeaseReleaseErrorReporter('opencove', text =>
+          process.stderr.write(text),
+        ),
+      },
+    )
   }
 
   const readStoredConfig = async (): Promise<HomeWorkerConfigDto> =>

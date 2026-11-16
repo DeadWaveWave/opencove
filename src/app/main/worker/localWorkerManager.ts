@@ -25,6 +25,7 @@ import {
   resolveLocalWorkerReusePolicy,
 } from './localWorkerCompatibility'
 import { parseWorkerReadyPayload } from './workerReadyPayload'
+import { LOCAL_WORKER_READY_TIMEOUT_MS } from './localWorkerReadyTimeout'
 import { readRuntimeAppVersion } from '../controlSurface/runtimeAppVersion'
 import {
   buildLocalWorkerSpawnArgs,
@@ -304,7 +305,7 @@ async function waitForWorkerReadyPayload(
       settled = true
       rl.close()
       rejectPromise(new Error('Timed out waiting for worker ready payload'))
-    }, 7_500)
+    }, LOCAL_WORKER_READY_TIMEOUT_MS)
 
     const resolveReady = (info: WorkerConnectionInfoDto): void => {
       if (settled) {

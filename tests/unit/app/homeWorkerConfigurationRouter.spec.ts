@@ -14,6 +14,7 @@ vi.mock('../../../src/app/main/worker/localWorkerManager', () => ({
 }))
 vi.mock('../../../src/contexts/settings/infrastructure/homeWorker/homeWorkerConfigLease', () => ({
   withHomeWorkerConfigLease: mocks.withLease,
+  createLeaseReleaseErrorReporter: () => () => undefined,
 }))
 vi.mock('../../../src/app/main/worker/localWorkerConfigurationClient', () => ({
   invokeLocalWorkerConfiguration: mocks.invoke,

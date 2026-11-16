@@ -41,6 +41,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - macOS: clicking the Dock icon while the last window is still closing opens a new window once the old one is gone, instead of leaving OpenCove with no window. (#666)
 - Windows: a terminal restored after a restart no longer shows "Terminal size could not be confirmed" when the terminal process or the console observer is slow to start, for example on a busy machine or while Defender scans it. (#667)
 - Desktop: update Electron from 41.5.1 to 41.10.7, the last 41.x release. It brings every Chromium, V8, Skia and ANGLE security and stability fix that Electron backported in between. (#679)
+- Windows: the local Worker no longer fails to start, leaving the app with "Storage is unavailable; changes will not be saved", when its configuration lease is busy or was left behind by a Worker that stopped while starting. A lease whose owner is gone is now taken over, where before it blocked every later start, also after a restart, until its folder was deleted. (#718)
 
 ## [0.5.0] - 2026-11-12
 
