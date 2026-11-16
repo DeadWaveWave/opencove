@@ -49,6 +49,10 @@ vi.mock(
       useCanvasDocumentCommands: stable('useCanvasDocumentCommands'),
       useReadCanvasUi: stable('useReadCanvasUi'),
       useReadCanvasSelection: stable('useReadCanvasSelection'),
+      // The document reader changes with the workspace too; frozen here, so that only the writer
+      // of the render can rebuild a callback, and one missing from a dependency list writes the
+      // first workspace after the switch.
+      useReadCanvasDocument: stable('useReadCanvasDocument'),
     }
   },
 )

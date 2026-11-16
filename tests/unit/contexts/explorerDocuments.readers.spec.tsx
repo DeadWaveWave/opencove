@@ -4,7 +4,12 @@ import {
   replaceWorkspaceNodes,
   replaceWorkspaceSpaces,
 } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
-import { documentOf, WORKSPACE_A as A, WORKSPACE_B as B } from '../../support/agentRuntimeHarness'
+import {
+  documentOf,
+  stubOpencoveApi,
+  WORKSPACE_A as A,
+  WORKSPACE_B as B,
+} from '../../support/agentRuntimeHarness'
 import {
   displayBWhileRenderingA,
   documentNodeAt,
@@ -685,5 +690,233 @@ describe('the filesystem nodes', () => {
 
       expect(rendered.view.result.current.actions.getNodePathUri('doc')).toBe(URI)
     })
+  })
+})
+
+describe('reads that only the store can answer', () => {
+  it('R1 the navigation opens a document node written in the same act without resolving a binding', async () => {
+    const source = () => terminalNodeAt('terminal', LOCAL, { x: 50, y: 50 })
+    const { view } = renderNavigation({
+      a: { nodes: [source()], spaces: [spaceAt('space-a', ['terminal'])] },
+    })
+    // A binding that cannot be resolved: only the reuse of the node the store holds opens the link.
+    mocks.binding.mockResolvedValue(null)
+
+    let opened = false
+    await act(async () => {
+      replaceWorkspaceNodes(A, [source(), documentNodeAt('written-now', URI)])
+      replaceWorkspaceSpaces(A, [spaceAt('space-a', ['terminal', 'written-now'])])
+      opened = await view.result.current.openFileLink('terminal', {
+        uri: URI,
+        mountId: null,
+        line: 3,
+      })
+    })
+
+    expect(opened).toBe(true)
+    expect(mocks.binding).not.toHaveBeenCalled()
+    expect(view.result.current.navigationByNode.get('written-now')).toMatchObject({ line: 3 })
+  })
+
+  it('R2 the opening reuses a document node written in the same act without resolving a binding', async () => {
+    const { view } = renderOpening({ a: { nodes: [] } })
+
+    let opened: { id: string } | null = null
+    await act(async () => {
+      replaceWorkspaceNodes(A, [documentNodeAt('written-now', URI)])
+      opened = await view.result.current({
+        uri: URI,
+        mountId: null,
+        spaceId: null,
+        anchor: { x: 100, y: 100 },
+      })
+    })
+
+    expect(opened).toMatchObject({ id: 'written-now' })
+    expect(mocks.binding).not.toHaveBeenCalled()
+  })
+})
+
+describe('the materialization after a switch during its awaits', () => {
+  it('R3 begins the drag session with the nodes of the workspace that started the drag', async () => {
+    let finish!: (value: unknown) => void
+    // The node store's creator of the workspace that started the drag: it writes A.
+    const createDocumentNode = vi.fn(
+      (anchor: { x: number; y: number }, document: { uri: string }) => {
+        const node = documentNodeAt('materialized', document.uri, LOCAL, anchor)
+        replaceWorkspaceNodes(A, [...documentOf(A).nodes, node])
+        return node
+      },
+    )
+    const rendered = renderExplorer(
+      {
+        a: { spaces: [spaceAt('space-a')] },
+        // B holds a Space of the same id, so that the explorer stays open after the switch.
+        b: { nodes: [terminalNodeAt('b-only')], spaces: [spaceAt('space-a')] },
+      },
+      { fixedWorkspaceId: true, createDocumentNode: createDocumentNode as never },
+    )
+    const { view, nodeDragSession } = rendered
+    act(() => {
+      view.result.current.openSpaceExplorer('space-a')
+    })
+    await act(async () => {
+      view.result.current.previewFileInSpace('space-a', URI)
+    })
+    await vi.waitFor(() => expect(view.result.current.quickPreview).not.toBeNull())
+    mocks.binding.mockReturnValue(new Promise(resolve => (finish = resolve)))
+
+    await act(async () => {
+      view.result.current.beginQuickPreviewDrag({
+        clientX: 0,
+        clientY: 0,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      } as never)
+      window.dispatchEvent(new MouseEvent('mousemove', { clientX: 40, clientY: 40 }))
+      await vi.waitFor(() => expect(mocks.binding).toHaveBeenCalled())
+    })
+    rendered.showB()
+    await act(async () => {
+      finish(LOCAL)
+      await vi.waitFor(() => expect(nodeDragSession.beginNodeDragSession).toHaveBeenCalled())
+    })
+
+    expect(createDocumentNode).toHaveBeenCalledOnce()
+    const sessionNodeIds = (
+      nodeDragSession.beginNodeDragSession.mock.calls[0][0] as Array<{ id: string }>
+    ).map(node => node.id)
+    expect(sessionNodeIds).toContain('materialized')
+    expect(sessionNodeIds).not.toContain('b-only')
+    act(() => {
+      window.dispatchEvent(new MouseEvent('mouseup', { clientX: 40, clientY: 40 }))
+    })
+  })
+})
+
+// Drags the open preview of `space-a` past the threshold and releases it; returns the drag session's
+// first nodes and the finalize call.
+async function dragOpenPreview(
+  rendered: ReturnType<typeof renderExplorer>,
+  beforeDrag?: () => void,
+) {
+  const { view, nodeDragSession, finalizeDraggedNodeDrop } = rendered
+  act(() => {
+    view.result.current.openSpaceExplorer('space-a')
+  })
+  await act(async () => {
+    view.result.current.previewFileInSpace('space-a', URI)
+  })
+  await vi.waitFor(() => expect(view.result.current.quickPreview).not.toBeNull())
+  nodeDragSession.dragBaselinePositionByIdRef.current = new Map()
+  nodeDragSession.dragBaselineSpaceRectByIdRef.current = new Map()
+  beforeDrag?.()
+  await act(async () => {
+    view.result.current.beginQuickPreviewDrag({
+      clientX: 0,
+      clientY: 0,
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    } as never)
+    window.dispatchEvent(new MouseEvent('mousemove', { clientX: 40, clientY: 40 }))
+    await vi.waitFor(() => expect(nodeDragSession.beginNodeDragSession).toHaveBeenCalled())
+  })
+  act(() => {
+    window.dispatchEvent(new MouseEvent('mouseup', { clientX: 40, clientY: 40 }))
+  })
+  return {
+    sessionNodeIds: (
+      nodeDragSession.beginNodeDragSession.mock.calls[0][0] as Array<{ id: string }>
+    ).map(n => n.id),
+    finalize: finalizeDraggedNodeDrop.mock.calls[0]?.[0] as
+      | { fallbackNodes: Array<{ id: string }> }
+      | undefined,
+  }
+}
+
+describe('the quick-preview drag after the render that shows B', () => {
+  it('R4 begins the drag session with the nodes of B', async () => {
+    const rendered = renderExplorer(
+      {
+        a: { nodes: [terminalNodeAt('a-only')], spaces: [spaceAt('space-a')] },
+        b: { spaces: [spaceAt('space-a')] },
+      },
+      { fixedWorkspaceId: true },
+    )
+    rendered.showB()
+    const { sessionNodeIds } = await dragOpenPreview(rendered)
+    const created = documentOf(B).nodes.find(node => node.data.kind === 'document')
+    expect(created).toBeDefined()
+    expect(sessionNodeIds).toContain(created!.id)
+    expect(sessionNodeIds).not.toContain('a-only')
+  })
+})
+
+describe('the finalize of the quick-preview drag', () => {
+  it('R7 hands the store node of the materialized preview to the drop as its fallback', async () => {
+    const rendered = renderExplorer({ a: { spaces: [spaceAt('space-a')] } })
+    const { finalize } = await dragOpenPreview(rendered)
+    const created = documentOf(A).nodes.find(node => node.data.kind === 'document')!
+    expect(finalize?.fallbackNodes.map(node => node.id)).toEqual([created.id])
+  })
+
+  it('R7b does the same in a render of A while B is displayed', async () => {
+    const rendered = renderExplorer({ a: { spaces: [spaceAt('space-a')] } })
+    const { finalize } = await dragOpenPreview(rendered, () => displayBWhileRenderingA(rendered))
+    const created = documentOf(A).nodes.find(node => node.data.kind === 'document')!
+    expect(finalize?.fallbackNodes.map(node => node.id)).toEqual([created.id])
+  })
+})
+
+describe('more reads in a render of workspace A while workspace B is displayed', () => {
+  const folderUri = 'file:///repo/docs'
+  it('R5 the filesystem nodes find the open document of A that blocks a mutation', () => {
+    const rendered = renderFilesystemNodes({
+      a: {
+        nodes: [
+          folderNodeAt('folder', folderUri, 'file:///repo'),
+          documentNodeAt('doc', `${folderUri}/a.md`),
+        ],
+      },
+    })
+    displayBWhileRenderingA(rendered)
+    expect(
+      rendered.view.result.current.actions.findBlockingOpenDocument('folder', `${folderUri}/a.md`),
+    ).toMatchObject({ uri: `${folderUri}/a.md` })
+  })
+
+  it('R6 the filesystem nodes copy the path of a node of A', async () => {
+    const writeText = vi.fn(async () => undefined)
+    stubOpencoveApi({ clipboard: { writeText } })
+    const rendered = renderFilesystemNodes({ a: { nodes: [documentNodeAt('doc', URI)] } })
+    displayBWhileRenderingA(rendered)
+    await act(async () => {
+      await rendered.view.result.current.actions.copyNodePath('doc', false)
+    })
+    expect(writeText).toHaveBeenCalledWith('/repo/readme.md')
+    vi.unstubAllGlobals()
+  })
+
+  it('R8 the explorer places a preview away from a node of A', async () => {
+    const rendered = renderExplorer({ a: { spaces: [spaceAt('space-a')] } })
+    const { view } = rendered
+    act(() => {
+      view.result.current.openSpaceExplorer('space-a')
+    })
+    await act(async () => {
+      view.result.current.previewFileInSpace('space-a', URI)
+    })
+    await vi.waitFor(() => expect(view.result.current.quickPreview).not.toBeNull())
+    const free = view.result.current.quickPreview!.rect
+    act(() => {
+      replaceWorkspaceNodes(A, [
+        documentNodeAt('blocker', 'file:///repo/blocker.md', LOCAL, { x: free.x, y: free.y }),
+      ])
+    })
+    displayBWhileRenderingA(rendered)
+    await act(async () => {
+      view.result.current.previewFileInSpace('space-a', URI)
+    })
+    await vi.waitFor(() => expect(view.result.current.quickPreview?.rect).not.toEqual(free))
   })
 })
