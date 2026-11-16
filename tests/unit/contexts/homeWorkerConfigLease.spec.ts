@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest'
 import {
   acquireHomeWorkerConfigLease,
   HOME_WORKER_CONFIG_LEASE_FILE,
+  withHomeWorkerConfigLease,
+  type HomeWorkerConfigLeaseDependencies,
 } from '../../../src/contexts/settings/infrastructure/homeWorker/homeWorkerConfigLease'
 import {
   createUserDataPath,
@@ -333,6 +335,71 @@ describe('Home Worker configuration lease on a Windows legacy file lease', () =>
     expect(failure?.message).toContain('Timed out acquiring')
     expect(claimTargets).not.toContain(lockPath)
     expect(await readFile(lockPath, 'utf8')).toBe(legacy)
+  }, 10_000)
+})
+
+describe('withHomeWorkerConfigLease when the release fails', () => {
+  registerLeaseTempDirCleanup()
+
+  async function createStuckReleaseDependencies(
+    userDataPath: string,
+  ): Promise<HomeWorkerConfigLeaseDependencies> {
+    const lockPath = resolve(userDataPath, HOME_WORKER_CONFIG_LEASE_FILE)
+    const clock = createFakeClock()
+    return {
+      platform: 'win32',
+      now: clock.now,
+      wait: clock.wait,
+      rename: async (from, to) => {
+        if (from === lockPath) {
+          throw fsError('EPERM')
+        }
+        await rename(from, to)
+      },
+    }
+  }
+
+  it('9 returns the operation result and reports the release error once', async () => {
+    const userDataPath = await createUserDataPath()
+    const reported: unknown[] = []
+
+    const result = await withHomeWorkerConfigLease(userDataPath, async () => 'operation result', {
+      dependencies: await createStuckReleaseDependencies(userDataPath),
+      onReleaseError: error => reported.push(error),
+    })
+
+    expect(result).toBe('operation result')
+    expect(reported).toHaveLength(1)
+    expect(reported[0]).toMatchObject({ name: 'HomeWorkerConfigLeaseReleaseError' })
+  }, 10_000)
+
+  it('9 rethrows the operation error rather than the release error', async () => {
+    const userDataPath = await createUserDataPath()
+    const reported: unknown[] = []
+
+    await expect(
+      withHomeWorkerConfigLease(
+        userDataPath,
+        async () => {
+          throw new Error('operation failed')
+        },
+        {
+          dependencies: await createStuckReleaseDependencies(userDataPath),
+          onReleaseError: error => reported.push(error),
+        },
+      ),
+    ).rejects.toThrow('operation failed')
+    expect(reported).toHaveLength(1)
+  }, 10_000)
+
+  it('9 rejects with the release error when nobody listens for it', async () => {
+    const userDataPath = await createUserDataPath()
+
+    await expect(
+      withHomeWorkerConfigLease(userDataPath, async () => 'operation result', {
+        dependencies: await createStuckReleaseDependencies(userDataPath),
+      }),
+    ).rejects.toMatchObject({ name: 'HomeWorkerConfigLeaseReleaseError' })
   }, 10_000)
 })
 

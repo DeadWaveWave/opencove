@@ -20,7 +20,7 @@ import { hashWebUiPassword } from '../../contexts/settings/infrastructure/homeWo
 import { isWorkerConnectionAlive } from '../main/worker/workerConnectionHealth'
 import { resolveLocalWorkerReusePolicy } from '../../shared/runtime/localWorkerReusePolicy'
 import { readHomeWorkerConfigFile } from '../../contexts/settings/infrastructure/homeWorker/homeWorkerConfig'
-import { acquireHomeWorkerConfigLease } from '../../contexts/settings/infrastructure/homeWorker/homeWorkerConfigLease'
+import { runUnderHomeWorkerConfigLease } from './runUnderHomeWorkerConfigLease'
 import { createClaudeHookChannel } from '../main/controlSurface/agentHook/claudeHookChannel'
 import { createCodexHookChannel } from '../main/controlSurface/agentHook/codexHookChannel'
 import { AgentProviderRegistry } from '../../contexts/agent/application/services/AgentProviderRegistry'
@@ -225,23 +225,21 @@ async function main(): Promise<void> {
     agentHookChannels: [claudeHookChannel, codexHookChannel, piHookChannel],
     agentProviderRegistry,
   }
-  const server = await (async () => {
-    const configLease =
-      startedBy === 'desktop' ? await acquireHomeWorkerConfigLease(userDataPath) : null
-    try {
-      const candidate =
-        startedBy === 'desktop'
-          ? createDesktopManagedControlSurface({
-              server: serverOptions,
-              initialConfig: await readHomeWorkerConfigFile(userDataPath),
-            })
-          : registerControlSurfaceHttpServer(serverOptions)
-      await candidate.ready
-      return candidate
-    } finally {
-      await configLease?.release()
-    }
-  })()
+  const startServer = async () => {
+    const candidate =
+      startedBy === 'desktop'
+        ? createDesktopManagedControlSurface({
+            server: serverOptions,
+            initialConfig: await readHomeWorkerConfigFile(userDataPath),
+          })
+        : registerControlSurfaceHttpServer(serverOptions)
+    await candidate.ready
+    return candidate
+  }
+  const server =
+    startedBy === 'desktop'
+      ? await runUnderHomeWorkerConfigLease(userDataPath, startServer)
+      : await startServer()
 
   const info = await server.ready
   process.stdout.write(`${JSON.stringify(info)}\n`)

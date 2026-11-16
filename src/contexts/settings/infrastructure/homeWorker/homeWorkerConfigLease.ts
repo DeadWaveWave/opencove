@@ -34,7 +34,7 @@ type LeaseTiming = {
   retryDelayMs: number
   timeoutMs: number
 }
-type LeaseDependencies = {
+export type HomeWorkerConfigLeaseDependencies = {
   now?: () => number
   wait?: (delayMs: number) => Promise<void>
   isProcessAlive?: (pid: number) => boolean
@@ -215,7 +215,7 @@ export async function acquireHomeWorkerConfigLease(
     timeoutMs?: number
     retryDelayMs?: number
     malformedStaleMs?: number
-    dependencies?: LeaseDependencies
+    dependencies?: HomeWorkerConfigLeaseDependencies
   } = {},
 ): Promise<{ release: () => Promise<void> }> {
   const lockPath = resolve(userDataPath, HOME_WORKER_CONFIG_LEASE_FILE)
@@ -364,11 +364,30 @@ export async function acquireHomeWorkerConfigLease(
 export async function withHomeWorkerConfigLease<T>(
   userDataPath: string,
   operation: () => Promise<T>,
+  options: {
+    // Called with a release failure. The operation's own outcome never changes because of it.
+    onReleaseError?: (error: unknown) => void
+    dependencies?: HomeWorkerConfigLeaseDependencies
+  } = {},
 ): Promise<T> {
-  const lease = await acquireHomeWorkerConfigLease(userDataPath)
+  const lease = await acquireHomeWorkerConfigLease(userDataPath, {
+    dependencies: options.dependencies,
+  })
+  let result: T
   try {
-    return await operation()
-  } finally {
-    await lease.release()
+    result = await operation()
+  } catch (error) {
+    // The operation's error wins; a release failure is reported, not allowed to replace it.
+    await lease.release().catch((releaseError: unknown) => options.onReleaseError?.(releaseError))
+    throw error
   }
+  try {
+    await lease.release()
+  } catch (releaseError) {
+    if (!options.onReleaseError) {
+      throw releaseError
+    }
+    options.onReleaseError(releaseError)
+  }
+  return result
 }

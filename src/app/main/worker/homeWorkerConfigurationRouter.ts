@@ -71,10 +71,20 @@ export function createHomeWorkerConfigurationRouter(options: {
     if (connection) {
       return await mutateLiveOwner(connection)
     }
-    return await withHomeWorkerConfigLease(options.userDataPath, async () => {
-      const ownerConnection = await resolveMutationConnection()
-      return ownerConnection ? await mutateLiveOwner(ownerConnection) : await mutateOffline()
-    })
+    return await withHomeWorkerConfigLease(
+      options.userDataPath,
+      async () => {
+        const ownerConnection = await resolveMutationConnection()
+        return ownerConnection ? await mutateLiveOwner(ownerConnection) : await mutateOffline()
+      },
+      {
+        onReleaseError: error => {
+          process.stderr.write(
+            `[opencove] Home Worker configuration lease release failed: ${error instanceof Error ? error.message : String(error)}\n`,
+          )
+        },
+      },
+    )
   }
 
   const readStoredConfig = async (): Promise<HomeWorkerConfigDto> =>
