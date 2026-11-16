@@ -90,7 +90,9 @@ test.describe('Worker web canvas view state', () => {
       const shared = await readSharedState(page.request)
       expect(shared.state?.workspaces[0]?.activeSpaceId).toBe('space-a')
 
-      await page.locator('[data-testid="workspace-space-menu-space-b"]').click({ force: true })
+      // The switch above starts a viewport transition, so this button can still be moving. A plain
+      // click waits until it is still and checks what it hits; a forced click does neither (#706).
+      await page.locator('[data-testid="workspace-space-menu-space-b"]').click()
       await expect(page.locator('[data-testid="workspace-space-action-menu"]')).toBeVisible()
       await expect(page.locator('[data-testid="workspace-space-action-open"]')).toHaveCount(0)
     } finally {
