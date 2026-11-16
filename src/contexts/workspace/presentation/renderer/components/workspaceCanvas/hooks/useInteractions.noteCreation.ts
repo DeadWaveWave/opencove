@@ -1,6 +1,6 @@
-import type { MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
 import type { Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
+import type { WorkspaceDocument } from '../../../store/workspaceDocument'
 import {
   assignNodeToSpaceAndExpand,
   findContainingSpaceByAnchor,
@@ -12,7 +12,7 @@ export function createNoteNodeAtAnchor({
   anchor,
   spaceAnchor = anchor,
   createNoteNode,
-  spacesRef,
+  readDocument,
   updateCanvasDocument,
 }: {
   workspaceId?: string
@@ -26,10 +26,10 @@ export function createNoteNodeAtAnchor({
       }
     },
   ) => Node<TerminalNodeData> | null
-  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
+  readDocument: () => WorkspaceDocument
   updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
 }): void {
-  const targetSpace = findContainingSpaceByAnchor(spacesRef.current, spaceAnchor)
+  const targetSpace = findContainingSpaceByAnchor(readDocument().spaces, spaceAnchor)
   const created = createNoteNode(anchor, {
     placement: {
       targetSpaceRect: targetSpace?.rect ?? null,

@@ -38,11 +38,6 @@ const ALLOWED_FILES: Record<string, readonly string[]> = {
     '~/hooks/useCreationActivation.ts',
     '~/hooks/useFilesystemNodePaths.ts',
     '~/hooks/useFilesystemNodes.ts',
-    '~/hooks/useInteractions.paneNodeCreation.ts',
-    '~/hooks/useInteractions.quickMenuActions.ts',
-    '~/hooks/useInteractions.terminalCreation.ts',
-    '~/hooks/useInteractions.ts',
-    '~/hooks/useInteractions.types.ts',
     '~/hooks/useNodeDeleteConfirmation.ts',
     '~/hooks/useNodesStore.createFilesystemNodes.ts',
     '~/hooks/useNodesStore.createNodes.ts',
@@ -68,7 +63,6 @@ const ALLOWED_FILES: Record<string, readonly string[]> = {
     '~/hooks/useTaskEditor.ts',
     '~/hooks/useTerminalAgentSessionActions.ts',
     '~/hooks/useViewportNavigation.ts',
-    '~/hooks/useWebsiteWindowOpenUrlNodeCreation.ts',
     '~/hooks/useWorkspaceDocumentNavigation.ts',
     '~/hooks/useWorkspaceDocumentOpening.ts',
     '~/view/WorkspacePixelLayer.tsx',
@@ -79,9 +73,7 @@ const ALLOWED_FILES: Record<string, readonly string[]> = {
     '~/hooks/useAgentLauncher.ts',
     '~/hooks/useAgentNodeLifecycle.ts',
     '~/hooks/useArrange.ts',
-    '~/hooks/useCanvasActionBarActions.ts',
     '~/hooks/useCanvasAgentSupport.ts',
-    '~/hooks/useCanvasImageImport.ts',
     '~/hooks/useCanvasMenuActions.ts',
     '~/hooks/useCanvasNodeTypes.ts',
     '~/hooks/useCanvasRoleUi.ts',
@@ -94,15 +86,6 @@ const ALLOWED_FILES: Record<string, readonly string[]> = {
     '~/hooks/useCanvasViewModel.ts',
     '~/hooks/useFilesystemNodePaths.ts',
     '~/hooks/useFilesystemNodes.ts',
-    '~/hooks/useInteractions.flowNodeCreation.ts',
-    '~/hooks/useInteractions.noteCreation.ts',
-    '~/hooks/useInteractions.paneNodeCreation.ts',
-    '~/hooks/useInteractions.pasteHandlers.ts',
-    '~/hooks/useInteractions.quickMenuActions.ts',
-    '~/hooks/useInteractions.terminalCreation.ts',
-    '~/hooks/useInteractions.ts',
-    '~/hooks/useInteractions.types.ts',
-    '~/hooks/useInteractions.websiteContextMenu.ts',
     '~/hooks/useNativeFilesystemDrop.ts',
     '~/hooks/useNodeDeleteConfirmation.ts',
     '~/hooks/useNodesStore.createFilesystemNodes.ts',
@@ -115,8 +98,6 @@ const ALLOWED_FILES: Record<string, readonly string[]> = {
     '~/hooks/useNoteToTaskConversion.ts',
     '~/hooks/useRoleActions.run.ts',
     '~/hooks/useRoleActions.ts',
-    '~/hooks/useSelectNode.ts',
-    '~/hooks/useSelectionDraft.ts',
     '~/hooks/useSpaceDirectoryOps.ts',
     '~/hooks/useSpaceExplorer.placement.ts',
     '~/hooks/useSpaceExplorer.ts',
@@ -127,7 +108,6 @@ const ALLOWED_FILES: Record<string, readonly string[]> = {
     '~/hooks/useTaskActions.agentSession.shared.ts',
     '~/hooks/useTaskActions.ts',
     '~/hooks/useTaskNodeCreation.ts',
-    '~/hooks/useWebsiteWindowOpenUrlNodeCreation.ts',
     '~/hooks/useWorkspaceDocumentNavigation.ts',
     '~/hooks/useWorkspaceDocumentOpening.ts',
     '~/nodeTypes.context.ts',
@@ -224,6 +204,23 @@ describe('canvas document channels', () => {
   it('nothing assigns spacesRef.current', () => {
     const offenders = files.filter(file =>
       /\bspacesRef\s*\.\s*current\s*=(?!=)/.test(sources.get(file) ?? ''),
+    )
+
+    expect(offenders).toEqual([])
+  })
+
+  // The reader lets a hook read the committed document when it runs, without subscribing. A file
+  // that reads through it and also subscribes to the app store would render with every store
+  // change, which the move from the refs must not bring. A render-time test cannot see it: the
+  // subscription is made at mount.
+  it('no file that reads through useReadCanvasDocument subscribes to the app store', () => {
+    const readers = files.filter(file =>
+      /\buseReadCanvasDocument\(\)/.test(sources.get(file) ?? ''),
+    )
+    expect(readers.length).toBeGreaterThan(20)
+
+    const offenders = readers.filter(file =>
+      /\buseAppStore\(|\buseStore\(\s*useAppStore\b/.test(sources.get(file) ?? ''),
     )
 
     expect(offenders).toEqual([])

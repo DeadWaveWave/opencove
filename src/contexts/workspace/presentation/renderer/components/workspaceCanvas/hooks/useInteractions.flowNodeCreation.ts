@@ -6,7 +6,11 @@ import {
   createWebsiteNodeAtFlowPosition,
 } from './useInteractions.paneNodeCreation'
 import type { UseWorkspaceCanvasInteractionsParams } from './useInteractions.types'
-import { useCanvasUiCommands, useReadCanvasUi } from '../../../store/canvasStoreContext'
+import {
+  useCanvasUiCommands,
+  useReadCanvasDocument,
+  useReadCanvasUi,
+} from '../../../store/canvasStoreContext'
 
 type FlowNodeCreationParams = Pick<
   UseWorkspaceCanvasInteractionsParams,
@@ -16,7 +20,6 @@ type FlowNodeCreationParams = Pick<
   | 'createWebsiteNode'
   | 'browserDefaultMode'
   | 'websiteWindowsEnabled'
-  | 'spacesRef'
   | 'updateCanvasDocument'
 >
 
@@ -27,10 +30,10 @@ export function useWorkspaceCanvasFlowNodeCreation({
   createWebsiteNode,
   browserDefaultMode,
   websiteWindowsEnabled,
-  spacesRef,
   updateCanvasDocument,
 }: FlowNodeCreationParams) {
   const ui = useCanvasUiCommands()
+  const readDocument = useReadCanvasDocument()
   const readUi = useReadCanvasUi()
 
   const createNoteNodeAtFlowPoint = useCallback(
@@ -42,11 +45,11 @@ export function useWorkspaceCanvasFlowNodeCreation({
         anchor,
         standardWindowSizeBucket,
         createNoteNode,
-        spacesRef,
+        readDocument,
         updateCanvasDocument,
       })
     },
-    [createNoteNode, ui, spacesRef, standardWindowSizeBucket, updateCanvasDocument, workspaceId],
+    [createNoteNode, ui, readDocument, standardWindowSizeBucket, updateCanvasDocument, workspaceId],
   )
   const createWebsiteNodeAtFlowPoint = useCallback(
     (anchor: Point): void => {
@@ -63,7 +66,7 @@ export function useWorkspaceCanvasFlowNodeCreation({
         browserDefaultMode,
         url: '',
         createWebsiteNode,
-        spacesRef,
+        readDocument,
         updateCanvasDocument,
       })
     },
@@ -71,7 +74,7 @@ export function useWorkspaceCanvasFlowNodeCreation({
       browserDefaultMode,
       createWebsiteNode,
       ui,
-      spacesRef,
+      readDocument,
       standardWindowSizeBucket,
       updateCanvasDocument,
       websiteWindowsEnabled,
@@ -85,7 +88,7 @@ export function useWorkspaceCanvasFlowNodeCreation({
       ui,
       createNoteNode,
       standardWindowSizeBucket,
-      spacesRef,
+      readDocument,
       updateCanvasDocument,
     })
   }, [
@@ -93,7 +96,7 @@ export function useWorkspaceCanvasFlowNodeCreation({
     createNoteNode,
     readUi,
     ui,
-    spacesRef,
+    readDocument,
     standardWindowSizeBucket,
     updateCanvasDocument,
   ])

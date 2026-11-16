@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, type MutableRefObject } from 'react'
 import { useStoreApi, type Node, type ReactFlowInstance } from '@xyflow/react'
-import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
+import type { TerminalNodeData } from '../../../types'
 import type { SelectionDraftState } from '../types'
 import { isPointInsideRect } from './useSpaceOwnership.helpers'
 import { applySelectionDraft } from './useSelectionDraft.helpers'
@@ -12,6 +12,7 @@ import { readCanvasInteractionState } from './useNodeDragSession.collapse'
 import {
   useCanvasSelectionCommands,
   useCanvasUiCommands,
+  useReadCanvasDocument,
   useReadCanvasSelection,
 } from '../../../store/canvasStoreContext'
 
@@ -27,7 +28,6 @@ interface UseSelectionDraftParams {
   selectionDraftRef: MutableRefObject<SelectionDraftState | null>
   setSelectionDraftUi: React.Dispatch<React.SetStateAction<SelectionDraftUiState | null>>
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
-  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   setNodes: (
     updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
     options?: { syncLayout?: boolean },
@@ -41,7 +41,6 @@ export function useWorkspaceCanvasSelectionDraft({
   selectionDraftRef,
   setSelectionDraftUi,
   reactFlow,
-  spacesRef,
   setNodes,
 }: UseSelectionDraftParams): {
   handleCanvasPointerDownCapture: (event: React.PointerEvent<HTMLDivElement>) => void
@@ -50,6 +49,7 @@ export function useWorkspaceCanvasSelectionDraft({
 } {
   const ui = useCanvasUiCommands()
   const readSelection = useReadCanvasSelection()
+  const readDocument = useReadCanvasDocument()
   const selection = useCanvasSelectionCommands()
 
   const cancelSelectionOnWindowBlur = !(
@@ -65,14 +65,14 @@ export function useWorkspaceCanvasSelectionDraft({
       applySelectionDraft({
         draft,
         reactFlow,
-        spaces: spacesRef.current,
+        spaces: readDocument().spaces,
         collapseState: readCanvasInteractionState(workspaceId),
         selection,
         setNodes,
         forceDeselectIntersectingNodes: options?.forceDeselectIntersectingNodes === true,
       })
     },
-    [reactFlow, selection, setNodes, spacesRef, workspaceId],
+    [reactFlow, readDocument, selection, setNodes, workspaceId],
   )
 
   const detachGlobalPointerListeners = useCallback(() => {
@@ -352,7 +352,7 @@ export function useWorkspaceCanvasSelectionDraft({
 
       const interaction = projectCanvasInteractionLayout(
         reactFlow.getNodes(),
-        spacesRef.current,
+        readDocument().spaces,
         readCanvasInteractionState(workspaceId),
       )
       const startSpace = interaction.spaces.find(space => {
@@ -399,10 +399,10 @@ export function useWorkspaceCanvasSelectionDraft({
       isShiftPressedRef,
       isTrackpadCanvasMode,
       reactFlow,
+      readDocument,
       readSelection,
       registerGlobalPointerListeners,
       selectionDraftRef,
-      spacesRef,
       ui,
       setSelectionDraftUi,
       workspaceId,

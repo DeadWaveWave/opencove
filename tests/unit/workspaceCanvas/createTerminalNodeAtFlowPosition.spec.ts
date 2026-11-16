@@ -6,6 +6,7 @@ import { createTerminalNodeAtFlowPosition } from '../../../src/contexts/workspac
 import {
   createCanvasDocumentHarness,
   renderCanvasDocumentCommands,
+  renderCanvasDocumentReader,
   renderCanvasNodeStore,
 } from '../../support/canvasDocumentHarness'
 
@@ -32,6 +33,7 @@ describe('createTerminalNodeAtFlowPosition', () => {
     const harness = createCanvasDocumentHarness({ workspaceId })
     return {
       harness,
+      readDocument: renderCanvasDocumentReader(workspaceId),
       updateSpaces: renderCanvasDocumentCommands(workspaceId).updateSpaces,
       updateCanvasDocument:
         renderCanvasNodeStore(harness).result.current.nodeStore.updateCanvasDocument,
@@ -48,7 +50,7 @@ describe('createTerminalNodeAtFlowPosition', () => {
       async () => ({ id: '00000000-0000-4000-8000-000000000001' }) as never,
     )
 
-    const { harness, updateSpaces, updateCanvasDocument } = seedStore('workspace-1')
+    const { harness, readDocument, updateSpaces, updateCanvasDocument } = seedStore('workspace-1')
 
     vi.stubGlobal('window', {
       opencoveApi: {
@@ -96,8 +98,7 @@ describe('createTerminalNodeAtFlowPosition', () => {
       defaultTerminalProfileId: null,
       standardWindowSizeBucket: 'regular',
       workspacePath: '',
-      spacesRef: { current: [] },
-      nodesRef: { current: [] },
+      readDocument,
       updateCanvasDocument,
       updateSpaces,
       createNodeForSession,
@@ -147,7 +148,7 @@ describe('createTerminalNodeAtFlowPosition', () => {
       async () => ({ id: '00000000-0000-4000-8000-000000000001' }) as never,
     )
 
-    const { harness, updateSpaces, updateCanvasDocument } = seedStore('workspace-1')
+    const { harness, readDocument, updateSpaces, updateCanvasDocument } = seedStore('workspace-1')
 
     vi.stubGlobal('window', {
       opencoveApi: {
@@ -182,8 +183,7 @@ describe('createTerminalNodeAtFlowPosition', () => {
       defaultTerminalProfileId: null,
       standardWindowSizeBucket: 'regular',
       workspacePath: '',
-      spacesRef: { current: [] },
-      nodesRef: { current: [] },
+      readDocument,
       updateCanvasDocument,
       updateSpaces,
       createNodeForSession,
@@ -228,7 +228,8 @@ describe('createTerminalNodeAtFlowPosition', () => {
       async () => ({ id: '00000000-0000-4000-8000-000000000001' }) as never,
     )
 
-    const { harness, updateSpaces, updateCanvasDocument } = seedStore('workspace-remote')
+    const { harness, readDocument, updateSpaces, updateCanvasDocument } =
+      seedStore('workspace-remote')
 
     vi.stubGlobal('window', {
       opencoveApi: {
@@ -263,8 +264,7 @@ describe('createTerminalNodeAtFlowPosition', () => {
       defaultTerminalProfileId: null,
       standardWindowSizeBucket: 'regular',
       workspacePath: '',
-      spacesRef: { current: [] },
-      nodesRef: { current: [] },
+      readDocument,
       updateCanvasDocument,
       updateSpaces,
       createNodeForSession,
@@ -317,7 +317,7 @@ describe('createTerminalNodeAtFlowPosition', () => {
       async () => ({ id: '00000000-0000-4000-8000-000000000001' }) as never,
     )
 
-    const { harness, updateSpaces, updateCanvasDocument } = seedStore('workspace-1')
+    const { harness, readDocument, updateSpaces, updateCanvasDocument } = seedStore('workspace-1')
 
     vi.stubGlobal('window', {
       opencoveApi: {
@@ -357,8 +357,7 @@ describe('createTerminalNodeAtFlowPosition', () => {
         letterSpacing: 0.2,
       },
       workspacePath: '',
-      spacesRef: { current: [] },
-      nodesRef: { current: [] },
+      readDocument,
       updateCanvasDocument,
       updateSpaces,
       createNodeForSession,

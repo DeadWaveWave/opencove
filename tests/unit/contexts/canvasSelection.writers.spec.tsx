@@ -18,11 +18,15 @@ import {
   useReadCanvasUi,
 } from '@contexts/workspace/presentation/renderer/store/canvasStoreContext'
 import type { TerminalNodeData } from '@contexts/workspace/presentation/renderer/types'
+import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
+import { replaceWorkspaceSpaces } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import {
   createCanvasDocumentHarness,
   renderCanvasNodeStore,
+  renderInCanvasDocument,
   type CanvasNodeStoreContext,
 } from '../../support/canvasDocumentHarness'
+import { CANVAS_STORE_TEST_WORKSPACE_ID } from '../../support/canvasStoreTestHarness'
 import {
   SelectionWritersWrapper,
   createNodeHolder,
@@ -76,10 +80,9 @@ afterEach(() => {
 describe('selectNode', () => {
   function setup(options: { flagged?: string[]; nodeIds?: string[]; spaceIds?: string[] }) {
     const holder = createNodeHolder(createRowNodes(['a', 'b', 'c'], options.flagged ?? []))
-    const spacesRef = { current: [] }
     const hook = renderHook(
       () => ({
-        select: useWorkspaceCanvasSelectNode({ setNodes: holder.setNodes, spacesRef }),
+        select: useWorkspaceCanvasSelectNode({ setNodes: holder.setNodes }),
         ...useStoreProbe(),
       }),
       { wrapper: SelectionWritersWrapper },
@@ -177,7 +180,6 @@ describe('node selection writers in useWorkspaceCanvasInteractions', () => {
   function setup(options: { flagged?: string[]; nodeIds?: string[]; spaceIds?: string[] }) {
     const holder = createNodeHolder(createRowNodes(['a', 'b', 'c'], options.flagged ?? []))
     const canvas = document.createElement('div')
-    const spacesRef = { current: [] }
     const reactFlow = {
       screenToFlowPosition: ({ x, y }: { x: number; y: number }) => ({ x, y }),
       getNodes: () => holder.nodes,
@@ -202,9 +204,7 @@ describe('node selection writers in useWorkspaceCanvasInteractions', () => {
           defaultTerminalProfileId: null,
           terminalFontSize: 13,
           terminalDisplayMetrics: {} as never,
-          spacesRef,
           updateCanvasDocument: vi.fn(),
-          nodesRef: holder.nodesRef,
           standardWindowSizeBucket: 'regular',
           browserDefaultMode: 'headless' as never,
           createNodeForSession: vi.fn(async () => null),
@@ -297,12 +297,16 @@ describe('marquee in useWorkspaceCanvasSelectionDraft', () => {
     spaceIds?: string[]
     spaces?: ReturnType<typeof createSpace>[]
   }) {
+    // The Spaces the marquee reads are the store's.
+    createCanvasDocumentHarness({
+      workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID,
+      spaces: options.spaces ?? [],
+    })
     const holder = createNodeHolder(createRowNodes(['a', 'b', 'c'], options.flagged ?? []))
     const pane = document.createElement('div')
     pane.className = 'react-flow__pane'
     document.body.append(pane)
     const selectionDraftRef: { current: SelectionDraftState | null } = { current: null }
-    const spacesRef = { current: options.spaces ?? [] }
     const reactFlow = {
       screenToFlowPosition: ({ x, y }: { x: number; y: number }) => ({ x, y }),
       getNodes: () => holder.nodes,
@@ -316,7 +320,6 @@ describe('marquee in useWorkspaceCanvasSelectionDraft', () => {
           selectionDraftRef,
           setSelectionDraftUi: vi.fn(),
           reactFlow,
-          spacesRef,
           setNodes: holder.setNodes,
         }),
         ...useStoreProbe(),
@@ -408,6 +411,45 @@ describe('marquee in useWorkspaceCanvasSelectionDraft', () => {
       nodesSelectionActive: false,
       coveDragSurfaceSelectionMode: false,
     })
+  })
+
+  it('reads the Spaces once for each frame of the marquee, and subscribes to nothing', () => {
+    const frames: FrameRequestCallback[] = []
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
+      frames.push(callback)
+      return frames.length
+    })
+    const { result, pointerDown } = setup({})
+    pointerDown(-50, -50)
+    frames.length = 0
+    const subscribe = vi.spyOn(useAppStore, 'subscribe')
+    const getState = vi.spyOn(useAppStore, 'getState')
+
+    act(() =>
+      result.current.draft.handleCanvasPointerMoveCapture({
+        buttons: 1,
+        clientX: 200,
+        clientY: 150,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      } as unknown as React.PointerEvent<HTMLDivElement>),
+    )
+    // The move schedules the box frame and the selection frame; running both reads once.
+    act(() => frames.splice(0).forEach(frame => frame(0)))
+    expect(getState).toHaveBeenCalledTimes(1)
+
+    act(() =>
+      result.current.draft.handleCanvasPointerMoveCapture({
+        buttons: 1,
+        clientX: 250,
+        clientY: 180,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      } as unknown as React.PointerEvent<HTMLDivElement>),
+    )
+    act(() => frames.splice(0).forEach(frame => frame(0)))
+    expect(getState).toHaveBeenCalledTimes(2)
+    expect(subscribe).not.toHaveBeenCalled()
   })
 
   it('captures the selected Spaces from the store when the marquee starts', () => {
@@ -580,5 +622,113 @@ describe('Space click selection in useWorkspaceCanvasSpaceDrag', () => {
     expect(moved('c')).toBe(20)
     expect(moved('b')).toBe(0)
     expect(moved('d')).toBe(0)
+  })
+})
+
+describe('the Spaces the selection hooks read (#702, PR 7)', () => {
+  // Both hooks read the Spaces of the workspace whose render made them, from the store, when they
+  // run. Each case writes the Spaces in the call that reads them, or between the two calls of one
+  // gesture, then shows the other workspace and does it again.
+  function seedTwoWorkspaces() {
+    createCanvasDocumentHarness({ workspaceId: 'workspace-a' })
+    useAppStore.setState(state => ({
+      workspaces: [...state.workspaces, { ...state.workspaces[0], id: 'workspace-b' }],
+    }))
+  }
+
+  function switchableRender<Result>(useHook: () => Result) {
+    let shown = 'workspace-a'
+    const view = renderInCanvasDocument(useHook, { workspaceId: () => shown })
+    return {
+      view,
+      switchTo(workspaceId: string) {
+        act(() => {
+          shown = workspaceId
+          view.rerender()
+        })
+      },
+    }
+  }
+
+  it('scopes a toggle by the Spaces of the workspace of the render', () => {
+    seedTwoWorkspaces()
+    const holder = createNodeHolder(createRowNodes(['a', 'b', 'c'], ['a']))
+    const { view, switchTo } = switchableRender(() => ({
+      select: useWorkspaceCanvasSelectNode({ setNodes: holder.setNodes }),
+      ...useStoreProbe(),
+    }))
+    const wide = { x: -50, y: -50, width: 1400, height: 400 }
+    const narrow = { x: -50, y: -50, width: 700, height: 400 }
+
+    // In A one Space holds a and b, and c is outside every Space: a is out of c's scope.
+    act(() => {
+      replaceWorkspaceSpaces('workspace-a', [createSpace('s-a', narrow, ['a', 'b'])])
+      view.result.current.select('c', { toggle: true })
+    })
+    expect(holder.selectedIds).toEqual(['c'])
+
+    // In B one Space holds all three, and a stays selected.
+    switchTo('workspace-b')
+    holder.setNodes(nodes => nodes.map(node => ({ ...node, selected: node.id === 'a' })))
+    act(() => {
+      replaceWorkspaceSpaces('workspace-b', [createSpace('s-b', wide, ['a', 'b', 'c'])])
+      view.result.current.select('c', { toggle: true })
+    })
+    expect(holder.selectedIds).toEqual(['a', 'c'])
+  })
+
+  it('selects the Spaces the marquee touches in the workspace of the render, when it ends', () => {
+    seedTwoWorkspaces()
+    const holder = createNodeHolder(createRowNodes(['a', 'b', 'c']))
+    const pane = document.createElement('div')
+    pane.className = 'react-flow__pane'
+    document.body.append(pane)
+    const selectionDraftRef: { current: SelectionDraftState | null } = { current: null }
+    const reactFlow = {
+      screenToFlowPosition: ({ x, y }: { x: number; y: number }) => ({ x, y }),
+      getNodes: () => holder.nodes,
+    } as unknown as ReactFlowInstance<Node<TerminalNodeData>>
+    const { view, switchTo } = switchableRender(() => ({
+      draft: useWorkspaceCanvasSelectionDraft({
+        workspaceId: 'writers',
+        isTrackpadCanvasMode: true,
+        isShiftPressedRef: { current: false },
+        selectionDraftRef,
+        setSelectionDraftUi: vi.fn(),
+        reactFlow,
+        setNodes: holder.setNodes,
+      }),
+      ...useStoreProbe(),
+    }))
+    const marquee = (workspaceId: string, spaceId: string) => {
+      act(() =>
+        view.result.current.draft.handleCanvasPointerDownCapture({
+          button: 0,
+          shiftKey: false,
+          target: pane,
+          clientX: -50,
+          clientY: -50,
+          pointerId: 1,
+          preventDefault: vi.fn(),
+          stopPropagation: vi.fn(),
+        } as unknown as React.PointerEvent<HTMLDivElement>),
+      )
+      // The Space reaches the store after the marquee started, as a Space created by another
+      // writer would: a copy taken at the start does not hold it.
+      act(() => {
+        replaceWorkspaceSpaces(workspaceId, [
+          createSpace(spaceId, { x: 0, y: 0, width: 360, height: 260 }, ['a']),
+        ])
+        view.result.current.draft.handleCanvasPointerUpCapture({ clientX: 350, clientY: 250 })
+      })
+    }
+
+    marquee('workspace-a', 's-a')
+    expect(view.result.current.readSelection()).toMatchObject({ spaceIds: ['s-a'] })
+
+    switchTo('workspace-b')
+    marquee('workspace-b', 's-b')
+    expect(view.result.current.readSelection()).toMatchObject({ spaceIds: ['s-b'] })
+    document.body.innerHTML = ''
   })
 })

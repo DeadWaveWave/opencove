@@ -51,10 +51,11 @@ import {
 // cannot see it. The push-away itself is mocked: only what it is handed is checked, and a marker
 // Space written through the writer must land in the workspace of the render, and in no other.
 
-// The canvas store is rebuilt with the workspace, so `ui`, `readUi` and `readSelection` change on a
-// switch and would make every callback rebuild: the writer could then be missing from a dependency
-// list unseen. These five keep the value of the first render, so only the writer can make a
-// callback follow a switch.
+// The canvas store is rebuilt with the workspace, so `ui`, `readUi`, `readSelection` and the
+// document reader change on a switch and would make every callback rebuild: the writer could then
+// be missing from a dependency list unseen. These six keep the value of the first render, so only
+// the writer can make a callback follow a switch. Both workspaces hold the target Space, so a
+// creator still finds it through the first render's reader.
 const firstRender = vi.hoisted(() => ({ values: new Map<string, unknown>() }))
 vi.mock(
   '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext',
@@ -74,6 +75,7 @@ vi.mock(
       useCanvasDocumentCommands: stable('useCanvasDocumentCommands'),
       useReadCanvasUi: stable('useReadCanvasUi'),
       useReadCanvasSelection: stable('useReadCanvasSelection'),
+      useReadCanvasDocument: stable('useReadCanvasDocument'),
     }
   },
 )
@@ -158,8 +160,6 @@ const terminalMock = createTerminalNodeAtFlowPosition as unknown as Mock
 
 const assignArgs = () => lastCall(assignMock)[0] as Record<string, unknown> | undefined
 const terminalArgs = () => lastCall(terminalMock)[0] as Record<string, unknown> | undefined
-// The terminal creator still reads `spacesRef` and `nodesRef` itself; only the writes are gone.
-const TERMINAL_ABSENT = ['setNodes', 'onSpacesChange']
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -200,8 +200,6 @@ describe('the push-away of the interactions as the canvas composes them', () => 
     defaultTerminalProfileId: null,
     terminalFontSize: 13,
     terminalDisplayMetrics: metrics,
-    spacesRef,
-    nodesRef,
     standardWindowSizeBucket: 'regular',
     browserDefaultMode: 'iframe',
     createNodeForSession,
@@ -286,7 +284,6 @@ describe('the push-away of the interactions as the canvas composes them', () => 
       useHook: useInteractionsUnderTest,
       invoke: ({ hook }) => hook.createTerminalNodeAtFlowPoint({ x: 1, y: 2 }),
       argsOf: terminalArgs,
-      absent: TERMINAL_ABSENT,
     })
   })
 })
@@ -299,8 +296,6 @@ describe('the push-away of the interaction callers', () => {
     createWebsiteNode,
     browserDefaultMode: 'iframe',
     websiteWindowsEnabled: true,
-    spacesRef,
-    nodesRef,
     setNodes,
     onSpacesChange,
   }
@@ -401,7 +396,6 @@ describe('the push-away of the interaction callers', () => {
         return hook.runQuickCommand({ kind: 'command', command: 'ls', title: 'ls' } as never)
       },
       argsOf: terminalArgs,
-      absent: TERMINAL_ABSENT,
     })
   })
 
@@ -421,7 +415,6 @@ describe('the push-away of the interaction callers', () => {
         } as never),
       invoke: ({ hook }) => hook.createTerminalNodeAtFlowPoint({ x: 1, y: 2 }),
       argsOf: terminalArgs,
-      absent: TERMINAL_ABSENT,
     })
   })
 
@@ -499,8 +492,6 @@ describe('the push-away of the interaction callers', () => {
             workspaceId: 'workspace',
             canvasRef,
             reactFlow,
-            spacesRef,
-            nodesRef,
             setNodes,
             onSpacesChange,
             createImageNode,
@@ -612,7 +603,6 @@ describe('the push-away of the interaction callers', () => {
           useWorkspaceCanvasShortcutActions(shortcutParams(updateCanvasDocument)),
         invoke: () => shortcutArgs().createTerminalAtViewportCenter(),
         argsOf: terminalArgs,
-        absent: TERMINAL_ABSENT,
       })
     })
   })

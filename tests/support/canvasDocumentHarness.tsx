@@ -17,6 +17,7 @@ import type {
 } from '../../src/contexts/workspace/presentation/renderer/types'
 import {
   useCanvasDocumentCommands,
+  useReadCanvasDocument,
   type CanvasDocumentCommands,
 } from '../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
 import { CanvasStoreTestProvider } from './canvasStoreTestHarness'
@@ -112,6 +113,14 @@ export function renderInCanvasDocument<Result, Props = undefined>(
  */
 export function renderCanvasDocumentCommands(workspaceId: string): CanvasDocumentCommands {
   return renderInCanvasDocument(() => useCanvasDocumentCommands(), { workspaceId }).result.current
+}
+
+/**
+ * The document reader a canvas of `workspaceId` would hold, for a function under test that takes it
+ * as an argument. It reads the workspace of the render that made it.
+ */
+export function renderCanvasDocumentReader(workspaceId: string): () => WorkspaceDocument {
+  return renderInCanvasDocument(() => useReadCanvasDocument(), { workspaceId }).result.current
 }
 
 const EMPTY_SPACES: WorkspaceSpaceState[] = []

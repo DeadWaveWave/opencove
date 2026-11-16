@@ -6,6 +6,7 @@ import { createTerminalNodeAtFlowPosition } from '../../../src/contexts/workspac
 import {
   createCanvasDocumentHarness,
   renderCanvasDocumentCommands,
+  renderCanvasDocumentReader,
   renderCanvasNodeStore,
 } from '../../support/canvasDocumentHarness'
 import type { WorkspaceSpaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
@@ -33,6 +34,7 @@ describe('createTerminalNodeAtFlowPosition persisted space launch', () => {
     const harness = createCanvasDocumentHarness({ spaces })
     return {
       harness,
+      readDocument: renderCanvasDocumentReader(harness.workspaceId),
       updateSpaces: renderCanvasDocumentCommands(harness.workspaceId).updateSpaces,
       updateCanvasDocument:
         renderCanvasNodeStore(harness).result.current.nodeStore.updateCanvasDocument,
@@ -72,7 +74,7 @@ describe('createTerminalNodeAtFlowPosition persisted space launch', () => {
       async () => ({ id: '00000000-0000-4000-8000-000000000001' }) as never,
     )
 
-    const { harness, updateSpaces, updateCanvasDocument } = seedStore([])
+    const { harness, readDocument, updateSpaces, updateCanvasDocument } = seedStore([])
 
     vi.stubGlobal('window', {
       opencoveApi: {
@@ -126,8 +128,7 @@ describe('createTerminalNodeAtFlowPosition persisted space launch', () => {
       defaultTerminalProfileId: null,
       standardWindowSizeBucket: 'regular',
       workspacePath: '/repo',
-      spacesRef: { current: [] },
-      nodesRef: { current: [] },
+      readDocument,
       updateCanvasDocument,
       updateSpaces,
       createNodeForSession,
@@ -201,7 +202,7 @@ describe('createTerminalNodeAtFlowPosition persisted space launch', () => {
       rect: { x: 1400, y: 0, width: 800, height: 600 },
     }
 
-    const { harness, updateSpaces, updateCanvasDocument } = seedStore([localSpace])
+    const { harness, readDocument, updateSpaces, updateCanvasDocument } = seedStore([localSpace])
 
     vi.stubGlobal('window', {
       opencoveApi: {
@@ -252,8 +253,7 @@ describe('createTerminalNodeAtFlowPosition persisted space launch', () => {
       defaultTerminalProfileId: null,
       standardWindowSizeBucket: 'regular',
       workspacePath: '/repo',
-      spacesRef: { current: [localSpace] },
-      nodesRef: { current: [] },
+      readDocument,
       updateCanvasDocument,
       updateSpaces,
       createNodeForSession,

@@ -7,6 +7,7 @@ import { replaceWorkspaceSpaces } from '../../../src/contexts/workspace/presenta
 import {
   createCanvasDocumentHarness,
   renderCanvasDocumentCommands,
+  renderCanvasDocumentReader,
   renderCanvasNodeStore,
 } from '../../support/canvasDocumentHarness'
 import type { WorkspaceSpaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
@@ -34,6 +35,7 @@ describe('createTerminalNodeAtFlowPosition space worktree launch', () => {
     const harness = createCanvasDocumentHarness({ spaces })
     return {
       harness,
+      readDocument: renderCanvasDocumentReader(harness.workspaceId),
       updateSpaces: renderCanvasDocumentCommands(harness.workspaceId).updateSpaces,
       updateCanvasDocument:
         renderCanvasNodeStore(harness).result.current.nodeStore.updateCanvasDocument,
@@ -82,7 +84,7 @@ describe('createTerminalNodeAtFlowPosition space worktree launch', () => {
       rect: { x: 0, y: 0, width: 1200, height: 800 },
     }
 
-    const { harness, updateSpaces, updateCanvasDocument } = seedStore([staleSpace])
+    const { harness, readDocument, updateSpaces, updateCanvasDocument } = seedStore([staleSpace])
 
     vi.stubGlobal('window', {
       opencoveApi: {
@@ -123,8 +125,7 @@ describe('createTerminalNodeAtFlowPosition space worktree launch', () => {
       defaultTerminalProfileId: null,
       standardWindowSizeBucket: 'regular',
       workspacePath: '/repo',
-      spacesRef: { current: [staleSpace] },
-      nodesRef: { current: [] },
+      readDocument,
       updateCanvasDocument,
       updateSpaces,
       createNodeForSession,
@@ -203,9 +204,6 @@ describe('createTerminalNodeAtFlowPosition space worktree launch', () => {
       capabilities: null,
       trustLevel: null,
     }
-    const spacesRef: { current: WorkspaceSpaceState[] } = {
-      current: [originalSpace],
-    }
     // The user edits the Space in the store while the node is being created.
     const createNodeForSession = vi.fn(async () => {
       replaceWorkspaceSpaces('workspace-1', [
@@ -222,7 +220,7 @@ describe('createTerminalNodeAtFlowPosition space worktree launch', () => {
       return { id: '00000000-0000-4000-8000-000000000001' } as never
     })
 
-    const { harness, updateSpaces, updateCanvasDocument } = seedStore([originalSpace])
+    const { harness, readDocument, updateSpaces, updateCanvasDocument } = seedStore([originalSpace])
 
     vi.stubGlobal('window', {
       opencoveApi: {
@@ -263,8 +261,7 @@ describe('createTerminalNodeAtFlowPosition space worktree launch', () => {
       defaultTerminalProfileId: null,
       standardWindowSizeBucket: 'regular',
       workspacePath: '/repo',
-      spacesRef,
-      nodesRef: { current: [] },
+      readDocument,
       updateCanvasDocument,
       updateSpaces,
       createNodeForSession,

@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { useReadCanvasDocument } from '../../../store/canvasStoreContext'
 import type { Edge, Node, ReactFlowInstance } from '@xyflow/react'
 import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
 import type { BrowserMode } from '@shared/contracts/dto'
@@ -14,8 +15,6 @@ export function useWebsiteWindowOpenUrlNodeCreation({
   workspaceId,
   canvasRef,
   reactFlow,
-  spacesRef,
-  nodesRef,
   updateCanvasDocument,
   createWebsiteNode,
   standardWindowSizeBucket,
@@ -25,8 +24,6 @@ export function useWebsiteWindowOpenUrlNodeCreation({
   workspaceId?: string
   canvasRef: React.RefObject<HTMLDivElement | null>
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
-  spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
-  nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
   createWebsiteNode: (
     anchor: Point,
@@ -37,6 +34,8 @@ export function useWebsiteWindowOpenUrlNodeCreation({
   browserDefaultMode: BrowserMode
   enabled: boolean
 }): void {
+  const readDocument = useReadCanvasDocument()
+
   useEffect(() => {
     if (!enabled) {
       return
@@ -49,7 +48,7 @@ export function useWebsiteWindowOpenUrlNodeCreation({
         return
       }
 
-      const sourceNode = nodesRef.current.find(node => node.id === detail.sourceNodeId) ?? null
+      const sourceNode = readDocument().nodes.find(node => node.id === detail.sourceNodeId) ?? null
       const fallbackRect = canvasRef.current?.getBoundingClientRect() ?? null
       const baseAnchor = sourceNode
         ? {
@@ -77,7 +76,7 @@ export function useWebsiteWindowOpenUrlNodeCreation({
         standardWindowSizeBucket,
         browserDefaultMode,
         createWebsiteNode,
-        spacesRef,
+        readDocument,
         updateCanvasDocument,
       })
     }
@@ -91,9 +90,8 @@ export function useWebsiteWindowOpenUrlNodeCreation({
     canvasRef,
     createWebsiteNode,
     enabled,
-    nodesRef,
+    readDocument,
     reactFlow,
-    spacesRef,
     standardWindowSizeBucket,
     browserDefaultMode,
     updateCanvasDocument,

@@ -160,7 +160,7 @@ export function expectsOneFlushAfterThePushAway(
 export async function expectsWriterOfTheRender<Result>({
   useHook,
   element,
-  seed,
+  seed = { spaces: [TARGET] },
   invoke,
   argsOf,
   absent = OLD_CHANNELS,
@@ -170,7 +170,7 @@ export async function expectsWriterOfTheRender<Result>({
   useHook?: (updateCanvasDocument: Updater) => Result
   /** A component under test instead of a hook. */
   element?: Parameters<typeof renderElementCaller<Result>>[0]
-  /** The nodes and Spaces both workspaces start with. */
+  /** The nodes and Spaces both workspaces start with: the target Space unless told otherwise. */
   seed?: Parameters<typeof createCanvasDocumentHarness>[0]
   invoke: Invoke<Result>
   argsOf: () => Record<string, unknown> | undefined

@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { useReadCanvasDocument } from '../../../store/canvasStoreContext'
 import type { Edge, Node, ReactFlowInstance } from '@xyflow/react'
 import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
 import type { BrowserMode } from '@shared/contracts/dto'
@@ -19,7 +20,6 @@ export function useWorkspaceCanvasPasteHandlers({
   workspaceId,
   canvasRef,
   reactFlow,
-  spacesRef,
   updateCanvasDocument,
   onShowMessage,
   createImageNode,
@@ -32,7 +32,6 @@ export function useWorkspaceCanvasPasteHandlers({
   workspaceId?: string
   canvasRef: React.RefObject<HTMLDivElement | null>
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
-  spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
   updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
   onShowMessage?: ShowWorkspaceCanvasMessage
   createImageNode: (
@@ -54,11 +53,11 @@ export function useWorkspaceCanvasPasteHandlers({
   handleCanvasDragOver: React.DragEventHandler<HTMLDivElement>
   handleCanvasDrop: React.DragEventHandler<HTMLDivElement>
 } {
+  const readDocument = useReadCanvasDocument()
   const imageImport = useWorkspaceCanvasImageImport({
     workspaceId,
     canvasRef,
     reactFlow,
-    spacesRef,
     updateCanvasDocument,
     onShowMessage,
     createImageNode,
@@ -101,7 +100,7 @@ export function useWorkspaceCanvasPasteHandlers({
         standardWindowSizeBucket,
         browserDefaultMode,
         createWebsiteNode,
-        spacesRef,
+        readDocument,
         updateCanvasDocument,
       })
     },
@@ -110,7 +109,7 @@ export function useWorkspaceCanvasPasteHandlers({
       createWebsiteNode,
       imageImport,
       reactFlow,
-      spacesRef,
+      readDocument,
       standardWindowSizeBucket,
       browserDefaultMode,
       updateCanvasDocument,
