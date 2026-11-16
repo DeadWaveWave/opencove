@@ -354,10 +354,10 @@ describe('the terminal agent session actions', () => {
     expect(reexecAgent).toHaveBeenCalledTimes(2)
   })
 
-  it('lists the sessions of a terminal the store gained in the same call', async () => {
+  it('lists the sessions of a terminal the store gained in the same call, in the shown workspace', async () => {
     const listSessions = vi.fn(async () => ({ provider: 'codex', cwd: '', sessions: [] }))
     stubOpencoveApi({ agent: { listSessions } })
-    const { view } = renderInTwoWorkspaces(({ stableSetNodes }) =>
+    const { view, showB } = renderInTwoWorkspaces(({ stableSetNodes }) =>
       useTerminalAgentSessionActions({ setNodes: stableSetNodes }),
     )
 
@@ -366,13 +366,24 @@ describe('the terminal agent session actions', () => {
       replaceWorkspaceNodes(A, [overlayNode('terminal-a', 'pty-a')])
       sessions = await view.result.current.listOverlayAgentSessions('terminal-a')
     })
-
     expect(sessions).toEqual([])
-    expect(listSessions).toHaveBeenCalledWith({
+    expect(listSessions).toHaveBeenLastCalledWith({
       provider: 'codex',
       cwd: '/tmp/terminal-a',
       limit: 20,
     })
+
+    showB()
+    await act(async () => {
+      replaceWorkspaceNodes(B, [overlayNode('terminal-b', 'pty-b')])
+      await view.result.current.listOverlayAgentSessions('terminal-b')
+    })
+    expect(listSessions).toHaveBeenLastCalledWith({
+      provider: 'codex',
+      cwd: '/tmp/terminal-b',
+      limit: 20,
+    })
+    expect(listSessions).toHaveBeenCalledTimes(2)
   })
 
   it('switches the session of a terminal the store gained in the same call', async () => {

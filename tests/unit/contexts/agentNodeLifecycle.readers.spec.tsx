@@ -49,15 +49,16 @@ vi.mock('@app/renderer/i18n', () => ({ useTranslation: () => translation }))
 const agentEnvByProvider = DEFAULT_AGENT_ENV_BY_PROVIDER
 const terminalDisplayMetrics = { fontSize: 13 }
 
-// `stable` pins the reader's place in the dependency lists: the writer then keeps its identity.
+// `stable` pins the reader's place in the dependency lists: the writer, the project id and the
+// path then keep their value, so none of them can rebuild a callback and hide a missing reader.
 function renderLifecycle(
   documents: Parameters<typeof renderInTwoWorkspaces>[1],
   { stable = false } = {},
 ) {
   return renderInTwoWorkspaces(({ workspaceId, nodeStore, stableSetNodes }) => {
     return useWorkspaceCanvasAgentNodeLifecycle({
-      workspaceId,
-      workspacePath: `/tmp/${workspaceId}`,
+      workspaceId: stable ? 'project' : workspaceId,
+      workspacePath: stable ? '/repo' : `/tmp/${workspaceId}`,
       setNodes: stable ? stableSetNodes : nodeStore.setNodes,
       bumpAgentLaunchToken: nodeStore.bumpAgentLaunchToken,
       isAgentLaunchTokenCurrent: nodeStore.isAgentLaunchTokenCurrent,
