@@ -3,6 +3,10 @@ import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/ag
 import { resolveTerminalPtyGeometryForNodeFrame } from '../../../src/contexts/workspace/domain/terminalPtyGeometry'
 import { resolveDefaultTerminalWindowSize } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/constants'
 import { createTerminalNodeAtFlowPosition } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useInteractions.paneNodeCreation'
+import {
+  createCanvasDocumentHarness,
+  renderCanvasDocumentCommands,
+} from '../../support/canvasDocumentHarness'
 
 function regularTerminalLaunchGeometry() {
   return resolveTerminalPtyGeometryForNodeFrame({
@@ -21,6 +25,13 @@ describe('createTerminalNodeAtFlowPosition', () => {
     vi.unstubAllGlobals()
   })
 
+  // The mount repair writes through the store: none of these launches needs one, so the store
+  // must see no write at all.
+  function seedStore(workspaceId: string) {
+    const harness = createCanvasDocumentHarness({ workspaceId })
+    return { harness, updateSpaces: renderCanvasDocumentCommands(workspaceId).updateSpaces }
+  }
+
   it('falls back to the persisted active workspace when local workspace state is not hydrated yet', async () => {
     const ptySpawn = vi.fn(async () => ({
       sessionId: 'session-1',
@@ -30,6 +41,8 @@ describe('createTerminalNodeAtFlowPosition', () => {
     const createNodeForSession = vi.fn(
       async () => ({ id: '00000000-0000-4000-8000-000000000001' }) as never,
     )
+
+    const { harness, updateSpaces } = seedStore('workspace-1')
 
     vi.stubGlobal('window', {
       opencoveApi: {
@@ -81,6 +94,7 @@ describe('createTerminalNodeAtFlowPosition', () => {
       nodesRef: { current: [] },
       setNodes: vi.fn(),
       onSpacesChange: vi.fn(),
+      updateSpaces,
       createNodeForSession,
     })
     const expectedGeometry = regularTerminalLaunchGeometry()
@@ -107,6 +121,7 @@ describe('createTerminalNodeAtFlowPosition', () => {
       sessionId: 'session-1',
       nodeId: '00000000-0000-4000-8000-000000000001',
     })
+    expect(harness.notifications).not.toHaveBeenCalled()
   })
 
   it('does not guess mount ownership from the workspace id when only a local workspace path is known', async () => {
@@ -119,6 +134,8 @@ describe('createTerminalNodeAtFlowPosition', () => {
     const createNodeForSession = vi.fn(
       async () => ({ id: '00000000-0000-4000-8000-000000000001' }) as never,
     )
+
+    const { harness, updateSpaces } = seedStore('workspace-1')
 
     vi.stubGlobal('window', {
       opencoveApi: {
@@ -157,6 +174,7 @@ describe('createTerminalNodeAtFlowPosition', () => {
       nodesRef: { current: [] },
       setNodes: vi.fn(),
       onSpacesChange: vi.fn(),
+      updateSpaces,
       createNodeForSession,
     })
     const expectedGeometry = regularTerminalLaunchGeometry()
@@ -174,6 +192,7 @@ describe('createTerminalNodeAtFlowPosition', () => {
       rows: expectedGeometry.rows,
       profileId: undefined,
     })
+    expect(harness.notifications).not.toHaveBeenCalled()
   })
 
   it('uses the default mount instead of the placeholder project path for remote-only projects', async () => {
@@ -197,6 +216,8 @@ describe('createTerminalNodeAtFlowPosition', () => {
     const createNodeForSession = vi.fn(
       async () => ({ id: '00000000-0000-4000-8000-000000000001' }) as never,
     )
+
+    const { harness, updateSpaces } = seedStore('workspace-remote')
 
     vi.stubGlobal('window', {
       opencoveApi: {
@@ -235,6 +256,7 @@ describe('createTerminalNodeAtFlowPosition', () => {
       nodesRef: { current: [] },
       setNodes: vi.fn(),
       onSpacesChange: vi.fn(),
+      updateSpaces,
       createNodeForSession,
     })
     const expectedGeometry = regularTerminalLaunchGeometry()
@@ -272,6 +294,7 @@ describe('createTerminalNodeAtFlowPosition', () => {
       sessionId: 'session-remote',
       nodeId: '00000000-0000-4000-8000-000000000001',
     })
+    expect(harness.notifications).not.toHaveBeenCalled()
   })
 
   it('uses display calibration metrics for the spawned terminal geometry', async () => {
@@ -283,6 +306,8 @@ describe('createTerminalNodeAtFlowPosition', () => {
     const createNodeForSession = vi.fn(
       async () => ({ id: '00000000-0000-4000-8000-000000000001' }) as never,
     )
+
+    const { harness, updateSpaces } = seedStore('workspace-1')
 
     vi.stubGlobal('window', {
       opencoveApi: {
@@ -326,6 +351,7 @@ describe('createTerminalNodeAtFlowPosition', () => {
       nodesRef: { current: [] },
       setNodes: vi.fn(),
       onSpacesChange: vi.fn(),
+      updateSpaces,
       createNodeForSession,
     })
 
@@ -354,5 +380,6 @@ describe('createTerminalNodeAtFlowPosition', () => {
         terminalGeometry: calibratedGeometry,
       }),
     )
+    expect(harness.notifications).not.toHaveBeenCalled()
   })
 })

@@ -15,6 +15,10 @@ import type {
   TerminalNodeData,
   WorkspaceSpaceState,
 } from '../../src/contexts/workspace/presentation/renderer/types'
+import {
+  useCanvasDocumentCommands,
+  type CanvasDocumentCommands,
+} from '../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
 import { CanvasStoreTestProvider } from './canvasStoreTestHarness'
 import {
   seedWorkspaceCanvasStore,
@@ -100,6 +104,14 @@ export function renderInCanvasDocument<Result, Props = undefined>(
     initialProps: options.initialProps,
     wrapper: createWrapper(options.workspaceId ?? CANVAS_DOCUMENT_WORKSPACE_ID),
   })
+}
+
+/**
+ * The document commands a canvas of `workspaceId` would hold, for a function under test that takes
+ * them as an argument. They write the workspace of the render that made them.
+ */
+export function renderCanvasDocumentCommands(workspaceId: string): CanvasDocumentCommands {
+  return renderInCanvasDocument(() => useCanvasDocumentCommands(), { workspaceId }).result.current
 }
 
 const EMPTY_SPACES: WorkspaceSpaceState[] = []

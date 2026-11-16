@@ -136,6 +136,11 @@ describe('shared Agent launcher entrypoints', () => {
         targetSpace: params.spacesRef.current[0],
       }),
     )
+    const bindingOptions = vi.mocked(resolveWorkspaceAgentLaunchBinding).mock.calls[0][0]
+    expect(bindingOptions.updateSpaces).toEqual(expect.any(Function))
+    for (const channel of ['spacesRef', 'onSpacesChange', 'onRequestPersistFlush']) {
+      expect(bindingOptions).not.toHaveProperty(channel)
+    }
     expect(launchWorkspaceAgentSession).toHaveBeenCalledTimes(1)
     expect(launchWorkspaceAgentSession).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -161,6 +166,31 @@ describe('shared Agent launcher entrypoints', () => {
         targetSpaceId: 'space-a',
       }),
     )
+  })
+
+  it('gives the retry binding the same writer and none of the old channels', async () => {
+    const params = fixture()
+    vi.mocked(launchWorkspaceAgentSession).mockImplementationOnce(async options => {
+      await options.retryResolveMountBinding?.('mount-failed')
+      return {
+        sessionId: 'session-a',
+        resumeSessionId: null,
+        profileId: null,
+        effectiveModel: null,
+        executionDirectory: '/repo/worktree',
+        workerBinding: { endpointId: 'local', mountId: 'mount-a' },
+      } as never
+    })
+    const { result } = renderHookWithCanvasStore(() => useWorkspaceCanvasAgentLauncher(params))
+    await act(() => result.current.launchAgentAtFlowPosition({ x: 400, y: 300 }))
+    const calls = vi
+      .mocked(resolveWorkspaceAgentLaunchBinding)
+      .mock.calls.map(([options]) => options)
+    expect(calls).toHaveLength(2)
+    expect(calls[1].updateSpaces).toBe(calls[0].updateSpaces)
+    for (const channel of ['spacesRef', 'onSpacesChange', 'onRequestPersistFlush']) {
+      expect(calls[1]).not.toHaveProperty(channel)
+    }
   })
 
   it('prevents concurrent menu and keyboard launches while mount resolution is pending', async () => {

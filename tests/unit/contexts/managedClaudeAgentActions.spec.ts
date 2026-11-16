@@ -98,6 +98,7 @@ function taskContext(): TaskActionContext {
     workspacePath: '/repo',
     agentSettings: DEFAULT_AGENT_SETTINGS,
     onSpacesChange: vi.fn(),
+    updateSpaces: vi.fn(),
     onRequestPersistFlush: vi.fn(),
     launchAgentInNode: vi.fn(async () => {}),
     buildAgentNodeTitle: () => 'Agent',
@@ -108,7 +109,156 @@ function taskContext(): TaskActionContext {
   }
   return context
 }
+const REMOVED_BINDING_CHANNELS = ['spacesRef', 'onSpacesChange', 'onRequestPersistFlush']
+
+function bindingCalls() {
+  return vi.mocked(resolveWorkspaceAgentLaunchBinding).mock.calls.map(([options]) => options)
+}
+
 describe('managed Claude task and role actions', () => {
+  it('the task run gives the binding its writer, and none of the old channels, unless the run is owned', async () => {
+    vi.mocked(readManagedClaudeExecutionContext).mockResolvedValue(null)
+    const context = taskContext()
+    await runTaskAgentAction('task', context)
+    const [first] = bindingCalls()
+    expect(first.updateSpaces).toBe(context.updateSpaces)
+    for (const channel of REMOVED_BINDING_CHANNELS) {
+      expect(first).not.toHaveProperty(channel)
+    }
+  })
+
+  it('the owned task run passes the binding no writer', async () => {
+    const context = taskContext()
+    await runTaskAgentAction('task', context)
+    const [first] = bindingCalls()
+    expect(first).toHaveProperty('updateSpaces', undefined)
+    for (const channel of REMOVED_BINDING_CHANNELS) {
+      expect(first).not.toHaveProperty(channel)
+    }
+  })
+
+  it('the task run retry gives the binding its writer', async () => {
+    vi.mocked(readManagedClaudeExecutionContext).mockResolvedValue(null)
+    const context = taskContext()
+    context.nodesRef.current[0].data.task!.linkedAgentNodeId = null
+    vi.mocked(launchWorkspaceAgentSession).mockImplementationOnce(async options => {
+      await options.retryResolveMountBinding?.('mount-failed')
+      return {
+        sessionId: 'runtime',
+        resumeSessionId: null,
+        profileId: null,
+        effectiveModel: null,
+        executionDirectory: '/repo',
+      } as never
+    })
+    context.createNodeForSession = vi.fn(async () => null)
+    await runTaskAgentAction('task', context)
+    const calls = bindingCalls()
+    expect(calls).toHaveLength(2)
+    for (const call of calls) {
+      expect(call.updateSpaces).toBe(context.updateSpaces)
+      for (const channel of REMOVED_BINDING_CHANNELS) {
+        expect(call).not.toHaveProperty(channel)
+      }
+    }
+  })
+
+  it('the role run gives both binding calls its writer and none of the old channels', async () => {
+    const context = {
+      workspaceId: 'workspace',
+      workspacePath: '/repo',
+      agentSettings: DEFAULT_AGENT_SETTINGS,
+      nodesRef: {
+        current: [
+          {
+            id: 'role-node',
+            position: { x: 0, y: 0 },
+            data: {
+              kind: 'role',
+              width: 300,
+              role: { roleId: 'reviewer', input: '', selectedProvider: 'codex' },
+            },
+          },
+        ],
+      },
+      spacesRef: { current: [] },
+      projectRoles: [
+        { id: 'reviewer', name: 'Reviewer', promptTemplate: 'Review the task', outputFormat: '' },
+      ],
+      createNodeForSession: vi.fn(async () => null),
+      appendRoleRunRecord: vi.fn(),
+      setNodes: vi.fn(),
+      onSpacesChange: vi.fn(),
+      updateSpaces: vi.fn(),
+      onRequestPersistFlush: vi.fn(),
+      updateRoleInput: vi.fn(),
+      buildAgentNodeTitle: () => 'Reviewer',
+      t: (key: string) => key,
+    } as unknown as RoleRunActionContext
+    vi.mocked(launchWorkspaceAgentSession).mockImplementationOnce(async options => {
+      await options.retryResolveMountBinding?.('mount-failed')
+      return {
+        sessionId: 'runtime',
+        resumeSessionId: null,
+        profileId: null,
+        effectiveModel: null,
+        executionDirectory: '/repo',
+      } as never
+    })
+    await runRoleNodeAction('role-node', undefined, context)
+    const calls = bindingCalls()
+    expect(calls).toHaveLength(2)
+    for (const call of calls) {
+      expect(call.updateSpaces).toBe(context.updateSpaces)
+      for (const channel of REMOVED_BINDING_CHANNELS) {
+        expect(call).not.toHaveProperty(channel)
+      }
+    }
+  })
+
+  it('the task resume gives both binding calls its writer and none of the old channels', async () => {
+    const { resumeTaskAgentSessionAction } =
+      await import('../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useTaskActions.agentSession.resume')
+    const context = taskContext()
+    const task = context.nodesRef.current[0]
+    task.data.task = {
+      ...task.data.task!,
+      linkedAgentNodeId: null,
+      agentSessions: [
+        {
+          id: 'history',
+          provider: 'claude-code',
+          prompt: 'Resume saved task',
+          model: null,
+          boundDirectory: '/repo',
+          resumeSessionId: 'cached-a',
+          resumeSessionIdVerified: true,
+        } as never,
+      ],
+    }
+    context.terminalDisplayMetrics = { fontSize: 13 }
+    context.createNodeForSession = vi.fn(async () => null)
+    vi.mocked(launchWorkspaceAgentSession).mockImplementationOnce(async options => {
+      await options.retryResolveMountBinding?.('mount-failed')
+      return {
+        sessionId: 'runtime',
+        resumeSessionId: null,
+        profileId: null,
+        effectiveModel: null,
+        executionDirectory: '/repo',
+      } as never
+    })
+    await resumeTaskAgentSessionAction('task', 'history', context)
+    const calls = bindingCalls()
+    expect(calls).toHaveLength(2)
+    for (const call of calls) {
+      expect(call.updateSpaces).toBe(context.updateSpaces)
+      for (const channel of REMOVED_BINDING_CHANNELS) {
+        expect(call).not.toHaveProperty(channel)
+      }
+    }
+  })
+
   it('task reuse preserves its committed tuple and directory before a failing launch', async () => {
     const context = taskContext()
     vi.mocked(context.launchAgentInNode).mockRejectedValueOnce(new Error('preparation failed'))
@@ -312,6 +462,7 @@ describe('managed Claude task and role actions', () => {
       appendRoleRunRecord: vi.fn(),
       setNodes: vi.fn(),
       onSpacesChange: vi.fn(),
+      updateSpaces: vi.fn(),
       onRequestPersistFlush: vi.fn(),
       updateRoleInput: vi.fn(),
       buildAgentNodeTitle: () => 'Reviewer',
