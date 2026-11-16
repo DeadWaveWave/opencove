@@ -257,11 +257,16 @@ describe('Home Worker configuration lease across real processes', () => {
 
     second.send({ type: 'acquire' })
     await new Promise(resolvePromise => setTimeout(resolvePromise, 500))
+    // While the first holds the lease, the second must not have it.
+    expect(second.messages.some(message => message.type === 'acquired')).toBe(false)
+    const releaseRequestedAt = Date.now()
     first.send({ type: 'release' })
-    const released = await first.next('released')
+    await first.next('released')
     const acquired = await second.next('acquired')
 
-    expect(acquired.t).toBeGreaterThanOrEqual(released.t!)
+    // The second may report before the first does: the lease is free once the release has moved
+    // it away, before the release's own clean-up and report. It cannot be earlier than the request.
+    expect(acquired.t).toBeGreaterThanOrEqual(releaseRequestedAt)
     second.send({ type: 'release' })
     await second.next('released')
     expect(second.stderr()).toBe('')
