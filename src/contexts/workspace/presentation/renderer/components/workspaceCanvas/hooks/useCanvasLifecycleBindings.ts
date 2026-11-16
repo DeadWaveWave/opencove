@@ -52,7 +52,6 @@ export function useWorkspaceCanvasLifecycleBindings({
     focusSpaceId,
     focusSequence,
     nodes,
-    nodesRef,
     expandNode,
     focusSpaceInViewport,
     focusNodeTargetZoom: agentSettings.focusNodeTargetZoom,

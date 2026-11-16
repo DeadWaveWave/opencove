@@ -16,7 +16,6 @@ export function useWorkspaceCanvasViewportNavigation({
   focusSpaceId,
   focusSequence,
   nodes,
-  nodesRef,
   expandNode,
   focusSpaceInViewport,
   focusNodeTargetZoom,
@@ -31,7 +30,6 @@ export function useWorkspaceCanvasViewportNavigation({
   focusSpaceId?: string | null
   focusSequence?: number
   nodes: Node<TerminalNodeData>[]
-  nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   expandNode: (id: string) => Node<TerminalNodeData> | undefined
   focusSpaceInViewport: (spaceId: string) => boolean
   focusNodeTargetZoom: number
@@ -134,7 +132,6 @@ export function useWorkspaceCanvasViewportNavigation({
     focusSpaceId,
     focusSpaceInViewport,
     nodes,
-    nodesRef,
     persistedViewport,
     reactFlow,
     restoredViewportWorkspaceIdRef,
