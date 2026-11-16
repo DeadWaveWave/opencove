@@ -167,10 +167,17 @@ describe('workspace canvas arrange hook', () => {
       const view = renderCanvasNodeStore(harness, { extend: useArrangeUnderTest })
       const before = harness.readStoreDocument()
       harness.notifications.mockClear()
+      let storedAtFlush: ReturnType<typeof harness.readStoreDocument> | null = null
+      harness.flush.mockImplementation(() => {
+        storedAtFlush = harness.readStoreDocument()
+      })
 
       act(() => view.result.current.arrange.arrangeAll())
 
       const after = harness.readStoreDocument()
+      // The flush follows the write.
+      expect(storedAtFlush!.nodes).toBe(after.nodes)
+      expect(storedAtFlush!.spaces).toBe(after.spaces)
       expect(after.nodes.map(node => node.position)).not.toEqual(
         before.nodes.map(node => node.position),
       )

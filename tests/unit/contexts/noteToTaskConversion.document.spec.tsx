@@ -74,12 +74,18 @@ describe('note to task conversion as one store write', () => {
     const { harness, convert } = setup()
     const before = harness.readStoreDocument()
     let converted = false
+    let kindAtFlush: string | null = null
+    harness.flush.mockImplementation(() => {
+      kindAtFlush = harness.readStoreDocument().nodes[0].data.kind
+    })
 
     act(() => {
       converted = convert('a')
     })
 
     const after = harness.readStoreDocument()
+    // The flush follows the write.
+    expect(kindAtFlush).toBe('task')
     expect(converted).toBe(true)
     expect(after.nodes[0].data.kind).toBe('task')
     expect(after.nodes[0].data.note).toBeNull()

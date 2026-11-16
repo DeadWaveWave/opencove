@@ -316,6 +316,17 @@ describe('collapsed window expansion actions', () => {
       expect(layoutSyncs).not.toHaveBeenCalled()
     })
 
+    // A write of an unchanged layout would still add the initial sizes the nodes lack, so only the
+    // decision before the write keeps this one from writing.
+    it('revealing an expanded window writes nothing, whether or not its node has initial sizes', () => {
+      const unsized = [createNode('target'), createNode('peer', 200)].map(
+        ({ initialWidth: _w, initialHeight: _h, ...node }) => node,
+      )
+      const actions = renderActions({ nodes: unsized, collapsed: [] })
+      act(() => actions.collapse().revealNode('target'))
+      expectNothingWritten(actions.harness)
+    })
+
     it('revealing an expanded window writes nothing and flushes nothing', () => {
       const actions = renderActions({ collapsed: [] })
       act(() => actions.collapse().revealNode('target'))
