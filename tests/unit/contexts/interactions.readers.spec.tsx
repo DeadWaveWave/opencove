@@ -443,7 +443,7 @@ describe('the selection hooks', () => {
       invoke: async ({ hook }) => {
         draftRef.current = null
         hook.draft.handleCanvasPointerDownCapture(pointerDown(400, 300))
-        return draftRef.current?.startSpaceId
+        return (draftRef.current as SelectionDraftState | null)?.startSpaceId
       },
     })
     expect(found).toEqual(['space-a', 'space-b'])

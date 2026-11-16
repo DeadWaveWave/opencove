@@ -33,10 +33,10 @@ import {
 // does nothing, passes none, or keeps the commands of an earlier render loses the repair silently
 // (#702). The functions below the hooks are mocked: only the writer they are handed is checked.
 
-// The canvas store is rebuilt with the workspace, so `ui`, `readUi` and `readSelection` change on a
-// switch and would make every callback rebuild: the commands could then be missing from a
-// dependency list unseen. These three keep the value of the first render, so only the document
-// commands can make a callback follow a switch.
+// The canvas store is rebuilt with the workspace, so `ui`, `readUi`, `readSelection` and the
+// document reader change on a switch and would make every callback rebuild: the commands could
+// then be missing from a dependency list unseen. These four keep the value of the first render, so
+// only the document commands can make a callback follow a switch.
 const firstRender = vi.hoisted(() => ({ values: new Map<string, unknown>() }))
 vi.mock(
   '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext',
@@ -54,6 +54,7 @@ vi.mock(
       useCanvasUiCommands: stable('useCanvasUiCommands'),
       useReadCanvasUi: stable('useReadCanvasUi'),
       useReadCanvasSelection: stable('useReadCanvasSelection'),
+      useReadCanvasDocument: stable('useReadCanvasDocument'),
     }
   },
 )

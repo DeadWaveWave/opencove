@@ -76,9 +76,12 @@ describe('the default title of a pane terminal', () => {
     })
     await vi.waitFor(() => expect(api.pty.spawn).toHaveBeenCalledTimes(1))
 
-    // The workspace shown changes while the spawn is pending, and a node reaches A's store.
+    // The workspace shown changes while the spawn is pending, and a node reaches A's store. The app
+    // store's active workspace moves with the provider, as in the app, so a title counted from the
+    // displayed workspace (what `nodesRef` held) fails.
     act(() => {
       shown = 'workspace-b'
+      useAppStore.setState({ activeWorkspaceId: 'workspace-b' })
       view.rerender()
     })
     act(() => {

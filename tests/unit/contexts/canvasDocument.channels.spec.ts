@@ -208,4 +208,21 @@ describe('canvas document channels', () => {
 
     expect(offenders).toEqual([])
   })
+
+  // The reader lets a hook read the committed document when it runs, without subscribing. A file
+  // that reads through it and also subscribes to the app store would render with every store
+  // change, which the move from the refs must not bring. A render-time test cannot see it: the
+  // subscription is made at mount.
+  it('no file that reads through useReadCanvasDocument subscribes to the app store', () => {
+    const readers = files.filter(file =>
+      /\buseReadCanvasDocument\(\)/.test(sources.get(file) ?? ''),
+    )
+    expect(readers.length).toBeGreaterThan(20)
+
+    const offenders = readers.filter(file =>
+      /\buseAppStore\(|\buseStore\(\s*useAppStore\b/.test(sources.get(file) ?? ''),
+    )
+
+    expect(offenders).toEqual([])
+  })
 })
