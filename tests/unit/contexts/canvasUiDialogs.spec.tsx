@@ -12,6 +12,7 @@ import { useWorkspaceCanvasTaskEditor } from '../../../src/contexts/workspace/pr
 import type { CanvasSelectionCommands } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStore.selection'
 import type { CanvasUiCommands } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStore.ui'
 import { createCanvasDocumentHarness } from '../../support/canvasDocumentHarness'
+import { seedWorkspaceCanvasStore } from '../../support/workspaceCanvasStoreHarness'
 import {
   CanvasStoreProvider,
   useCanvasSelectionCommands,
@@ -334,12 +335,12 @@ describe('task editor through the canvas store', () => {
     const wrapper = createWrapper('workspace-a')
     const openTaskEditorRef = { current: (_nodeId: string) => undefined as void }
     const setNodes = vi.fn()
+    // The editor reads the node from the document: it is seeded into the store.
+    seedWorkspaceCanvasStore({ workspaceId: 'workspace-a', nodes: [TASK_NODE] })
     const hook = renderHook(
       () =>
         useWorkspaceCanvasTaskEditor({
-          nodesRef: { current: [TASK_NODE] },
           setNodes,
-          onRequestPersistFlush: vi.fn(),
           suggestTaskTitle,
           taskTagOptions: [],
           openTaskEditorRef,

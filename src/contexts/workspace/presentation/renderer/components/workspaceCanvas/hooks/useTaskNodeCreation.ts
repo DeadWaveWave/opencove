@@ -3,7 +3,7 @@ import { resolvePaneNodeCreationAnchor } from './useInteractions.creationAnchor'
 import type { Node } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
-import type { Point, TaskPriority, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
+import type { Point, TaskPriority, TerminalNodeData } from '../../../types'
 import { resolveDefaultTaskWindowSize } from '../constants'
 import { resolveNodePlacementAnchorFromViewportCenter } from '../helpers'
 import type { NodePlacementOptions } from '../types'
@@ -12,13 +12,16 @@ import {
   findContainingSpaceByAnchor,
 } from './useInteractions.spaceAssignment'
 import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
-import { useCanvasUiCommands, useReadCanvasUi } from '../../../store/canvasStoreContext'
+import {
+  useCanvasDocumentCommands,
+  useCanvasUiCommands,
+  useReadCanvasDocument,
+  useReadCanvasUi,
+} from '../../../store/canvasStoreContext'
 
 interface UseTaskNodeCreationParams {
   workspaceId?: string
-  spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
   updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
-  onRequestPersistFlush?: () => void
   standardWindowSizeBucket: StandardWindowSizeBucket
   createTaskNode: (
     anchor: Point,
@@ -33,9 +36,7 @@ interface UseTaskNodeCreationParams {
 
 export function useWorkspaceCanvasTaskNodeCreation({
   workspaceId,
-  spacesRef,
   updateCanvasDocument,
-  onRequestPersistFlush,
   standardWindowSizeBucket,
   createTaskNode,
 }: UseTaskNodeCreationParams): {
@@ -44,6 +45,8 @@ export function useWorkspaceCanvasTaskNodeCreation({
 } {
   const ui = useCanvasUiCommands()
   const readUi = useReadCanvasUi()
+  const readDocument = useReadCanvasDocument()
+  const documentCommands = useCanvasDocumentCommands()
 
   const { t } = useTranslation()
   const createTaskAtAnchor = useCallback(
@@ -52,7 +55,7 @@ export function useWorkspaceCanvasTaskNodeCreation({
         anchor,
         resolveDefaultTaskWindowSize(standardWindowSizeBucket),
       )
-      const targetSpace = findContainingSpaceByAnchor(spacesRef.current, anchor) ?? null
+      const targetSpace = findContainingSpaceByAnchor(readDocument().spaces, anchor) ?? null
       const created = createTaskNode(
         placementAnchor,
         t('taskWindow.defaultTaskTitle'),
@@ -77,13 +80,14 @@ export function useWorkspaceCanvasTaskNodeCreation({
         })
       }
 
-      onRequestPersistFlush?.()
+      // The creator wrote the node, and the assignment above the Space; the flush follows them.
+      documentCommands.requestPersistFlush()
     },
     [
       workspaceId,
       createTaskNode,
-      onRequestPersistFlush,
-      spacesRef,
+      documentCommands,
+      readDocument,
       standardWindowSizeBucket,
       t,
       updateCanvasDocument,

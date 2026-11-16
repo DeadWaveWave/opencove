@@ -250,6 +250,7 @@ describe('the writer that launch callers hand to the mount repair and the bindin
       workspaceId: 'workspace',
       workspacePath: '/repo',
       agentSettings: DEFAULT_AGENT_SETTINGS,
+      readDocument: vi.fn(),
       setNodes,
       onSpacesChange,
       onShowMessage,

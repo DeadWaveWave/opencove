@@ -3,11 +3,13 @@ import { vi } from 'vitest'
 import { DEFAULT_AGENT_SETTINGS } from '../../src/contexts/settings/domain/agentSettings'
 import { useWorkspaceCanvasNodeDeleteConfirmation } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodeDeleteConfirmation'
 import { useWorkspaceCanvasRoleActions } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useRoleActions'
+import { useWorkspaceCanvasRoleUi } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasRoleUi'
 import { useWorkspaceCanvasTaskActions } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useTaskActions'
 import { useWorkspaceCanvasTaskEditor } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useTaskEditor'
 import { useWorkspaceCanvasTaskNodeCreation } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useTaskNodeCreation'
 import {
   useCanvasUiCommands,
+  useReadCanvasDocument,
   useReadCanvasUi,
 } from '../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
 import type {
@@ -277,26 +279,33 @@ export function renderRoleActions(documents?: Documents, { stable = true }: Rend
     updateRoleInputRef: { current: vi.fn() },
   } as never
   const rendered = renderInTwoWorkspaces(
-    ({ nodeStore, stableSetNodes, stableUpdateCanvasDocument }) => ({
-      ui: useCanvasUiCommands(),
-      readUi: useReadCanvasUi(),
-      roles: useWorkspaceCanvasRoleActions({
-        workspaceId: 'workspace',
-        workspacePath: '/repo',
-        agentSettings: ROLE_SETTINGS,
-        setNodes: stable ? stableSetNodes : nodeStore.setNodes,
-        updateCanvasDocument: stable ? stableUpdateCanvasDocument : nodeStore.updateCanvasDocument,
-        onShowMessage,
-        standardWindowSizeBucket: 'regular',
-        createRoleNode,
-        createNodeForSession,
-        updateRoleProvider: vi.fn(),
-        updateRoleInput: vi.fn(),
-        appendRoleRunRecord,
-        actionRefs,
-        buildAgentNodeTitle: (provider, label) => `${provider}:${label}`,
-      }),
-    }),
+    ({ nodeStore, stableSetNodes, stableUpdateCanvasDocument }) => {
+      // The reader is made by the role UI and handed to the actions, as the canvas wires them.
+      const readDocument = useReadCanvasDocument()
+      return {
+        ui: useCanvasUiCommands(),
+        readUi: useReadCanvasUi(),
+        roles: useWorkspaceCanvasRoleActions({
+          workspaceId: 'workspace',
+          workspacePath: '/repo',
+          agentSettings: ROLE_SETTINGS,
+          readDocument,
+          setNodes: stable ? stableSetNodes : nodeStore.setNodes,
+          updateCanvasDocument: stable
+            ? stableUpdateCanvasDocument
+            : nodeStore.updateCanvasDocument,
+          onShowMessage,
+          standardWindowSizeBucket: 'regular',
+          createRoleNode,
+          createNodeForSession,
+          updateRoleProvider: vi.fn(),
+          updateRoleInput: vi.fn(),
+          appendRoleRunRecord,
+          actionRefs,
+          buildAgentNodeTitle: (provider, label) => `${provider}:${label}`,
+        }),
+      }
+    },
     documents,
   )
   return {
@@ -356,4 +365,44 @@ export function renderConfirmation(documents?: Documents) {
     documents,
   )
   return { ...rendered, requestNodeDelete, closeNode }
+}
+
+/**
+ * The role UI as the canvas wires it: it makes the document reader and hands it to the role
+ * actions. Everything else it is given keeps its identity across a switch.
+ */
+export function renderRoleUi(documents?: Documents) {
+  const createRoleNode = vi.fn(() => roleNode('created-role'))
+  const nodeStore = {
+    createRoleNode,
+    createNodeForSession: createAgentNodeInA(),
+    updateRoleProvider: vi.fn(),
+    updateRoleInput: vi.fn(),
+    appendRoleRunRecord: vi.fn(),
+  }
+  const agentSupport = { buildAgentNodeTitle: () => 'Agent' }
+  const actionRefs = {
+    runRoleRef: { current: vi.fn() },
+    updateRoleProviderRef: { current: vi.fn() },
+    updateRoleInputRef: { current: vi.fn() },
+  } as never
+  const rendered = renderInTwoWorkspaces(
+    ({ stableSetNodes, stableUpdateCanvasDocument }) => ({
+      ui: useCanvasUiCommands(),
+      roleUi: useWorkspaceCanvasRoleUi({
+        workspaceId: 'workspace',
+        workspacePath: '/repo',
+        agentSettings: ROLE_SETTINGS,
+        nodeStore: {
+          ...nodeStore,
+          setNodes: stableSetNodes,
+          updateCanvasDocument: stableUpdateCanvasDocument,
+        },
+        agentSupport,
+        actionRefs,
+      }),
+    }),
+    documents,
+  )
+  return { ...rendered, createRoleNode }
 }

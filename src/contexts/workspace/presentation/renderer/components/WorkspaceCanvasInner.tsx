@@ -135,11 +135,8 @@ export function WorkspaceCanvasInner({
   })
   const taskUi = workspaceCanvasHooks.useWorkspaceCanvasTaskUi({
     agentTaskTagOptions: agentSettings.taskTagOptions,
-    nodesRef: nodeStore.nodesRef,
     setNodes: nodeStore.setNodes,
-    spacesRef: canvasState.spacesRef,
     updateCanvasDocument: nodeStore.updateCanvasDocument,
-    onRequestPersistFlush,
     createNodeForSession: nodeStore.createNodeForSession,
     buildAgentNodeTitle: agentSupport.buildAgentNodeTitle,
     launchAgentInNode: agentSupport.launchAgentInNode,

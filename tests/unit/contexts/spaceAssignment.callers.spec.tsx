@@ -39,11 +39,10 @@ import {
   expectsOneFlushAfterThePushAway,
   expectsWriterOfTheRender,
   lastCall,
-  nodesRef,
-  spacesRef,
   type Updater,
 } from '../../support/pushAwayCallerHarness'
 import { createStoreBackedChannels } from '../../support/workspaceCanvasStoreHarness'
+import type { WorkspaceDocument } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocument'
 
 // Every caller of the push-away takes the document writer of the node store of the render that made
 // its callback, and hands the push-away that writer and none of the old channels (#702, PR 6). A
@@ -126,6 +125,15 @@ vi.mock(
   '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useShortcuts',
   () => ({ useWorkspaceCanvasShortcuts: vi.fn() }),
 )
+
+const EMPTY_DOCUMENT: WorkspaceDocument = {
+  nodes: [],
+  spaces: [],
+  activeSpaceId: null,
+  spaceArchiveRecords: [],
+  viewport: { x: 0, y: 0, zoom: 1 },
+  isMinimapVisible: false,
+}
 
 const PANE_MENU = { kind: 'pane', x: 20, y: 20, flowX: 400, flowY: 300 } as const
 
@@ -614,18 +622,15 @@ describe('the push-away of the task and role callers', () => {
       useHook: updateCanvasDocument =>
         useWorkspaceCanvasTaskNodeCreation({
           workspaceId: 'workspace',
-          nodesRef,
           setNodes,
-          spacesRef,
           onSpacesChange,
-          onRequestPersistFlush,
           standardWindowSizeBucket: 'regular',
           createTaskNode,
           updateCanvasDocument,
         } as never),
       invoke: ({ hook }) => hook.createTaskAtPoint({ x: 400, y: 300 }),
       argsOf: assignArgs,
-      flush: onRequestPersistFlush,
+      flush: 'document',
     })
   })
 
@@ -727,6 +732,7 @@ describe('the push-away of the task and role callers', () => {
         workspaceId: 'workspace',
         workspacePath: '/repo',
         agentSettings: roleSettings,
+        readDocument: () => ({ ...EMPTY_DOCUMENT, spaces: [TARGET] }),
         setNodes,
         onSpacesChange,
         onShowMessage,
@@ -880,8 +886,6 @@ describe('the push-away through the carriers of the canvas', () => {
     ) =>
       useWorkspaceCanvasTaskUi({
         agentTaskTagOptions: taskTagOptions,
-        nodesRef,
-        spacesRef,
         updateCanvasDocument,
         setNodes,
         createNodeForSession,
@@ -890,7 +894,6 @@ describe('the push-away through the carriers of the canvas', () => {
         agentSettings: DEFAULT_AGENT_SETTINGS,
         workspaceId: 'workspace',
         workspacePath: '/repo',
-        onRequestPersistFlush,
         actionRefs,
         terminalDisplayMetrics: metrics,
         standardWindowSizeBucket: 'regular',
@@ -905,7 +908,7 @@ describe('the push-away through the carriers of the canvas', () => {
         useHook: updateCanvasDocument => useTaskUiUnderTest(updateCanvasDocument, actionRefs),
         invoke: ({ hook }) => hook.createTaskAtPoint({ x: 400, y: 300 }),
         argsOf: assignArgs,
-        flush: onRequestPersistFlush,
+        flush: 'document',
       })
     })
 

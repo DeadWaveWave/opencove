@@ -24,9 +24,9 @@ import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 import {
   useCanvasDocumentCommands,
   useCanvasUiCommands,
-  useReadCanvasDocument,
   useReadCanvasUi,
 } from '../../../store/canvasStoreContext'
+import type { WorkspaceDocument } from '../../../store/workspaceDocument'
 
 function toRoleNameKey(name: string): string {
   return name.trim().toLowerCase()
@@ -37,6 +37,7 @@ export function useWorkspaceCanvasRoleActions({
   workspacePath,
   environmentVariables,
   agentSettings,
+  readDocument,
   setNodes,
   updateCanvasDocument,
   onShowMessage,
@@ -53,6 +54,12 @@ export function useWorkspaceCanvasRoleActions({
   workspacePath: string
   environmentVariables?: Record<string, string>
   agentSettings: AgentSettings
+  /**
+   * The document reader of the render that made these actions. The role UI makes it: this file
+   * subscribes to the app store for the settings, and a file that reads the document through its
+   * own reader does not also subscribe to that store.
+   */
+  readDocument: () => WorkspaceDocument
   setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']
   updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
   onShowMessage?: ShowWorkspaceCanvasMessage
@@ -85,7 +92,6 @@ export function useWorkspaceCanvasRoleActions({
   const ui = useCanvasUiCommands()
   const readUi = useReadCanvasUi()
   const documentCommands = useCanvasDocumentCommands()
-  const readDocument = useReadCanvasDocument()
 
   const { t } = useTranslation()
   const setAgentSettings = useAppStore(state => state.setAgentSettings)

@@ -3,6 +3,7 @@ import type { WorkspaceCanvasProps } from '../types'
 import type { useWorkspaceCanvasAgentSupport } from './useCanvasAgentSupport'
 import type { WorkspaceCanvasActionRefs } from './useActionRefs'
 import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
+import { useReadCanvasDocument } from '../../../store/canvasStoreContext'
 import { useWorkspaceCanvasRoleActions } from './useRoleActions'
 
 type RoleViewProps = Pick<
@@ -44,11 +45,13 @@ export function useWorkspaceCanvasRoleUi({
   onShowMessage?: WorkspaceCanvasProps['onShowMessage']
   actionRefs: WorkspaceCanvasActionRefs
 }): RoleViewProps {
+  const readDocument = useReadCanvasDocument()
   const roleActions = useWorkspaceCanvasRoleActions({
     workspaceId,
     workspacePath,
     environmentVariables,
     agentSettings,
+    readDocument,
     setNodes: nodeStore.setNodes,
     updateCanvasDocument: nodeStore.updateCanvasDocument,
     onShowMessage,

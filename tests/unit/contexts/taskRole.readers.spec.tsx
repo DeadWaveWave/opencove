@@ -20,6 +20,7 @@ import {
   renderCreation,
   renderEditor,
   renderRoleActions,
+  renderRoleUi,
   renderTaskActions,
   roleNode,
   sessionRecord,
@@ -407,6 +408,40 @@ describe('the role run', () => {
       expect(documentOf(A).spaces[0].nodeIds).toEqual(['created-role'])
       expect(documentOf(B).spaces).toEqual([])
     })
+  })
+})
+
+describe('the role UI', () => {
+  const MENU = { kind: 'pane', x: 20, y: 20, flowX: 400, flowY: 300 } as const
+
+  // The UI makes the reader and hands it to the actions: a reader kept from the first render, or
+  // one the actions do not rebuild their callbacks for, reads workspace A in workspace B.
+  it('hands the role actions the reader of its own render', () => {
+    const { view, createRoleNode, showB } = renderRoleUi({
+      a: { spaces: [spaceOf('space-a', [])] },
+      b: { spaces: [spaceOf('space-b', [], { rect: { x: 5000, y: 0, width: 100, height: 100 } })] },
+    })
+
+    act(() => {
+      view.result.current.ui.openContextMenu(MENU)
+      view.result.current.roleUi.runProjectRoleFromContextMenu('role-1')
+    })
+    expect(createRoleNode).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({ targetSpaceRect: spaceOf('space-a', []).rect }),
+    )
+
+    showB()
+    act(() => {
+      view.result.current.ui.openContextMenu(MENU)
+      view.result.current.roleUi.runProjectRoleFromContextMenu('role-1')
+    })
+    expect(createRoleNode).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({ targetSpaceRect: null }),
+    )
   })
 })
 

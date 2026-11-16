@@ -3,8 +3,6 @@ import { useWorkspaceCanvasTaskWindows } from './useCanvasTaskWindows'
 
 export function useWorkspaceCanvasTaskUi({
   agentTaskTagOptions,
-  nodesRef,
-  spacesRef,
   updateCanvasDocument,
   setNodes,
   createNodeForSession,
@@ -14,7 +12,6 @@ export function useWorkspaceCanvasTaskUi({
   workspaceId,
   workspacePath,
   environmentVariables,
-  onRequestPersistFlush,
   actionRefs,
   terminalDisplayMetrics,
   standardWindowSizeBucket,
@@ -22,8 +19,6 @@ export function useWorkspaceCanvasTaskUi({
   closeNode,
 }: {
   agentTaskTagOptions: Parameters<typeof useWorkspaceCanvasTaskSupport>[0]['agentTaskTagOptions']
-  nodesRef: Parameters<typeof useWorkspaceCanvasTaskWindows>[0]['nodesRef']
-  spacesRef: Parameters<typeof useWorkspaceCanvasTaskWindows>[0]['spacesRef']
   updateCanvasDocument: Parameters<typeof useWorkspaceCanvasTaskSupport>[0]['updateCanvasDocument']
   setNodes: Parameters<typeof useWorkspaceCanvasTaskSupport>[0]['setNodes']
   createNodeForSession: Parameters<typeof useWorkspaceCanvasTaskSupport>[0]['createNodeForSession']
@@ -33,9 +28,6 @@ export function useWorkspaceCanvasTaskUi({
   workspaceId: Parameters<typeof useWorkspaceCanvasTaskSupport>[0]['workspaceId']
   workspacePath: Parameters<typeof useWorkspaceCanvasTaskSupport>[0]['workspacePath']
   environmentVariables?: Record<string, string>
-  onRequestPersistFlush?: Parameters<
-    typeof useWorkspaceCanvasTaskWindows
-  >[0]['onRequestPersistFlush']
   terminalDisplayMetrics: Parameters<
     typeof useWorkspaceCanvasTaskSupport
   >[0]['terminalDisplayMetrics']
@@ -66,11 +58,8 @@ export function useWorkspaceCanvasTaskUi({
   const taskWindows = useWorkspaceCanvasTaskWindows({
     workspaceId,
     taskTagOptions,
-    nodesRef,
     setNodes,
-    spacesRef,
     updateCanvasDocument,
-    onRequestPersistFlush,
     suggestTaskTitle,
     standardWindowSizeBucket,
     createTaskNode,

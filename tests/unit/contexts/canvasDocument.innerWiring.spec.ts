@@ -63,6 +63,22 @@ describe('Inner hands the document writer of its node store to the hooks that ne
     },
   )
 
+  // The task UI and the role UI read the document through their own readers and flush through the
+  // document commands or on their writes (#702, PR 11). Inner keeps `setNodes` for the writes, and
+  // no longer hands the role UI the canvas state it read the Spaces from.
+  it.each(['useWorkspaceCanvasTaskUi', 'useWorkspaceCanvasRoleUi'])(
+    'passes none of the retired channels to %s',
+    name => {
+      expect(callOf(name)).not.toMatch(
+        /\b(nodesRef|spacesRef|onSpacesChange|onRequestPersistFlush)\b/,
+      )
+    },
+  )
+
+  it('does not hand the role UI the canvas state', () => {
+    expect(callOf('useWorkspaceCanvasRoleUi')).not.toMatch(/\bcanvasState\b/)
+  })
+
   it('hands the whole node store to the explorer', () => {
     expect(callOf('useCanvasSpaceExplorer')).toMatch(/[{,\s]nodeStore[,\s}]/)
   })

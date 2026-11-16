@@ -42,8 +42,6 @@ function renderStore(
         browserDefaultMode: 'iframe',
       })
       const confirmation = useWorkspaceCanvasNodeDeleteConfirmation({
-        nodesRef: store.nodesRef,
-        spacesRef: { current: [] },
         closeNode: store.closeNode,
         requestNodeDeleteRef,
       })
@@ -54,7 +52,7 @@ function renderStore(
     {
       wrapper: ({ children }): React.JSX.Element => (
         <ReactFlowProvider>
-          <CanvasStoreTestProvider>{children}</CanvasStoreTestProvider>
+          <CanvasStoreTestProvider workspaceId="workspace-1">{children}</CanvasStoreTestProvider>
         </ReactFlowProvider>
       ),
     },
