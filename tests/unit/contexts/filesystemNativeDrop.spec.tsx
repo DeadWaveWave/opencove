@@ -7,11 +7,21 @@ import {
 } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useFilesystemNodes'
 import { readNativeDroppedFiles } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/nativeFilesystemDrop'
 import { useWorkspaceCanvasFilesystemNodeCreation } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore.createFilesystemNodes'
+import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import { useCanvasCollapseStore } from '@contexts/workspace/presentation/renderer/store/useCanvasCollapseStore'
 import type { Node } from '@xyflow/react'
-import type { TerminalNodeData } from '@contexts/workspace/presentation/renderer/types'
+import type {
+  TerminalNodeData,
+  WorkspaceSpaceState,
+} from '@contexts/workspace/presentation/renderer/types'
+import {
+  createCanvasDocumentHarness,
+  renderInCanvasDocument,
+} from '../../support/canvasDocumentHarness'
+import { storeBackedChannelsOf } from '../../support/workspaceCanvasStoreHarness'
 
-vi.mock('@xyflow/react', () => ({
+vi.mock('@xyflow/react', async importOriginal => ({
+  ...(await importOriginal<object>()),
   useReactFlow: () => ({
     screenToFlowPosition: ({ x, y }: { x: number; y: number }) => ({ x: x / 2, y: y / 2 }),
   }),
@@ -28,43 +38,66 @@ function nativeDrop(files: File[]): DragEvent<HTMLDivElement> {
   } as unknown as DragEvent<HTMLDivElement>
 }
 
-function setup() {
+// The drop lands inside a remote Space, but an OS file belongs to the desktop host.
+const remoteSpace = (): WorkspaceSpaceState =>
+  ({
+    id: 'remote-space',
+    name: 'Remote',
+    nodeIds: [],
+    rect: { x: 0, y: 0, width: 900, height: 900 },
+    targetMountId: 'ssh-mount',
+  }) as WorkspaceSpaceState
+
+/**
+ * Renders the filesystem nodes of workspace `one` under its canvas store provider. The app store
+ * holds `one` with the remote Space and `two` with the Spaces of `twoSpaces`. `show('two')` moves
+ * the provider, the hook's workspace and the app store's active workspace together; the other
+ * moves only the app store's active workspace, so the render stays on `one` while `two` is shown.
+ */
+function setup({ twoSpaces = [] as WorkspaceSpaceState[] } = {}) {
   const createDocumentNode = vi.fn<FilesystemNodesParams['nodeStore']['createDocumentNode']>(
     () => null,
   )
   const createFolderNode = vi.fn<FilesystemNodesParams['nodeStore']['createFolderNode']>(() => null)
   const onShowMessage = vi.fn()
+  const harness = createCanvasDocumentHarness({ workspaceId: 'one', spaces: [remoteSpace()] })
+  useAppStore.setState(state => ({
+    workspaces: [
+      ...state.workspaces,
+      { ...state.workspaces[0], id: 'two', nodes: [], spaces: twoSpaces },
+    ],
+  }))
   const params: Omit<FilesystemNodesParams, 'workspaceId'> = {
     nodeStore: {
-      nodesRef: { current: [] },
       setNodes: vi.fn(),
       updateCanvasDocument: vi.fn(),
       createDocumentNode,
       createFolderNode,
     },
-    // The drop lands inside a remote Space, but an OS file belongs to the desktop host.
-    spacesRef: {
-      current: [
-        {
-          id: 'remote-space',
-          name: 'Remote',
-          nodeIds: [],
-          rect: { x: 0, y: 0, width: 900, height: 900 },
-          targetMountId: 'ssh-mount',
-        },
-      ],
-    } as FilesystemNodesParams['spacesRef'],
     onShowMessage,
   }
-  const hook = renderHook(({ workspaceId }) => useFilesystemNodes({ ...params, workspaceId }), {
-    initialProps: { workspaceId: 'one' },
+  let shown = 'one'
+  const hook = renderInCanvasDocument(() => useFilesystemNodes({ ...params, workspaceId: shown }), {
+    workspaceId: () => shown,
   })
   return {
     ...hook,
+    harness,
     createDocumentNode,
     createFolderNode,
     onShowMessage,
-    spacesRef: params.spacesRef,
+    spacesRef: storeBackedChannelsOf('one').spacesRef,
+    show: (workspaceId: string) =>
+      act(() => {
+        shown = workspaceId
+        useAppStore.setState({ activeWorkspaceId: workspaceId })
+        hook.rerender()
+      }),
+    displayTwoWhileRenderingOne: () =>
+      act(() => {
+        useAppStore.setState({ activeWorkspaceId: 'two' })
+        hook.rerender()
+      }),
   }
 }
 
@@ -167,7 +200,7 @@ describe('native filesystem drops', () => {
         view.result.current.handleNativeDrop(nativeDrop(files))
       })
       if (transition === 'switch') {
-        view.rerender({ workspaceId: 'two' })
+        view.show('two')
       } else if (transition === 'remove-space') {
         view.spacesRef.current = []
       } else {
@@ -182,6 +215,73 @@ describe('native filesystem drops', () => {
       expect(view.createFolderNode).not.toHaveBeenCalled()
     },
   )
+
+  describe('a render of workspace one while workspace two is displayed', () => {
+    const dropTwo = () => {
+      const files = [new File([], 'first'), new File([], 'second')]
+      files.forEach((file, index) => nativePaths.set(file, `/external/${index}.md`))
+      return files
+    }
+
+    it('finds the Space under the drop in the Spaces of its own workspace', async () => {
+      const file = new File([], 'note.md')
+      nativePaths.set(file, '/external/note.md')
+      const view = setup()
+      view.displayTwoWhileRenderingOne()
+      await act(async () => {
+        view.result.current.handleNativeDrop(nativeDrop([file]))
+      })
+      expect(view.createDocumentNode.mock.calls[0][2]).toMatchObject({
+        targetSpaceRect: { x: 0, y: 0, width: 900, height: 900 },
+      })
+    })
+
+    it('ends the batch when its Space is removed, though the displayed workspace holds one of that id', async () => {
+      const files = dropTwo()
+      let finish!: (value: unknown) => void
+      resolveDroppedFile.mockReturnValue(
+        new Promise(resolve => {
+          finish = resolve
+        }),
+      )
+      const view = setup({ twoSpaces: [remoteSpace()] })
+      view.displayTwoWhileRenderingOne()
+      await act(async () => {
+        view.result.current.handleNativeDrop(nativeDrop(files))
+      })
+      view.spacesRef.current = []
+      await act(async () => {
+        finish({ uri: 'file:///external/0.md', kind: 'file' })
+      })
+      expect(stat).not.toHaveBeenCalled()
+      expect(view.createDocumentNode).not.toHaveBeenCalled()
+    })
+
+    it('keeps going while its Space is there, though the displayed workspace holds none', async () => {
+      const files = dropTwo()
+      const view = setup()
+      view.displayTwoWhileRenderingOne()
+      await act(async () => {
+        view.result.current.handleNativeDrop(nativeDrop(files))
+      })
+      expect(view.createDocumentNode).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  it('ends the batch when a store write in the same act removes its Space after the first approval', async () => {
+    const files = [new File([], 'first'), new File([], 'second')]
+    files.forEach((file, index) => nativePaths.set(file, `/external/${index}.md`))
+    const view = setup()
+    resolveDroppedFile.mockImplementationOnce(async (file: File) => {
+      view.spacesRef.current = []
+      return stat({ uri: `file://${nativePaths.get(file)}` })
+    })
+    await act(async () => {
+      view.result.current.handleNativeDrop(nativeDrop(files))
+    })
+    expect(resolveDroppedFile).toHaveBeenCalledOnce()
+    expect(view.createDocumentNode).not.toHaveBeenCalled()
+  })
 
   it('does not fabricate native paths from browser File names and preserves image fallback', async () => {
     delete window.opencoveApi.filesystem.resolveDroppedFile

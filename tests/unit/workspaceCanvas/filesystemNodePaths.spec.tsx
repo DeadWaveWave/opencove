@@ -1,4 +1,4 @@
-import { act, renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Node } from '@xyflow/react'
 import type {
@@ -6,6 +6,11 @@ import type {
   WorkspaceSpaceState,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { resolveFileUriRelativePath } from '../../../src/shared/utils/fileUriScope'
+import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
+import {
+  createCanvasDocumentHarness,
+  renderInCanvasDocument,
+} from '../../support/canvasDocumentHarness'
 import { useFilesystemNodePaths } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useFilesystemNodePaths'
 
 vi.mock('../../../src/app/renderer/i18n', () => ({
@@ -29,18 +34,22 @@ function setup(data: Partial<TerminalNodeData>, spaces: WorkspaceSpaceState[] = 
     data: { kind: 'document', document: { uri: 'file:///repo/docs/a.md' }, ...data },
   } as Node<TerminalNodeData>
   const onShowMessage = vi.fn()
-  const view = renderHook(
-    ({ workspaceId }) =>
-      useFilesystemNodePaths({
-        workspaceId,
-        workspacePath: '/repo',
-        nodesRef: { current: [node] },
-        spacesRef: { current: spaces },
-        onShowMessage,
-      }),
-    { initialProps: { workspaceId: 'one' } },
+  createCanvasDocumentHarness({ workspaceId: 'one', nodes: [node], spaces })
+  useAppStore.setState(state => ({
+    workspaces: [...state.workspaces, { ...state.workspaces[0], id: 'two', nodes: [], spaces: [] }],
+  }))
+  let shown = 'one'
+  const view = renderInCanvasDocument(
+    () => useFilesystemNodePaths({ workspaceId: shown, workspacePath: '/repo', onShowMessage }),
+    { workspaceId: () => shown },
   )
-  return { ...view, onShowMessage }
+  const show = (workspaceId: string) =>
+    act(() => {
+      shown = workspaceId
+      useAppStore.setState({ activeWorkspaceId: workspaceId })
+      view.rerender()
+    })
+  return { ...view, onShowMessage, show }
 }
 
 describe('filesystem node copy path ownership', () => {
@@ -116,7 +125,7 @@ describe('filesystem node copy path ownership', () => {
     act(() => {
       copying = view.result.current.copyNodePath('file', true)
     })
-    view.rerender({ workspaceId: 'two' })
+    view.show('two')
     await act(async () => {
       resolve({ mountId: 'remote', endpointId: 'worker', rootUri: 'file:///repo' })
       await copying

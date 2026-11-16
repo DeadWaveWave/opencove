@@ -15,8 +15,15 @@ import {
 import { useWorkspaceCanvasFilesystemNodeCreation } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore.createFilesystemNodes'
 import { FILESYSTEM_ENTRY_MIME } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/filesystemDrag'
 import { useCanvasCollapseStore } from '@contexts/workspace/presentation/renderer/store/useCanvasCollapseStore'
+import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
+import {
+  createCanvasDocumentHarness,
+  renderInCanvasDocument,
+} from '../../support/canvasDocumentHarness'
+import { storeBackedChannelsOf } from '../../support/workspaceCanvasStoreHarness'
 
-vi.mock('@xyflow/react', () => ({
+vi.mock('@xyflow/react', async importOriginal => ({
+  ...(await importOriginal<object>()),
   useReactFlow: () => ({ screenToFlowPosition: (point: unknown) => point }),
 }))
 
@@ -47,28 +54,40 @@ function folder(): Node<TerminalNodeData> {
   }
 }
 
+// The folder lives in the app store, which the hook reads through the canvas store's reader; the
+// node store's writer is the store-backed one, and `show` moves the provider and the app store's
+// active workspace together.
 function setup() {
-  const nodesRef = { current: [folder()] }
+  const harness = createCanvasDocumentHarness({ workspaceId: 'one', nodes: [folder()] })
+  useAppStore.setState(state => ({
+    workspaces: [...state.workspaces, { ...state.workspaces[0], id: 'two', nodes: [], spaces: [] }],
+  }))
+  const { nodesRef, setNodes } = storeBackedChannelsOf('one', harness.flush)
   const createDocumentNode = vi.fn(() => null)
   const createFolderNode = vi.fn(() => null)
   const onShowMessage = vi.fn()
   const params: Omit<FilesystemNodesParams, 'workspaceId'> = {
-    nodeStore: {
-      nodesRef,
-      createDocumentNode,
-      createFolderNode,
-      setNodes: update => {
-        nodesRef.current = update(nodesRef.current)
-      },
-      updateCanvasDocument: vi.fn(),
-    },
-    spacesRef: { current: [] },
+    nodeStore: { createDocumentNode, createFolderNode, setNodes, updateCanvasDocument: vi.fn() },
     onShowMessage,
   }
-  const view = renderHook(({ workspaceId }) => useFilesystemNodes({ ...params, workspaceId }), {
-    initialProps: { workspaceId: 'one' },
+  let shown = 'one'
+  const view = renderInCanvasDocument(() => useFilesystemNodes({ ...params, workspaceId: shown }), {
+    workspaceId: () => shown,
   })
-  return { ...view, nodesRef, createDocumentNode, createFolderNode, onShowMessage }
+  return {
+    ...view,
+    harness,
+    nodesRef,
+    createDocumentNode,
+    createFolderNode,
+    onShowMessage,
+    show: (workspaceId: string) =>
+      act(() => {
+        shown = workspaceId
+        useAppStore.setState({ activeWorkspaceId: workspaceId })
+        view.rerender()
+      }),
+  }
 }
 
 function drop(kind: 'file' | 'directory' = 'file'): DragEvent<HTMLDivElement> {
@@ -145,7 +164,7 @@ describe('filesystem node ownership across async work', () => {
     await act(async () => {
       view.result.current.handleDrop(drop())
     })
-    view.rerender({ workspaceId: 'two' })
+    view.show('two')
     await act(async () => {
       finish({ kind: 'file' })
     })
