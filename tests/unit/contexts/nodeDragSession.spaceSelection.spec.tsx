@@ -4,15 +4,16 @@ import { useWorkspaceCanvasNodeDragSession } from '@contexts/workspace/presentat
 import type { WorkspaceSpaceState } from '@contexts/workspace/presentation/renderer/types'
 import { pixelNode } from './workspacePixelLayer.fixtures'
 import { renderHookWithCanvasStore } from '../../support/canvasStoreTestHarness'
+import { seedWorkspaceCanvasStore } from '../../support/workspaceCanvasStoreHarness'
+import { CANVAS_STORE_TEST_WORKSPACE_ID } from '../../support/canvasStoreTestHarness'
 
 function renderSession(spaces: WorkspaceSpaceState[] = []) {
+  seedWorkspaceCanvasStore({ workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID, spaces })
   return renderHookWithCanvasStore(() =>
     useWorkspaceCanvasNodeDragSession({
       workspaceId: 'drag-session',
-      spacesRef: { current: spaces },
       magneticSnappingEnabledRef: { current: false },
       setSnapGuides: vi.fn(),
-      onSpacesChange: vi.fn(),
     }),
   )
 }

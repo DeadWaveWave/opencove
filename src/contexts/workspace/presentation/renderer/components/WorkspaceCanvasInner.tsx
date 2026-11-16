@@ -71,11 +71,8 @@ export function WorkspaceCanvasInner({
   })
   const nodeDragSession = workspaceCanvasHooks.useWorkspaceCanvasNodeDragSession({
     workspaceId,
-    spacesRef: canvasState.spacesRef,
     magneticSnappingEnabledRef: canvasState.magneticSnappingEnabledRef,
     setSnapGuides: canvasState.setSnapGuides,
-    onSpacesChange,
-    onRequestPersistFlush,
   })
   // prettier-ignore
   const { updateSpaceDirectory, getSpaceBlockingNodes, closeNodesById } = workspaceCanvasHooks.useWorkspaceCanvasSpaceDirectoryOps({ workspacePath, spacesRef: canvasState.spacesRef, nodesRef: nodeStore.nodesRef, setNodes: nodeStore.setNodes, onSpacesChange, onRequestPersistFlush, closeNode: nodeStore.closeNode })
@@ -114,12 +111,10 @@ export function WorkspaceCanvasInner({
     workspaceId,
     workspacePath,
     reactFlow,
-    spacesRef: canvasState.spacesRef,
     nodeDragSession,
     exclusiveNodeDragAnchorIdRef,
     setNodes: nodeStore.setNodes,
-    onSpacesChange,
-    onRequestPersistFlush,
+    updateCanvasDocument: nodeStore.updateCanvasDocument,
     onShowMessage,
     hideWorktreeMismatchDropWarning: agentSettings.hideWorktreeMismatchDropWarning === true,
     nodeDragPointerAnchorRef: nodeDragSession.nodeDragPointerAnchorRef,

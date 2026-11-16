@@ -5,7 +5,6 @@ import {
   useCanvasSelectionCommands,
   useCanvasUiCommands,
 } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
-import { replaceWorkspaceSpaces } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import {
   createCanvasDocumentHarness,
   renderCanvasNodeStore,
@@ -16,15 +15,12 @@ import { createRowNodes, createSpace } from '../../support/canvasSelectionFixtur
 // A state setter keeps its identity; a new one on every render would reset the session.
 const setSnapGuides = vi.fn()
 
-function useDragSessionUnderTest({ workspaceId, canvasState }: CanvasNodeStoreContext) {
+function useDragSessionUnderTest({ workspaceId }: CanvasNodeStoreContext) {
   return {
     session: useWorkspaceCanvasNodeDragSession({
       workspaceId,
-      spacesRef: canvasState.spacesRef,
       magneticSnappingEnabledRef: { current: false },
       setSnapGuides,
-      onSpacesChange: spaces => replaceWorkspaceSpaces(workspaceId, spaces),
-      onRequestPersistFlush: () => undefined,
     }),
     selection: useCanvasSelectionCommands(),
     ui: useCanvasUiCommands(),
@@ -58,7 +54,7 @@ describe('node drag session: releasing a Space frame', () => {
 
     act(() => {
       session.endNodeDragSession()
-      seenAfterRelease = view.result.current.canvasState.spacesRef.current[0].rect
+      seenAfterRelease = harness.readStoreDocument().spaces[0].rect
     })
 
     expect(seenAfterRelease).toMatchObject({ x: 100, y: 50 })

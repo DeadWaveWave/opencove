@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type MutableRefObject } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import type { Edge, Node, ReactFlowInstance } from '@xyflow/react'
 import type { TranslateFn } from '@app/renderer/i18n'
 import { resolveSpaceWorkingDirectory } from '@contexts/space/application/resolveSpaceWorkingDirectory'
@@ -10,6 +10,7 @@ import {
   type SetNodes,
 } from './useSpaceOwnership.helpers'
 import { resolveSpaceAtPoint as resolveSpaceAtPointFromHelpers } from './useSpaceOwnership.drop.helpers'
+import { useReadCanvasDocument } from '../../../store/canvasStoreContext'
 
 function normalizeComparablePath(pathValue: string): string {
   return pathValue.trim().replace(/[\\/]+$/, '')
@@ -33,7 +34,6 @@ export function useWorkspaceCanvasSpaceOwnershipWorktreeWarning({
   applyOwnershipForDrop,
   reactFlow,
   resolveDropTargetSpaceAtPoint,
-  spacesRef,
   setNodes,
   hideWorktreeMismatchDropWarning,
   workspacePath,
@@ -45,7 +45,6 @@ export function useWorkspaceCanvasSpaceOwnershipWorktreeWarning({
   ) => void
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
   resolveDropTargetSpaceAtPoint: (point: { x: number; y: number }) => WorkspaceSpaceState | null
-  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   setNodes: SetNodes
   hideWorktreeMismatchDropWarning: boolean
   workspacePath: string
@@ -56,6 +55,7 @@ export function useWorkspaceCanvasSpaceOwnershipWorktreeWarning({
   cancelSpaceWorktreeMismatchDropWarning: () => void
   continueSpaceWorktreeMismatchDropWarning: () => void
 } {
+  const readDocument = useReadCanvasDocument()
   const pendingWorktreeMismatchDropRef = useRef<SpaceOwnershipDropInput | null>(null)
   const [spaceWorktreeMismatchDropWarning, setSpaceWorktreeMismatchDropWarning] =
     useState<SpaceWorktreeMismatchDropWarningState | null>(null)
@@ -122,7 +122,7 @@ export function useWorkspaceCanvasSpaceOwnershipWorktreeWarning({
       const targetSpace =
         spaceRectOverrideById && spaceRectOverrideById.size > 0
           ? resolveSpaceAtPointFromHelpers(
-              spacesRef.current.map(space => {
+              readDocument().spaces.map(space => {
                 const rect = spaceRectOverrideById.get(space.id) ?? null
                 return rect ? { ...space, rect: { ...rect } } : space
               }),
@@ -236,8 +236,8 @@ export function useWorkspaceCanvasSpaceOwnershipWorktreeWarning({
     [
       hideWorktreeMismatchDropWarning,
       reactFlow,
+      readDocument,
       resolveDropTargetSpaceAtPoint,
-      spacesRef,
       setNodes,
       t,
       workspacePath,
