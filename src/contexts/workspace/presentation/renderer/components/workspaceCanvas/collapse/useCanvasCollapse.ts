@@ -1,15 +1,8 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type MutableRefObject,
-  type RefObject,
-} from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import type { Node, ReactFlowInstance } from '@xyflow/react'
 import type { NodeExpandBehavior } from '@contexts/settings/domain/agentSettings'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
+import { useCanvasDocumentCommands, useReadCanvasDocument } from '../../../store/canvasStoreContext'
 import { useCanvasCollapseStore } from '../../../store/useCanvasCollapseStore'
 import {
   EMPTY_CANVAS_COLLAPSE,
@@ -23,6 +16,7 @@ import {
   type CollapseArrangeSnapshot,
 } from '../../../utils/canvasCollapseArrange'
 import { focusNodeInViewport } from '../helpers'
+import type { UseWorkspaceCanvasNodesStoreResult } from '../hooks/useNodesStore.types'
 import type { WorkspaceCollapseValue } from './WorkspaceCollapseContext'
 import { planNodeExpansion } from './planNodeExpansion'
 import { useCollapseLayoutMotion } from './useCollapseLayoutMotion'
@@ -38,17 +32,10 @@ interface Params {
   canvasRef?: RefObject<HTMLElement | null>
   nodes: Node<TerminalNodeData>[]
   spaces: WorkspaceSpaceState[]
-  nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
-  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
-  setNodes: (
-    updater: (nodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-    options?: { syncLayout?: boolean },
-  ) => void
-  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
+  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
   focusNodeTargetZoom: number
   nodeExpandBehavior: NodeExpandBehavior
-  onRequestPersistFlush?: () => void
 }
 
 export function useCanvasCollapse({
@@ -56,14 +43,10 @@ export function useCanvasCollapse({
   canvasRef,
   nodes,
   spaces,
-  nodesRef,
-  spacesRef,
-  setNodes,
-  onSpacesChange,
+  updateCanvasDocument,
   reactFlow,
   focusNodeTargetZoom,
   nodeExpandBehavior,
-  onRequestPersistFlush,
 }: Params): WorkspaceCollapseValue & {
   expandNode: (id: string) => Node<TerminalNodeData> | undefined
 } {
@@ -76,6 +59,8 @@ export function useCanvasCollapse({
     [storedState, spaces],
   )
   const update = useCanvasCollapseStore(store => store.update)
+  const readDocument = useReadCanvasDocument()
+  const { requestPersistFlush } = useCanvasDocumentCommands()
   const { prepare: prepareMotion, getDelay: getMotionDelay } = useCollapseLayoutMotion(
     workspaceId,
     canvasRef,
@@ -99,14 +84,18 @@ export function useCanvasCollapse({
     }
   }, [workspaceId])
 
+  // The plan before the write decides whether to write and feeds the motion, the disclosure and
+  // the return value. The write plans again from its own nodes and Spaces with the disclosure
+  // captured above, as collapse-and-arrange and undo must.
   const expandNode = useCallback(
     (id: string) => {
       const current =
         useCanvasCollapseStore.getState().workspaces[workspaceId] ?? EMPTY_CANVAS_COLLAPSE
+      const document = readDocument()
       const plan = planNodeExpansion(
         id,
-        nodesRef.current,
-        spacesRef.current,
+        document.nodes,
+        document.spaces,
         current,
         nodeExpandBehavior,
       )
@@ -118,34 +107,45 @@ export function useCanvasCollapse({
       }
       // Layout and disclosure commit together. Algorithm-only compact dimensions
       // must never enter the durable node store or the mounted runtime subtree.
-      if (plan.nodes !== nodesRef.current) {
-        setNodes(() => plan.nodes, { syncLayout: false })
-        onSpacesChange(plan.spaces)
+      if (plan.nodes !== document.nodes) {
+        updateCanvasDocument(
+          input => {
+            const committed = planNodeExpansion(
+              id,
+              input.nodes,
+              input.spaces,
+              current,
+              nodeExpandBehavior,
+            )
+            return committed && committed.nodes !== input.nodes
+              ? { nodes: committed.nodes, spaces: committed.spaces }
+              : input
+          },
+          { syncLayout: false },
+        )
       }
       update(workspaceId, () => plan.state)
       if (
         !collapseMapsEqual(current.collapsedNodeIds, plan.state.collapsedNodeIds) ||
         !collapseMapsEqual(current.collapsedSpaceIds, plan.state.collapsedSpaceIds)
       ) {
-        onRequestPersistFlush?.()
+        requestPersistFlush()
       }
       return plan.nodes.find(node => node.id === id)
     },
     [
       nodeExpandBehavior,
-      nodesRef,
-      spacesRef,
-      workspaceId,
-      setNodes,
-      onSpacesChange,
-      onRequestPersistFlush,
-      update,
       prepareMotion,
+      readDocument,
+      requestPersistFlush,
+      update,
+      updateCanvasDocument,
+      workspaceId,
     ],
   )
   const toggleNode = useCallback(
     (id: string) => {
-      const node = nodesRef.current.find(item => item.id === id)
+      const node = readDocument().nodes.find(item => item.id === id)
       if (!node) {
         return
       }
@@ -164,16 +164,16 @@ export function useCanvasCollapse({
       // update. Schedule the canonical app-state write so the disclosure
       // survives an app restart even when the user collapses a node and quits
       // before another workspace mutation occurs.
-      onRequestPersistFlush?.()
+      requestPersistFlush()
     },
     [
-      nodesRef,
+      readDocument,
       update,
       workspaceId,
       expandNode,
       reactFlow,
       focusNodeTargetZoom,
-      onRequestPersistFlush,
+      requestPersistFlush,
     ],
   )
   const revealNode = useCallback(
@@ -201,31 +201,31 @@ export function useCanvasCollapse({
     [focusNodeTargetZoom, reactFlow, expandNode],
   )
 
+  // Both plan before the write for what must happen before it (the motion, the undo entry and the
+  // disclosure), and plan again inside it from the nodes and the Spaces it runs on. The second
+  // plan uses the disclosure read before: `update` has already stored the new one by then, and an
+  // undo would find nothing it could restore.
   const collapseAndArrange = useCallback(
     (spaceId: string) => {
       const current =
         useCanvasCollapseStore.getState().workspaces[workspaceId] ?? EMPTY_CANVAS_COLLAPSE
-      const plan = planCollapsedArrangement(spaceId, nodesRef.current, spacesRef.current, current)
+      const document = readDocument()
+      const plan = planCollapsedArrangement(spaceId, document.nodes, document.spaces, current)
       if (!plan) {
         return
       }
       prepareMotion('arrange', plan.nodes, plan.spaces)
       setUndoHistory(previous => new Map(previous).set(spaceId, plan.snapshot))
       update(workspaceId, () => plan.state)
-      setNodes(() => plan.nodes, { syncLayout: false })
-      onSpacesChange(plan.spaces)
-      onRequestPersistFlush?.()
+      updateCanvasDocument(
+        input => {
+          const committed = planCollapsedArrangement(spaceId, input.nodes, input.spaces, current)
+          return committed ? { nodes: committed.nodes, spaces: committed.spaces } : input
+        },
+        { syncLayout: false, flush: true },
+      )
     },
-    [
-      nodesRef,
-      setNodes,
-      spacesRef,
-      update,
-      workspaceId,
-      onSpacesChange,
-      prepareMotion,
-      onRequestPersistFlush,
-    ],
+    [prepareMotion, readDocument, update, updateCanvasDocument, workspaceId],
   )
   const undoArrange = useCallback(
     (spaceId: string) => {
@@ -235,34 +235,34 @@ export function useCanvasCollapse({
       }
       const current =
         useCanvasCollapseStore.getState().workspaces[workspaceId] ?? EMPTY_CANVAS_COLLAPSE
+      const document = readDocument()
       const restored = restoreCollapsedArrangement(
         snapshot,
-        nodesRef.current,
-        spacesRef.current,
+        document.nodes,
+        document.spaces,
         current,
       )
       prepareMotion('restore', restored.nodes, restored.spaces)
       update(workspaceId, () => restored.state)
-      setNodes(() => restored.nodes, { syncLayout: false })
-      onSpacesChange(restored.spaces)
-      onRequestPersistFlush?.()
+      updateCanvasDocument(
+        input => {
+          const committed = restoreCollapsedArrangement(
+            snapshot,
+            input.nodes,
+            input.spaces,
+            current,
+          )
+          return { nodes: committed.nodes, spaces: committed.spaces }
+        },
+        { syncLayout: false, flush: true },
+      )
       setUndoHistory(previous => {
         const next = new Map(previous)
         next.delete(spaceId)
         return next
       })
     },
-    [
-      nodesRef,
-      setNodes,
-      spacesRef,
-      update,
-      workspaceId,
-      onSpacesChange,
-      undoHistory,
-      prepareMotion,
-      onRequestPersistFlush,
-    ],
+    [prepareMotion, readDocument, undoHistory, update, updateCanvasDocument, workspaceId],
   )
   return useMemo(
     () => ({

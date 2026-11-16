@@ -8,6 +8,7 @@ import type {
   WorkspaceSpaceState,
   WorkspaceState,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
+import { commitCanvasDocument } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
 import { useWorkspaceCanvasArrange } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useArrange'
 import { useWorkspaceCanvasSpaces } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaces'
@@ -180,8 +181,6 @@ describe('workspace canvas space location zoom', () => {
           size: { width: 420, height: 300 },
         }),
       ]
-      const nodesRef = { current: nodes }
-
       const spaces: WorkspaceSpaceState[] = [
         {
           id: 'space-1',
@@ -192,22 +191,41 @@ describe('workspace canvas space location zoom', () => {
           rect: { x: 100, y: 200, width: 1200, height: 800 },
         },
       ]
-      const spacesRef = { current: spaces }
-
-      const setNodes = vi.fn(
-        (updater: (prev: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[]) => {
-          nodesRef.current = updater(nodesRef.current)
+      // The hook reads and writes the committed document of workspace `workspace-1`.
+      useAppStore.setState({
+        workspaces: [
+          {
+            id: 'workspace-1',
+            name: 'Workspace',
+            path: '/tmp',
+            worktreesRoot: '',
+            nodes,
+            spaces,
+            activeSpaceId: null,
+            spaceArchiveRecords: [],
+            viewport: { x: 0, y: 0, zoom: 1 },
+            isMinimapVisible: false,
+          } as WorkspaceState,
+        ],
+        activeWorkspaceId: 'workspace-1',
+      })
+      const updateCanvasDocument = (
+        recipe: (document: { nodes: Node<TerminalNodeData>[]; spaces: WorkspaceSpaceState[] }) => {
+          nodes: Node<TerminalNodeData>[]
+          spaces: WorkspaceSpaceState[]
         },
-      )
+      ) => {
+        commitCanvasDocument('workspace-1', document => ({
+          ...document,
+          ...recipe({ nodes: document.nodes, spaces: document.spaces }),
+        }))
+      }
 
       function Harness(): React.JSX.Element {
         const { arrangeInSpace } = useWorkspaceCanvasArrange({
           reactFlow: reactFlow as never,
           focusNodeTargetZoom: 1,
-          nodesRef,
-          spacesRef,
-          setNodes: setNodes as never,
-          onSpacesChange: () => undefined,
+          updateCanvasDocument,
           standardWindowSizeBucket: 'regular',
         })
 
@@ -222,7 +240,11 @@ describe('workspace canvas space location zoom', () => {
         )
       }
 
-      render(<Harness />)
+      render(
+        <CanvasStoreTestProvider workspaceId="workspace-1">
+          <Harness />
+        </CanvasStoreTestProvider>,
+      )
       fireEvent.click(screen.getByTestId('arrange-space'))
 
       expect(fitView).not.toHaveBeenCalled()

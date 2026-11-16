@@ -7,7 +7,7 @@ import {
   resolveTaskTitleProvider,
   type AgentSettings,
 } from '@contexts/settings/domain/agentSettings'
-import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
+import type { TerminalNodeData } from '../../../types'
 import { useWorkspaceCanvasTaskAgentEdges } from './useTaskAgentEdges'
 import { useWorkspaceCanvasViewportMoveEnd } from './useViewportMoveEnd'
 import { useWorkspaceCanvasSpaceUi } from './useSpaceUi'
@@ -19,7 +19,6 @@ export function useWorkspaceCanvasViewModel({
   onViewportChange,
   flowNodes,
   workspacePath,
-  spacesRef,
   handlePaneClick,
   handlePaneContextMenu,
   handleNodeContextMenu,
@@ -30,7 +29,6 @@ export function useWorkspaceCanvasViewModel({
   onViewportChange: (viewport: Viewport) => void
   flowNodes: Node<TerminalNodeData>[]
   workspacePath: string
-  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   handlePaneClick: (event: React.MouseEvent | MouseEvent) => void
   handlePaneContextMenu: (event: React.MouseEvent | MouseEvent) => void
   handleNodeContextMenu: (event: React.MouseEvent, node: Node<TerminalNodeData>) => void
@@ -59,7 +57,6 @@ export function useWorkspaceCanvasViewModel({
 
   const spaceUi = useWorkspaceCanvasSpaceUi({
     workspacePath,
-    spacesRef,
     handlePaneClick,
     handlePaneContextMenu,
     handleNodeContextMenu,

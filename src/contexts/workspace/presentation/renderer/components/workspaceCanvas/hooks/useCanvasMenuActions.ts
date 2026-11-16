@@ -4,27 +4,17 @@ import { useWorkspaceCanvasNoteToTaskConversion } from './useNoteToTaskConversio
 export function useWorkspaceCanvasMenuActions({
   selectedNodeIds,
   flowNodes,
-  nodesRef,
-  setNodes,
-  onRequestPersistFlush,
+  updateCanvasDocument,
   onShowMessage,
   reactFlow,
-  spacesRef,
-  onSpacesChange,
   standardWindowSizeBucket,
   focusNodeTargetZoom,
 }: {
   selectedNodeIds: Parameters<typeof useWorkspaceCanvasNoteToTaskConversion>[0]['selectedNodeIds']
   flowNodes: Parameters<typeof useWorkspaceCanvasNoteToTaskConversion>[0]['flowNodes']
-  nodesRef: Parameters<typeof useWorkspaceCanvasNoteToTaskConversion>[0]['nodesRef']
-  setNodes: Parameters<typeof useWorkspaceCanvasNoteToTaskConversion>[0]['setNodes']
-  onRequestPersistFlush?: Parameters<
-    typeof useWorkspaceCanvasNoteToTaskConversion
-  >[0]['onRequestPersistFlush']
+  updateCanvasDocument: Parameters<typeof useWorkspaceCanvasArrange>[0]['updateCanvasDocument']
   onShowMessage?: Parameters<typeof useWorkspaceCanvasNoteToTaskConversion>[0]['onShowMessage']
   reactFlow: Parameters<typeof useWorkspaceCanvasArrange>[0]['reactFlow']
-  spacesRef: Parameters<typeof useWorkspaceCanvasArrange>[0]['spacesRef']
-  onSpacesChange: Parameters<typeof useWorkspaceCanvasArrange>[0]['onSpacesChange']
   standardWindowSizeBucket: Parameters<
     typeof useWorkspaceCanvasArrange
   >[0]['standardWindowSizeBucket']
@@ -34,11 +24,7 @@ export function useWorkspaceCanvasMenuActions({
   const noteToTask = useWorkspaceCanvasNoteToTaskConversion({
     selectedNodeIds,
     flowNodes,
-    nodesRef,
-    spacesRef,
-    setNodes,
-    onSpacesChange,
-    onRequestPersistFlush,
+    updateCanvasDocument,
     onShowMessage,
     standardWindowSizeBucket,
   })
@@ -46,11 +32,7 @@ export function useWorkspaceCanvasMenuActions({
   const arrange = useWorkspaceCanvasArrange({
     reactFlow,
     focusNodeTargetZoom,
-    nodesRef,
-    spacesRef,
-    setNodes,
-    onSpacesChange,
-    onRequestPersistFlush,
+    updateCanvasDocument,
     onShowMessage,
     standardWindowSizeBucket,
   })

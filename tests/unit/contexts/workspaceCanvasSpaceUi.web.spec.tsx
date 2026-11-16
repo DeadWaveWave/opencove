@@ -4,28 +4,30 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useWorkspaceCanvasSpaceUi } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceUi'
 import { useSpacePathOpeners } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/useSpacePathOpeners'
 import { useCanvasUi } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
-import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
+import { createCanvasDocumentHarness } from '../../support/canvasDocumentHarness'
+import {
+  CANVAS_STORE_TEST_WORKSPACE_ID,
+  CanvasStoreTestProvider,
+} from '../../support/canvasStoreTestHarness'
 import type { WorkspaceSpaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
 
-function HookHost(): React.JSX.Element {
-  const spacesRef = React.useRef<WorkspaceSpaceState[]>([
-    {
-      id: 'space-1',
-      name: 'Space 1',
-      directoryPath: '/tmp/opencove-space',
-      targetMountId: null,
-      labelColor: null,
-      nodeIds: [],
-      rect: null,
-    },
-  ])
+// The hook reads the Space of the workspace of its canvas from the store.
+const SPACE: WorkspaceSpaceState = {
+  id: 'space-1',
+  name: 'Space 1',
+  directoryPath: '/tmp/opencove-space',
+  targetMountId: null,
+  labelColor: null,
+  nodeIds: [],
+  rect: null,
+}
 
+function HookHost(): React.JSX.Element {
   const spaceActionMenu = useCanvasUi(state => state.spaceActionMenu)
   const openers = useSpacePathOpeners(spaceActionMenu)
 
   const ui = useWorkspaceCanvasSpaceUi({
     workspacePath: '/tmp/opencove-workspace',
-    spacesRef,
     handlePaneClick: () => undefined,
     handlePaneContextMenu: () => undefined,
     handleNodeContextMenu: () => undefined,
@@ -86,6 +88,7 @@ function HookHost(): React.JSX.Element {
 
 describe('useWorkspaceCanvasSpaceUi (web UI differences)', () => {
   beforeEach(() => {
+    createCanvasDocumentHarness({ workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID, spaces: [SPACE] })
     Object.defineProperty(window, 'opencoveApi', {
       configurable: true,
       value: undefined,

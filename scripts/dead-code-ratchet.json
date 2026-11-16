@@ -105,7 +105,6 @@
     "src/contexts/workspace/presentation/renderer/types.ts": 4,
     "src/contexts/workspace/presentation/renderer/utils/persistence.ts": 2,
     "src/contexts/workspace/presentation/renderer/utils/persistence/types.ts": 2,
-    "src/contexts/workspace/presentation/renderer/utils/workspaceArrange.ts": 1,
     "src/contexts/worktree/presentation/renderer/windows/useSpaceWorktreeArchiveState.ts": 1,
     "src/platform/process/ptyHost/agentProcessReaper.ts": 1,
     "src/shared/contracts/controlSurface/protocol.ts": 1,

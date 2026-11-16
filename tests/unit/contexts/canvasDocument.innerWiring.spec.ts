@@ -39,6 +39,19 @@ describe('Inner hands the document writer of its node store to the hooks that ne
     )
   })
 
+  // The collapse actions and the menu actions (arrange, note to task) write the nodes and the
+  // Spaces in one update and read the document themselves (#702, PR 9).
+  it.each(['useCanvasCollapse', 'useWorkspaceCanvasMenuActions'])(
+    'passes the writer to %s and none of the retired channels',
+    name => {
+      const call = callOf(name)
+      expect(call).toMatch(/\bupdateCanvasDocument:\s*nodeStore\.updateCanvasDocument\b/)
+      expect(call).not.toMatch(
+        /\b(nodesRef|spacesRef|setNodes|onSpacesChange|onRequestPersistFlush)\b/,
+      )
+    },
+  )
+
   it('hands the whole node store to the explorer', () => {
     expect(callOf('useCanvasSpaceExplorer')).toMatch(/[{,\s]nodeStore[,\s}]/)
   })
