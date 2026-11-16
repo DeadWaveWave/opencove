@@ -1,20 +1,18 @@
-import { useCallback, useRef, useState, type MutableRefObject } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import type { Node } from '@xyflow/react'
 import type { WorkspacePathOpenerId } from '@shared/contracts/dto'
-import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
+import type { TerminalNodeData } from '../../../types'
 import type { SpaceWorktreeOperationPhase, SpaceWorktreeOperationState } from '../types'
-import { useCanvasUiCommands } from '../../../store/canvasStoreContext'
+import { useCanvasUiCommands, useReadCanvasDocument } from '../../../store/canvasStoreContext'
 
 export function useWorkspaceCanvasSpaceUi({
   workspacePath,
-  spacesRef,
   handlePaneClick,
   handlePaneContextMenu,
   handleNodeContextMenu,
   handleSelectionContextMenu,
 }: {
   workspacePath: string
-  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   handlePaneClick: (event: React.MouseEvent | MouseEvent) => void
   handlePaneContextMenu: (event: React.MouseEvent | MouseEvent) => void
   handleNodeContextMenu: (event: React.MouseEvent, node: Node<TerminalNodeData>) => void
@@ -38,6 +36,7 @@ export function useWorkspaceCanvasSpaceUi({
   setSpaceWorktreeOperationPhase: (operationId: string, phase: SpaceWorktreeOperationPhase) => void
 } {
   const ui = useCanvasUiCommands()
+  const readDocument = useReadCanvasDocument()
   const [spaceWorktreeOperations, setSpaceWorktreeOperations] = useState<
     SpaceWorktreeOperationState[]
   >([])
@@ -45,7 +44,7 @@ export function useWorkspaceCanvasSpaceUi({
 
   const resolveSpacePath = useCallback(
     (spaceId: string): string => {
-      const space = spacesRef.current.find(candidate => candidate.id === spaceId)
+      const space = readDocument().spaces.find(candidate => candidate.id === spaceId)
       if (!space) {
         return workspacePath
       }
@@ -53,7 +52,7 @@ export function useWorkspaceCanvasSpaceUi({
       const trimmed = space.directoryPath.trim()
       return trimmed.length > 0 ? trimmed : workspacePath
     },
-    [spacesRef, workspacePath],
+    [readDocument, workspacePath],
   )
 
   const onCanvasClick = useCallback(() => {

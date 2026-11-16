@@ -294,7 +294,6 @@ export function WorkspaceCanvasInner({
     onViewportChange,
     flowNodes: canvasState.flowNodes,
     workspacePath,
-    spacesRef: canvasState.spacesRef,
     handlePaneClick,
     handlePaneContextMenu,
     handleNodeContextMenu,
