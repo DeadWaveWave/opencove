@@ -1,6 +1,6 @@
 import React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import type { Node } from '@xyflow/react'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
 import type { AgentSessionSummary } from '../../../src/shared/contracts/dto'
@@ -9,6 +9,7 @@ import type {
   WorkspaceSpaceState,
   WorkspaceViewport,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
+import { registerWorkspaceDocumentPersistFlush } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import { WorkspaceCanvas } from '../../../src/contexts/workspace/presentation/renderer/components/WorkspaceCanvas'
 import {
   seedWorkspaceCanvasStore,
@@ -212,7 +213,9 @@ describe('WorkspaceCanvas agent session switch', () => {
   it('switches the current agent node in place and archives the previous task binding', async () => {
     const kill = vi.fn(async () => undefined)
     const launch = vi.fn(async () => createLaunchResult('session-switched', 'resume-target'))
+    // The shell's persist flush, as the document module calls it for the session switch.
     const requestPersistFlush = vi.fn()
+    onTestFinished(registerWorkspaceDocumentPersistFlush(requestPersistFlush))
 
     Object.defineProperty(window, 'opencoveApi', {
       configurable: true,
@@ -256,7 +259,6 @@ describe('WorkspaceCanvas agent session switch', () => {
           workspacePath="/tmp/repo"
           worktreesRoot=""
           nodes={nodes}
-          onRequestPersistFlush={requestPersistFlush}
           spaces={spaces}
           activeSpaceId={null}
           onActiveSpaceChange={() => undefined}
