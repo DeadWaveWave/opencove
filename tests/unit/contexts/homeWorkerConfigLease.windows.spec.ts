@@ -132,6 +132,54 @@ describe('Home Worker configuration lease across real processes', () => {
     }
   }
 
+  // The failure of #717: the rename of a new claim directory onto a free lease path was refused.
+  // This repeats the lease's own claim sequence and records how often that happens here, with
+  // which code, and how long it lasts.
+  it.runIf(process.platform === 'win32')(
+    'W0 records how often a claim renamed onto a free lease path is refused, and for how long',
+    async () => {
+      const userDataPath = await createUserDataPath()
+      const attempts = 300
+      const codes = new Map<string, number>()
+      let refused = 0
+      let recovered = 0
+      let longestRecoveryMs = 0
+
+      for (let index = 0; index < attempts; index += 1) {
+        const lease = resolve(userDataPath, `${HOME_WORKER_CONFIG_LEASE_FILE}-w0-${index}`)
+        const claim = `${lease}.claim`
+        await mkdir(claim)
+        await writeFile(resolve(claim, HOME_WORKER_CONFIG_LEASE_OWNER_FILE), '{"pid":1}\n', {
+          encoding: 'utf8',
+          mode: 0o600,
+        })
+        let code = await renameCode(claim, lease)
+        if (code === 'none') {
+          continue
+        }
+
+        refused += 1
+        codes.set(code, (codes.get(code) ?? 0) + 1)
+        const startedAt = Date.now()
+        while (code !== 'none' && Date.now() - startedAt < 5_000) {
+          await new Promise(resolvePromise => setTimeout(resolvePromise, 25))
+          code = await renameCode(claim, lease)
+        }
+        if (code === 'none') {
+          recovered += 1
+          longestRecoveryMs = Math.max(longestRecoveryMs, Date.now() - startedAt)
+        }
+      }
+
+      recordResult(
+        `[lease-windows] W0 plain-claim attempts=${attempts} refused=${refused} codes=${JSON.stringify(Object.fromEntries(codes))} recovered=${recovered} longestRecoveryMs=${longestRecoveryMs}`,
+      )
+      // A refusal that does not end within the lease's deadline is not something a retry can fix.
+      expect(recovered).toBe(refused)
+    },
+    120_000,
+  )
+
   it.runIf(process.platform === 'win32')(
     'W1 records the code of a claim renamed onto a held lease directory',
     async () => {
