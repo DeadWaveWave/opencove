@@ -1,5 +1,6 @@
-import { act } from '@testing-library/react'
-import type { Node } from '@xyflow/react'
+import { act, render } from '@testing-library/react'
+import { ReactFlowProvider, type Node } from '@xyflow/react'
+import React, { type ReactElement } from 'react'
 import { expect, vi, type Mock } from 'vitest'
 import { useAppStore } from '../../src/app/renderer/shell/store/useAppStore'
 import { useWorkspaceCanvasNodesStore } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore'
@@ -10,6 +11,7 @@ import type {
   WorkspaceSpaceState,
 } from '../../src/contexts/workspace/presentation/renderer/types'
 import { createCanvasDocumentHarness, renderInCanvasDocument } from './canvasDocumentHarness'
+import { CanvasStoreTestProvider } from './canvasStoreTestHarness'
 import { useWorkspaceCanvasStoreNodes } from './workspaceCanvasStoreHarness'
 
 // Shared by the specs that check what the callers of the push-away hand it (#702, PR 6). The spec
@@ -46,7 +48,7 @@ export type Updater = ReturnType<typeof useWorkspaceCanvasNodesStore>['updateCan
 
 const onNodesCommitted = vi.fn()
 
-function useShownNodeStore(shown: string) {
+export function useShownNodeStore(shown: string) {
   const nodes = useWorkspaceCanvasStoreNodes(shown)
   return useWorkspaceCanvasNodesStore({
     workspaceId: shown,
@@ -85,6 +87,49 @@ export function renderCaller<Result>(useHook: (updateCanvasDocument: Updater) =>
   }
 }
 
+type NodeStore = ReturnType<typeof useShownNodeStore>
+
+/**
+ * Like `renderCaller`, for a component under test: `element` builds it from the writer of the node
+ * store of the shown workspace, and calls `capture` with what the test then invokes.
+ */
+function renderElementCaller<Result>(
+  element: (
+    updateCanvasDocument: Updater,
+    store: NodeStore,
+    capture: (value: Result) => void,
+  ) => ReactElement,
+) {
+  let shown = 'workspace-a'
+  const result = {
+    current: undefined as unknown as { hook: Result; ui: ReturnType<typeof useCanvasUiCommands> },
+  }
+  function Harness(): ReactElement {
+    const store = useShownNodeStore(shown)
+    const ui = useCanvasUiCommands()
+    return element(store.updateCanvasDocument, store, hook => {
+      result.current = { hook, ui }
+    })
+  }
+  function Wrapper({ children }: { children: React.ReactNode }): ReactElement {
+    return (
+      <CanvasStoreTestProvider workspaceId={shown}>
+        <ReactFlowProvider>{children}</ReactFlowProvider>
+      </CanvasStoreTestProvider>
+    )
+  }
+  const view = render(<Harness />, { wrapper: Wrapper })
+  return {
+    view: { result },
+    switchTo(workspaceId: string) {
+      act(() => {
+        shown = workspaceId
+        view.rerender(<Harness />)
+      })
+    },
+  }
+}
+
 export function mark(id: string): WorkspaceSpaceState {
   return { ...TARGET, id, name: id, rect: null }
 }
@@ -114,13 +159,19 @@ export function expectsOneFlushAfterThePushAway(
  */
 export async function expectsWriterOfTheRender<Result>({
   useHook,
+  element,
+  seed,
   invoke,
   argsOf,
   absent = OLD_CHANNELS,
   flush,
   assign,
 }: {
-  useHook: (updateCanvasDocument: Updater) => Result
+  useHook?: (updateCanvasDocument: Updater) => Result
+  /** A component under test instead of a hook. */
+  element?: Parameters<typeof renderElementCaller<Result>>[0]
+  /** The nodes and Spaces both workspaces start with. */
+  seed?: Parameters<typeof createCanvasDocumentHarness>[0]
   invoke: Invoke<Result>
   argsOf: () => Record<string, unknown> | undefined
   absent?: string[]
@@ -129,13 +180,15 @@ export async function expectsWriterOfTheRender<Result>({
   /** The mocked push-away, to order the flush after it. */
   assign: Mock
 }) {
-  createCanvasDocumentHarness({ workspaceId: 'workspace-a' })
+  createCanvasDocumentHarness({ ...seed, workspaceId: 'workspace-a' })
   useAppStore.setState(state => ({
     workspaces: [...state.workspaces, { ...state.workspaces[0], id: 'workspace-b' }],
   }))
-  const { view, switchTo } = renderCaller(useHook)
+  const { view, switchTo } = element ? renderElementCaller(element) : renderCaller(useHook!)
   const spaceIds = (workspaceId: string) =>
-    readWorkspaceDocument(workspaceId)?.spaces.map(s => s.id)
+    readWorkspaceDocument(workspaceId)
+      ?.spaces.map(s => s.id)
+      .filter(id => id.startsWith('marker-'))
 
   const write = (id: string) => {
     const args = argsOf()

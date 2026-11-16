@@ -140,7 +140,15 @@ export function renderCanvasNodeStore<Extra extends object = Record<never, never
   }: {
     workspacePath?: string
     /** Further parameters of the node store, such as `onShowMessage`. */
-    nodeStoreOptions?: Partial<Parameters<typeof useWorkspaceCanvasNodesStore>[0]>
+    nodeStoreOptions?: Partial<
+      Pick<
+        Parameters<typeof useWorkspaceCanvasNodesStore>[0],
+        | 'onShowMessage'
+        | 'browserDefaultMode'
+        | 'standardWindowSizeBucket'
+        | 'onRequestPersistFlush'
+      >
+    >
     extend?: (context: CanvasNodeStoreContext) => Extra
   } = {},
 ) {

@@ -9,6 +9,7 @@ import type {
   WorkspaceSpaceState,
   WorkspaceViewport,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
+import { readWorkspaceDocument } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import { WorkspaceCanvas } from '../../../src/contexts/workspace/presentation/renderer/components/WorkspaceCanvas'
 import {
   seedWorkspaceCanvasStore,
@@ -135,10 +136,21 @@ describe('WorkspaceCanvas create terminal standard sizing', () => {
     })
 
     const viewport: WorkspaceViewport = { x: 0, y: 0, zoom: 1 }
-    const spaces: WorkspaceSpaceState[] = []
+    // The click lands inside this Space, so the creation ends in the push-away.
+    const spaces: WorkspaceSpaceState[] = [
+      {
+        id: 'space-under-click',
+        name: 'Space',
+        directoryPath: '/tmp/repo',
+        targetMountId: null,
+        labelColor: null,
+        nodeIds: [],
+        rect: { x: -5000, y: -5000, width: 10000, height: 10000 },
+      },
+    ]
     let latestNodes: Node<TerminalNodeData>[] = []
 
-    seedWorkspaceCanvasStore()
+    seedWorkspaceCanvasStore({ spaces })
 
     function Harness() {
       const nodes = useWorkspaceCanvasStoreNodes()
@@ -189,5 +201,75 @@ describe('WorkspaceCanvas create terminal standard sizing', () => {
     })
     expect(latestNodes[0]?.data.width).toBe(expectedSize.width)
     expect(latestNodes[0]?.data.height).toBe(expectedSize.height)
+    // The push-away reached the store through the writer that Inner hands the interactions.
+    expect(readWorkspaceDocument('workspace-1')!.spaces[0].nodeIds).toContain(latestNodes[0]!.id)
+  })
+
+  it('puts a role created from the pane menu into the Space under the click', async () => {
+    Object.defineProperty(window, 'opencoveApi', {
+      configurable: true,
+      writable: true,
+      value: {
+        pty: { kill: vi.fn(async () => undefined) },
+        workspace: { ensureDirectory: vi.fn(async () => undefined) },
+      },
+    })
+    const role = {
+      id: 'role-1',
+      name: 'Reviewer',
+      description: '',
+      promptTemplate: 'Review',
+      inputHint: '',
+      outputFormat: '',
+      createdAt: '',
+      updatedAt: '',
+    }
+    const spaces: WorkspaceSpaceState[] = [
+      {
+        id: 'space-under-click',
+        name: 'Space',
+        directoryPath: '/tmp/repo',
+        targetMountId: null,
+        labelColor: null,
+        nodeIds: [],
+        rect: { x: -5000, y: -5000, width: 10000, height: 10000 },
+      },
+    ]
+    seedWorkspaceCanvasStore({ spaces })
+
+    function Harness() {
+      const nodes = useWorkspaceCanvasStoreNodes()
+      return (
+        <WorkspaceCanvas
+          workspaceId="workspace-1"
+          workspacePath="/tmp/repo"
+          worktreesRoot=""
+          nodes={nodes}
+          spaces={spaces}
+          activeSpaceId={null}
+          onActiveSpaceChange={() => undefined}
+          viewport={{ x: 0, y: 0, zoom: 1 }}
+          isMinimapVisible={false}
+          onViewportChange={() => undefined}
+          onMinimapVisibilityChange={() => undefined}
+          agentSettings={{
+            ...DEFAULT_AGENT_SETTINGS,
+            projectRolesByWorkspaceId: { 'workspace-1': [role] },
+          }}
+        />
+      )
+    }
+
+    render(<Harness />)
+    fireEvent.contextMenu(screen.getByTestId('react-flow-pane'), { clientX: 320, clientY: 220 })
+    fireEvent.click(await screen.findByTestId('workspace-context-run-role'))
+    fireEvent.click(await screen.findByTestId('workspace-context-run-role-role-1'))
+
+    // The push-away reached the store through the writer that Inner hands the role UI.
+    await waitFor(() => {
+      const document = readWorkspaceDocument('workspace-1')!
+      expect(document.nodes).toHaveLength(1)
+      expect(document.spaces[0].nodeIds).toEqual([document.nodes[0].id])
+    })
   })
 })

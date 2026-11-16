@@ -1,8 +1,15 @@
+import React, { useContext } from 'react'
 import type { Mock } from 'vitest'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Node } from '@xyflow/react'
 import { assignNodeToSpaceAndExpand } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useInteractions.spaceAssignment'
 import { useFilesystemNodes } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useFilesystemNodes'
+import { WorkspaceCanvasProviders } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/WorkspaceCanvasProviders'
+import {
+  WorkspaceDocumentNavigationContext,
+  type WorkspaceDocumentNavigation,
+} from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/WorkspaceDocumentNavigationContext'
+import { resolveSpaceExplorerPreviewDisplay } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceExplorer.helpers'
 import { useCanvasSpaceExplorer } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasSpaceExplorer'
 import { useWorkspaceCanvasSpaceExplorer } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceExplorer'
 import { useWorkspaceDocumentOpening } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useWorkspaceDocumentOpening'
@@ -178,6 +185,100 @@ describe('the push-away of the explorer', () => {
         const before = assignMock.mock.calls.length
         hook.openFileInSpace('target', 'file:///repo/picture.png')
         await vi.waitFor(() => expect(assignMock.mock.calls.length).toBeGreaterThan(before))
+      },
+      argsOf: assignArgs,
+      flush: onRequestPersistFlush,
+    })
+  })
+})
+
+describe('the push-away of a text file opened from the explorer', () => {
+  it('gives the opened document its workspace writer through the document opening', async () => {
+    const documentPreview = {
+      kind: 'document' as const,
+      naturalWidth: undefined,
+      naturalHeight: undefined,
+      size: { width: 100, height: 100 },
+    }
+    await expectsWriterOfTheRender({
+      assign: assignMock,
+      useHook: updateCanvasDocument =>
+        useWorkspaceCanvasSpaceExplorer({
+          workspaceId: 'workspace',
+          canvasRef,
+          spaces: [TARGET],
+          spacesRef,
+          nodesRef,
+          setNodes,
+          onSpacesChange,
+          onRequestPersistFlush,
+          reactFlow,
+          nodeDragSession: {},
+          finalizeDraggedNodeDrop: vi.fn(),
+          createDocumentNode,
+          createImageNode,
+          standardWindowSizeBucket: 'regular',
+          updateCanvasDocument,
+        } as never),
+      invoke: async ({ hook }) => {
+        vi.mocked(resolveSpaceExplorerPreviewDisplay).mockResolvedValueOnce(documentPreview)
+        const before = assignMock.mock.calls.length
+        hook.openFileInSpace('target', 'file:///repo/readme.md')
+        await vi.waitFor(() => expect(assignMock.mock.calls.length).toBeGreaterThan(before))
+      },
+      argsOf: assignArgs,
+      flush: onRequestPersistFlush,
+    })
+  })
+})
+
+describe('the push-away of a document opened from a terminal link, through the Providers', () => {
+  const source = {
+    id: 'source',
+    position: { x: 0, y: 0 },
+    data: { kind: 'terminal', width: 100, height: 100, sessionId: 'session' },
+  } as unknown as Node<TerminalNodeData>
+
+  function NavigationProbe({
+    capture,
+  }: {
+    capture: (navigation: WorkspaceDocumentNavigation) => void
+  }): React.JSX.Element | null {
+    capture(useContext(WorkspaceDocumentNavigationContext)!)
+    return null
+  }
+
+  const sourceSpace = { ...TARGET, nodeIds: ['source'] }
+  const sourceSpacesRef = { current: [sourceSpace] }
+
+  it('gives the opened document its workspace writer', async () => {
+    await expectsWriterOfTheRender<WorkspaceDocumentNavigation>({
+      assign: assignMock,
+      seed: { nodes: [source], spaces: [sourceSpace] },
+      element: (updateCanvasDocument, store, capture) => (
+        <WorkspaceCanvasProviders
+          nodeTypesParameters={{} as never}
+          collapse={{ expandNode: vi.fn() } as never}
+          openSpaceExplorer={vi.fn()}
+          openExplorerSpaceId={null}
+          workspaceId="workspace"
+          workspacePath="/repo"
+          nodeStore={{ ...store, updateCanvasDocument, createDocumentNode, createFolderNode }}
+          spacesRef={sourceSpacesRef}
+          onRequestPersistFlush={onRequestPersistFlush}
+          onShowMessage={onShowMessage}
+        >
+          <NavigationProbe capture={capture} />
+        </WorkspaceCanvasProviders>
+      ),
+      invoke: async ({ hook }) => {
+        const before = assignMock.mock.calls.length
+        await hook.openFileLink('source', {
+          kind: 'file',
+          uri: 'file:///repo/readme.md',
+          mountId: null,
+        } as never)
+        expect(assignMock.mock.calls.length).toBeGreaterThan(before)
       },
       argsOf: assignArgs,
       flush: onRequestPersistFlush,

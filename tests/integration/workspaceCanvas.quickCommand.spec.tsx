@@ -3,7 +3,10 @@ import type { Node } from '@xyflow/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import WebSocket from 'ws'
 import type { QuickCommand } from '../../src/contexts/settings/domain/agentSettings'
-import type { TerminalNodeData } from '../../src/contexts/workspace/presentation/renderer/types'
+import type {
+  TerminalNodeData,
+  WorkspaceSpaceState,
+} from '../../src/contexts/workspace/presentation/renderer/types'
 import { renderHookWithCanvasStore } from '../support/canvasStoreTestHarness'
 import { useWorkspaceCanvasQuickMenuActions } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useInteractions.quickMenuActions'
 import { useWorkspaceCanvasNodeCreation } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore.createNodes'
@@ -88,7 +91,7 @@ function setup() {
     controlSurface: { invoke },
   })
   const nodesRef = { current: [] as Node<TerminalNodeData>[] }
-  const spacesRef = {
+  const spacesRef: { current: WorkspaceSpaceState[] } = {
     current: [
       {
         id: 'space',
@@ -96,16 +99,16 @@ function setup() {
         directoryPath: '/worktree',
         targetMountId: null,
         labelColor: null,
-        nodeIds: [] as string[],
+        nodeIds: [],
         rect: { x: 0, y: 0, width: 2000, height: 1500 },
       },
     ],
   }
   // The push-away of the created node writes through one recipe, as the node store runs it.
   const updateCanvasDocument = (
-    recipe: (document: { nodes: Node<TerminalNodeData>[]; spaces: typeof spacesRef.current }) => {
+    recipe: (document: { nodes: Node<TerminalNodeData>[]; spaces: WorkspaceSpaceState[] }) => {
       nodes: Node<TerminalNodeData>[]
-      spaces: typeof spacesRef.current
+      spaces: WorkspaceSpaceState[]
     },
   ) => {
     const next = recipe({ nodes: nodesRef.current, spaces: spacesRef.current })

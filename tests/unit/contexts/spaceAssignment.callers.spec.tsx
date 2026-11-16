@@ -41,6 +41,7 @@ import {
   lastCall,
   nodesRef,
   spacesRef,
+  type Updater,
 } from '../../support/pushAwayCallerHarness'
 
 // Every caller of the push-away takes the document writer of the node store of the render that made
@@ -52,7 +53,7 @@ import {
 
 // The canvas store is rebuilt with the workspace, so `ui`, `readUi` and `readSelection` change on a
 // switch and would make every callback rebuild: the writer could then be missing from a dependency
-// list unseen. These four keep the value of the first render, so only the writer can make a
+// list unseen. These five keep the value of the first render, so only the writer can make a
 // callback follow a switch.
 const firstRender = vi.hoisted(() => ({ values: new Map<string, unknown>() }))
 vi.mock(
@@ -69,6 +70,7 @@ vi.mock(
     return {
       ...original,
       useCanvasUiCommands: stable('useCanvasUiCommands'),
+      useCanvasSelectionCommands: stable('useCanvasSelectionCommands'),
       useCanvasDocumentCommands: stable('useCanvasDocumentCommands'),
       useReadCanvasUi: stable('useReadCanvasUi'),
       useReadCanvasSelection: stable('useReadCanvasSelection'),
@@ -512,6 +514,50 @@ describe('the push-away of the interaction callers', () => {
         },
         argsOf: assignArgs,
       })
+    })
+  })
+
+  it('gives the image pasted through the paste handlers its workspace writer', async () => {
+    const api = window as unknown as { opencoveApi?: Record<string, unknown> }
+    api.opencoveApi = { workspace: { writeCanvasImage: vi.fn(async () => undefined) } }
+    const imageEvent = {
+      clipboardData: {
+        items: [
+          {
+            kind: 'file',
+            getAsFile: () => ({
+              type: 'image/png',
+              size: 3,
+              name: 'a.png',
+              arrayBuffer: async () => new ArrayBuffer(3),
+            }),
+          },
+        ],
+        files: [],
+        getData: () => '',
+      },
+      defaultPrevented: false,
+      target: document.createElement('div'),
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    }
+    await expectsWriterOfTheRender({
+      assign: assignMock,
+      useHook: updateCanvasDocument =>
+        useWorkspaceCanvasPasteHandlers({
+          ...flowParams,
+          canvasRef,
+          reactFlow,
+          createImageNode,
+          websiteWindowPasteEnabled: true,
+          updateCanvasDocument,
+        } as never),
+      invoke: async ({ hook }) => {
+        const before = assignMock.mock.calls.length
+        hook.handleCanvasPaste(imageEvent as never)
+        await vi.waitFor(() => expect(assignMock.mock.calls.length).toBeGreaterThan(before))
+      },
+      argsOf: assignArgs,
     })
   })
 

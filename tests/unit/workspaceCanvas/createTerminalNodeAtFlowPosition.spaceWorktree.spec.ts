@@ -219,8 +219,6 @@ describe('createTerminalNodeAtFlowPosition space worktree launch', () => {
           sortOrder: 42,
         },
       ])
-      // Only what the push-away writes after the edit is counted.
-      harness.notifications.mockClear()
       return { id: '00000000-0000-4000-8000-000000000001' } as never
     })
 
@@ -289,7 +287,8 @@ describe('createTerminalNodeAtFlowPosition space worktree launch', () => {
         nodeIds: ['00000000-0000-4000-8000-000000000001'],
       }),
     ])
-    expect(harness.notifications).toHaveBeenCalledTimes(1)
+    // The in-flight edit, then the push-away: the mount step before the spawn wrote nothing.
+    expect(harness.notifications).toHaveBeenCalledTimes(2)
     expect(harness.flush).not.toHaveBeenCalled()
   })
 })
