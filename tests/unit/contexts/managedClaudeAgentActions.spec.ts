@@ -216,6 +216,60 @@ describe('managed Claude task and role actions', () => {
     }
   })
 
+  // The binding flushes inside its own write. A flush of the caller's own between the binding and
+  // the node add would be a second one for the same repair.
+  it('the role run requests no flush of its own between the binding and the node add', async () => {
+    vi.mocked(resolveWorkspaceAgentLaunchBinding).mockResolvedValue({
+      mountId: 'mount-repaired',
+      executionDirectory: '/repo',
+    })
+    vi.mocked(launchWorkspaceAgentSession).mockResolvedValue({
+      sessionId: 'runtime',
+      resumeSessionId: null,
+      profileId: null,
+      effectiveModel: null,
+      executionDirectory: '/repo',
+    } as never)
+    const onRequestPersistFlush = vi.fn()
+    const flushesAtNodeAdd: number[] = []
+    const context = {
+      workspaceId: 'workspace',
+      workspacePath: '/repo',
+      agentSettings: DEFAULT_AGENT_SETTINGS,
+      nodesRef: {
+        current: [
+          {
+            id: 'role-node',
+            position: { x: 0, y: 0 },
+            data: {
+              kind: 'role',
+              width: 300,
+              role: { roleId: 'reviewer', input: '', selectedProvider: 'codex' },
+            },
+          },
+        ],
+      },
+      spacesRef: { current: [] },
+      projectRoles: [
+        { id: 'reviewer', name: 'Reviewer', promptTemplate: 'Review the task', outputFormat: '' },
+      ],
+      createNodeForSession: vi.fn(async () => {
+        flushesAtNodeAdd.push(onRequestPersistFlush.mock.calls.length)
+        return null
+      }),
+      appendRoleRunRecord: vi.fn(),
+      setNodes: vi.fn(),
+      onSpacesChange: vi.fn(),
+      updateSpaces: vi.fn(),
+      onRequestPersistFlush,
+      updateRoleInput: vi.fn(),
+      buildAgentNodeTitle: () => 'Reviewer',
+      t: (key: string) => key,
+    } as unknown as RoleRunActionContext
+    await runRoleNodeAction('role-node', undefined, context)
+    expect(flushesAtNodeAdd).toEqual([0])
+  })
+
   it('the task resume gives both binding calls its writer and none of the old channels', async () => {
     const { resumeTaskAgentSessionAction } =
       await import('../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useTaskActions.agentSession.resume')

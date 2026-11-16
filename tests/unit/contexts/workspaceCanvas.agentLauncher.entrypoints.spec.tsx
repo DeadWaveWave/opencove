@@ -168,6 +168,19 @@ describe('shared Agent launcher entrypoints', () => {
     )
   })
 
+  it('requests no flush of its own between the binding and the node add', async () => {
+    const params = fixture()
+    const flushesAtNodeAdd: number[] = []
+    const createNodeForSession = params.createNodeForSession
+    params.createNodeForSession = vi.fn(async input => {
+      flushesAtNodeAdd.push(vi.mocked(params.onRequestPersistFlush!).mock.calls.length)
+      return await createNodeForSession(input)
+    })
+    const { result } = renderHookWithCanvasStore(() => useWorkspaceCanvasAgentLauncher(params))
+    await act(() => result.current.launchAgentAtFlowPosition({ x: 400, y: 300 }))
+    expect(flushesAtNodeAdd).toEqual([0])
+  })
+
   it('gives the retry binding the same writer and none of the old channels', async () => {
     const params = fixture()
     vi.mocked(launchWorkspaceAgentSession).mockImplementationOnce(async options => {
