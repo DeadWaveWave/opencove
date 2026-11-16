@@ -80,8 +80,20 @@ function triggerProblems(workflow: string): string[] {
 
 const WINDOWS_JOB = 'platform-e2e-windows'
 const WINDOWS_E2E_STEP = 'Windows-specific E2E tests'
-const WINDOWS_EXPRESSION = "${{ github.event_name == 'pull_request' && '0' || '1' }}"
-const WINDOWS_RETRIES = `OPENCOVE_E2E_RETRIES: ${WINDOWS_EXPRESSION}`
+const WINDOWS_RETRIES = "OPENCOVE_E2E_RETRIES: '1'"
+const WINDOWS_JUDGE_STEP = 'Judge the retried Windows E2E tests'
+const WINDOWS_JUDGE_MODE =
+  "${{ github.event_name == 'pull_request' && '--enforce' || '--report-only' }}"
+const WINDOWS_JUDGE_COMMAND = `node scripts/check-e2e-retried-tests.mjs artifacts/e2e-durations/report.json ${WINDOWS_JUDGE_MODE}`
+const WINDOWS_JUDGE_LINES = [
+  `      - name: ${WINDOWS_JUDGE_STEP}`,
+  '        id: retried',
+  `        run: ${WINDOWS_JUDGE_COMMAND}`,
+]
+const WINDOWS_UPLOAD_CONDITION = "if: ${{ failure() || steps.retried.outputs.retried == 'true' }}"
+const WINDOWS_E2E_COMMAND = 'run: pnpm exec playwright test'
+const WINDOWS_UPLOAD_PATHS =
+  '          path: |\n            test-results/\n            artifacts/e2e-durations/report.json\n'
 
 function retryProblems(workflow: string): string[] {
   const problems: string[] = []
@@ -89,8 +101,9 @@ function retryProblems(workflow: string): string[] {
   if (jobLevel(macos, 'if') !== "github.event_name != 'pull_request'") {
     problems.push('ci-macos must run only outside pull requests')
   }
-  // Retries are the exception: one retry after the merge on the macOS shards and on the Windows
-  // E2E step (#698), none on pull requests, none anywhere else.
+  // Retries are the exception: one retry after the merge on the macOS shards, and one on the
+  // Windows E2E step on every event (#698), where the next step judges the retried tests. None
+  // anywhere else.
   for (const id of jobIds(workflow).filter(name => name !== 'ci-macos' && name !== WINDOWS_JOB)) {
     const values = [...jobText(workflow, id).matchAll(/OPENCOVE_E2E_RETRIES: (.*)$/gm)].map(
       m => m[1],
@@ -102,11 +115,44 @@ function retryProblems(workflow: string): string[] {
   if (!/OPENCOVE_E2E_RETRIES: '1'$/m.test(stepText(macos, 'E2E tests (shard)'))) {
     problems.push("ci-macos shards must retry once (OPENCOVE_E2E_RETRIES: '1')")
   }
-  const windowsStep = stepText(jobText(workflow, WINDOWS_JOB), WINDOWS_E2E_STEP)
+  const windows = jobText(workflow, WINDOWS_JOB)
+  const windowsStep = stepText(windows, WINDOWS_E2E_STEP)
   if (!windowsStep.split('\n').includes(`          ${WINDOWS_RETRIES}`)) {
+    problems.push(`${WINDOWS_JOB} must retry once on every event: ${WINDOWS_RETRIES}`)
+  }
+  // The step must fail when a test fails: nothing after the command, and nothing in the job that
+  // lets a failed step pass.
+  const windowsStepLines = windowsStep.split('\n').filter(line => line.trim())
+  if (windowsStepLines.at(-1) !== `        ${WINDOWS_E2E_COMMAND}`) {
+    problems.push(`the Windows E2E step must end with exactly: ${WINDOWS_E2E_COMMAND}`)
+  }
+  if (/continue-on-error/.test(windows)) {
+    problems.push(`${WINDOWS_JOB} must not use continue-on-error`)
+  }
+  // The retry is only safe with its judge: the step after the E2E step, on every event, enforcing
+  // on pull requests and reporting elsewhere, with nothing that lets its failure pass.
+  const names = [...windows.matchAll(/^ {6}- name: (.+)$/gm)].map(match => match[1])
+  const judge = names.includes(WINDOWS_JUDGE_STEP)
+    ? stepText(windows, WINDOWS_JUDGE_STEP)
+        .split('\n')
+        .filter(line => line.trim())
+    : []
+  if (
+    names[names.indexOf(WINDOWS_E2E_STEP) + 1] !== WINDOWS_JUDGE_STEP ||
+    judge.join('\n') !== WINDOWS_JUDGE_LINES.join('\n')
+  ) {
     problems.push(
-      `${WINDOWS_JOB} must retry once outside pull requests: OPENCOVE_E2E_RETRIES must be exactly ${WINDOWS_EXPRESSION}`,
+      `${WINDOWS_JOB} must judge its retried tests right after the E2E step, with exactly: ${WINDOWS_JUDGE_COMMAND}`,
     )
+  }
+  const upload = stepText(windows, 'Upload Playwright report')
+  if (!upload.split('\n').includes(`        ${WINDOWS_UPLOAD_CONDITION}`)) {
+    problems.push(
+      `${WINDOWS_JOB} must upload its results after a failure and after a retried test: ${WINDOWS_UPLOAD_CONDITION}`,
+    )
+  }
+  if (!`${upload}\n`.includes(WINDOWS_UPLOAD_PATHS)) {
+    problems.push(`${WINDOWS_JOB} must upload the test results and the report the judge read`)
   }
   return problems
 }
@@ -342,28 +388,129 @@ describe('ci.yml macOS shards', () => {
       'only ci-macos and platform-e2e-windows may retry',
     ],
     [
-      'an Ubuntu shard with the Windows expression',
+      'an Ubuntu shard that retries after the merge',
       mutate(
         ciWorkflow,
         "OPENCOVE_E2E_RETRIES: '0'\n          OPENCOVE_E2E_DISABLE_CRASH_FALLBACK: '1'\n          OPENCOVE_E2E_JSON_REPORT: artifacts/e2e-durations/ubuntu",
-        `${WINDOWS_RETRIES}\n          OPENCOVE_E2E_DISABLE_CRASH_FALLBACK: '1'\n          OPENCOVE_E2E_JSON_REPORT: artifacts/e2e-durations/ubuntu`,
+        "OPENCOVE_E2E_RETRIES: ${{ github.event_name == 'pull_request' && '0' || '1' }}\n          OPENCOVE_E2E_DISABLE_CRASH_FALLBACK: '1'\n          OPENCOVE_E2E_JSON_REPORT: artifacts/e2e-durations/ubuntu",
       ),
       'only ci-macos and platform-e2e-windows may retry',
     ],
     ...[
-      ['a literal 1 (would retry on pull requests)', "'1'"],
       ['a literal 0', "'0'"],
-      ['an inverted expression', "${{ github.event_name == 'pull_request' && '1' || '0' }}"],
-      ['an expression keyed on push', "${{ github.event_name == 'push' && '1' || '0' }}"],
+      ['two retries', "'2'"],
       [
-        'an expression that lets manual runs lose the retry',
-        "${{ github.event_name != 'workflow_dispatch' && '1' || '0' }}",
+        'the retry only outside pull requests',
+        "${{ github.event_name == 'pull_request' && '0' || '1' }}",
       ],
     ].map(([name, value]) => [
       `the Windows E2E step with ${name}`,
-      mutate(ciWorkflow, WINDOWS_RETRIES, `OPENCOVE_E2E_RETRIES: ${value}`),
-      'must retry once outside pull requests',
+      mutate(
+        ciWorkflow,
+        `${WINDOWS_RETRIES}\n          OPENCOVE_E2E_DISABLE_CRASH_FALLBACK: '1'\n        run: pnpm exec playwright test\n`,
+        `OPENCOVE_E2E_RETRIES: ${value}\n          OPENCOVE_E2E_DISABLE_CRASH_FALLBACK: '1'\n        run: pnpm exec playwright test\n`,
+      ),
+      'must retry once on every event',
     ]),
+    ...[
+      ['that only reports', '--report-only'],
+      ['that enforces after the merge too', '--enforce'],
+      [
+        'that enforces only after the merge',
+        "${{ github.event_name == 'pull_request' && '--report-only' || '--enforce' }}",
+      ],
+      [
+        'that enforces only on push',
+        "${{ github.event_name == 'push' && '--enforce' || '--report-only' }}",
+      ],
+    ].map(([name, mode]) => [
+      `a Windows judge ${name}`,
+      mutate(ciWorkflow, WINDOWS_JUDGE_MODE, mode),
+      'must judge its retried tests right after the E2E step',
+    ]),
+    [
+      'no Windows judge',
+      mutate(ciWorkflow, `${WINDOWS_JUDGE_LINES.join('\n')}\n`, ''),
+      'must judge its retried tests right after the E2E step',
+    ],
+    [
+      'a Windows judge that runs only on pull requests',
+      mutate(
+        ciWorkflow,
+        `${WINDOWS_JUDGE_LINES[1]}\n`,
+        `${WINDOWS_JUDGE_LINES[1]}\n        if: github.event_name == 'pull_request'\n`,
+      ),
+      'must judge its retried tests right after the E2E step',
+    ],
+    [
+      'a Windows judge whose failure passes',
+      mutate(
+        ciWorkflow,
+        `${WINDOWS_JUDGE_LINES[1]}\n`,
+        `${WINDOWS_JUDGE_LINES[1]}\n        continue-on-error: true\n`,
+      ),
+      'must judge its retried tests right after the E2E step',
+    ],
+    [
+      'a Windows judge of another report',
+      mutate(ciWorkflow, 'artifacts/e2e-durations/report.json $', 'artifacts/report.json $'),
+      'must judge its retried tests right after the E2E step',
+    ],
+    [
+      'a step between the Windows E2E step and its judge',
+      mutate(
+        ciWorkflow,
+        `${WINDOWS_JUDGE_LINES[0]}\n`,
+        `      - name: Something else\n        run: echo\n\n${WINDOWS_JUDGE_LINES[0]}\n`,
+      ),
+      'must judge its retried tests right after the E2E step',
+    ],
+    [
+      'a Windows E2E step whose failure passes',
+      mutate(
+        ciWorkflow,
+        `      - name: ${WINDOWS_E2E_STEP}\n`,
+        `      - name: ${WINDOWS_E2E_STEP}\n        continue-on-error: true\n`,
+      ),
+      'must not use continue-on-error',
+    ],
+    [
+      'a Windows E2E command that always succeeds',
+      mutate(
+        ciWorkflow,
+        `        ${WINDOWS_E2E_COMMAND}\n\n      # A pull request keeps`,
+        `        ${WINDOWS_E2E_COMMAND}; exit 0\n\n      # A pull request keeps`,
+      ),
+      'the Windows E2E step must end with exactly',
+    ],
+    [
+      'a Windows E2E command with another flag',
+      mutate(
+        ciWorkflow,
+        `        ${WINDOWS_E2E_COMMAND}\n\n      # A pull request keeps`,
+        `        ${WINDOWS_E2E_COMMAND} --pass-with-no-tests\n\n      # A pull request keeps`,
+      ),
+      'the Windows E2E step must end with exactly',
+    ],
+    [
+      'a Windows job whose failure passes',
+      mutate(
+        ciWorkflow,
+        '  platform-e2e-windows:\n',
+        '  platform-e2e-windows:\n    continue-on-error: true\n',
+      ),
+      'must not use continue-on-error',
+    ],
+    [
+      'a Windows upload without the report',
+      mutate(ciWorkflow, WINDOWS_UPLOAD_PATHS, '          path: test-results/\n'),
+      'must upload the test results and the report the judge read',
+    ],
+    [
+      'a Windows upload only after a failure',
+      mutate(ciWorkflow, `        ${WINDOWS_UPLOAD_CONDITION}\n`, '        if: failure()\n'),
+      'must upload its results after a failure and after a retried test',
+    ],
     [
       'retries off on the shards',
       mutate(ciWorkflow, "OPENCOVE_E2E_RETRIES: '1'", "OPENCOVE_E2E_RETRIES: '0'"),
