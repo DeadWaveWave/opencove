@@ -42,6 +42,7 @@ export function sessionStartupDiagnostics(snapshot: () => unknown) {
     loopDelay.disable()
   })
   onTestFailed(() => {
+    // oxlint-disable-next-line no-console -- the startup diagnostics print only when a test fails.
     console.error(
       '[agent-session-startup]',
       JSON.stringify({
