@@ -106,7 +106,7 @@ describe('agent terminal layout sync', () => {
       },
     })
 
-    function Harness(): null {
+    function Harness(): React.ReactElement | null {
       const { launchAgentInNode } = useWorkspaceCanvasAgentNodeLifecycle({
         setNodes,
         bumpAgentLaunchToken: () => 1,

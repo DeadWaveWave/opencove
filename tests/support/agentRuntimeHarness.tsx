@@ -78,6 +78,8 @@ export function agentNode(
       task: null,
       note: null,
       image: null,
+      document: null,
+      website: null,
       ...overrides,
     },
   })
@@ -103,6 +105,8 @@ export function taskNode(id: string, linkedAgentNodeId: string): Node<TerminalNo
       agent: null,
       note: null,
       image: null,
+      document: null,
+      website: null,
       task: {
         requirement: 'Switch session',
         status: 'doing',
