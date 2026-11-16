@@ -11,9 +11,11 @@ import {
   useCanvasSelectionCommands,
   useReadCanvasSelection,
 } from '@contexts/workspace/presentation/renderer/store/canvasStoreContext'
+import { replaceWorkspaceNodes } from '@contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import type { TerminalNodeData } from '@contexts/workspace/presentation/renderer/types'
 import {
   createCanvasDocumentHarness,
+  renderCanvasNodeStore,
   renderInCanvasDocument,
 } from '../../support/canvasDocumentHarness'
 import { CANVAS_STORE_TEST_WORKSPACE_ID } from '../../support/canvasStoreTestHarness'
@@ -102,53 +104,58 @@ describe('Delete key in useWorkspaceCanvasLifecycle', () => {
 
 describe('convertSelectedNoteToTask in useWorkspaceCanvasNoteToTaskConversion', () => {
   function setup(nodeIds: string[]) {
-    const holder = createNodeHolder(createRowNodes(['a', 'b']))
-    const onRequestPersistFlush = vi.fn()
-    const hook = renderHook(
-      () => ({
-        conversion: useWorkspaceCanvasNoteToTaskConversion({
-          // Differs from the store on purpose: the conversion must read the store at call time.
-          selectedNodeIds: [],
-          flowNodes: holder.nodes,
-          nodesRef: holder.nodesRef,
-          spacesRef: { current: [] },
-          setNodes: holder.setNodes,
-          onSpacesChange: vi.fn(),
-          onRequestPersistFlush,
-          standardWindowSizeBucket: 'regular',
-        }),
-        ...useSelectionProbe(),
-      }),
-      { wrapper: SelectionWritersWrapper },
-    )
+    const harness = createCanvasDocumentHarness({
+      workspaceId: 'selection-conversion',
+      nodes: createRowNodes(['a', 'b']),
+    })
+    const hook = renderCanvasNodeStore(harness, {
+      extend: function useConversionUnderTest({ nodes, nodeStore }) {
+        return {
+          conversion: useWorkspaceCanvasNoteToTaskConversion({
+            // Differs from the store on purpose: the conversion must read the store at call time.
+            selectedNodeIds: [],
+            flowNodes: nodes,
+            updateCanvasDocument: nodeStore.updateCanvasDocument,
+            standardWindowSizeBucket: 'regular',
+          }),
+          ...useSelectionProbe(),
+        }
+      },
+    })
     act(() => hook.result.current.selection.setNodeIds(nodeIds))
-    return { holder, onRequestPersistFlush, ...hook }
+    const kinds = () => harness.readStoreDocument().nodes.map(node => node.data.kind)
+    return { harness, kinds, ...hook }
   }
 
   it('converts the one note the store names', () => {
-    const { result, holder, onRequestPersistFlush } = setup(['b'])
+    const { result, harness, kinds } = setup(['b'])
 
     act(() => result.current.conversion.convertSelectedNoteToTask())
 
-    expect(holder.nodes.map(node => node.data.kind)).toEqual(['note', 'task'])
-    expect(onRequestPersistFlush).toHaveBeenCalledTimes(1)
+    expect(kinds()).toEqual(['note', 'task'])
+    expect(harness.flush).toHaveBeenCalledTimes(1)
   })
 
   it('converts nothing when the store names two windows', () => {
-    const { result, holder } = setup(['a', 'b'])
+    const { result, kinds } = setup(['a', 'b'])
 
     act(() => result.current.conversion.convertSelectedNoteToTask())
 
-    expect(holder.nodes.map(node => node.data.kind)).toEqual(['note', 'note'])
+    expect(kinds()).toEqual(['note', 'note'])
   })
 
   it('converts nothing when the store names none, even if a document node is flagged', () => {
-    const { result, holder } = setup([])
-    act(() => holder.setNodes(nodes => nodes.map(node => ({ ...node, selected: true }))))
+    const { result, harness, kinds } = setup([])
+    act(() => {
+      replaceWorkspaceNodes(
+        harness.workspaceId,
+        harness.readStoreDocument().nodes.map(node => ({ ...node, selected: true })),
+      )
+    })
 
     act(() => result.current.conversion.convertSelectedNoteToTask())
 
-    expect(holder.nodes.map(node => node.data.kind)).toEqual(['note', 'note'])
+    expect(kinds()).toEqual(['note', 'note'])
   })
 })
 
