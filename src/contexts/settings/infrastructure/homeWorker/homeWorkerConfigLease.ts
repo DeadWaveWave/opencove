@@ -10,7 +10,7 @@ import {
 
 export const HOME_WORKER_CONFIG_LEASE_FILE = 'home-worker-config.lease'
 export const HOME_WORKER_CONFIG_LEASE_OWNER_FILE = 'owner.json'
-const DEFAULT_LEASE_TIMEOUT_MS = 5_000
+export const DEFAULT_LEASE_TIMEOUT_MS = 5_000
 const DEFAULT_RETRY_DELAY_MS = 25
 const DEFAULT_MALFORMED_STALE_MS = 5_000
 const RELEASE_TIMEOUT_MS = 5_000
