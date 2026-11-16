@@ -1,7 +1,12 @@
 import type { Node } from '@xyflow/react'
 import { afterEach } from 'vitest'
 import { useAppStore } from '../../src/app/renderer/shell/store/useAppStore'
-import { bindWorkspaceDocumentStore } from '../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+import {
+  bindWorkspaceDocumentStore,
+  readWorkspaceDocument,
+  replaceWorkspaceNodes,
+  replaceWorkspaceSpaces,
+} from '../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import type {
   TerminalNodeData,
   WorkspaceSpaceState,
@@ -50,4 +55,66 @@ export function useWorkspaceCanvasStoreNodes(
   return useAppStore(
     state => state.workspaces.find(workspace => workspace.id === workspaceId)?.nodes ?? EMPTY_NODES,
   )
+}
+
+export interface StoreBackedChannels {
+  /** The store's nodes of the workspace; assigning replaces them, as a write to the store does. */
+  nodesRef: { current: Node<TerminalNodeData>[] }
+  /** The store's Spaces of the workspace. */
+  spacesRef: { current: WorkspaceSpaceState[] }
+  /** Writes the store's nodes of the workspace, as the canvas's node store does. */
+  setNodes: (updater: (previous: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[]) => void
+}
+
+/**
+ * Seeds the app store with one workspace and returns the nodes and Spaces of the document as
+ * objects with a `current`, for a spec whose assertions and whose other hooks still speak in refs
+ * while the hook under test reads the document. In-place changes to the arrays go to the store's
+ * own arrays, so they are visible to a reader; an assignment is a store write.
+ */
+export function createStoreBackedChannels({
+  workspaceId,
+  nodes = [],
+  spaces = [],
+}: {
+  workspaceId: string
+  nodes?: Node<TerminalNodeData>[]
+  spaces?: WorkspaceSpaceState[]
+}): StoreBackedChannels {
+  seedWorkspaceCanvasStore({ workspaceId, nodes, spaces })
+  return storeBackedChannelsOf(workspaceId)
+}
+
+/** The same objects over a workspace that the spec has already seeded. */
+export function storeBackedChannelsOf(workspaceId: string): StoreBackedChannels {
+  const read = () => {
+    const document = readWorkspaceDocument(workspaceId)
+    if (!document) {
+      throw new Error(`workspace ${workspaceId} is not in the store`)
+    }
+    return document
+  }
+  const nodesRef = {
+    get current() {
+      return read().nodes
+    },
+    set current(next: Node<TerminalNodeData>[]) {
+      replaceWorkspaceNodes(workspaceId, next)
+    },
+  }
+  const spacesRef = {
+    get current() {
+      return read().spaces
+    },
+    set current(next: WorkspaceSpaceState[]) {
+      replaceWorkspaceSpaces(workspaceId, next)
+    },
+  }
+  return {
+    nodesRef,
+    spacesRef,
+    setNodes: updater => {
+      nodesRef.current = updater(nodesRef.current)
+    },
+  }
 }

@@ -19,7 +19,7 @@ export function useWorkspaceCanvasAgentSupport({
   standardWindowSizeBucket,
   terminalDisplayMetrics,
 }: {
-  nodesRef: Parameters<typeof useWorkspaceCanvasAgentNodeLifecycle>[0]['nodesRef']
+  nodesRef: Parameters<typeof useTerminalAgentSessionActions>[0]['nodesRef']
   setNodes: Parameters<typeof useWorkspaceCanvasAgentNodeLifecycle>[0]['setNodes']
   bumpAgentLaunchToken: Parameters<
     typeof useWorkspaceCanvasAgentNodeLifecycle
@@ -56,8 +56,6 @@ export function useWorkspaceCanvasAgentSupport({
   const lifecycle = useWorkspaceCanvasAgentNodeLifecycle({
     workspaceId,
     workspacePath,
-    nodesRef,
-    spacesRef,
     setNodes,
     bumpAgentLaunchToken,
     isAgentLaunchTokenCurrent,
@@ -69,7 +67,6 @@ export function useWorkspaceCanvasAgentSupport({
     agentEnvByProvider: agentSettings.agentEnvByProvider,
     agentExecutablePathOverrideByProvider: agentSettings.agentExecutablePathOverrideByProvider,
     environmentVariables,
-    onRequestPersistFlush,
   })
   const overlayActions = useTerminalAgentSessionActions({
     nodesRef,

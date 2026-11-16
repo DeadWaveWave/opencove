@@ -3,7 +3,11 @@ import { describe, expect, it, vi } from 'vitest'
 import type { Node } from '@xyflow/react'
 import { DEFAULT_AGENT_ENV_BY_PROVIDER } from '../../../src/contexts/settings/domain/agentEnv'
 import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
-import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
+import {
+  CANVAS_STORE_TEST_WORKSPACE_ID,
+  CanvasStoreTestProvider,
+} from '../../support/canvasStoreTestHarness'
+import { createStoreBackedChannels } from '../../support/workspaceCanvasStoreHarness'
 import { useWorkspaceCanvasAgentNodeLifecycle } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useAgentNodeLifecycle'
 
 describe('agent relaunch session binding', () => {
@@ -55,7 +59,6 @@ describe('agent relaunch session binding', () => {
           image: null,
         },
       }
-      const nodesRef = { current: [node] }
       const binding = {
         nodeId: node.id,
         activationId: 'owned',
@@ -77,6 +80,10 @@ describe('agent relaunch session binding', () => {
       if (owned) {
         node.data.sessionId = 'old-runtime'
       }
+      const { nodesRef, setNodes } = createStoreBackedChannels({
+        workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID,
+        nodes: [node],
+      })
       window.opencoveApi = {
         ...(provider === 'claude-code'
           ? {
@@ -112,11 +119,7 @@ describe('agent relaunch session binding', () => {
           useWorkspaceCanvasAgentNodeLifecycle({
             workspaceId: 'workspace-a',
             workspacePath: '/repo',
-            nodesRef,
-            spacesRef: { current: [] },
-            setNodes: updater => {
-              nodesRef.current = updater(nodesRef.current)
-            },
+            setNodes,
             bumpAgentLaunchToken: () => 1,
             isAgentLaunchTokenCurrent: () => true,
             agentFullAccess: setting,

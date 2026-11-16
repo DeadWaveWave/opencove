@@ -1,9 +1,10 @@
 // @vitest-environment happy-dom
 import { DEFAULT_AGENT_ENV_BY_PROVIDER } from '../../../src/contexts/settings/domain/agentEnv'
-import { createElement, useCallback, useMemo, useRef, useState } from 'react'
+import { createElement, useCallback, useMemo, useState } from 'react'
 import { act, cleanup, renderHook } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
+import { createStoreBackedChannels } from '../../support/workspaceCanvasStoreHarness'
 import { describeWithElectronNativeModules } from '../electronNativeSuite'
 import { snapshotFixture, type SnapshotFixture } from './managedClaudeSnapshotFixture'
 import { toShellWorkspaceState } from '../../../src/app/renderer/shell/hooks/useHydrateAppState.helpers'
@@ -170,14 +171,17 @@ describeWithElectronNativeModules('UI Claude relaunch during normal persistence'
         await fixture.store.readAppStateRevision(),
       )
       vi.useFakeTimers()
+      // The lifecycle reads the canvas document from the store; the task run still takes refs, so
+      // both see the nodes and Spaces through these views of the one workspace the store holds.
+      const { nodesRef, spacesRef } = createStoreBackedChannels({
+        workspaceId: workspace.id,
+        nodes: workspace.nodes,
+        spaces: workspace.spaces,
+      })
       const hook = renderHook(
         () => {
           const [nodes, setNodes] = useState(workspace.nodes)
-          const nodesRef = useRef(nodes)
-          nodesRef.current = nodes
           const [spaces, setSpaces] = useState(workspace.spaces)
-          const spacesRef = useRef(spaces)
-          spacesRef.current = spaces
           const onSpacesChange = (next: typeof spaces) => {
             spacesRef.current = next
             setSpaces(next)
@@ -214,8 +218,6 @@ describeWithElectronNativeModules('UI Claude relaunch during normal persistence'
           const lifecycle = useWorkspaceCanvasAgentNodeLifecycle({
             workspaceId: workspace.id,
             workspacePath: workspace.path,
-            nodesRef,
-            spacesRef,
             setNodes: setCanvasNodes,
             bumpAgentLaunchToken: () => 1,
             isAgentLaunchTokenCurrent: () => true,

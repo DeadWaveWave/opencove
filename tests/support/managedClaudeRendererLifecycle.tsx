@@ -2,7 +2,8 @@ import { renderHook } from '@testing-library/react'
 import { vi } from 'vitest'
 import type { Node } from '@xyflow/react'
 import type { TerminalNodeData } from '../../src/contexts/workspace/presentation/renderer/types'
-import { CanvasStoreTestProvider } from './canvasStoreTestHarness'
+import { CANVAS_STORE_TEST_WORKSPACE_ID, CanvasStoreTestProvider } from './canvasStoreTestHarness'
+import { createStoreBackedChannels } from './workspaceCanvasStoreHarness'
 import { DEFAULT_AGENT_ENV_BY_PROVIDER } from '../../src/contexts/settings/domain/agentEnv'
 import { useWorkspaceCanvasAgentNodeLifecycle } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useAgentNodeLifecycle'
 import { createAppError } from '../../src/shared/errors/appError'
@@ -45,7 +46,6 @@ export function rendererLifecycleFixture(mounted: boolean, persisted = true) {
       website: null,
     },
   }
-  const nodesRef = { current: [node] }
   const binding = {
     nodeId: 'agent',
     activationId: 'adopted',
@@ -115,11 +115,11 @@ export function rendererLifecycleFixture(mounted: boolean, persisted = true) {
     agent: { launch },
     pty: { kill: vi.fn(async () => {}) },
   } as unknown as typeof window.opencoveApi
-  const setNodes = (update: (previous: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[]) => {
-    nodesRef.current = update(nodesRef.current)
-  }
-  const spacesRef = {
-    current: mounted
+  // The lifecycle reads the document; the specs keep their assertions on these views of it.
+  const { nodesRef, spacesRef, setNodes } = createStoreBackedChannels({
+    workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID,
+    nodes: [node],
+    spaces: mounted
       ? [
           {
             id: 'space',
@@ -132,14 +132,12 @@ export function rendererLifecycleFixture(mounted: boolean, persisted = true) {
           },
         ]
       : [],
-  }
+  })
   const hook = renderHook(
     () =>
       useWorkspaceCanvasAgentNodeLifecycle({
         workspaceId: 'workspace',
         workspacePath: '/repo',
-        nodesRef,
-        spacesRef,
         setNodes,
         bumpAgentLaunchToken: () => 1,
         isAgentLaunchTokenCurrent: () => true,

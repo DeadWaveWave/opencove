@@ -1,11 +1,15 @@
 import React, { useEffect } from 'react'
 import { act, waitFor } from '@testing-library/react'
-import { renderWithCanvasStore } from '../../support/canvasStoreTestHarness'
+import {
+  CANVAS_STORE_TEST_WORKSPACE_ID,
+  renderWithCanvasStore,
+} from '../../support/canvasStoreTestHarness'
+import { createCanvasDocumentHarness } from '../../support/canvasDocumentHarness'
+import { storeBackedChannelsOf } from '../../support/workspaceCanvasStoreHarness'
 import { describe, expect, it, vi } from 'vitest'
 import type { Node } from '@xyflow/react'
 import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { DEFAULT_AGENT_ENV_BY_PROVIDER } from '../../../src/contexts/settings/domain/agentEnv'
-import type { WorkspaceSpaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { useWorkspaceCanvasAgentNodeLifecycle } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useAgentNodeLifecycle'
 import { useWorkspaceCanvasPtyTaskCompletion } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/usePtyTaskCompletion'
 
@@ -62,10 +66,11 @@ function createAgentNode(): Node<TerminalNodeData> {
 
 describe('agent terminal layout sync', () => {
   it('does not trigger layout sync during agent lifecycle status updates', async () => {
-    const nodesRef = {
-      current: [createAgentNode()],
-    } as React.MutableRefObject<Node<TerminalNodeData>[]>
-    const spacesRef = { current: [] } as React.MutableRefObject<WorkspaceSpaceState[]>
+    createCanvasDocumentHarness({
+      workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID,
+      nodes: [createAgentNode()],
+    })
+    const { nodesRef } = storeBackedChannelsOf(CANVAS_STORE_TEST_WORKSPACE_ID)
 
     const setNodes = vi.fn(
       (
@@ -103,8 +108,6 @@ describe('agent terminal layout sync', () => {
 
     function Harness(): null {
       const { launchAgentInNode } = useWorkspaceCanvasAgentNodeLifecycle({
-        nodesRef,
-        spacesRef,
         setNodes,
         bumpAgentLaunchToken: () => 1,
         isAgentLaunchTokenCurrent: () => true,

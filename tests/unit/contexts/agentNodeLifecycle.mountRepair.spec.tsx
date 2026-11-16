@@ -114,6 +114,7 @@ describe('agent relaunch mount repair', () => {
     answers = []
     harness = createCanvasDocumentHarness({
       workspaceId: 'workspace-a',
+      nodes: [agentNode()],
       spaces: [owningSpace('space-a')],
     })
     useAppStore.setState(state => ({
@@ -123,6 +124,7 @@ describe('agent relaunch mount repair', () => {
           ...state.workspaces[0],
           id: 'workspace-b',
           name: 'workspace-b',
+          nodes: [agentNode()],
           spaces: [owningSpace('space-b')],
         },
       ],
@@ -157,13 +159,8 @@ describe('agent relaunch mount repair', () => {
   })
 
   function renderLifecycle(options: { hookWorkspaceId?: string } = {}) {
-    // Stable between renders, as the canvas's are, so that a callback is rebuilt only when its own
+    // Stable between renders, as the canvas's is, so that a callback is rebuilt only when its own
     // dependencies change.
-    const spacesRef = {
-      get current() {
-        return spacesOf(shown)
-      },
-    }
     const setNodes = (updater: (prev: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[]) => {
       nodes.current = updater(nodes.current)
     }
@@ -172,9 +169,6 @@ describe('agent relaunch mount repair', () => {
         useWorkspaceCanvasAgentNodeLifecycle({
           workspaceId: options.hookWorkspaceId ?? shown,
           workspacePath: '/repo',
-          nodesRef: nodes,
-          // The real getter reads the store; this one reads the workspace that is shown.
-          spacesRef,
           setNodes,
           bumpAgentLaunchToken: () => 1,
           isAgentLaunchTokenCurrent: () => true,

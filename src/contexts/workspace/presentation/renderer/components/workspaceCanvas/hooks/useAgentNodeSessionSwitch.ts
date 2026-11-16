@@ -1,36 +1,30 @@
 import type { ManagedClaudeLifecycleReceipt } from '@shared/contracts/managedClaudeLaunch'
-import { useCallback, type MutableRefObject } from 'react'
-import type { Node } from '@xyflow/react'
+import { useCallback } from 'react'
 import type { AgentSessionSummary } from '@shared/contracts/dto'
-import type { TerminalNodeData } from '../../../types'
 import {
   appendTaskAgentSessionRecordToHistory,
   createTaskAgentSessionRecord,
 } from '../../../utils/agentSessionHistory'
 import { isResumeSessionBindingVerified } from '../../../utils/agentResumeBinding'
+import { useCanvasDocumentCommands, useReadCanvasDocument } from '../../../store/canvasStoreContext'
 import { findAgentNode, type RelaunchAgentNodeOptions } from './useAgentNodeLifecycle.support'
-
-type SetNodes = (
-  updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-  options?: { syncLayout?: boolean },
-) => void
+import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 
 export function useAgentNodeSessionSwitch({
-  nodesRef,
   setNodes,
   relaunchAgentNode,
-  onRequestPersistFlush,
 }: {
-  nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
-  setNodes: SetNodes
+  setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']
   relaunchAgentNode: (
     options: RelaunchAgentNodeOptions,
   ) => Promise<void | ManagedClaudeLifecycleReceipt>
-  onRequestPersistFlush?: () => void
 }): (nodeId: string, summary: AgentSessionSummary) => Promise<void> {
+  const readDocument = useReadCanvasDocument()
+  const { requestPersistFlush } = useCanvasDocumentCommands()
+
   return useCallback(
     async (nodeId: string, summary: AgentSessionSummary) => {
-      const node = findAgentNode(nodeId, nodesRef.current)
+      const node = findAgentNode(nodeId, readDocument().nodes)
       if (!node || summary.provider !== node.data.agent.provider) {
         return
       }
@@ -60,13 +54,15 @@ export function useAgentNodeSessionSwitch({
         startedAtOverride: summary.startedAt ?? undefined,
       })
 
-      const switchedNode = findAgentNode(nodeId, nodesRef.current)
+      const switchedNode = findAgentNode(nodeId, readDocument().nodes)
       const switchCommitted = receipt
         ? receipt.binding.tuple.resumeSessionId === summary.sessionId
         : switchedNode !== null &&
           isResumeSessionBindingVerified(switchedNode.data.agent) &&
           switchedNode.data.agent.resumeSessionId === summary.sessionId &&
           switchedNode.data.agent.executionDirectory === summary.cwd
+      // The flush follows the write that records the old session on its task, and is the only one;
+      // without that write it is requested on its own.
       if (switchCommitted && previousTaskNodeId && previousSessionRecord) {
         setNodes(
           prevNodes =>
@@ -76,11 +72,12 @@ export function useAgentNodeSessionSwitch({
               agentSessionRecord: previousSessionRecord,
               now: switchedAt,
             }),
-          { syncLayout: false },
+          { syncLayout: false, flush: true },
         )
+      } else {
+        requestPersistFlush()
       }
-      onRequestPersistFlush?.()
     },
-    [nodesRef, onRequestPersistFlush, relaunchAgentNode, setNodes],
+    [readDocument, relaunchAgentNode, requestPersistFlush, setNodes],
   )
 }
