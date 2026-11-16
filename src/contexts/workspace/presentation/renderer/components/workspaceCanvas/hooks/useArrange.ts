@@ -11,16 +11,19 @@ import type {
   FocusNodeTargetZoom,
   StandardWindowSizeBucket,
 } from '@contexts/settings/domain/agentSettings'
-import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
+import type { TerminalNodeData } from '../../../types'
+import { useCanvasDocumentCommands, useReadCanvasDocument } from '../../../store/canvasStoreContext'
 import {
   arrangeWorkspaceAll,
   arrangeWorkspaceCanvas,
   arrangeWorkspaceInSpace,
+  type WorkspaceArrangeResult,
   type WorkspaceArrangeStyle,
   type WorkspaceArrangeWarning,
 } from '../../../utils/workspaceArrange'
 import { resolveWorkspaceCanvasAnimationDuration } from '../helpers'
 import type { ShowWorkspaceCanvasMessage } from '../types'
+import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 import { bindWorkspaceCanvasArrangeInSpaceTestAction } from '../testHarness'
 
 const DEFAULT_VIEWPORT_WIDTH = 1440
@@ -66,24 +69,13 @@ function summarizeWarnings(warnings: WorkspaceArrangeWarning[]): { skippedSpaceC
 export function useWorkspaceCanvasArrange({
   reactFlow,
   focusNodeTargetZoom,
-  nodesRef,
-  spacesRef,
-  setNodes,
-  onSpacesChange,
-  onRequestPersistFlush,
+  updateCanvasDocument,
   onShowMessage,
   standardWindowSizeBucket,
 }: {
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
   focusNodeTargetZoom: FocusNodeTargetZoom
-  nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
-  spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
-  setNodes: (
-    updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-    options?: { syncLayout?: boolean },
-  ) => void
-  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
-  onRequestPersistFlush?: () => void
+  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
   onShowMessage?: ShowWorkspaceCanvasMessage
   standardWindowSizeBucket: StandardWindowSizeBucket
 }): {
@@ -92,34 +84,39 @@ export function useWorkspaceCanvasArrange({
   arrangeInSpace: (spaceId: string, style?: WorkspaceArrangeStyle) => void
 } {
   const { t } = useTranslation()
+  const readDocument = useReadCanvasDocument()
+  const { requestPersistFlush } = useCanvasDocumentCommands()
   const viewportWidth = useStore(state => state.width)
   const viewportHeight = useStore(state => state.height)
   const viewportMinZoom = useStore(state => state.minZoom)
   const viewportMaxZoom = useStore(state => state.maxZoom)
 
+  // Plans from the nodes and the Spaces of the document when the write runs, and writes the nodes
+  // and the Spaces together. A layout that changes nothing is neither written nor flushed, and
+  // does not move the viewport. Returns the layout, for the warnings.
   const commitArrange = useCallback(
     (
-      result: {
-        nodes: Node<TerminalNodeData>[]
-        spaces: WorkspaceSpaceState[]
-        didChange: boolean
-      },
+      plan: (input: Pick<WorkspaceArrangeResult, 'nodes' | 'spaces'>) => WorkspaceArrangeResult,
       options?: { focusSpaceId?: string },
-    ) => {
-      if (!result.didChange) {
-        return
+    ): WorkspaceArrangeResult | null => {
+      const outcome: { result: WorkspaceArrangeResult | null } = { result: null }
+      updateCanvasDocument(
+        ({ nodes, spaces }) => {
+          const planned = plan({ nodes, spaces })
+          outcome.result = planned
+          return planned.didChange
+            ? { nodes: planned.nodes, spaces: planned.spaces }
+            : { nodes, spaces }
+        },
+        { syncLayout: false },
+      )
+
+      const { result } = outcome
+      if (!result?.didChange) {
+        return result
       }
 
-      // Read before the write: `setNodes` stores the Spaces again (sanitized), so `spacesRef`
-      // no longer holds the array this result was computed from afterwards.
-      const spacesBefore = spacesRef.current
-      setNodes(() => result.nodes, { syncLayout: false })
-
-      if (result.spaces !== spacesBefore) {
-        onSpacesChange(result.spaces)
-      }
-
-      onRequestPersistFlush?.()
+      requestPersistFlush()
 
       const schedule =
         typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function'
@@ -127,8 +124,9 @@ export function useWorkspaceCanvasArrange({
           : (callback: FrameRequestCallback) => setTimeout(() => callback(0), 0)
 
       schedule(() => {
+        const document = readDocument()
         if (options?.focusSpaceId) {
-          const space = spacesRef.current.find(item => item.id === options.focusSpaceId) ?? null
+          const space = document.spaces.find(item => item.id === options.focusSpaceId) ?? null
           if (!space?.rect) {
             return
           }
@@ -151,22 +149,22 @@ export function useWorkspaceCanvasArrange({
           return
         }
 
-        if (nodesRef.current.length > 0) {
+        if (document.nodes.length > 0) {
           void reactFlow.fitView({
             padding: 0.16,
             duration: resolveWorkspaceCanvasAnimationDuration(220),
           })
         }
       })
+
+      return result
     },
     [
       focusNodeTargetZoom,
-      nodesRef,
-      onRequestPersistFlush,
-      onSpacesChange,
+      readDocument,
       reactFlow,
-      setNodes,
-      spacesRef,
+      requestPersistFlush,
+      updateCanvasDocument,
       viewportHeight,
       viewportMaxZoom,
       viewportMinZoom,
@@ -178,18 +176,18 @@ export function useWorkspaceCanvasArrange({
     (style?: WorkspaceArrangeStyle) => {
       const viewport = resolveViewportSize()
       const wrapWidth = resolveArrangeWrapWidth(viewport)
-      const result = arrangeWorkspaceAll({
-        nodes: nodesRef.current,
-        spaces: spacesRef.current,
-        wrapWidth,
-        viewport,
-        standardWindowSizeBucket,
-        style,
-      })
+      const result = commitArrange(({ nodes, spaces }) =>
+        arrangeWorkspaceAll({
+          nodes,
+          spaces,
+          wrapWidth,
+          viewport,
+          standardWindowSizeBucket,
+          style,
+        }),
+      )
 
-      commitArrange(result)
-
-      const { skippedSpaceCount } = summarizeWarnings(result.warnings)
+      const { skippedSpaceCount } = summarizeWarnings(result?.warnings ?? [])
       if (skippedSpaceCount > 0) {
         onShowMessage?.(
           t('messages.arrangeAllSkippedSpaces', { count: skippedSpaceCount }),
@@ -197,47 +195,48 @@ export function useWorkspaceCanvasArrange({
         )
       }
     },
-    [commitArrange, nodesRef, onShowMessage, spacesRef, standardWindowSizeBucket, t],
+    [commitArrange, onShowMessage, standardWindowSizeBucket, t],
   )
 
   const arrangeCanvas = useCallback(
     (style?: WorkspaceArrangeStyle) => {
       const viewport = resolveViewportSize()
       const wrapWidth = resolveArrangeWrapWidth(viewport)
-      const result = arrangeWorkspaceCanvas({
-        nodes: nodesRef.current,
-        spaces: spacesRef.current,
-        wrapWidth,
-        viewport,
-        standardWindowSizeBucket,
-        style,
-      })
-
-      commitArrange(result)
+      commitArrange(({ nodes, spaces }) =>
+        arrangeWorkspaceCanvas({
+          nodes,
+          spaces,
+          wrapWidth,
+          viewport,
+          standardWindowSizeBucket,
+          style,
+        }),
+      )
     },
-    [commitArrange, nodesRef, spacesRef, standardWindowSizeBucket],
+    [commitArrange, standardWindowSizeBucket],
   )
 
   const arrangeInSpace = useCallback(
     (spaceId: string, style?: WorkspaceArrangeStyle) => {
       const viewport = resolveViewportSize()
-      const result = arrangeWorkspaceInSpace({
-        spaceId,
-        nodes: nodesRef.current,
-        spaces: spacesRef.current,
-        viewport,
-        standardWindowSizeBucket,
-        style,
-      })
+      const result = commitArrange(
+        ({ nodes, spaces }) =>
+          arrangeWorkspaceInSpace({
+            spaceId,
+            nodes,
+            spaces,
+            viewport,
+            standardWindowSizeBucket,
+            style,
+          }),
+        { focusSpaceId: spaceId },
+      )
 
-      if (result.warnings.some(warning => warning.kind === 'space_no_room')) {
+      if (result?.warnings.some(warning => warning.kind === 'space_no_room')) {
         onShowMessage?.(t('messages.arrangeSpaceNoRoom'), 'warning')
-        return
       }
-
-      commitArrange(result, { focusSpaceId: spaceId })
     },
-    [commitArrange, nodesRef, onShowMessage, spacesRef, standardWindowSizeBucket, t],
+    [commitArrange, onShowMessage, standardWindowSizeBucket, t],
   )
 
   useLayoutEffect(() => {
