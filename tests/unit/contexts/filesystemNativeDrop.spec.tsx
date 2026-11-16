@@ -1,4 +1,4 @@
-import { act, cleanup, renderHook } from '@testing-library/react'
+import { act, cleanup } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { DragEvent } from 'react'
 import {
@@ -343,19 +343,20 @@ describe('native filesystem drops', () => {
     collapsed => {
       const nodesRef = { current: [] as Node<TerminalNodeData>[] }
       let collapsedAtPublish = false
-      const hook = renderHook(() =>
-        useWorkspaceCanvasFilesystemNodeCreation({
-          nodesRef,
-          spacesRef: { current: [] },
-          standardWindowSizeBucket: 'regular',
-          setNodes: update => {
-            nodesRef.current = update(nodesRef.current)
-            collapsedAtPublish =
-              useCanvasCollapseStore.getState().workspaces.one?.collapsedNodeIds[
-                nodesRef.current[0].id
-              ] === true
-          },
-        }),
+      createCanvasDocumentHarness({ workspaceId: 'one' })
+      const hook = renderInCanvasDocument(
+        () =>
+          useWorkspaceCanvasFilesystemNodeCreation({
+            standardWindowSizeBucket: 'regular',
+            setNodes: update => {
+              nodesRef.current = update(nodesRef.current)
+              collapsedAtPublish =
+                useCanvasCollapseStore.getState().workspaces.one?.collapsedNodeIds[
+                  nodesRef.current[0].id
+                ] === true
+            },
+          }),
+        { workspaceId: 'one' },
       )
       act(() => {
         hook.result.current.createDocumentNode(
