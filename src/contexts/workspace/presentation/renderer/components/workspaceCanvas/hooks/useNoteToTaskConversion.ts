@@ -45,6 +45,15 @@ function toTaskNode(
   }
 }
 
+// The text of a window that can be converted, or null for any other window.
+function resolveNoteText(node: Node<TerminalNodeData> | undefined | null): string | null {
+  if (!node || node.data.kind !== 'note' || !node.data.note) {
+    return null
+  }
+
+  return node.data.note.text
+}
+
 function resolveFallbackTaskTitle(requirement: string, fallbackTitle: string): string {
   const cleanedRequirement = requirement.replace(/\s+/g, ' ').trim()
   if (cleanedRequirement.length === 0) {
@@ -107,12 +116,14 @@ export function useWorkspaceCanvasNoteToTaskConversion({
         return false
       }
 
-      const selected = readDocument().nodes.find(node => node.id === normalizedNodeId) ?? null
-      if (!selected || selected.data.kind !== 'note' || !selected.data.note) {
+      const selectedText = resolveNoteText(
+        readDocument().nodes.find(node => node.id === normalizedNodeId),
+      )
+      if (selectedText === null) {
         return false
       }
 
-      if (selected.data.note.text.trim().length === 0) {
+      if (selectedText.trim().length === 0) {
         onShowMessage?.(t('messages.noteToTaskRequiresContent'), 'warning')
         return false
       }
@@ -124,12 +135,8 @@ export function useWorkspaceCanvasNoteToTaskConversion({
 
       updateCanvasDocument(({ nodes, spaces }) => {
         const target = nodes.find(node => node.id === normalizedNodeId)
-        if (!target || target.data.kind !== 'note' || !target.data.note) {
-          return { nodes, spaces }
-        }
-
-        const requirement = target.data.note.text.trim()
-        if (requirement.length === 0) {
+        const requirement = resolveNoteText(target)?.trim() ?? ''
+        if (!target || requirement.length === 0) {
           return { nodes, spaces }
         }
 
