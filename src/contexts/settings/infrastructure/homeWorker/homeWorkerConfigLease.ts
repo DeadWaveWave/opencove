@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
+import type { RmOptions } from 'node:fs'
 import { resolve } from 'node:path'
 
 export const HOME_WORKER_CONFIG_LEASE_FILE = 'home-worker-config.lease'
@@ -19,6 +20,9 @@ type LeaseDependencies = {
   wait?: (delayMs: number) => Promise<void>
   isProcessAlive?: (pid: number) => boolean
   token?: () => string
+  platform?: NodeJS.Platform
+  rename?: (from: string, to: string) => Promise<void>
+  rm?: (path: string, options?: RmOptions) => Promise<void>
 }
 
 function parseLeaseRecord(value: string | null): LeaseRecord | null {
