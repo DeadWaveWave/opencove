@@ -24,7 +24,11 @@ import {
   resolveAgentExecutableOverride,
   resolveWorkspaceAgentLaunchBinding,
 } from './useWorkspaceAgentLaunch.shared'
-import { useCanvasUiCommands, useReadCanvasUi } from '../../../store/canvasStoreContext'
+import {
+  useCanvasDocumentCommands,
+  useCanvasUiCommands,
+  useReadCanvasUi,
+} from '../../../store/canvasStoreContext'
 
 interface UseAgentLauncherParams {
   agentSettings: AgentSettings
@@ -72,6 +76,7 @@ export function useWorkspaceCanvasAgentLauncher({
 } {
   const ui = useCanvasUiCommands()
   const readUi = useReadCanvasUi()
+  const documentCommands = useCanvasDocumentCommands()
   const { t } = useTranslation()
   const launching = useRef(false)
 
@@ -109,9 +114,7 @@ export function useWorkspaceCanvasAgentLauncher({
             currentMountId: anchorSpace?.targetMountId ?? null,
             executionDirectory: resolveSpaceWorkingDirectory(anchorSpace, workspacePath),
             targetSpace: anchorSpace,
-            spacesRef,
-            onSpacesChange,
-            onRequestPersistFlush,
+            updateSpaces: documentCommands.updateSpaces,
             mountQueryFailurePolicy: anchorSpace ? 'ignore' : 'throw',
           })
         } catch (error) {
@@ -144,9 +147,7 @@ export function useWorkspaceCanvasAgentLauncher({
               currentMountId: null,
               executionDirectory: initialBinding.executionDirectory,
               targetSpace: anchorSpace,
-              spacesRef,
-              onSpacesChange,
-              onRequestPersistFlush,
+              updateSpaces: documentCommands.updateSpaces,
               mountQueryFailurePolicy: anchorSpace ? 'ignore' : 'throw',
             })
             return nextBinding.mountId && nextBinding.mountId !== failedMountId ? nextBinding : null
@@ -221,6 +222,7 @@ export function useWorkspaceCanvasAgentLauncher({
       agentSettings,
       buildAgentNodeTitle,
       createNodeForSession,
+      documentCommands,
       environmentVariables,
       nodesRef,
       onRequestPersistFlush,

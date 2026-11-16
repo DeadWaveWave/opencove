@@ -17,6 +17,7 @@ import type { CreateNodeInput, ShowWorkspaceCanvasMessage } from '../types'
 import { resolveDefaultAgentLaunchGeometry } from './agentLaunchGeometry'
 import { assignNodeToSpaceAndExpand } from './useInteractions.spaceAssignment'
 import { composeProjectRolePrompt } from './useRolePrompt'
+import type { CanvasDocumentCommands } from '../../../store/canvasStoreContext'
 import {
   buildMergedAgentLaunchEnv,
   launchWorkspaceAgentSession,
@@ -39,6 +40,7 @@ export interface RoleRunActionContext {
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   setNodes: SetNodes
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
+  updateSpaces: CanvasDocumentCommands['updateSpaces']
   onRequestPersistFlush?: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
@@ -144,9 +146,7 @@ export async function runRoleNodeAction(
     currentMountId: owningSpace?.targetMountId ?? null,
     executionDirectory: resolveSpaceWorkingDirectory(owningSpace, context.workspacePath),
     targetSpace: owningSpace,
-    spacesRef: context.spacesRef,
-    onSpacesChange: context.onSpacesChange,
-    onRequestPersistFlush: context.onRequestPersistFlush,
+    updateSpaces: context.updateSpaces,
   })
   const launchGeometry = resolveDefaultAgentLaunchGeometry({
     bucket: context.agentSettings.standardWindowSizeBucket,
@@ -178,9 +178,7 @@ export async function runRoleNodeAction(
           currentMountId: null,
           executionDirectory: initialBinding.executionDirectory,
           targetSpace: owningSpace,
-          spacesRef: context.spacesRef,
-          onSpacesChange: context.onSpacesChange,
-          onRequestPersistFlush: context.onRequestPersistFlush,
+          updateSpaces: context.updateSpaces,
         })
         return nextBinding.mountId && nextBinding.mountId !== failedMountId ? nextBinding : null
       },

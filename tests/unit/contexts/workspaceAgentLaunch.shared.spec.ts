@@ -220,6 +220,34 @@ describe('workspaceAgentLaunch.shared', () => {
     expect(harness.readStoreDocument().spaces.map(item => item.targetMountId)).toEqual([null])
   })
 
+  it('writes nothing when the store already holds the resolved mount at write time', async () => {
+    const harness = createCanvasDocumentHarness({ spaces: [apiSpace()] })
+    const updateSpaces = renderUpdateSpaces(harness.workspaceId)
+    const invoke = vi.mocked(window.opencoveApi.controlSurface.invoke)
+    let resolveMounts!: (value: unknown) => void
+    invoke.mockReturnValueOnce(new Promise(resolve => (resolveMounts = resolve)) as never)
+
+    const binding = resolveWorkspaceAgentLaunchBinding({
+      workspaceId: 'workspace-1',
+      workspacePath: '/project',
+      currentMountId: null,
+      executionDirectory: '/project/apps/api',
+      targetSpace: apiSpace(),
+      updateSpaces,
+    })
+    act(() => {
+      replaceWorkspaceSpaces('workspace-1', [apiSpace({ targetMountId: 'mount-api' })])
+    })
+    harness.notifications.mockClear()
+    resolveMounts({ mounts: [{ mountId: 'mount-api', rootPath: '/project/apps/api' }] })
+    await binding
+
+    expect(harness.notifications).not.toHaveBeenCalled()
+    expect(harness.readStoreDocument().spaces.map(item => item.targetMountId)).toEqual([
+      'mount-api',
+    ])
+  })
+
   it('writes nothing when there is no target Space', async () => {
     const harness = createCanvasDocumentHarness({ spaces: [apiSpace()] })
     const updateSpaces = renderUpdateSpaces(harness.workspaceId)

@@ -191,9 +191,7 @@ export async function runTaskAgentAction(
     currentMountId: mountId,
     executionDirectory: taskDirectory,
     targetSpace: taskSpace,
-    spacesRef: context.spacesRef,
-    onSpacesChange: owned ? undefined : context.onSpacesChange,
-    onRequestPersistFlush: owned ? undefined : context.onRequestPersistFlush,
+    updateSpaces: owned ? undefined : context.updateSpaces,
   })
   mountId = initialBinding.mountId
   taskDirectory = initialBinding.executionDirectory
@@ -272,9 +270,7 @@ export async function runTaskAgentAction(
           currentMountId: null,
           executionDirectory: taskDirectory,
           targetSpace: taskSpace,
-          spacesRef: context.spacesRef,
-          onSpacesChange: context.onSpacesChange,
-          onRequestPersistFlush: context.onRequestPersistFlush,
+          updateSpaces: context.updateSpaces,
         })
         return nextBinding.mountId && nextBinding.mountId !== failedMountId ? nextBinding : null
       },

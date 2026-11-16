@@ -6,6 +6,7 @@ import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type { CreateNodeInput } from '../types'
 import { assignNodeToSpaceAndExpand } from './useInteractions.spaceAssignment'
 import type { AgentNodeLaunchOverrides } from './useAgentNodeLifecycle.support'
+import type { CanvasDocumentCommands } from '../../../store/canvasStoreContext'
 
 type TaskRuntimeNode = Node<TerminalNodeData> & {
   data: TerminalNodeData & {
@@ -18,6 +19,7 @@ export interface TaskActionContext {
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
+  updateSpaces: CanvasDocumentCommands['updateSpaces']
   setNodes: (
     updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
     options?: { syncLayout?: boolean },

@@ -21,6 +21,7 @@ import type {
   UpdateTaskStatus,
 } from '../types'
 import { resumeTaskAgentSessionAction, runTaskAgentAction } from './useTaskActions.agentSession'
+import { useCanvasDocumentCommands } from '../../../store/canvasStoreContext'
 import type { TaskActionContext } from './useTaskActions.agentSession.shared'
 
 interface UseTaskActionsParams {
@@ -81,6 +82,7 @@ export function useWorkspaceCanvasTaskActions({
   ) => Promise<{ title: string; priority: TaskPriority; tags: string[] }>
 } {
   const { t } = useTranslation()
+  const documentCommands = useCanvasDocumentCommands()
 
   const runTaskAgent = useCallback(
     async (taskNodeId: string) => {
@@ -88,6 +90,7 @@ export function useWorkspaceCanvasTaskActions({
         nodesRef,
         spacesRef,
         onSpacesChange,
+        updateSpaces: documentCommands.updateSpaces,
         setNodes,
         createNodeForSession,
         buildAgentNodeTitle,
@@ -105,6 +108,7 @@ export function useWorkspaceCanvasTaskActions({
       agentSettings,
       buildAgentNodeTitle,
       createNodeForSession,
+      documentCommands,
       environmentVariables,
       launchAgentInNode,
       nodesRef,
@@ -156,6 +160,7 @@ export function useWorkspaceCanvasTaskActions({
         nodesRef,
         spacesRef,
         onSpacesChange,
+        updateSpaces: documentCommands.updateSpaces,
         setNodes,
         createNodeForSession,
         buildAgentNodeTitle,
@@ -172,6 +177,7 @@ export function useWorkspaceCanvasTaskActions({
       agentSettings,
       buildAgentNodeTitle,
       createNodeForSession,
+      documentCommands,
       environmentVariables,
       nodesRef,
       onRequestPersistFlush,

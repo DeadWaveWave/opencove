@@ -20,7 +20,11 @@ import type { CreateNodeInput, NodePlacementOptions, ShowWorkspaceCanvasMessage 
 import { resolveDefaultRoleWindowSize } from '../constants'
 import type { WorkspaceCanvasActionRefs } from './useActionRefs'
 import { runRoleNodeAction } from './useRoleActions.run'
-import { useCanvasUiCommands, useReadCanvasUi } from '../../../store/canvasStoreContext'
+import {
+  useCanvasDocumentCommands,
+  useCanvasUiCommands,
+  useReadCanvasUi,
+} from '../../../store/canvasStoreContext'
 
 type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -89,6 +93,7 @@ export function useWorkspaceCanvasRoleActions({
 } {
   const ui = useCanvasUiCommands()
   const readUi = useReadCanvasUi()
+  const documentCommands = useCanvasDocumentCommands()
 
   const { t } = useTranslation()
   const setAgentSettings = useAppStore(state => state.setAgentSettings)
@@ -298,6 +303,7 @@ export function useWorkspaceCanvasRoleActions({
         spacesRef,
         setNodes,
         onSpacesChange,
+        updateSpaces: documentCommands.updateSpaces,
         onRequestPersistFlush,
         onShowMessage,
         createNodeForSession,
@@ -312,6 +318,7 @@ export function useWorkspaceCanvasRoleActions({
       appendRoleRunRecord,
       buildAgentNodeTitle,
       createNodeForSession,
+      documentCommands,
       environmentVariables,
       nodesRef,
       onRequestPersistFlush,
