@@ -8,6 +8,12 @@ import type {
 } from '@shared/contracts/dto'
 import type { TerminalNodeData } from '@contexts/workspace/presentation/renderer/types'
 import { createPtyEventHub, type PtyEventHub } from '@app/renderer/shell/utils/ptyEventHub'
+import {
+  CANVAS_STORE_TEST_WORKSPACE_ID,
+  CanvasStoreTestProvider,
+} from '../../support/canvasStoreTestHarness'
+import { createCanvasDocumentHarness } from '../../support/canvasDocumentHarness'
+import { storeBackedChannelsOf } from '../../support/workspaceCanvasStoreHarness'
 import { useWorkspaceCanvasPtyTaskCompletion } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/usePtyTaskCompletion'
 
 const shared = vi.hoisted(() => ({ hub: null as PtyEventHub | null }))
@@ -33,8 +39,11 @@ function setup() {
   })
   shared.hub.onMetadata(() => undefined)
   emitMetadata({ sessionId: 'runtime-1', resumeSessionId: 'resume-1' })
-  const nodesRef = {
-    current: [
+  // The hook reads the committed nodes of its workspace from the store: the harness seeds it, and
+  // `nodesRef` is a view of it for the assertions. The harness's flush spy is the shell's flush.
+  const documentHarness = createCanvasDocumentHarness({
+    workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID,
+    nodes: [
       {
         id: 'agent-1',
         position: { x: 0, y: 0 },
@@ -52,7 +61,8 @@ function setup() {
         },
       } as Node<TerminalNodeData>,
     ],
-  }
+  })
+  const { nodesRef } = storeBackedChannelsOf(CANVAS_STORE_TEST_WORKSPACE_ID)
   let resolve!: (value: AgentSessionSummary[]) => void
   const pending = new Promise<AgentSessionSummary[]>(onResolve => {
     resolve = onResolve
@@ -61,7 +71,7 @@ function setup() {
   const update = vi.fn((updater: (nodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[]) => {
     nodesRef.current = updater(nodesRef.current)
   })
-  const flush = vi.fn()
+  const flush = documentHarness.flush
   const summary: AgentSessionSummary = {
     sessionId: 'resume-1',
     provider: 'codex',
@@ -94,23 +104,19 @@ describe('PTY title subscription lifetime', () => {
   it('keeps one title request through callback changes and uses the latest commit callbacks', async () => {
     const state = setup()
     const { rerender } = renderHook(useWorkspaceCanvasPtyTaskCompletion, {
+      wrapper: CanvasStoreTestProvider,
       initialProps: {
-        nodesRef: state.nodesRef,
         nodes: state.nodesRef.current,
         listAgentSessions: state.query,
         setNodes: state.update,
-        onRequestPersistFlush: state.flush,
       },
     })
     const latestUpdate = vi.fn(state.update)
-    const latestFlush = vi.fn()
     for (let index = 0; index < 10; index++) {
       rerender({
-        nodesRef: state.nodesRef,
         nodes: [...state.nodesRef.current],
         listAgentSessions: vi.fn(state.query),
         setNodes: latestUpdate,
-        onRequestPersistFlush: latestFlush,
       })
     }
     const requests = state.query.mock.calls.length
@@ -120,19 +126,18 @@ describe('PTY title subscription lifetime', () => {
     expect(requests).toBe(1)
     expect(state.nodesRef.current[0].data.title).toBe('codex · Review persistence')
     expect(latestUpdate).toHaveBeenCalled()
-    expect(latestFlush).toHaveBeenCalledTimes(1)
-    expect(state.flush).not.toHaveBeenCalled()
+    expect(state.flush).toHaveBeenCalledTimes(1)
   })
 
   it.each(['unmount', 'session switch'] as const)('discards the result after %s', async action => {
     const state = setup()
-    const { unmount } = renderHook(() =>
-      useWorkspaceCanvasPtyTaskCompletion({
-        nodesRef: state.nodesRef,
-        listAgentSessions: state.query,
-        setNodes: state.update,
-        onRequestPersistFlush: state.flush,
-      }),
+    const { unmount } = renderHook(
+      () =>
+        useWorkspaceCanvasPtyTaskCompletion({
+          listAgentSessions: state.query,
+          setNodes: state.update,
+        }),
+      { wrapper: CanvasStoreTestProvider },
     )
     if (action === 'unmount') {
       unmount()
@@ -159,13 +164,13 @@ describe('PTY title subscription lifetime', () => {
       node.data.agent!.model = model
       node.data.agent!.prompt = ''
       const query = vi.fn(async () => [{ ...state.summary, title: null }] as AgentSessionSummary[])
-      renderHook(() =>
-        useWorkspaceCanvasPtyTaskCompletion({
-          nodesRef: state.nodesRef,
-          listAgentSessions: query,
-          setNodes: state.update,
-          onRequestPersistFlush: state.flush,
-        }),
+      renderHook(
+        () =>
+          useWorkspaceCanvasPtyTaskCompletion({
+            listAgentSessions: query,
+            setNodes: state.update,
+          }),
+        { wrapper: CanvasStoreTestProvider },
       )
       await act(async () => vi.runAllTimersAsync())
       expect(query).toHaveBeenCalledTimes(5)
@@ -189,12 +194,11 @@ describe('PTY title subscription lifetime', () => {
   it('starts a fresh subscription when returning to a workspace', async () => {
     const state = setup()
     const props = {
-      nodesRef: state.nodesRef,
       listAgentSessions: state.query,
       setNodes: state.update,
-      onRequestPersistFlush: state.flush,
     }
     const { rerender } = renderHook(useWorkspaceCanvasPtyTaskCompletion, {
+      wrapper: CanvasStoreTestProvider,
       initialProps: { ...props, workspaceId: 'first' },
     })
     const originalNodes = state.nodesRef.current
@@ -215,12 +219,14 @@ describe('PTY title subscription lifetime', () => {
       const originalNodes = state.nodesRef.current
       state.nodesRef.current = []
       const props = {
-        nodesRef: state.nodesRef,
         nodes: state.nodesRef.current,
         setNodes: state.update,
         listAgentSessions: state.query,
       }
-      const { rerender } = renderHook(useWorkspaceCanvasPtyTaskCompletion, { initialProps: props })
+      const { rerender } = renderHook(useWorkspaceCanvasPtyTaskCompletion, {
+        wrapper: CanvasStoreTestProvider,
+        initialProps: props,
+      })
       act(() =>
         state.emitState({
           sessionId: 'runtime-1',

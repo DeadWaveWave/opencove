@@ -4,7 +4,6 @@
     "tests/e2e/recovery.agent-placeholder-click-preserves-history.spec.ts": 1,
     "tests/e2e/recovery.agent-reopen.spec.ts": 1,
     "tests/e2e/space-archives.spec.ts": 1,
-    "tests/e2e/workspace-canvas.agent-last-message-copy.disabled-working.spec.ts": 1,
     "tests/e2e/workspace-canvas.agent-sidebar.spec.ts": 1,
     "tests/e2e/workspace-canvas.agent-standby-banner-context.spec.ts": 1,
     "tests/e2e/workspace-canvas.agent-status-submit.windows.spec.ts": 1,

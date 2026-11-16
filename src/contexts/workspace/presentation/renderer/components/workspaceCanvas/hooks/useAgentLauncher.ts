@@ -9,7 +9,7 @@ import {
   type StandardWindowSizeBucket,
 } from '@contexts/settings/domain/agentSettings'
 import { resolveSpaceWorkingDirectory } from '@contexts/space/application/resolveSpaceWorkingDirectory'
-import type { AgentNodeData, Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
+import type { AgentNodeData, Point, TerminalNodeData } from '../../../types'
 import { resolveLaunchedAgentResumeBinding } from '../../../utils/agentResumeBinding'
 import { resolveNodePlacementAnchorFromViewportCenter, toErrorMessage } from '../helpers'
 import type { CreateNodeInput, ShowWorkspaceCanvasMessage } from '../types'
@@ -28,6 +28,7 @@ import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 import {
   useCanvasDocumentCommands,
   useCanvasUiCommands,
+  useReadCanvasDocument,
   useReadCanvasUi,
 } from '../../../store/canvasStoreContext'
 
@@ -36,9 +37,7 @@ interface UseAgentLauncherParams {
   workspaceId: string
   workspacePath: string
   environmentVariables?: Record<string, string>
-  spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
   updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
-  onRequestPersistFlush?: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
   standardWindowSizeBucket: StandardWindowSizeBucket
@@ -53,9 +52,7 @@ export function useWorkspaceCanvasAgentLauncher({
   workspaceId,
   workspacePath,
   environmentVariables,
-  spacesRef,
   updateCanvasDocument,
-  onRequestPersistFlush,
   onShowMessage,
   createNodeForSession,
   standardWindowSizeBucket,
@@ -71,6 +68,7 @@ export function useWorkspaceCanvasAgentLauncher({
   const ui = useCanvasUiCommands()
   const readUi = useReadCanvasUi()
   const documentCommands = useCanvasDocumentCommands()
+  const readDocument = useReadCanvasDocument()
   const { t } = useTranslation()
   const launching = useRef(false)
 
@@ -98,7 +96,7 @@ export function useWorkspaceCanvasAgentLauncher({
         )
         const model = resolveAgentModel(agentSettings, provider)
         const executablePathOverride = resolveAgentExecutableOverride(agentSettings, provider)
-        const anchorSpace = findContainingSpaceByAnchor(spacesRef.current, cursorAnchor)
+        const anchorSpace = findContainingSpaceByAnchor(readDocument().spaces, cursorAnchor)
         const mergedEnv = buildMergedAgentLaunchEnv(agentSettings, provider, environmentVariables)
         let initialBinding: Awaited<ReturnType<typeof resolveWorkspaceAgentLaunchBinding>>
         try {
@@ -199,7 +197,8 @@ export function useWorkspaceCanvasAgentLauncher({
           updateCanvasDocument,
         })
 
-        onRequestPersistFlush?.()
+        // The assignment is one write of the nodes and the Spaces; the flush follows it.
+        documentCommands.requestPersistFlush()
       } catch (error) {
         onShowMessage?.(
           t('messages.agentLaunchFailed', { message: toErrorMessage(error) }),
@@ -215,9 +214,8 @@ export function useWorkspaceCanvasAgentLauncher({
       createNodeForSession,
       documentCommands,
       environmentVariables,
-      onRequestPersistFlush,
       onShowMessage,
-      spacesRef,
+      readDocument,
       standardWindowSizeBucket,
       t,
       updateCanvasDocument,

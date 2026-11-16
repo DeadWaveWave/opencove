@@ -3,7 +3,6 @@ import { useWorkspaceCanvasAgentNodeLifecycle } from './useAgentNodeLifecycle'
 import { useTerminalAgentSessionActions } from './useTerminalAgentSessionActions'
 
 export function useWorkspaceCanvasAgentSupport({
-  nodesRef,
   setNodes,
   bumpAgentLaunchToken,
   isAgentLaunchTokenCurrent,
@@ -11,15 +10,12 @@ export function useWorkspaceCanvasAgentSupport({
   workspaceId,
   workspacePath,
   environmentVariables,
-  spacesRef,
   updateCanvasDocument,
-  onRequestPersistFlush,
   onShowMessage,
   createNodeForSession,
   standardWindowSizeBucket,
   terminalDisplayMetrics,
 }: {
-  nodesRef: Parameters<typeof useWorkspaceCanvasAgentNodeLifecycle>[0]['nodesRef']
   setNodes: Parameters<typeof useWorkspaceCanvasAgentNodeLifecycle>[0]['setNodes']
   bumpAgentLaunchToken: Parameters<
     typeof useWorkspaceCanvasAgentNodeLifecycle
@@ -31,13 +27,9 @@ export function useWorkspaceCanvasAgentSupport({
   workspaceId: Parameters<typeof useWorkspaceCanvasAgentLauncher>[0]['workspaceId']
   workspacePath: Parameters<typeof useWorkspaceCanvasAgentLauncher>[0]['workspacePath']
   environmentVariables?: Record<string, string>
-  spacesRef: Parameters<typeof useWorkspaceCanvasAgentLauncher>[0]['spacesRef']
   updateCanvasDocument: Parameters<
     typeof useWorkspaceCanvasAgentLauncher
   >[0]['updateCanvasDocument']
-  onRequestPersistFlush?: Parameters<
-    typeof useWorkspaceCanvasAgentLauncher
-  >[0]['onRequestPersistFlush']
   onShowMessage?: Parameters<typeof useWorkspaceCanvasAgentLauncher>[0]['onShowMessage']
   createNodeForSession: Parameters<
     typeof useWorkspaceCanvasAgentLauncher
@@ -56,8 +48,6 @@ export function useWorkspaceCanvasAgentSupport({
   const lifecycle = useWorkspaceCanvasAgentNodeLifecycle({
     workspaceId,
     workspacePath,
-    nodesRef,
-    spacesRef,
     setNodes,
     bumpAgentLaunchToken,
     isAgentLaunchTokenCurrent,
@@ -69,14 +59,8 @@ export function useWorkspaceCanvasAgentSupport({
     agentEnvByProvider: agentSettings.agentEnvByProvider,
     agentExecutablePathOverrideByProvider: agentSettings.agentExecutablePathOverrideByProvider,
     environmentVariables,
-    onRequestPersistFlush,
   })
-  const overlayActions = useTerminalAgentSessionActions({
-    nodesRef,
-    setNodes,
-    onRequestPersistFlush,
-    onShowMessage,
-  })
+  const overlayActions = useTerminalAgentSessionActions({ setNodes, onShowMessage })
   const { buildAgentNodeTitle, launchAgentInNode, stopAgentNode } = lifecycle
 
   const { openAgentLauncher, openAgentLauncherForProvider, launchAgentAtFlowPosition } =
@@ -85,9 +69,7 @@ export function useWorkspaceCanvasAgentSupport({
       workspaceId,
       workspacePath,
       environmentVariables,
-      spacesRef,
       updateCanvasDocument,
-      onRequestPersistFlush,
       onShowMessage,
       createNodeForSession,
       standardWindowSizeBucket,

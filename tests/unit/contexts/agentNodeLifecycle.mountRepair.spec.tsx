@@ -20,6 +20,27 @@ import {
 
 const NODE_ID = 'agent-1'
 
+// In the commands test the reader keeps the value of the first render, so that only the document
+// commands can make the callback follow the switch.
+const frozen = vi.hoisted(() => ({ on: false, reader: null as unknown }))
+vi.mock(
+  '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext',
+  async importOriginal => {
+    const original = await importOriginal<Record<string, () => unknown>>()
+    return {
+      ...original,
+      useReadCanvasDocument: () => {
+        const real = original.useReadCanvasDocument()
+        if (!frozen.on) {
+          return real
+        }
+        frozen.reader ??= real
+        return frozen.reader
+      },
+    }
+  },
+)
+
 function agentNode(): Node<TerminalNodeData> {
   return {
     id: NODE_ID,
@@ -109,11 +130,14 @@ describe('agent relaunch mount repair', () => {
   let harness: ReturnType<typeof createCanvasDocumentHarness>
 
   beforeEach(() => {
+    frozen.on = false
+    frozen.reader = null
     shown = 'workspace-a'
     nodes = { current: [agentNode()] }
     answers = []
     harness = createCanvasDocumentHarness({
       workspaceId: 'workspace-a',
+      nodes: [agentNode()],
       spaces: [owningSpace('space-a')],
     })
     useAppStore.setState(state => ({
@@ -123,6 +147,7 @@ describe('agent relaunch mount repair', () => {
           ...state.workspaces[0],
           id: 'workspace-b',
           name: 'workspace-b',
+          nodes: [agentNode()],
           spaces: [owningSpace('space-b')],
         },
       ],
@@ -157,13 +182,8 @@ describe('agent relaunch mount repair', () => {
   })
 
   function renderLifecycle(options: { hookWorkspaceId?: string } = {}) {
-    // Stable between renders, as the canvas's are, so that a callback is rebuilt only when its own
+    // Stable between renders, as the canvas's is, so that a callback is rebuilt only when its own
     // dependencies change.
-    const spacesRef = {
-      get current() {
-        return spacesOf(shown)
-      },
-    }
     const setNodes = (updater: (prev: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[]) => {
       nodes.current = updater(nodes.current)
     }
@@ -172,9 +192,6 @@ describe('agent relaunch mount repair', () => {
         useWorkspaceCanvasAgentNodeLifecycle({
           workspaceId: options.hookWorkspaceId ?? shown,
           workspacePath: '/repo',
-          nodesRef: nodes,
-          // The real getter reads the store; this one reads the workspace that is shown.
-          spacesRef,
           setNodes,
           bumpAgentLaunchToken: () => 1,
           isAgentLaunchTokenCurrent: () => true,
@@ -251,6 +268,15 @@ describe('agent relaunch mount repair', () => {
   // Nothing else in the hook's arguments changes with the workspace here, so only the commands
   // in the dependency list can make the callback follow the switch.
   it('takes the commands of the render that made the callback, whatever else changed', async () => {
+    frozen.on = true
+    // Both workspaces hold a Space with the same id, so the frozen reader finds it in either.
+    useAppStore.setState(state => ({
+      workspaces: state.workspaces.map(workspace =>
+        workspace.id === 'workspace-b'
+          ? { ...workspace, spaces: [owningSpace('space-a', { name: 'in-b' })] }
+          : workspace,
+      ),
+    }))
     const view = renderLifecycle({ hookWorkspaceId: 'workspace-a' })
     act(() => {
       shown = 'workspace-b'
@@ -268,8 +294,8 @@ describe('agent relaunch mount repair', () => {
       await launched
     })
 
-    expect(spacesOf('workspace-b').map(item => item.targetMountId)).toEqual([
-      'mount-of-workspace-a',
+    expect(spacesOf('workspace-b').map(item => [item.name, item.targetMountId])).toEqual([
+      ['in-b', 'mount-of-workspace-a'],
     ])
     expect(workspaceOf('workspace-a')).toBe(workspaceABefore)
   })

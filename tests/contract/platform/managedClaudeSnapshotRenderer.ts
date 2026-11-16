@@ -1,5 +1,9 @@
 import { act, renderHook } from '@testing-library/react'
-import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
+import {
+  CANVAS_STORE_TEST_WORKSPACE_ID,
+  CanvasStoreTestProvider,
+} from '../../support/canvasStoreTestHarness'
+import { createStoreBackedChannels } from '../../support/workspaceCanvasStoreHarness'
 import { useWorkspaceCanvasAgentNodeLifecycle } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useAgentNodeLifecycle'
 import {
   prepareWorkspaceRuntimeNodes,
@@ -26,7 +30,11 @@ export async function rendererSnapshot(f: SnapshotFixture, operation: Operation)
     f.state.workspaces[0] as unknown as PersistedWorkspaceState,
   )
   const settings = normalizeAgentSettings(f.state.settings)
-  const nodesRef = { current: workspace.nodes }
+  const { nodesRef, setNodes } = createStoreBackedChannels({
+    workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID,
+    nodes: workspace.nodes,
+    spaces: workspace.spaces,
+  })
   if (operation.startsWith('prepare')) {
     nodesRef.current = await prepareWorkspaceRuntimeNodes({
       workspace: f.state.workspaces[0] as unknown as PersistedWorkspaceState,
@@ -39,11 +47,7 @@ export async function rendererSnapshot(f: SnapshotFixture, operation: Operation)
         useWorkspaceCanvasAgentNodeLifecycle({
           workspaceId: workspace.id,
           workspacePath: workspace.path,
-          nodesRef,
-          spacesRef: { current: workspace.spaces },
-          setNodes: update => {
-            nodesRef.current = update(nodesRef.current)
-          },
+          setNodes,
           bumpAgentLaunchToken: () => 1,
           isAgentLaunchTokenCurrent: () => true,
           agentFullAccess: false,

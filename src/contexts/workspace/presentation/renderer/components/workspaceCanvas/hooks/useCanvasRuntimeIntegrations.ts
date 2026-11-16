@@ -20,7 +20,6 @@ export function useWorkspaceCanvasRuntimeIntegrations({
   agentSettings,
   reactFlow,
   clearNodeSelection,
-  onRequestPersistFlush,
   onShowMessage,
   canvasState,
   nodePublishers,
@@ -35,7 +34,6 @@ export function useWorkspaceCanvasRuntimeIntegrations({
   agentSettings: AgentSettings
   reactFlow: RuntimeBindings['reactFlow']
   clearNodeSelection: RuntimeBindings['clearNodeSelection']
-  onRequestPersistFlush: RuntimeBindings['onRequestPersistFlush']
   onShowMessage: RuntimeBindings['onShowMessage']
   canvasState: ReturnType<typeof useWorkspaceCanvasState>
   nodePublishers: ReturnType<typeof useWorkspaceCanvasNodePublishers>
@@ -46,7 +44,6 @@ export function useWorkspaceCanvasRuntimeIntegrations({
     workspaceId,
     nodes: canvasState.flowNodes,
     setNodes: nodeStore.setNodes,
-    onRequestPersistFlush,
     actionRefs,
     clearNodeSelection,
     closeNode: taskUi.requestNodeClose,
@@ -66,7 +63,6 @@ export function useWorkspaceCanvasRuntimeIntegrations({
     switchAgentSession: agentSupport.switchAgentNodeSession,
     focusNodeOnClick: agentSettings.focusNodeOnClick,
     focusNodeTargetZoom: agentSettings.focusNodeTargetZoom,
-    nodesRef: nodeStore.nodesRef,
     reactFlow,
     onShowMessage,
   })

@@ -120,7 +120,6 @@ export function WorkspaceCanvasInner({
     nodeDragPointerAnchorRef: nodeDragSession.nodeDragPointerAnchorRef,
   })
   const agentSupport = workspaceCanvasHooks.useWorkspaceCanvasAgentSupport({
-    nodesRef: nodeStore.nodesRef,
     setNodes: nodeStore.setNodes,
     bumpAgentLaunchToken: nodeStore.bumpAgentLaunchToken,
     isAgentLaunchTokenCurrent: nodeStore.isAgentLaunchTokenCurrent,
@@ -128,9 +127,7 @@ export function WorkspaceCanvasInner({
     workspaceId,
     workspacePath,
     environmentVariables,
-    spacesRef: canvasState.spacesRef,
     updateCanvasDocument: nodeStore.updateCanvasDocument,
-    onRequestPersistFlush,
     onShowMessage,
     createNodeForSession: nodeStore.createNodeForSession,
     standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
@@ -274,7 +271,6 @@ export function WorkspaceCanvasInner({
     agentSettings,
     reactFlow,
     clearNodeSelection,
-    onRequestPersistFlush,
     onShowMessage,
     canvasState,
     nodePublishers,

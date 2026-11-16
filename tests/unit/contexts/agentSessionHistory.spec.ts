@@ -6,6 +6,11 @@ import {
   appendTaskAgentSessionRecordToHistory,
   createTaskAgentSessionRecord,
 } from '../../../src/contexts/workspace/presentation/renderer/utils/agentSessionHistory'
+import {
+  CANVAS_STORE_TEST_WORKSPACE_ID,
+  CanvasStoreTestProvider,
+} from '../../support/canvasStoreTestHarness'
+import { createStoreBackedChannels } from '../../support/workspaceCanvasStoreHarness'
 import { useAgentNodeSessionSwitch } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useAgentNodeSessionSwitch'
 
 function createNodes(): Node<TerminalNodeData>[] {
@@ -80,7 +85,10 @@ function createNodes(): Node<TerminalNodeData>[] {
 
 describe('agent session history', () => {
   it('does not expose task history to stale sync until the relaunch commits', async () => {
-    const nodesRef = { current: createNodes() }
+    const { nodesRef } = createStoreBackedChannels({
+      workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID,
+      nodes: createNodes(),
+    })
     let releaseRelaunch: (() => void) | null = null
     const relaunchAgentNode = vi.fn(async () => {
       await new Promise<void>(resolve => {
@@ -101,8 +109,9 @@ describe('agent session history', () => {
     const setNodes = vi.fn(updater => {
       nodesRef.current = updater(nodesRef.current)
     })
-    const { result } = renderHook(() =>
-      useAgentNodeSessionSwitch({ nodesRef, setNodes, relaunchAgentNode }),
+    const { result } = renderHook(
+      () => useAgentNodeSessionSwitch({ setNodes, relaunchAgentNode }),
+      { wrapper: CanvasStoreTestProvider },
     )
 
     let switchPromise: Promise<void> | null = null

@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, type MutableRefObject } from 'react'
+import { useEffect, useEffectEvent } from 'react'
 import { getPtyEventHub } from '@app/renderer/shell/utils/ptyEventHub'
 import type { Node } from '@xyflow/react'
 import { resolveAgentMetadataResumeBindingUpdate } from '@contexts/agent/domain/agentResumeBinding'
@@ -12,6 +12,7 @@ import {
   resolveAgentSessionTitleSyncTarget,
 } from '../../../utils/agentSessionTitleSync'
 import { projectAgentRuntimeObservation } from '../../../utils/agentRuntimeObservation'
+import { useCanvasDocumentCommands, useReadCanvasDocument } from '../../../store/canvasStoreContext'
 
 export function applyAgentMetadataToNodes(
   prevNodes: Node<TerminalNodeData>[],
@@ -62,25 +63,25 @@ export function applyAgentMetadataToNodes(
 export function useWorkspaceCanvasPtyTaskCompletion({
   workspaceId,
   nodes,
-  nodesRef,
   setNodes,
   listAgentSessions,
-  onRequestPersistFlush,
 }: {
   workspaceId?: string
   nodes?: Node<TerminalNodeData>[]
-  nodesRef?: MutableRefObject<Node<TerminalNodeData>[]>
   setNodes: (
     updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
     options?: { syncLayout?: boolean },
   ) => void
   listAgentSessions?: (nodeId: string, limit?: number) => Promise<AgentSessionSummary[]>
-  onRequestPersistFlush?: () => void
 }): void {
+  // The reader belongs to the workspace of this render: a subscription made for one workspace
+  // reads that workspace's committed nodes when an event arrives, and is rebuilt on a switch.
+  const readDocument = useReadCanvasDocument()
+  const documentCommands = useCanvasDocumentCommands()
   // Callback changes are not a new runtime lifetime. Re-subscribing replays cached metadata and
   // restarts title scans while the previous Worker's request is still running.
   const updateNodes = useEffectEvent(setNodes)
-  const requestPersistFlush = useEffectEvent(() => onRequestPersistFlush?.())
+  const requestPersistFlush = useEffectEvent(() => documentCommands.requestPersistFlush())
   const querySessionTitles = useEffectEvent(
     async (nodeId: string) => (await listAgentSessions?.(nodeId, 20)) ?? [],
   )
@@ -93,17 +94,15 @@ export function useWorkspaceCanvasPtyTaskCompletion({
     let disposed = false
 
     const startTitleSync = (event: TerminalSessionMetadataEvent, restart: boolean): void => {
-      const titleSyncTarget = nodesRef
-        ? resolveAgentSessionTitleSyncTarget(nodesRef.current, event)
-        : null
+      const titleSyncTarget = resolveAgentSessionTitleSyncTarget(readDocument().nodes, event)
 
-      if (!titleSyncTarget || !nodesRef || !hasSessionCatalog) {
+      if (!titleSyncTarget || !hasSessionCatalog) {
         return
       }
 
       if (
         restart &&
-        !nodesRef.current.some(
+        !readDocument().nodes.some(
           node => node.id === titleSyncTarget.nodeId && isAgentNodeAwaitingSessionTitle(node),
         )
       ) {
@@ -127,7 +126,7 @@ export function useWorkspaceCanvasPtyTaskCompletion({
         resumeSessionId: titleSyncTarget.resumeSessionId,
         listSessions: () => querySessionTitles(titleSyncTarget.nodeId),
         isCurrent: () =>
-          !disposed && isAgentSessionTitleSyncTargetCurrent(nodesRef.current, titleSyncTarget),
+          !disposed && isAgentSessionTitleSyncTargetCurrent(readDocument().nodes, titleSyncTarget),
         signal: abortController.signal,
       }).then(sessionTitle => {
         if (!sessionTitle || disposed || abortController.signal.aborted) {
@@ -187,7 +186,7 @@ export function useWorkspaceCanvasPtyTaskCompletion({
       unsubscribeState()
       unsubscribeMetadata()
     }
-  }, [hasSessionCatalog, nodesRef, workspaceId])
+  }, [hasSessionCatalog, readDocument, workspaceId])
 
   useEffect(() => {
     if (!nodes) {

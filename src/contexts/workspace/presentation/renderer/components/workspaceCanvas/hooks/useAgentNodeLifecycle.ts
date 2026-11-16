@@ -11,15 +11,14 @@ import type {
   ManagedClaudeLaunchIntent,
   ManagedClaudeLifecycleReceipt,
 } from '@shared/contracts/managedClaudeLaunch'
-import { useCallback, type MutableRefObject } from 'react'
-import type { Node } from '@xyflow/react'
+import { useCallback } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import { resolveEnabledEnvForAgent } from '@contexts/settings/domain/agentEnv'
 import type {
   AgentEnvByProvider,
   AgentExecutablePathOverrideByProvider,
 } from '@contexts/settings/domain/agentSettings'
-import type { AgentNodeData, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
+import type { AgentNodeData } from '../../../types'
 import { resolveInitialAgentRuntimeStatus } from '../../../utils/agentRuntimeStatus'
 import {
   clearResumeSessionBinding,
@@ -35,7 +34,8 @@ import {
   findLinkedTaskTitleForAgent,
 } from '../../../utils/agentTitle'
 import { useAgentNodeSessionSwitch } from './useAgentNodeSessionSwitch'
-import { useCanvasDocumentCommands } from '../../../store/canvasStoreContext'
+import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
+import { useCanvasDocumentCommands, useReadCanvasDocument } from '../../../store/canvasStoreContext'
 import {
   preflightAgentRelaunch,
   findAgentNode,
@@ -49,12 +49,7 @@ import {
 interface UseAgentNodeLifecycleParams {
   workspaceId: string
   workspacePath: string
-  nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
-  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
-  setNodes: (
-    updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-    options?: { syncLayout?: boolean },
-  ) => void
+  setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']
   bumpAgentLaunchToken: (nodeId: string) => number
   isAgentLaunchTokenCurrent: (nodeId: string, token: number) => boolean
   agentFullAccess: boolean
@@ -65,14 +60,11 @@ interface UseAgentNodeLifecycleParams {
   agentEnvByProvider: AgentEnvByProvider
   agentExecutablePathOverrideByProvider?: AgentExecutablePathOverrideByProvider
   environmentVariables?: Record<string, string>
-  onRequestPersistFlush?: () => void
 }
 
 export function useWorkspaceCanvasAgentNodeLifecycle({
   workspaceId,
   workspacePath,
-  nodesRef,
-  spacesRef,
   setNodes,
   bumpAgentLaunchToken,
   isAgentLaunchTokenCurrent,
@@ -83,11 +75,11 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
   agentEnvByProvider,
   agentExecutablePathOverrideByProvider,
   environmentVariables,
-  onRequestPersistFlush,
   terminalDisplayMetrics,
 }: UseAgentNodeLifecycleParams) {
   const { t } = useTranslation()
   const documentCommands = useCanvasDocumentCommands()
+  const readDocument = useReadCanvasDocument()
 
   const buildAgentNodeTitle = useCallback(
     (provider: AgentNodeData['provider'], label: string | null): string => {
@@ -123,7 +115,8 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
 
   const resolveMountId = useCallback(
     async (nodeId: string): Promise<string | null | undefined> => {
-      const owningSpace = spacesRef.current.find(space => space.nodeIds.includes(nodeId)) ?? null
+      const owningSpace =
+        readDocument().spaces.find(space => space.nodeIds.includes(nodeId)) ?? null
       try {
         const resolvedMountContext = await resolveSpaceMountLaunchContext({
           workspaceId,
@@ -140,7 +133,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
         return undefined
       }
     },
-    [documentCommands, setAgentNodeFailure, spacesRef, t, workspaceId, workspacePath],
+    [documentCommands, readDocument, setAgentNodeFailure, t, workspaceId, workspacePath],
   )
 
   const relaunchAgentNode = useCallback(
@@ -154,7 +147,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
       startedAtOverride,
       intent: explicitIntent,
     }: RelaunchAgentNodeOptions): Promise<ManagedClaudeLifecycleReceipt | undefined> => {
-      const node = findAgentNode(nodeId, nodesRef.current)
+      const node = findAgentNode(nodeId, readDocument().nodes)
       if (!node) {
         return undefined
       }
@@ -174,7 +167,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
         explicitIntent ??
         planManagedClaudeRelaunch(binding, mode, resumeSessionId, launchData.provider)
       const linkedTaskTitle = findLinkedTaskTitleForAgent(
-        nodesRef.current,
+        readDocument().nodes,
         nodeId,
         launchData.taskId ?? null,
       )
@@ -291,7 +284,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
           return undefined
         }
         if (launched.managedClaudeLifecycle) {
-          const current = nodesRef.current.find(item => item.id === nodeId)
+          const current = readDocument().nodes.find(item => item.id === nodeId)
           if (!current || !isAgentLaunchTokenCurrent(nodeId, launchToken)) {
             return undefined
           }
@@ -314,7 +307,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
           return undefined
         }
 
-        if (!nodesRef.current.some(item => item.id === nodeId)) {
+        if (!readDocument().nodes.some(item => item.id === nodeId)) {
           if (!launched.managedClaudeLifecycle) {
             void window.opencoveApi.pty
               .kill({ sessionId: launched.sessionId })
@@ -423,7 +416,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
       bumpAgentLaunchToken,
       environmentVariables,
       isAgentLaunchTokenCurrent,
-      nodesRef,
+      readDocument,
       resolveMountId,
       setAgentNodeFailure,
       setNodes,
@@ -446,7 +439,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
 
   const reloadAgentNode = useCallback(
     async (nodeId: string) => {
-      const node = findAgentNode(nodeId, nodesRef.current)
+      const node = findAgentNode(nodeId, readDocument().nodes)
       if (!node) {
         return
       }
@@ -462,18 +455,12 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
         setAgentNodeFailure(nodeId, toErrorMessage(error))
       }
     },
-    [nodesRef, relaunchAgentNode, setAgentNodeFailure],
+    [readDocument, relaunchAgentNode, setAgentNodeFailure],
   )
 
-  const switchAgentNodeSession = useAgentNodeSessionSwitch({
-    nodesRef,
-    setNodes,
-    relaunchAgentNode,
-    onRequestPersistFlush,
-  })
+  const switchAgentNodeSession = useAgentNodeSessionSwitch({ setNodes, relaunchAgentNode })
 
   const { listAgentSessionsForNode, stopAgentNode } = useAgentNodeSessionControls({
-    nodesRef,
     setNodes,
     bumpAgentLaunchToken,
   })

@@ -1,12 +1,18 @@
 import { act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
-import { renderHookWithCanvasStore } from '../../support/canvasStoreTestHarness'
+import {
+  CANVAS_STORE_TEST_WORKSPACE_ID,
+  renderHookWithCanvasStore,
+} from '../../support/canvasStoreTestHarness'
+import { createCanvasDocumentHarness } from '../../support/canvasDocumentHarness'
 import { useWorkspaceCanvasAgentLauncher } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useAgentLauncher'
 import {
   launchWorkspaceAgentSession,
   resolveWorkspaceAgentLaunchBinding,
 } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useWorkspaceAgentLaunch.shared'
+import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
+import { replaceWorkspaceSpaces } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import { assignNodeToSpaceAndExpand } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useInteractions.spaceAssignment'
 
 vi.mock(
@@ -28,26 +34,22 @@ vi.mock(
 
 type LauncherParams = Parameters<typeof useWorkspaceCanvasAgentLauncher>[0]
 
+const SPACE = {
+  id: 'space-a',
+  name: 'Branch',
+  directoryPath: '/repo/worktree',
+  targetMountId: 'mount-a',
+  labelColor: null,
+  nodeIds: [],
+  rect: { x: 0, y: 0, width: 1000, height: 900 },
+}
+
 function fixture(): LauncherParams {
   return {
     agentSettings: { ...DEFAULT_AGENT_SETTINGS, defaultProvider: 'codex' },
     workspaceId: 'project-a',
     workspacePath: '/repo',
     updateCanvasDocument: vi.fn(),
-    spacesRef: {
-      current: [
-        {
-          id: 'space-a',
-          name: 'Branch',
-          directoryPath: '/repo/worktree',
-          targetMountId: 'mount-a',
-          labelColor: null,
-          nodeIds: [],
-          rect: { x: 0, y: 0, width: 1000, height: 900 },
-        },
-      ],
-    },
-    onRequestPersistFlush: vi.fn(),
     onShowMessage: vi.fn(),
     createNodeForSession: vi.fn(async input => ({
       id: 'new-agent',
@@ -78,8 +80,15 @@ function fixture(): LauncherParams {
 }
 
 describe('shared Agent launcher entrypoints', () => {
+  let harness: ReturnType<typeof createCanvasDocumentHarness>
+
   beforeEach(() => {
     vi.clearAllMocks()
+    // The launcher reads the Space under the anchor from the document of its workspace.
+    harness = createCanvasDocumentHarness({
+      workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID,
+      spaces: [SPACE],
+    })
     vi.mocked(resolveWorkspaceAgentLaunchBinding).mockResolvedValue({
       mountId: 'mount-a',
       executionDirectory: '/repo/worktree',
@@ -131,7 +140,7 @@ describe('shared Agent launcher entrypoints', () => {
         workspaceId: 'project-a',
         currentMountId: 'mount-a',
         executionDirectory: '/repo/worktree',
-        targetSpace: params.spacesRef.current[0],
+        targetSpace: SPACE,
       }),
     )
     const bindingOptions = vi.mocked(resolveWorkspaceAgentLaunchBinding).mock.calls[0][0]
@@ -154,7 +163,7 @@ describe('shared Agent launcher entrypoints', () => {
       expect.objectContaining({
         sessionId: 'session-a',
         kind: 'agent',
-        placement: { targetSpaceRect: params.spacesRef.current[0].rect },
+        placement: { targetSpaceRect: SPACE.rect },
         agent: expect.objectContaining({ provider: 'codex', directoryMode: 'workspace' }),
       }),
     )
@@ -176,12 +185,63 @@ describe('shared Agent launcher entrypoints', () => {
     const flushesAtNodeAdd: number[] = []
     const createNodeForSession = params.createNodeForSession
     params.createNodeForSession = vi.fn(async input => {
-      flushesAtNodeAdd.push(vi.mocked(params.onRequestPersistFlush!).mock.calls.length)
+      flushesAtNodeAdd.push(harness.flush.mock.calls.length)
       return await createNodeForSession(input)
     })
     const { result } = renderHookWithCanvasStore(() => useWorkspaceCanvasAgentLauncher(params))
     await act(() => result.current.launchAgentAtFlowPosition({ x: 400, y: 300 }))
     expect(flushesAtNodeAdd).toEqual([0])
+  })
+
+  it('flushes once, after the node is assigned to its Space', async () => {
+    const params = fixture()
+    const order: string[] = []
+    vi.mocked(assignNodeToSpaceAndExpand).mockImplementation(() => {
+      order.push('assign')
+    })
+    harness.flush.mockImplementation(() => {
+      order.push('flush')
+    })
+    const { result } = renderHookWithCanvasStore(() => useWorkspaceCanvasAgentLauncher(params))
+    await act(() => result.current.launchAgentAtFlowPosition({ x: 400, y: 300 }))
+    expect(order).toEqual(['assign', 'flush'])
+    expect(harness.flush).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not flush for an agent launched outside every Space', async () => {
+    const params = fixture()
+    const { result } = renderHookWithCanvasStore(() => useWorkspaceCanvasAgentLauncher(params))
+    await act(() => result.current.launchAgentAtFlowPosition({ x: 5000, y: 5000 }))
+    expect(params.createNodeForSession).toHaveBeenCalledTimes(1)
+    expect(assignNodeToSpaceAndExpand).not.toHaveBeenCalled()
+    expect(harness.flush).not.toHaveBeenCalled()
+  })
+
+  it('reads the Space under the anchor from the document, as the same call wrote it', async () => {
+    const params = fixture()
+    const { result } = renderHookWithCanvasStore(() => useWorkspaceCanvasAgentLauncher(params))
+    await act(async () => {
+      replaceWorkspaceSpaces(CANVAS_STORE_TEST_WORKSPACE_ID, [
+        { ...SPACE, id: 'space-late', rect: { x: 2000, y: 2000, width: 500, height: 500 } },
+      ])
+      await result.current.launchAgentAtFlowPosition({ x: 2100, y: 2100 })
+    })
+    expect(resolveWorkspaceAgentLaunchBinding).toHaveBeenCalledWith(
+      expect.objectContaining({ targetSpace: expect.objectContaining({ id: 'space-late' }) }),
+    )
+  })
+
+  it('reads the Space under the anchor from its own workspace while another is displayed', async () => {
+    const params = fixture()
+    useAppStore.setState(state => ({
+      workspaces: [...state.workspaces, { ...state.workspaces[0], id: 'other', spaces: [] }],
+      activeWorkspaceId: 'other',
+    }))
+    const { result } = renderHookWithCanvasStore(() => useWorkspaceCanvasAgentLauncher(params))
+    await act(() => result.current.launchAgentAtFlowPosition({ x: 400, y: 300 }))
+    expect(resolveWorkspaceAgentLaunchBinding).toHaveBeenCalledWith(
+      expect.objectContaining({ targetSpace: SPACE }),
+    )
   })
 
   it('gives the retry binding the same writer and none of the old channels', async () => {

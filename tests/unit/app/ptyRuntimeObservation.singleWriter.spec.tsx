@@ -15,6 +15,7 @@ import { useWorkspaceCanvasNodesStore } from '../../../src/contexts/workspace/pr
 import { useWorkspaceCanvasPtyTaskCompletion } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/usePtyTaskCompletion'
 import type { WorkspaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { pixelNode } from '../contexts/workspacePixelLayer.fixtures'
+import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
 
 // Real nodes carry initialWidth/initialHeight; without them the canvas backfills them on its first
 // write and that extra store notification would be counted as a projection.
@@ -113,7 +114,13 @@ function renderObservers() {
         setNodes: store.setNodes,
       })
     },
-    { wrapper: ({ children }) => <ReactFlowProvider>{children}</ReactFlowProvider> },
+    {
+      wrapper: ({ children }) => (
+        <CanvasStoreTestProvider workspaceId="workspace-1">
+          <ReactFlowProvider>{children}</ReactFlowProvider>
+        </CanvasStoreTestProvider>
+      ),
+    },
   )
 }
 

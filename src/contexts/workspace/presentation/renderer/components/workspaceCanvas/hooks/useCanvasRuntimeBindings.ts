@@ -6,7 +6,6 @@ export function useWorkspaceCanvasRuntimeBindings({
   workspaceId,
   nodes,
   setNodes,
-  onRequestPersistFlush,
   actionRefs,
   clearNodeSelection,
   closeNode,
@@ -26,16 +25,12 @@ export function useWorkspaceCanvasRuntimeBindings({
   switchAgentSession,
   focusNodeOnClick,
   focusNodeTargetZoom,
-  nodesRef,
   reactFlow,
   onShowMessage,
 }: {
   workspaceId: string
   nodes: Parameters<typeof useWorkspaceCanvasPtyTaskCompletion>[0]['nodes']
   setNodes: Parameters<typeof useWorkspaceCanvasPtyTaskCompletion>[0]['setNodes']
-  onRequestPersistFlush?: Parameters<
-    typeof useWorkspaceCanvasPtyTaskCompletion
-  >[0]['onRequestPersistFlush']
   actionRefs: WorkspaceCanvasActionRefs
   clearNodeSelection: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['clearNodeSelection']
   closeNode: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['closeNode']
@@ -64,23 +59,17 @@ export function useWorkspaceCanvasRuntimeBindings({
   switchAgentSession: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['switchAgentSession']
   focusNodeOnClick: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['focusNodeOnClick']
   focusNodeTargetZoom: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['focusNodeTargetZoom']
-  nodesRef: Parameters<typeof useWorkspaceCanvasAgentLastMessageCopy>[0]['nodesRef']
   reactFlow: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['reactFlow']
   onShowMessage?: Parameters<typeof useWorkspaceCanvasAgentLastMessageCopy>[0]['onShowMessage']
 }): void {
   useWorkspaceCanvasPtyTaskCompletion({
     workspaceId,
     nodes,
-    nodesRef,
     setNodes,
     listAgentSessions,
-    onRequestPersistFlush,
   })
 
-  const copyAgentLastMessage = useWorkspaceCanvasAgentLastMessageCopy({
-    nodesRef,
-    onShowMessage,
-  })
+  const copyAgentLastMessage = useWorkspaceCanvasAgentLastMessageCopy({ onShowMessage })
 
   useWorkspaceCanvasSyncActionRefs({
     actionRefs,
@@ -104,7 +93,6 @@ export function useWorkspaceCanvasRuntimeBindings({
     renameTerminalTitle,
     focusNodeOnClick,
     focusNodeTargetZoom,
-    nodesRef,
     reactFlow,
   })
 }

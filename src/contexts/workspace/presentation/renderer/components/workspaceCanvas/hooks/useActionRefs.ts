@@ -3,6 +3,7 @@ import type { Node, ReactFlowInstance } from '@xyflow/react'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { NodeFrame, TaskRuntimeStatus, TerminalNodeData } from '../../../types'
 import { focusNodeInViewport } from '../helpers'
+import { useReadCanvasDocument } from '../../../store/canvasStoreContext'
 import type {
   AgentSessionSummary,
   BrowserMode,
@@ -231,7 +232,6 @@ interface SyncActionRefsParams {
   renameTerminalTitle: (nodeId: string, title: string) => void
   focusNodeOnClick: boolean
   focusNodeTargetZoom: number
-  nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
 }
 
@@ -257,9 +257,10 @@ export function useWorkspaceCanvasSyncActionRefs({
   renameTerminalTitle,
   focusNodeOnClick,
   focusNodeTargetZoom,
-  nodesRef,
   reactFlow,
 }: SyncActionRefsParams): void {
+  const readDocument = useReadCanvasDocument()
+
   useLayoutEffect(() => {
     actionRefs.clearNodeSelectionRef.current = clearNodeSelection
   }, [actionRefs.clearNodeSelectionRef, clearNodeSelection])
@@ -358,7 +359,7 @@ export function useWorkspaceCanvasSyncActionRefs({
         return
       }
 
-      const targetNode = nodesRef.current.find(node => node.id === nodeId)
+      const targetNode = readDocument().nodes.find(node => node.id === nodeId)
       if (!targetNode) {
         return
       }
@@ -369,7 +370,7 @@ export function useWorkspaceCanvasSyncActionRefs({
     actionRefs.normalizeViewportForTerminalInteractionRef,
     focusNodeOnClick,
     focusNodeTargetZoom,
-    nodesRef,
+    readDocument,
     reactFlow,
   ])
 }

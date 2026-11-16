@@ -175,12 +175,16 @@ export async function expectsWriterOfTheRender<Result>({
   invoke: Invoke<Result>
   argsOf: () => Record<string, unknown> | undefined
   absent?: string[]
-  /** The caller flushes once after the push-away, as it did before. */
-  flush?: Mock
+  /**
+   * The caller flushes once after the push-away, as it did before: a spy it was given, or
+   * `'document'` for the flush the shell registered with the document module.
+   */
+  flush?: Mock | 'document'
   /** The mocked push-away, to order the flush after it. */
   assign: Mock
 }) {
-  createCanvasDocumentHarness({ ...seed, workspaceId: 'workspace-a' })
+  const harness = createCanvasDocumentHarness({ ...seed, workspaceId: 'workspace-a' })
+  const flushSpy = flush === 'document' ? harness.flush : flush
   useAppStore.setState(state => ({
     workspaces: [...state.workspaces, { ...state.workspaces[0], id: 'workspace-b' }],
   }))
@@ -206,7 +210,7 @@ export async function expectsWriterOfTheRender<Result>({
   await act(async () => {
     await invoke(view.result.current)
   })
-  expectsOneFlushAfterThePushAway(flush, 1, assign)
+  expectsOneFlushAfterThePushAway(flushSpy, 1, assign)
   write('marker-a')
   expect(spaceIds('workspace-a')).toEqual(['marker-a'])
   expect(spaceIds('workspace-b')).toEqual([])
@@ -215,7 +219,7 @@ export async function expectsWriterOfTheRender<Result>({
   await act(async () => {
     await invoke(view.result.current)
   })
-  expectsOneFlushAfterThePushAway(flush, 2, assign)
+  expectsOneFlushAfterThePushAway(flushSpy, 2, assign)
   write('marker-b')
   expect(spaceIds('workspace-a')).toEqual(['marker-a'])
   expect(spaceIds('workspace-b')).toEqual(['marker-b'])
