@@ -115,10 +115,20 @@ describe('canvas document channels', () => {
     expect(handed.length).toBeGreaterThan(2)
     const appStoreUses = Object.fromEntries(
       handed
-        .filter(file => /\/useAppStore['"]|\buseSyncExternalStore\b/.test(source(file)))
+        .filter(file =>
+          /\/useAppStore['"]|\buseSyncExternalStore\b|\buseStore\b/.test(source(file)),
+        )
         .map(file => [
           file,
-          [...source(file).matchAll(/\buseAppStore\(([^)]*)\)/g)].map(match => match[1].trim()),
+          // Every use of the app store but `useAppStore.getState()` (a call selects its argument),
+          // and every other subscription, whatever it subscribes to.
+          [
+            ...source(file)
+              .replace(/^import .*$/gm, '')
+              .matchAll(
+                /\buseAppStore\b(?!\.getState\b)(?:\(([^)]*)\))?|\buseSyncExternalStore\s*\(|\buseStore\s*\(/g,
+              ),
+          ].map(match => (match[1] ?? match[0]).trim()),
         ]),
     )
     expect(appStoreUses).toEqual({

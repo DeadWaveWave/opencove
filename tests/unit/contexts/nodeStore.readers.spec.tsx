@@ -277,7 +277,9 @@ describe('the focus of a created node when no handler is given', () => {
     )
   }
 
-  it('finds a node that the store holds and the canvas view does not show', () => {
+  // A guard, not a change: BASE's post-commit write also put such a node into `nodesRef`. The
+  // "another workspace is displayed" case below is the one that differs.
+  it('still finds a node that the store holds and the canvas view does not show', () => {
     const view = renderStoreWithoutView()
     setCenter.mockClear()
 
@@ -367,6 +369,69 @@ describe.each(Object.keys(CREATIONS))('creating %s', name => {
   })
 })
 
+describe('the render that showed A, called after B is shown', () => {
+  // Inner is not keyed by workspace: after a switch its one `nodesRef` shows B, while a callback
+  // made in A's render (an async launch, a pending close) still writes A and must read A.
+  it('places a note against A, where it writes', () => {
+    const { view, showB } = renderStore({ a: { nodes: [blockerNode()] }, b: {} })
+    const createNoteOfA = store(view).createNoteNode
+    showB()
+
+    let created: Node<TerminalNodeData> | null = null
+    act(() => {
+      created = createNoteOfA(ANCHOR)
+    })
+
+    expect(documentOf(A).nodes.map(node => node.id)).toContain(created!.id)
+    expect(overlapsBlocked('a note', created!)).toBe(false)
+  })
+
+  it('places a session node against A', async () => {
+    const { view, showB } = renderStore({ a: { nodes: [blockerNode()] }, b: {} })
+    const createOfA = store(view).createNodeForSession
+    showB()
+
+    let created: Node<TerminalNodeData> | null = null
+    await act(async () => {
+      created = (await createOfA({
+        sessionId: 'pty-new',
+        title: 'Terminal',
+        anchor: ANCHOR,
+        kind: 'terminal',
+      })) as Node<TerminalNodeData>
+    })
+
+    expect(documentOf(A).nodes.map(node => node.id)).toContain(created!.id)
+    expect(overlapsBlocked('a session node', created!)).toBe(false)
+  })
+
+  it('closes the node of A and kills its runtime, not the one of B', async () => {
+    const { view, showB } = renderStore({
+      a: { nodes: [pixelNode({ sessionId: 'pty-of-a' })] },
+      b: { nodes: [{ ...pixelNode({ sessionId: 'pty-of-b' }), id: 'other' }] },
+    })
+    const closeOfA = store(view).closeNode
+    showB()
+
+    await act(async () => {
+      await closeOfA('terminal-1')
+    })
+
+    expect(kill).toHaveBeenCalledExactlyOnceWith({ sessionId: 'pty-of-a' })
+    expect(documentOf(A).nodes).toEqual([])
+  })
+
+  it('stores the scrollback of the terminal of A', () => {
+    const { view, showB } = renderStore({ a: { nodes: [pixelNode()] }, b: {} })
+    const scrollOfA = store(view).updateNodeScrollback
+    showB()
+
+    act(() => scrollOfA('terminal-1', 'output of a'))
+
+    expect(useScrollbackStore.getState().scrollbackByNodeId['terminal-1']).toBe('output of a')
+  })
+})
+
 describe('placement during a node drag', () => {
   it('avoids the dragged node at the position the store holds, not its live position', async () => {
     const dragged = blockerNode('dragged', { width: 400, height: 300 })
@@ -406,6 +471,22 @@ describe('placement during a node drag', () => {
     )
 
     expect(position).toEqual({ x: 0, y: 0 })
+  })
+
+  // The obstacle list is the canvas view's too: a window the view shows at the desired spot moves
+  // the result off it.
+  it('moves a window off another window that the canvas view shows at the desired spot', () => {
+    const { view } = renderStore({
+      a: { nodes: [blockerNode('shown', { width: 400, height: 300 })] },
+    })
+
+    const position = store(view).normalizePosition(
+      'moving',
+      { x: 0, y: 0 },
+      { width: 400, height: 300 },
+    )
+
+    expect(position).not.toEqual({ x: 0, y: 0 })
   })
 })
 

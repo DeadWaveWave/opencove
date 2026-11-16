@@ -15,6 +15,7 @@ import {
   type RuntimeCanvasContext,
 } from '../../support/agentRuntimeHarness'
 import { CREATIONS } from '../../support/nodeStoreCreations'
+import { TERMINAL_LAYOUT_SYNC_EVENT } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/constants'
 import { pixelNode } from './workspacePixelLayer.fixtures'
 
 // The persistence flushes of the node store and its creators (#702, PR 13): each is requested once,
@@ -364,6 +365,24 @@ describe.each(MUTATIONS)('$name', mutation => {
       expect(flushes).toHaveLength(mutation.flushesWithoutChange ? 1 : 0)
     },
   )
+})
+
+describe('setWebsiteFullscreen', () => {
+  // The call keeps the default layout sync (the other website mutations opt out of it), because
+  // the window changes its frame and the terminals around it re-fit.
+  it('syncs the terminal layout after the write', () => {
+    const { store } = renderStore([websiteNode()])
+    const synced = vi.fn()
+    window.addEventListener(TERMINAL_LAYOUT_SYNC_EVENT, synced)
+
+    try {
+      act(() => store().setWebsiteFullscreen('website-1', frame, null, true))
+    } finally {
+      window.removeEventListener(TERMINAL_LAYOUT_SYNC_EVENT, synced)
+    }
+
+    expect(synced).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('the mutations that do not flush', () => {
