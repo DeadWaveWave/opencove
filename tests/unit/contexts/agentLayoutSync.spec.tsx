@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react'
-import { act, render, waitFor } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
+import { renderWithCanvasStore } from '../../support/canvasStoreTestHarness'
 import { describe, expect, it, vi } from 'vitest'
 import type { Node } from '@xyflow/react'
 import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
@@ -120,7 +121,7 @@ describe('agent terminal layout sync', () => {
       return null
     }
 
-    render(<Harness />)
+    renderWithCanvasStore(<Harness />)
 
     await waitFor(() => {
       expect(window.opencoveApi.agent.launch).toHaveBeenCalledTimes(1)
@@ -168,7 +169,7 @@ describe('agent terminal layout sync', () => {
       return null
     }
 
-    render(<Harness />)
+    renderWithCanvasStore(<Harness />)
 
     act(() => {
       onStateListener?.({ sessionId: 'agent-session-1', state: 'running' })
@@ -237,7 +238,7 @@ describe('agent terminal layout sync', () => {
       return null
     }
 
-    render(<Harness />)
+    renderWithCanvasStore(<Harness />)
 
     act(() => {
       onMetadataListener?.({ sessionId: 'runtime-1', resumeSessionId: 'resume-1' })
@@ -322,7 +323,7 @@ describe('agent terminal layout sync', () => {
         return null
       }
 
-      render(<Harness />)
+      renderWithCanvasStore(<Harness />)
 
       await act(async () => {
         onMetadataListener?.({ sessionId: 'runtime-1', resumeSessionId: 'resume-1' })

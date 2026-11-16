@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react'
-import { vi } from 'vitest'
+import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
 import { useWorkspaceCanvasAgentNodeLifecycle } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useAgentNodeLifecycle'
 import {
   prepareWorkspaceRuntimeNodes,
@@ -34,25 +34,26 @@ export async function rendererSnapshot(f: SnapshotFixture, operation: Operation)
       workerOnly: true,
     })
   } else {
-    const hook = renderHook(() =>
-      useWorkspaceCanvasAgentNodeLifecycle({
-        workspaceId: workspace.id,
-        workspacePath: workspace.path,
-        nodesRef,
-        spacesRef: { current: workspace.spaces },
-        onSpacesChange: vi.fn(),
-        setNodes: update => {
-          nodesRef.current = update(nodesRef.current)
-        },
-        bumpAgentLaunchToken: () => 1,
-        isAgentLaunchTokenCurrent: () => true,
-        agentFullAccess: false,
-        codexReuseRunningAppServer: false,
-        defaultTerminalProfileId: null,
-        terminalFontSize: 13,
-        terminalDisplayMetrics: { fontSize: 13 },
-        agentEnvByProvider: DEFAULT_AGENT_ENV_BY_PROVIDER,
-      }),
+    const hook = renderHook(
+      () =>
+        useWorkspaceCanvasAgentNodeLifecycle({
+          workspaceId: workspace.id,
+          workspacePath: workspace.path,
+          nodesRef,
+          spacesRef: { current: workspace.spaces },
+          setNodes: update => {
+            nodesRef.current = update(nodesRef.current)
+          },
+          bumpAgentLaunchToken: () => 1,
+          isAgentLaunchTokenCurrent: () => true,
+          agentFullAccess: false,
+          codexReuseRunningAppServer: false,
+          defaultTerminalProfileId: null,
+          terminalFontSize: 13,
+          terminalDisplayMetrics: { fontSize: 13 },
+          agentEnvByProvider: DEFAULT_AGENT_ENV_BY_PROVIDER,
+        }),
+      { wrapper: CanvasStoreTestProvider },
     )
     try {
       await act(async () => {

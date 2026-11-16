@@ -93,6 +93,11 @@ function mountsOf(workspaceId: string) {
   }
 }
 
+// The store's own workspace object: it is replaced by a write and by nothing else.
+function workspaceOf(workspaceId: string) {
+  return useAppStore.getState().workspaces.find(workspace => workspace.id === workspaceId)
+}
+
 function spacesOf(workspaceId: string): WorkspaceSpaceState[] {
   return readWorkspaceDocument(workspaceId)?.spaces ?? []
 }
@@ -187,7 +192,7 @@ describe('agent relaunch mount repair', () => {
 
   it('writes the Spaces of the workspace it started in after a switch during mount.list', async () => {
     const view = renderLifecycle()
-    const workspaceBBefore = readWorkspaceDocument('workspace-b')
+    const workspaceBBefore = workspaceOf('workspace-b')
     const launchInA = view.result.current.launchAgentInNode
 
     let launched!: Promise<void>
@@ -211,7 +216,7 @@ describe('agent relaunch mount repair', () => {
     expect(spacesOf('workspace-a').map(item => [item.id, item.targetMountId])).toEqual([
       ['space-a', 'mount-of-workspace-a'],
     ])
-    expect(readWorkspaceDocument('workspace-b')).toBe(workspaceBBefore)
+    expect(workspaceOf('workspace-b')).toBe(workspaceBBefore)
     expect(harness.flush).toHaveBeenCalledTimes(1)
   })
 
@@ -222,7 +227,7 @@ describe('agent relaunch mount repair', () => {
       useAppStore.setState({ activeWorkspaceId: 'workspace-b' })
       view.rerender()
     })
-    const workspaceABefore = readWorkspaceDocument('workspace-a')
+    const workspaceABefore = workspaceOf('workspace-a')
 
     let launched!: Promise<void>
     act(() => {
@@ -236,7 +241,7 @@ describe('agent relaunch mount repair', () => {
     expect(spacesOf('workspace-b').map(item => [item.id, item.targetMountId])).toEqual([
       ['space-b', 'mount-of-workspace-b'],
     ])
-    expect(readWorkspaceDocument('workspace-a')).toBe(workspaceABefore)
+    expect(workspaceOf('workspace-a')).toBe(workspaceABefore)
   })
 
   it('keeps a Space that changed in the store while mount.list was pending', async () => {

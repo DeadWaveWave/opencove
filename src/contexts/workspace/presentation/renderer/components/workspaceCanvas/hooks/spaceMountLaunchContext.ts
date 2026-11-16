@@ -42,14 +42,20 @@ export async function listProjectMounts(workspaceId: string): Promise<MountDto[]
   return result.mounts
 }
 
+/**
+ * Writes the Spaces as a recipe over the Spaces the store holds when the recipe runs. The repair
+ * resolves after `mount.list` answers, so the Spaces the caller read before the await are stale.
+ */
+export type SpaceRepairCommitter = (
+  recipe: (spaces: WorkspaceSpaceState[]) => WorkspaceSpaceState[],
+) => void
+
 function applySpaceMountRepair(options: {
   space: WorkspaceSpaceState | null
   repair: { targetMountId: string | null; directoryPath: string } | null
-  spaces: WorkspaceSpaceState[]
-  onSpacesChange?: (spaces: WorkspaceSpaceState[]) => void
-  onRequestPersistFlush?: () => void
+  commitSpaceRepair?: SpaceRepairCommitter
 }): WorkspaceSpaceState | null {
-  const { space, repair } = options
+  const { space, repair, commitSpaceRepair } = options
   if (!space || !repair) {
     return space
   }
@@ -61,28 +67,35 @@ function applySpaceMountRepair(options: {
     return space
   }
 
-  const nextSpaces = options.spaces.map(candidate =>
-    candidate.id === space.id
-      ? {
-          ...candidate,
-          targetMountId: repair.targetMountId,
-          directoryPath: repair.directoryPath,
-        }
-      : candidate,
-  )
-  options.onSpacesChange?.(nextSpaces)
-  options.onRequestPersistFlush?.()
+  const repairFields = {
+    targetMountId: repair.targetMountId,
+    directoryPath: repair.directoryPath,
+  }
+  if (!commitSpaceRepair) {
+    return { ...space, ...repairFields }
+  }
 
-  return nextSpaces.find(candidate => candidate.id === space.id) ?? space
+  let written = null as WorkspaceSpaceState | null
+  commitSpaceRepair(spaces => {
+    const index = spaces.findIndex(candidate => candidate.id === space.id)
+    if (index < 0) {
+      return spaces
+    }
+    const patched = { ...spaces[index], ...repairFields }
+    written = patched
+    return spaces.map((candidate, candidateIndex) =>
+      candidateIndex === index ? patched : candidate,
+    )
+  })
+
+  return written ?? space
 }
 
 export async function resolveSpaceMountLaunchContext(options: {
   workspaceId: string
   workspacePath: string
   space: WorkspaceSpaceState | null
-  spaces: WorkspaceSpaceState[]
-  onSpacesChange?: (spaces: WorkspaceSpaceState[]) => void
-  onRequestPersistFlush?: () => void
+  commitSpaceRepair?: SpaceRepairCommitter
   fallbackToFirstMount?: boolean
 }): Promise<{
   space: WorkspaceSpaceState | null
@@ -138,9 +151,7 @@ export async function resolveSpaceMountLaunchContext(options: {
   const repairedSpace = applySpaceMountRepair({
     space: options.space,
     repair: resolved.repair,
-    spaces: options.spaces,
-    onSpacesChange: options.onSpacesChange,
-    onRequestPersistFlush: options.onRequestPersistFlush,
+    commitSpaceRepair: options.commitSpaceRepair,
   })
 
   return {

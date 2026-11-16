@@ -56,7 +56,6 @@ export function useWorkspaceCanvasAgentSupport({
     workspacePath,
     nodesRef,
     spacesRef,
-    onSpacesChange,
     setNodes,
     bumpAgentLaunchToken,
     isAgentLaunchTokenCurrent,

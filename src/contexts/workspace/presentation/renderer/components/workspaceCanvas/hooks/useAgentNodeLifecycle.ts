@@ -35,6 +35,7 @@ import {
   findLinkedTaskTitleForAgent,
 } from '../../../utils/agentTitle'
 import { useAgentNodeSessionSwitch } from './useAgentNodeSessionSwitch'
+import { useCanvasDocumentCommands } from '../../../store/canvasStoreContext'
 import {
   preflightAgentRelaunch,
   findAgentNode,
@@ -50,7 +51,6 @@ interface UseAgentNodeLifecycleParams {
   workspacePath: string
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
-  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   setNodes: (
     updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
     options?: { syncLayout?: boolean },
@@ -73,7 +73,6 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
   workspacePath,
   nodesRef,
   spacesRef,
-  onSpacesChange,
   setNodes,
   bumpAgentLaunchToken,
   isAgentLaunchTokenCurrent,
@@ -88,6 +87,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
   terminalDisplayMetrics,
 }: UseAgentNodeLifecycleParams) {
   const { t } = useTranslation()
+  const documentCommands = useCanvasDocumentCommands()
 
   const buildAgentNodeTitle = useCallback(
     (provider: AgentNodeData['provider'], label: string | null): string => {
@@ -129,9 +129,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
           workspaceId,
           workspacePath,
           space: owningSpace,
-          spaces: spacesRef.current,
-          onSpacesChange,
-          onRequestPersistFlush,
+          commitSpaceRepair: recipe => documentCommands.updateSpaces(recipe, { flush: true }),
         })
         return resolvedMountContext.mountId
       } catch (error) {
@@ -142,15 +140,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
         return undefined
       }
     },
-    [
-      onRequestPersistFlush,
-      onSpacesChange,
-      setAgentNodeFailure,
-      spacesRef,
-      t,
-      workspaceId,
-      workspacePath,
-    ],
+    [documentCommands, setAgentNodeFailure, spacesRef, t, workspaceId, workspacePath],
   )
 
   const relaunchAgentNode = useCallback(

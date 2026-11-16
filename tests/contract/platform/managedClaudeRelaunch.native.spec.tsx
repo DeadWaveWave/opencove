@@ -206,7 +206,6 @@ describeWithElectronNativeModules('UI Claude relaunch during normal persistence'
           workspacePath: workspace.path,
           nodesRef,
           spacesRef,
-          onSpacesChange,
           setNodes: setCanvasNodes,
           bumpAgentLaunchToken: () => 1,
           isAgentLaunchTokenCurrent: () => true,
