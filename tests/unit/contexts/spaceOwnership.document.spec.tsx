@@ -312,7 +312,7 @@ describe('a node drop that fails the transfer check', () => {
 
   it('checks the transfer against the Spaces the store holds when the drop runs', () => {
     const onShowMessage = vi.fn()
-    const { harness, view } = setup([taskDoing('t1', FREE_AT.x, FREE_AT.y)], [spaceA(['t1'])], {
+    const { harness, view } = setup([taskDoing('t1', FREE_AT.x, FREE_AT.y)], [spaceA([])], {
       onShowMessage,
     })
     startDrag(view, harness, 't1')
@@ -334,6 +334,49 @@ describe('a node drop that fails the transfer check', () => {
     expect(onShowMessage).toHaveBeenCalledTimes(1)
     expect(harness.readStoreDocument().spaces[1].nodeIds).toEqual([])
     expect(harness.flush).not.toHaveBeenCalled()
+  })
+})
+
+describe('the Space rects of a node drop', () => {
+  it('does not commit a rect override when the node is dropped outside every Space', () => {
+    const { harness, view } = setup([note('n2', FREE_AT.x, FREE_AT.y)], [spaceA([]), spaceC()])
+    startDrag(view, harness, 'n2')
+    const node = harness.readStoreDocument().nodes[0]
+    const spacesBefore = harness.readStoreDocument().spaces
+
+    act(() =>
+      view.result.current.ownership.finalizeDraggedNodeDrop({
+        draggedNodeIds: ['n2'],
+        draggedNodePositionById: new Map([['n2', FREE_AT]]),
+        dragStartNodePositionById: new Map([['n2', FREE_AT]]),
+        dropFlowPoint: FREE_DROP,
+        fallbackNodes: [node],
+        spaceRectOverrideById: new Map([['space-a', { x: 5, y: 5, width: 600, height: 400 }]]),
+      }),
+    )
+
+    expect(harness.readStoreDocument().spaces).toEqual(spacesBefore)
+  })
+
+  it('commits a rect override when the node is dropped into a Space', () => {
+    const { harness, view } = setup([note('n2', FREE_AT.x, FREE_AT.y)], [spaceA([]), spaceC()])
+    startDrag(view, harness, 'n2')
+    const node = harness.readStoreDocument().nodes[0]
+
+    act(() =>
+      view.result.current.ownership.finalizeDraggedNodeDrop({
+        draggedNodeIds: ['n2'],
+        draggedNodePositionById: new Map([['n2', NODE_IN_C]]),
+        dragStartNodePositionById: new Map([['n2', FREE_AT]]),
+        dropFlowPoint: DROP_INTO_C,
+        fallbackNodes: [node],
+        spaceRectOverrideById: new Map([['space-a', { x: 5, y: 5, width: 600, height: 400 }]]),
+      }),
+    )
+
+    const spaces = harness.readStoreDocument().spaces
+    expect(spaces[0].rect).toMatchObject({ x: 5, y: 5 })
+    expect(spaces[1].nodeIds).toEqual(['n2'])
   })
 })
 
@@ -420,15 +463,16 @@ describe('the reads of a node drop', () => {
   it('plans the drop from the Spaces and the nodes of the write, not from those it read first', () => {
     const lateNode = note('n-late', 100, 900)
     const lateSpace = createSpace('space-late', { x: 100, y: 1000, width: 300, height: 300 }, [])
-    let injected = false
+    let asked = -1
     const { harness, view } = setup([note('n1', 50, 60)], [spaceA(), spaceC()], {
-      // The first time React Flow is asked for a node, a write lands between the decision of the
-      // drop and its write.
+      // React Flow is asked for a node three times by a drop: for the dropped positions, by the
+      // worktree check and, after the decision of the drop has read the document, to measure the
+      // dragged nodes. A write lands during the third.
       onReactFlowGetNode: () => {
-        if (injected) {
+        asked += 1
+        if (asked !== 3) {
           return
         }
-        injected = true
         replaceWorkspaceNodes(harness.workspaceId, [...harness.readStoreDocument().nodes, lateNode])
         replaceWorkspaceSpaces(harness.workspaceId, [
           ...harness.readStoreDocument().spaces,
@@ -437,7 +481,7 @@ describe('the reads of a node drop', () => {
       },
     })
     startDrag(view, harness, 'n1')
-    injected = false
+    asked = 0
     const dropped = releaseAt(harness, 'n1', NODE_IN_C)
 
     stopAt(view, dropped, DROP_INTO_C)
