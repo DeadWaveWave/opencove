@@ -1,4 +1,4 @@
-import { useCallback, useRef, type MutableRefObject } from 'react'
+import { useCallback, useRef } from 'react'
 import type { Node } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { AgentSessionSummary, TerminalAgentActivityFence } from '@shared/contracts/dto'
@@ -8,6 +8,7 @@ import {
   resolveAgentTreatedActionContext,
 } from '../../../utils/terminalAgentOverlay'
 import type { ShowWorkspaceCanvasMessage } from '../types'
+import { useCanvasDocumentCommands, useReadCanvasDocument } from '../../../store/canvasStoreContext'
 
 type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -41,9 +42,7 @@ function resolveActivityFence(node: Node<TerminalNodeData>): TerminalAgentActivi
 }
 
 export function useTerminalAgentSessionActions(options: {
-  nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   setNodes: SetNodes
-  onRequestPersistFlush?: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
 }): {
   reloadOverlayAgent: (nodeId: string) => Promise<boolean>
@@ -54,7 +53,9 @@ export function useTerminalAgentSessionActions(options: {
   switchOverlayAgentSession: (nodeId: string, summary: AgentSessionSummary) => Promise<boolean>
 } {
   const { t } = useTranslation()
-  const { nodesRef, onRequestPersistFlush, onShowMessage, setNodes } = options
+  const { onShowMessage, setNodes } = options
+  const readDocument = useReadCanvasDocument()
+  const { requestPersistFlush } = useCanvasDocumentCommands()
   const reexecInFlight = useRef(new Set<string>())
 
   const reexecOverlayAgent = useCallback(
@@ -69,7 +70,7 @@ export function useTerminalAgentSessionActions(options: {
       resumeSessionIdVerified: boolean
       startedAtMs: number
     }): Promise<boolean> => {
-      const node = nodesRef.current.find(candidate => candidate.id === nodeId)
+      const node = readDocument().nodes.find(candidate => candidate.id === nodeId)
       const context = node ? resolveAgentTreatedActionContext(node) : null
       if (!node || node.data.kind !== 'terminal' || !context) {
         return false
@@ -122,8 +123,9 @@ export function useTerminalAgentSessionActions(options: {
             }),
           { syncLayout: false },
         )
+        // Whether the write changed anything is decided inside it, so the flush follows it.
         if (didChange) {
-          onRequestPersistFlush?.()
+          requestPersistFlush()
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : t('common.unknownError')
@@ -133,12 +135,12 @@ export function useTerminalAgentSessionActions(options: {
       }
       return true
     },
-    [nodesRef, onRequestPersistFlush, onShowMessage, setNodes, t],
+    [onShowMessage, readDocument, requestPersistFlush, setNodes, t],
   )
 
   const reloadOverlayAgent = useCallback(
     async (nodeId: string): Promise<boolean> => {
-      const node = nodesRef.current.find(candidate => candidate.id === nodeId)
+      const node = readDocument().nodes.find(candidate => candidate.id === nodeId)
       const context = node ? resolveAgentTreatedActionContext(node) : null
       if (!node || node.data.kind !== 'terminal' || !context) {
         return false
@@ -152,12 +154,12 @@ export function useTerminalAgentSessionActions(options: {
         startedAtMs: canResume ? node.data.agentOverlay!.startedAtMs : Date.now(),
       })
     },
-    [nodesRef, reexecOverlayAgent],
+    [readDocument, reexecOverlayAgent],
   )
 
   const listOverlayAgentSessions = useCallback(
     async (nodeId: string, limit = 20): Promise<AgentSessionSummary[] | null> => {
-      const node = nodesRef.current.find(candidate => candidate.id === nodeId)
+      const node = readDocument().nodes.find(candidate => candidate.id === nodeId)
       const context = node ? resolveAgentTreatedActionContext(node) : null
       if (!node || node.data.kind !== 'terminal' || !context) {
         return null
@@ -170,12 +172,12 @@ export function useTerminalAgentSessionActions(options: {
       })
       return result.sessions
     },
-    [nodesRef],
+    [readDocument],
   )
 
   const switchOverlayAgentSession = useCallback(
     async (nodeId: string, summary: AgentSessionSummary): Promise<boolean> => {
-      const node = nodesRef.current.find(candidate => candidate.id === nodeId)
+      const node = readDocument().nodes.find(candidate => candidate.id === nodeId)
       const context = node ? resolveAgentTreatedActionContext(node) : null
       if (!node || node.data.kind !== 'terminal' || !context) {
         return false
@@ -195,7 +197,7 @@ export function useTerminalAgentSessionActions(options: {
         startedAtMs: Number.isFinite(summaryStartedAtMs) ? summaryStartedAtMs : Date.now(),
       })
     },
-    [nodesRef, reexecOverlayAgent],
+    [readDocument, reexecOverlayAgent],
   )
 
   return { reloadOverlayAgent, listOverlayAgentSessions, switchOverlayAgentSession }

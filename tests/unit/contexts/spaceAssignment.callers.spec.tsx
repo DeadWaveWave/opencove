@@ -925,16 +925,13 @@ describe('the push-away through the carriers of the canvas', () => {
       assign: assignMock,
       useHook: updateCanvasDocument =>
         useWorkspaceCanvasAgentSupport({
-          nodesRef,
           setNodes,
           bumpAgentLaunchToken: () => 1,
           isAgentLaunchTokenCurrent: () => true,
           agentSettings: launcherSettings,
           workspaceId: 'workspace',
           workspacePath: '/repo',
-          spacesRef,
           updateCanvasDocument,
-          onRequestPersistFlush,
           onShowMessage,
           createNodeForSession,
           standardWindowSizeBucket: 'regular',
@@ -942,7 +939,7 @@ describe('the push-away through the carriers of the canvas', () => {
         } as never),
       invoke: ({ hook }) => hook.launchAgentAtFlowPosition({ x: 400, y: 300 }),
       argsOf: assignArgs,
-      flush: onRequestPersistFlush,
+      flush: 'document',
     })
   })
 })
@@ -956,11 +953,6 @@ describe('the push-away of the agent launcher', () => {
           agentSettings: launcherSettings,
           workspaceId: 'workspace',
           workspacePath: '/repo',
-          nodesRef,
-          setNodes,
-          spacesRef,
-          onSpacesChange,
-          onRequestPersistFlush,
           onShowMessage,
           createNodeForSession,
           standardWindowSizeBucket: 'regular',
@@ -969,7 +961,7 @@ describe('the push-away of the agent launcher', () => {
         } as never),
       invoke: ({ hook }) => hook.launchAgentAtFlowPosition({ x: 400, y: 300 }),
       argsOf: assignArgs,
-      flush: onRequestPersistFlush,
+      flush: 'document',
     })
   })
 })

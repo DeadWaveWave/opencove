@@ -4,6 +4,12 @@ import type { Node } from '@xyflow/react'
 import type { TerminalAgentReexecStatus } from '../../../src/shared/contracts/dto'
 import { useTerminalAgentSessionActions } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useTerminalAgentSessionActions'
 import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
+import {
+  CANVAS_STORE_TEST_WORKSPACE_ID,
+  CanvasStoreTestProvider,
+} from '../../support/canvasStoreTestHarness'
+import { createCanvasDocumentHarness } from '../../support/canvasDocumentHarness'
+import { storeBackedChannelsOf } from '../../support/workspaceCanvasStoreHarness'
 
 function createOverlayNode(): Node<TerminalNodeData> {
   return {
@@ -58,7 +64,12 @@ function createHarness(options: {
       revision: 1,
     }
   }
-  const nodesRef = { current: [initialNode] }
+  // The actions read the document; the harness's flush spy is the shell's persist flush.
+  const documentHarness = createCanvasDocumentHarness({
+    workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID,
+    nodes: [initialNode],
+  })
+  const { nodesRef } = storeBackedChannelsOf(CANVAS_STORE_TEST_WORKSPACE_ID)
   const setNodes = vi.fn(
     (updater: (nodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[]) => {
       nodesRef.current = updater(nodesRef.current)
@@ -78,14 +89,14 @@ function createHarness(options: {
     },
   })
   const onShowMessage = vi.fn()
-  const onRequestPersistFlush = vi.fn()
-  const hook = renderHook(() =>
-    useTerminalAgentSessionActions({
-      nodesRef,
-      setNodes,
-      onShowMessage,
-      onRequestPersistFlush,
-    }),
+  const onRequestPersistFlush = documentHarness.flush
+  const hook = renderHook(
+    () =>
+      useTerminalAgentSessionActions({
+        setNodes,
+        onShowMessage,
+      }),
+    { wrapper: CanvasStoreTestProvider },
   )
 
   return {
