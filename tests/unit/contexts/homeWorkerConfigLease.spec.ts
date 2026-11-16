@@ -295,3 +295,19 @@ describe('Home Worker configuration lease under Windows error codes', () => {
     expect(await readFile(ownerPath(userDataPath), 'utf8')).toContain('second-owner')
   }, 10_000)
 })
+
+describe('Home Worker configuration lease file system access', () => {
+  it('12 reaches rename and rm only through the injected file system port', async () => {
+    const source = await readFile(
+      resolve('src/contexts/settings/infrastructure/homeWorker/homeWorkerConfigLease.ts'),
+      'utf8',
+    )
+    const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
+
+    // A bare call, or a call of the imported default, would skip the platform policy and the port.
+    expect(code.match(/(?<![\w.])(rename|rm|fsRename|fsRm)\s*\(/g)).toBeNull()
+    // The imported functions appear once in the import and once as the port's default.
+    expect(code.match(/\bfsRename\b/g)).toHaveLength(2)
+    expect(code.match(/\bfsRm\b/g)).toHaveLength(2)
+  })
+})

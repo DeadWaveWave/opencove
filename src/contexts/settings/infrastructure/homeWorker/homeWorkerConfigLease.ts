@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto'
-import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rename as fsRename, rm as fsRm, stat, writeFile } from 'node:fs/promises'
 import type { RmOptions } from 'node:fs'
 import { resolve } from 'node:path'
+import { classifyLeaseFsError, readFsErrorCode } from './homeWorkerConfigLeaseErrors'
 
 export const HOME_WORKER_CONFIG_LEASE_FILE = 'home-worker-config.lease'
 export const HOME_WORKER_CONFIG_LEASE_OWNER_FILE = 'owner.json'
@@ -14,6 +15,11 @@ type LeaseObservation = {
   identity: string
   mtimeMs: number
   record: LeaseRecord | null
+}
+type LeaseFileSystem = {
+  platform: NodeJS.Platform
+  rename: (from: string, to: string) => Promise<void>
+  rm: (path: string, options?: RmOptions) => Promise<void>
 }
 type LeaseDependencies = {
   now?: () => number
@@ -90,8 +96,12 @@ async function observeLease(lockPath: string): Promise<LeaseObservation | null> 
   }
 }
 
-async function restoreCapturedLease(capturedPath: string, lockPath: string): Promise<void> {
-  await rename(capturedPath, lockPath).catch(async restoreError => {
+async function restoreCapturedLease(
+  fs: LeaseFileSystem,
+  capturedPath: string,
+  lockPath: string,
+): Promise<void> {
+  await fs.rename(capturedPath, lockPath).catch(async restoreError => {
     throw new Error('Home Worker configuration lease changed during ownership verification.', {
       cause: restoreError,
     })
@@ -99,25 +109,26 @@ async function restoreCapturedLease(capturedPath: string, lockPath: string): Pro
 }
 
 async function reclaimObservedLease(options: {
+  fs: LeaseFileSystem
   lockPath: string
   observed: LeaseObservation
   quarantinePath: string
 }): Promise<boolean> {
   try {
-    await rename(options.lockPath, options.quarantinePath)
+    await options.fs.rename(options.lockPath, options.quarantinePath)
   } catch (error) {
-    const code = error && typeof error === 'object' ? (error as { code?: unknown }).code : null
-    if (code === 'ENOENT') {
+    const kind = classifyLeaseFsError('reclaim', readFsErrorCode(error), options.fs.platform)
+    if (kind === 'absent' || kind === 'ambiguous') {
       return false
     }
     throw error
   }
   const captured = await observeLease(options.quarantinePath)
   if (captured?.identity !== options.observed.identity) {
-    await restoreCapturedLease(options.quarantinePath, options.lockPath)
+    await restoreCapturedLease(options.fs, options.quarantinePath, options.lockPath)
     return false
   }
-  await rm(options.quarantinePath, { recursive: true, force: true })
+  await options.fs.rm(options.quarantinePath, { recursive: true, force: true })
   return true
 }
 
@@ -133,6 +144,11 @@ export async function acquireHomeWorkerConfigLease(
   const lockPath = resolve(userDataPath, HOME_WORKER_CONFIG_LEASE_FILE)
   const now = options.dependencies?.now ?? Date.now
   const wait = options.dependencies?.wait ?? defaultWait
+  const fs: LeaseFileSystem = {
+    platform: options.dependencies?.platform ?? process.platform,
+    rename: options.dependencies?.rename ?? fsRename,
+    rm: options.dependencies?.rm ?? fsRm,
+  }
   const isProcessAlive = options.dependencies?.isProcessAlive ?? defaultIsProcessAlive
   const createToken = options.dependencies?.token ?? randomUUID
   const deadline = now() + (options.timeoutMs ?? DEFAULT_LEASE_TIMEOUT_MS)
@@ -143,7 +159,7 @@ export async function acquireHomeWorkerConfigLease(
   const claimPath = `${lockPath}.claim-${process.pid}-${token}`
 
   await mkdir(userDataPath, { recursive: true })
-  await rm(claimPath, { recursive: true, force: true })
+  await fs.rm(claimPath, { recursive: true, force: true })
   await mkdir(claimPath)
   await writeFile(
     resolve(claimPath, HOME_WORKER_CONFIG_LEASE_OWNER_FILE),
@@ -153,7 +169,7 @@ export async function acquireHomeWorkerConfigLease(
 
   const attempt = async (): Promise<{ release: () => Promise<void> }> => {
     try {
-      await rename(claimPath, lockPath)
+      await fs.rename(claimPath, lockPath)
       return {
         release: async () => {
           const observed = await observeLease(lockPath)
@@ -161,23 +177,23 @@ export async function acquireHomeWorkerConfigLease(
             return
           }
           const releasePath = `${lockPath}.release-${process.pid}-${token}`
-          await rm(releasePath, { recursive: true, force: true })
+          await fs.rm(releasePath, { recursive: true, force: true })
           try {
-            await rename(lockPath, releasePath)
+            await fs.rename(lockPath, releasePath)
           } catch {
             return
           }
           const captured = await observeLease(releasePath)
           if (captured?.record?.token === token) {
-            await rm(releasePath, { recursive: true, force: true })
+            await fs.rm(releasePath, { recursive: true, force: true })
           } else {
-            await restoreCapturedLease(releasePath, lockPath)
+            await restoreCapturedLease(fs, releasePath, lockPath)
           }
         },
       }
     } catch (error) {
-      const code = error && typeof error === 'object' ? (error as { code?: unknown }).code : null
-      if (code !== 'EEXIST' && code !== 'ENOTEMPTY' && code !== 'ENOTDIR' && code !== 'EISDIR') {
+      const kind = classifyLeaseFsError('claim', readFsErrorCode(error), fs.platform)
+      if (kind !== 'held' && kind !== 'ambiguous') {
         throw error
       }
       const observed = await observeLease(lockPath)
@@ -190,6 +206,7 @@ export async function acquireHomeWorkerConfigLease(
         const quarantinePath = `${lockPath}.stale-${process.pid}-${randomUUID()}`
         if (
           await reclaimObservedLease({
+            fs,
             lockPath,
             observed,
             quarantinePath,
@@ -209,7 +226,7 @@ export async function acquireHomeWorkerConfigLease(
   try {
     return await attempt()
   } catch (error) {
-    await rm(claimPath, { recursive: true, force: true })
+    await fs.rm(claimPath, { recursive: true, force: true })
     throw error
   }
 }
