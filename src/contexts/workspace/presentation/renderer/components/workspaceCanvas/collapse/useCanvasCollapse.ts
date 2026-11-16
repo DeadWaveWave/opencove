@@ -85,9 +85,8 @@ export function useCanvasCollapse({
   }, [workspaceId])
 
   // The plan before the write decides whether to write and feeds the motion, the disclosure and
-  // the return value. The write plans again from the nodes and the Spaces it runs on, with the
-  // disclosure read before: `update` has not changed the document, and the collapse state is not
-  // part of it.
+  // the return value. The write plans again from its own nodes and Spaces with the disclosure
+  // captured above, as collapse-and-arrange and undo must.
   const expandNode = useCallback(
     (id: string) => {
       const current =

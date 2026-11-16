@@ -92,7 +92,8 @@ export function useWorkspaceCanvasArrange({
   const viewportMaxZoom = useStore(state => state.maxZoom)
 
   // Plans from the nodes and the Spaces of the document when the write runs, and writes the nodes
-  // and the Spaces together. A layout that changes nothing is neither written nor flushed, and
+  // and the Spaces together. A layout that changes nothing returns the document it was given, so
+  // nothing is published unless the node store has initial sizes to set; it is not flushed and
   // does not move the viewport. Returns the layout, for the warnings.
   const commitArrange = useCallback(
     (
