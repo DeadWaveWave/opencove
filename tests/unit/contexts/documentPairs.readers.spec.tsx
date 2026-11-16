@@ -172,7 +172,7 @@ describe('useCanvasCollapse in two workspaces', () => {
           spaces: [],
           reactFlow: reactFlow as never,
           focusNodeTargetZoom: 1,
-          nodeExpandBehavior: 'resize',
+          nodeExpandBehavior: 'push-away',
           updateCanvasDocument,
         }),
       {
