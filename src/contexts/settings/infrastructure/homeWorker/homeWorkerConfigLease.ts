@@ -2,7 +2,11 @@ import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, rename as fsRename, rm as fsRm, stat, writeFile } from 'node:fs/promises'
 import type { RmOptions } from 'node:fs'
 import { resolve } from 'node:path'
-import { classifyLeaseFsError, readFsErrorCode } from './homeWorkerConfigLeaseErrors'
+import {
+  classifyLeaseFsError,
+  readFsErrorCode,
+  type LeaseOperation,
+} from './homeWorkerConfigLeaseErrors'
 
 export const HOME_WORKER_CONFIG_LEASE_FILE = 'home-worker-config.lease'
 export const HOME_WORKER_CONFIG_LEASE_OWNER_FILE = 'owner.json'
@@ -65,6 +69,34 @@ function defaultIsProcessAlive(pid: number): boolean {
   }
 }
 
+type LeaseAcquireDetails = {
+  attempts: number
+  lastCode: string | null
+  lastObservation: 'absent' | { pid: number | null; alive: boolean | null; malformed: boolean }
+}
+
+class HomeWorkerConfigLeaseTimeoutError extends Error {
+  readonly details: LeaseAcquireDetails
+
+  constructor(cause: unknown, details: LeaseAcquireDetails) {
+    super('Timed out acquiring Home Worker configuration lease.', { cause })
+    this.name = 'HomeWorkerConfigLeaseTimeoutError'
+    this.details = details
+  }
+}
+
+function fatalLeaseError(operation: LeaseOperation, error: unknown): Error {
+  const detail = error instanceof Error ? error.message : String(error)
+  return new Error(`Home Worker configuration lease ${operation} failed: ${detail}`, {
+    cause: error,
+  })
+}
+
+// Starts at the configured delay and grows by 10 ms to 100 ms, as graceful-fs and VS Code do.
+function nextBackoffMs(currentMs: number): number {
+  return Math.min(100, currentMs + 10)
+}
+
 async function defaultWait(delayMs: number): Promise<void> {
   await new Promise<void>(resolvePromise => setTimeout(resolvePromise, delayMs))
 }
@@ -121,7 +153,7 @@ async function reclaimObservedLease(options: {
     if (kind === 'absent' || kind === 'ambiguous') {
       return false
     }
-    throw error
+    throw fatalLeaseError('reclaim', error)
   }
   const captured = await observeLease(options.quarantinePath)
   if (captured?.identity !== options.observed.identity) {
@@ -167,64 +199,92 @@ export async function acquireHomeWorkerConfigLease(
     { encoding: 'utf8', mode: 0o600 },
   )
 
-  const attempt = async (): Promise<{ release: () => Promise<void> }> => {
-    try {
-      await fs.rename(claimPath, lockPath)
-      return {
-        release: async () => {
-          const observed = await observeLease(lockPath)
-          if (observed?.record?.token !== token) {
-            return
-          }
-          const releasePath = `${lockPath}.release-${process.pid}-${token}`
-          await fs.rm(releasePath, { recursive: true, force: true })
-          try {
-            await fs.rename(lockPath, releasePath)
-          } catch {
-            return
-          }
-          const captured = await observeLease(releasePath)
-          if (captured?.record?.token === token) {
-            await fs.rm(releasePath, { recursive: true, force: true })
-          } else {
-            await restoreCapturedLease(fs, releasePath, lockPath)
-          }
-        },
-      }
-    } catch (error) {
-      const kind = classifyLeaseFsError('claim', readFsErrorCode(error), fs.platform)
-      if (kind !== 'held' && kind !== 'ambiguous') {
-        throw error
-      }
+  const createHandle = (): { release: () => Promise<void> } => ({
+    release: async () => {
       const observed = await observeLease(lockPath)
-      if (!observed) {
-        return await attempt()
+      if (observed?.record?.token !== token) {
+        return
       }
-      const malformedIsStale = !observed.record && now() - observed.mtimeMs >= malformedStaleMs
-      const ownerExited = observed.record ? !isProcessAlive(observed.record.pid) : false
-      if (ownerExited || malformedIsStale) {
-        const quarantinePath = `${lockPath}.stale-${process.pid}-${randomUUID()}`
-        if (
-          await reclaimObservedLease({
-            fs,
-            lockPath,
-            observed,
-            quarantinePath,
-          })
-        ) {
-          return await attempt()
+      const releasePath = `${lockPath}.release-${process.pid}-${token}`
+      await fs.rm(releasePath, { recursive: true, force: true })
+      try {
+        await fs.rename(lockPath, releasePath)
+      } catch {
+        return
+      }
+      const captured = await observeLease(releasePath)
+      if (captured?.record?.token === token) {
+        await fs.rm(releasePath, { recursive: true, force: true })
+      } else {
+        await restoreCapturedLease(fs, releasePath, lockPath)
+      }
+    },
+  })
+
+  const acquire = async (): Promise<{ release: () => Promise<void> }> => {
+    let attempts = 0
+    let lastError: unknown = null
+    let lastCode: string | null = null
+    let lastObservation: LeaseAcquireDetails['lastObservation'] = 'absent'
+    let backoffMs = retryDelayMs
+    for (;;) {
+      attempts += 1
+      let observed: LeaseObservation | null = null
+      if (fs.platform === 'win32') {
+        // On Windows a rename onto a held lease directory reports EPERM, and a rename onto a legacy
+        // lease file succeeds and replaces it, so the rename cannot detect a held lease there. Look
+        // first and claim only a free path. A legacy file that appears between this look and the
+        // rename is still replaced; that needs an old build to take the lease in that instant.
+        observed = await observeLease(lockPath)
+      }
+      if (!observed) {
+        try {
+          await fs.rename(claimPath, lockPath)
+          return createHandle()
+        } catch (error) {
+          const code = readFsErrorCode(error)
+          const kind = classifyLeaseFsError('claim', code, fs.platform)
+          if (kind !== 'held' && kind !== 'ambiguous') {
+            throw fatalLeaseError('claim', error)
+          }
+          lastError = error
+          lastCode = code
+          // Held, or ambiguous on Windows: the lease on disk tells which. Absent means a transient
+          // refusal, which waits below instead of retrying at once.
+          observed = await observeLease(lockPath)
         }
       }
-      if (now() >= deadline) {
-        throw new Error('Timed out acquiring Home Worker configuration lease.', { cause: error })
+      if (observed) {
+        const malformedIsStale = !observed.record && now() - observed.mtimeMs >= malformedStaleMs
+        const ownerAlive = observed.record ? isProcessAlive(observed.record.pid) : null
+        lastObservation = {
+          pid: observed.record?.pid ?? null,
+          alive: ownerAlive,
+          malformed: !observed.record,
+        }
+        if (ownerAlive === false || malformedIsStale) {
+          const quarantinePath = `${lockPath}.stale-${process.pid}-${randomUUID()}`
+          if (await reclaimObservedLease({ fs, lockPath, observed, quarantinePath })) {
+            continue
+          }
+        }
+      } else {
+        lastObservation = 'absent'
       }
-      await wait(retryDelayMs)
-      return await attempt()
+      if (now() >= deadline) {
+        throw new HomeWorkerConfigLeaseTimeoutError(lastError, {
+          attempts,
+          lastCode,
+          lastObservation,
+        })
+      }
+      await wait(backoffMs)
+      backoffMs = nextBackoffMs(backoffMs)
     }
   }
 
   try {
-    return await attempt()
+    return await acquire()
   } catch (error) {
     await fs.rm(claimPath, { recursive: true, force: true })
     throw error

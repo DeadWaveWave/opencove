@@ -296,6 +296,46 @@ describe('Home Worker configuration lease under Windows error codes', () => {
   }, 10_000)
 })
 
+describe('Home Worker configuration lease on a Windows legacy file lease', () => {
+  registerLeaseTempDirCleanup()
+
+  it('13 looks before claiming on win32 and never renames onto a live legacy lease file', async () => {
+    const userDataPath = await createUserDataPath()
+    const lockPath = resolve(userDataPath, HOME_WORKER_CONFIG_LEASE_FILE)
+    const legacy = `${JSON.stringify({
+      pid: process.pid,
+      token: 'legacy-live-owner',
+      createdAt: new Date().toISOString(),
+    })}\n`
+    await writeFile(lockPath, legacy)
+    const claimTargets: string[] = []
+
+    const failure = await acquireHomeWorkerConfigLease(userDataPath, {
+      timeoutMs: 0,
+      malformedStaleMs: 0,
+      dependencies: {
+        token: () => 'new-owner',
+        platform: 'win32',
+        isProcessAlive: () => true,
+        wait: async () => undefined,
+        // Windows lets a directory replace a file, so this rename would succeed onto the lease.
+        rename: async (from, to) => {
+          claimTargets.push(to)
+          await rm(to, { recursive: true, force: true })
+          await rename(from, to)
+        },
+      },
+    }).then(
+      () => null,
+      (error: unknown) => error as Error,
+    )
+
+    expect(failure?.message).toContain('Timed out acquiring')
+    expect(claimTargets).not.toContain(lockPath)
+    expect(await readFile(lockPath, 'utf8')).toBe(legacy)
+  }, 10_000)
+})
+
 describe('Home Worker configuration lease file system access', () => {
   it('12 reaches rename and rm only through the injected file system port', async () => {
     const source = await readFile(

@@ -11,6 +11,7 @@ import {
   HOME_WORKER_CONFIG_LEASE_FILE,
   HOME_WORKER_CONFIG_LEASE_OWNER_FILE,
 } from '../../../src/contexts/settings/infrastructure/homeWorker/homeWorkerConfigLease'
+import { classifyLeaseFsError } from '../../../src/contexts/settings/infrastructure/homeWorker/homeWorkerConfigLeaseErrors'
 import {
   createUserDataPath,
   ownerPath,
@@ -195,6 +196,7 @@ describe('Home Worker configuration lease across real processes', () => {
 
       recordResult(`[lease-windows] W1 claim-onto-held-directory code=${code}`)
       expect(code).toBe('EPERM')
+      expect(classifyLeaseFsError('claim', code, 'win32')).not.toBe('fatal')
     },
     20_000,
   )
@@ -212,7 +214,9 @@ describe('Home Worker configuration lease across real processes', () => {
       const code = await renameCode(claim, lease)
 
       recordResult(`[lease-windows] W1b claim-onto-legacy-file code=${code}`)
-      expect(code).toBe('EPERM')
+      // Windows lets the claim directory replace a lease file, so a rename cannot detect a held legacy
+      // lease there. This is why the lease looks at the path before it claims on win32.
+      expect(code).toBe('none')
     },
     20_000,
   )
@@ -236,6 +240,10 @@ describe('Home Worker configuration lease across real processes', () => {
       )
       reader.send({ type: 'close-hold' })
       await reader.next('closed')
+      if (code !== 'none') {
+        expect(classifyLeaseFsError('release', code, 'win32')).toBe('ambiguous')
+        expect(classifyLeaseFsError('reclaim', code, 'win32')).toBe('ambiguous')
+      }
     },
     30_000,
   )
