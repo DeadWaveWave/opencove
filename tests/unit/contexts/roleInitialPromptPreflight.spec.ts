@@ -28,6 +28,7 @@ it.each(['update', 'plugins\0 explain this project'])(
       ] as unknown as Node<TerminalNodeData>[],
     }
     const onSpacesChange = vi.fn()
+    const updateSpaces = vi.fn()
     const createNodeForSession = vi.fn()
     await runRoleNodeAction('role', undefined, {
       nodesRef,
@@ -38,9 +39,11 @@ it.each(['update', 'plugins\0 explain this project'])(
         nodesRef.current = updater(nodesRef.current)
       },
       onSpacesChange,
+      updateSpaces,
       createNodeForSession,
     } as unknown as RoleRunActionContext)
     expect(onSpacesChange).not.toHaveBeenCalled()
+    expect(updateSpaces).not.toHaveBeenCalled()
     expect(createNodeForSession).not.toHaveBeenCalled()
     expect(nodesRef.current[0].data.role).toMatchObject({
       input: '',

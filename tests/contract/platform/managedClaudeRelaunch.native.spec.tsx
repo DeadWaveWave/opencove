@@ -4,6 +4,7 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import { act, cleanup, renderHook } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
+
 import { describeWithElectronNativeModules } from '../electronNativeSuite'
 import { snapshotFixture, type SnapshotFixture } from './managedClaudeSnapshotFixture'
 import { toShellWorkspaceState } from '../../../src/app/renderer/shell/hooks/useHydrateAppState.helpers'
@@ -226,6 +227,7 @@ describeWithElectronNativeModules('UI Claude relaunch during normal persistence'
                 nodesRef,
                 spacesRef,
                 onSpacesChange,
+                updateSpaces: vi.fn(),
                 setNodes: setCanvasNodes,
                 createNodeForSession: vi.fn(),
                 buildAgentNodeTitle: () => 'Claude',
@@ -239,7 +241,11 @@ describeWithElectronNativeModules('UI Claude relaunch during normal persistence'
               }),
           }
         },
-        { wrapper: CanvasStoreTestProvider },
+        {
+          wrapper: ({ children }) => (
+            <CanvasStoreTestProvider workspaceId={workspace.id}>{children}</CanvasStoreTestProvider>
+          ),
+        },
       )
       let launch!: ReturnType<typeof hook.result.current.launchAgentInNode>
       try {

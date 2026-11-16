@@ -83,6 +83,7 @@ function initialNodes(): Node<TerminalNodeData>[] {
 it('shows a refused Pi config run in the actual canvas task card while preserving the live session', async () => {
   const launchAgentInNode = vi.fn()
   const onSpacesChange = vi.fn()
+  const updateSpaces = vi.fn()
   const kill = vi.fn()
   vi.stubGlobal('opencoveApi', { pty: { kill } })
   const observed = { current: [] as Node<TerminalNodeData>[] }
@@ -100,6 +101,7 @@ it('shows a refused Pi config run in the actual canvas task card while preservin
       agentSettings: { ...DEFAULT_AGENT_SETTINGS, defaultProvider: 'codex' },
       launchAgentInNode,
       onSpacesChange,
+      updateSpaces,
       t: (key: string) => key,
       setNodes: (update: (previous: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[]) => {
         nodesRef.current = update(nodesRef.current)
@@ -145,5 +147,6 @@ it('shows a refused Pi config run in the actual canvas task card while preservin
   })
   expect(launchAgentInNode).not.toHaveBeenCalled()
   expect(onSpacesChange).not.toHaveBeenCalled()
+  expect(updateSpaces).not.toHaveBeenCalled()
   expect(kill).not.toHaveBeenCalled()
 })

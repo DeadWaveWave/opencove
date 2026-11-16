@@ -108,6 +108,7 @@ describe('resolveNodeRoleDefinition', () => {
         spacesRef: { current: [] },
         setNodes: vi.fn(),
         onSpacesChange: vi.fn(),
+        updateSpaces: vi.fn(),
         createNodeForSession,
         updateRoleInput: vi.fn(),
         appendRoleRunRecord: vi.fn(),
