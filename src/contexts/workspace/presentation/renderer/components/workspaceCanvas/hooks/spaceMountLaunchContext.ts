@@ -88,7 +88,9 @@ function applySpaceMountRepair(options: {
     )
   })
 
-  return written ?? space
+  // When the store no longer holds the Space nothing is written, but the launch still runs in the
+  // repaired mount, so the Space it goes on with carries the repair.
+  return written ?? { ...space, ...repairFields }
 }
 
 export async function resolveSpaceMountLaunchContext(options: {

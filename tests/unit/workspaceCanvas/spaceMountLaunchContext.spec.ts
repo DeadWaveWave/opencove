@@ -150,7 +150,7 @@ describe('resolveSpaceMountLaunchContext', () => {
     expect(harness.flush).toHaveBeenCalledTimes(1)
   })
 
-  it('does not write back a Space that was deleted while mount.list was pending', async () => {
+  it('does not write back a Space that was deleted while mount.list was pending, and returns it repaired', async () => {
     const target = spaceOf('space-1')
     const other = spaceOf('space-2', { name: 'Docs' })
     const harness = createCanvasDocumentHarness({ spaces: [target, other] })
@@ -172,7 +172,11 @@ describe('resolveSpaceMountLaunchContext', () => {
 
     expect(harness.readStoreDocument().spaces).toEqual([other])
     expect(harness.notifications).not.toHaveBeenCalled()
-    expect(resolved.space).toBe(target)
+    expect(resolved.space).toEqual({
+      ...target,
+      targetMountId: 'mount-1',
+      directoryPath: WORKTREE,
+    })
     expect(resolved.mountId).toBe('mount-1')
   })
 
@@ -299,6 +303,40 @@ describe('the mount repair of a terminal created from the pane', () => {
     ])
     expect(harness.notifications).toHaveBeenCalledTimes(1)
     expect(harness.flush).not.toHaveBeenCalled()
+  })
+
+  // The repair writes nothing for a Space that is gone, but the launch goes on in the repaired
+  // mount; the node assignment that follows puts the Space back from the Space it was handed, so
+  // that Space must carry the repair.
+  it('hands the node assignment the repaired Space when the target was deleted while mount.list was pending', async () => {
+    const target = spaceOf('space-1')
+    const other = spaceOf('space-2', {
+      name: 'Docs',
+      rect: { x: 2300, y: 0, width: 800, height: 600 },
+    })
+    const harness = createCanvasDocumentHarness({ spaces: [target, other] })
+    const { resolveMounts } = stubControlSurface()
+
+    const launched = launchOnPane(harness, [other], spaces =>
+      replaceWorkspaceSpaces(WORKSPACE_ID, spaces),
+    )
+    await vi.waitFor(() =>
+      expect(window.opencoveApi.controlSurface.invoke).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'mount.list' }),
+      ),
+    )
+    act(() => {
+      replaceWorkspaceSpaces(WORKSPACE_ID, [other])
+    })
+    resolveMounts()
+    await launched
+
+    const restored = harness.readStoreDocument().spaces.find(item => item.id === 'space-1')
+    expect(restored).toMatchObject({
+      targetMountId: 'mount-1',
+      directoryPath: WORKTREE,
+      nodeIds: ['00000000-0000-4000-8000-000000000001'],
+    })
   })
 
   it('writes nothing when the Space needs no repair', async () => {
