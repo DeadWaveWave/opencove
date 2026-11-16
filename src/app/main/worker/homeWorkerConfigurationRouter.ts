@@ -18,7 +18,10 @@ import {
   setHomeWorkerWebUiSettings,
 } from '../../../contexts/settings/infrastructure/homeWorker/homeWorkerConfigMutations'
 import { invokeLocalWorkerConfiguration } from './localWorkerConfigurationClient'
-import { withHomeWorkerConfigLease } from '../../../contexts/settings/infrastructure/homeWorker/homeWorkerConfigLease'
+import {
+  createLeaseReleaseErrorReporter,
+  withHomeWorkerConfigLease,
+} from '../../../contexts/settings/infrastructure/homeWorker/homeWorkerConfigLease'
 import { resolveOwnedLocalWorkerConfigurationState } from './localWorkerManager'
 
 async function readLiveConfig(connection: WorkerConnectionInfoDto) {
@@ -78,11 +81,9 @@ export function createHomeWorkerConfigurationRouter(options: {
         return ownerConnection ? await mutateLiveOwner(ownerConnection) : await mutateOffline()
       },
       {
-        onReleaseError: error => {
-          process.stderr.write(
-            `[opencove] Home Worker configuration lease release failed: ${error instanceof Error ? error.message : String(error)}\n`,
-          )
-        },
+        onReleaseError: createLeaseReleaseErrorReporter('opencove', text =>
+          process.stderr.write(text),
+        ),
       },
     )
   }

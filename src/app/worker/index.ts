@@ -20,7 +20,10 @@ import { hashWebUiPassword } from '../../contexts/settings/infrastructure/homeWo
 import { isWorkerConnectionAlive } from '../main/worker/workerConnectionHealth'
 import { resolveLocalWorkerReusePolicy } from '../../shared/runtime/localWorkerReusePolicy'
 import { readHomeWorkerConfigFile } from '../../contexts/settings/infrastructure/homeWorker/homeWorkerConfig'
-import { runUnderHomeWorkerConfigLease } from './runUnderHomeWorkerConfigLease'
+import {
+  createLeaseReleaseErrorReporter,
+  withHomeWorkerConfigLease,
+} from '../../contexts/settings/infrastructure/homeWorker/homeWorkerConfigLease'
 import { createClaudeHookChannel } from '../main/controlSurface/agentHook/claudeHookChannel'
 import { createCodexHookChannel } from '../main/controlSurface/agentHook/codexHookChannel'
 import { AgentProviderRegistry } from '../../contexts/agent/application/services/AgentProviderRegistry'
@@ -238,7 +241,12 @@ async function main(): Promise<void> {
   }
   const server =
     startedBy === 'desktop'
-      ? await runUnderHomeWorkerConfigLease(userDataPath, startServer)
+      ? // A release failure is logged and start-up continues: the control surface is ready by then.
+        await withHomeWorkerConfigLease(userDataPath, startServer, {
+          onReleaseError: createLeaseReleaseErrorReporter('opencove-worker', text =>
+            process.stderr.write(text),
+          ),
+        })
       : await startServer()
 
   const info = await server.ready

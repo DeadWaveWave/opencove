@@ -301,6 +301,7 @@ export async function acquireHomeWorkerConfigLease(
       attempts += 1
       let observed: LeaseObservation | null = null
       if (fs.platform === 'win32') {
+        // @compat home-worker-config-legacy-lease
         // On Windows a rename onto a held lease directory reports EPERM, and a rename onto a legacy
         // lease file succeeds and replaces it, so the rename cannot detect a held lease there. Look
         // first and claim only a free path. A legacy file that appears between this look and the
@@ -390,4 +391,16 @@ export async function withHomeWorkerConfigLease<T>(
     options.onReleaseError(releaseError)
   }
   return result
+}
+
+/** The `onReleaseError` callback both callers use: one stderr line that names the process. */
+export function createLeaseReleaseErrorReporter(
+  processLabel: string,
+  writeStderr: (text: string) => void,
+): (error: unknown) => void {
+  return error => {
+    writeStderr(
+      `[${processLabel}] Home Worker configuration lease release failed: ${error instanceof Error ? error.message : String(error)}\n`,
+    )
+  }
 }

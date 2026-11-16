@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import {
   acquireHomeWorkerConfigLease,
   HOME_WORKER_CONFIG_LEASE_FILE,
+  createLeaseReleaseErrorReporter,
   withHomeWorkerConfigLease,
   type HomeWorkerConfigLeaseDependencies,
 } from '../../../src/contexts/settings/infrastructure/homeWorker/homeWorkerConfigLease'
@@ -400,6 +401,38 @@ describe('withHomeWorkerConfigLease when the release fails', () => {
         dependencies: await createStuckReleaseDependencies(userDataPath),
       }),
     ).rejects.toMatchObject({ name: 'HomeWorkerConfigLeaseReleaseError' })
+  }, 10_000)
+})
+
+describe('Worker start-up under the configuration lease', () => {
+  registerLeaseTempDirCleanup()
+
+  it('10 logs a failed release through the Worker reporter and lets start-up continue', async () => {
+    const userDataPath = await createUserDataPath()
+    const lockPath = resolve(userDataPath, HOME_WORKER_CONFIG_LEASE_FILE)
+    const clock = createFakeClock()
+    const stderr: string[] = []
+
+    // The Worker entry cannot be imported in a unit test, so this drives the same call it makes:
+    // withHomeWorkerConfigLease with the shared reporter, labelled for the Worker.
+    const result = await withHomeWorkerConfigLease(userDataPath, async () => 'ready', {
+      onReleaseError: createLeaseReleaseErrorReporter('opencove-worker', text => stderr.push(text)),
+      dependencies: {
+        platform: 'win32',
+        now: clock.now,
+        wait: clock.wait,
+        rename: async (from, to) => {
+          if (from === lockPath) {
+            throw fsError('EPERM')
+          }
+          await rename(from, to)
+        },
+      },
+    })
+
+    expect(result).toBe('ready')
+    expect(stderr).toHaveLength(1)
+    expect(stderr[0]).toContain('[opencove-worker] Home Worker configuration lease release failed')
   }, 10_000)
 })
 
