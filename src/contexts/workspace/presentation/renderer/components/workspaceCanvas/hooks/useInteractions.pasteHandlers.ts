@@ -13,16 +13,14 @@ import { isEditableDomTarget } from '../domTargets'
 import { resolveWebsitePasteUrl } from '@shared/utils/websiteUrl'
 import { useWorkspaceCanvasImageImport } from './useCanvasImageImport'
 import { createWebsiteNodeAtFlowPosition } from './useInteractions.paneNodeCreation'
-import type { SetNodes } from './useInteractions.types'
+import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 
 export function useWorkspaceCanvasPasteHandlers({
   workspaceId,
   canvasRef,
   reactFlow,
   spacesRef,
-  nodesRef,
-  setNodes,
-  onSpacesChange,
+  updateCanvasDocument,
   onShowMessage,
   createImageNode,
   createWebsiteNode,
@@ -35,9 +33,7 @@ export function useWorkspaceCanvasPasteHandlers({
   canvasRef: React.RefObject<HTMLDivElement | null>
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
-  nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
-  setNodes: SetNodes
-  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
+  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
   onShowMessage?: ShowWorkspaceCanvasMessage
   createImageNode: (
     anchor: { x: number; y: number },
@@ -63,9 +59,7 @@ export function useWorkspaceCanvasPasteHandlers({
     canvasRef,
     reactFlow,
     spacesRef,
-    nodesRef,
-    setNodes,
-    onSpacesChange,
+    updateCanvasDocument,
     onShowMessage,
     createImageNode,
     standardWindowSizeBucket,
@@ -108,22 +102,18 @@ export function useWorkspaceCanvasPasteHandlers({
         browserDefaultMode,
         createWebsiteNode,
         spacesRef,
-        nodesRef,
-        setNodes,
-        onSpacesChange,
+        updateCanvasDocument,
       })
     },
     [
       workspaceId,
       createWebsiteNode,
       imageImport,
-      nodesRef,
-      onSpacesChange,
       reactFlow,
-      setNodes,
       spacesRef,
       standardWindowSizeBucket,
       browserDefaultMode,
+      updateCanvasDocument,
       websiteWindowPasteEnabled,
       websiteWindowsEnabled,
     ],

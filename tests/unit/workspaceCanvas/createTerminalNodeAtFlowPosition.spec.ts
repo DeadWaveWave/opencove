@@ -6,6 +6,7 @@ import { createTerminalNodeAtFlowPosition } from '../../../src/contexts/workspac
 import {
   createCanvasDocumentHarness,
   renderCanvasDocumentCommands,
+  renderCanvasNodeStore,
 } from '../../support/canvasDocumentHarness'
 
 function regularTerminalLaunchGeometry() {
@@ -26,10 +27,15 @@ describe('createTerminalNodeAtFlowPosition', () => {
   })
 
   // The mount repair writes through the store: none of these launches needs one, so the store
-  // must see no write at all.
+  // sees no write but the push-away of a created node into its target Space.
   function seedStore(workspaceId: string) {
     const harness = createCanvasDocumentHarness({ workspaceId })
-    return { harness, updateSpaces: renderCanvasDocumentCommands(workspaceId).updateSpaces }
+    return {
+      harness,
+      updateSpaces: renderCanvasDocumentCommands(workspaceId).updateSpaces,
+      updateCanvasDocument:
+        renderCanvasNodeStore(harness).result.current.nodeStore.updateCanvasDocument,
+    }
   }
 
   it('falls back to the persisted active workspace when local workspace state is not hydrated yet', async () => {
@@ -42,7 +48,7 @@ describe('createTerminalNodeAtFlowPosition', () => {
       async () => ({ id: '00000000-0000-4000-8000-000000000001' }) as never,
     )
 
-    const { harness, updateSpaces } = seedStore('workspace-1')
+    const { harness, updateSpaces, updateCanvasDocument } = seedStore('workspace-1')
 
     vi.stubGlobal('window', {
       opencoveApi: {
@@ -92,8 +98,7 @@ describe('createTerminalNodeAtFlowPosition', () => {
       workspacePath: '',
       spacesRef: { current: [] },
       nodesRef: { current: [] },
-      setNodes: vi.fn(),
-      onSpacesChange: vi.fn(),
+      updateCanvasDocument,
       updateSpaces,
       createNodeForSession,
     })
@@ -121,7 +126,14 @@ describe('createTerminalNodeAtFlowPosition', () => {
       sessionId: 'session-1',
       nodeId: '00000000-0000-4000-8000-000000000001',
     })
-    expect(harness.notifications).not.toHaveBeenCalled()
+    // The one write is the push-away that adds the node to the persisted target Space.
+    expect(harness.notifications).toHaveBeenCalledTimes(1)
+    expect(harness.readStoreDocument().spaces).toEqual([
+      expect.objectContaining({
+        id: 'space-1',
+        nodeIds: ['00000000-0000-4000-8000-000000000001'],
+      }),
+    ])
   })
 
   it('does not guess mount ownership from the workspace id when only a local workspace path is known', async () => {
@@ -135,7 +147,7 @@ describe('createTerminalNodeAtFlowPosition', () => {
       async () => ({ id: '00000000-0000-4000-8000-000000000001' }) as never,
     )
 
-    const { harness, updateSpaces } = seedStore('workspace-1')
+    const { harness, updateSpaces, updateCanvasDocument } = seedStore('workspace-1')
 
     vi.stubGlobal('window', {
       opencoveApi: {
@@ -172,8 +184,7 @@ describe('createTerminalNodeAtFlowPosition', () => {
       workspacePath: '',
       spacesRef: { current: [] },
       nodesRef: { current: [] },
-      setNodes: vi.fn(),
-      onSpacesChange: vi.fn(),
+      updateCanvasDocument,
       updateSpaces,
       createNodeForSession,
     })
@@ -217,7 +228,7 @@ describe('createTerminalNodeAtFlowPosition', () => {
       async () => ({ id: '00000000-0000-4000-8000-000000000001' }) as never,
     )
 
-    const { harness, updateSpaces } = seedStore('workspace-remote')
+    const { harness, updateSpaces, updateCanvasDocument } = seedStore('workspace-remote')
 
     vi.stubGlobal('window', {
       opencoveApi: {
@@ -254,8 +265,7 @@ describe('createTerminalNodeAtFlowPosition', () => {
       workspacePath: '',
       spacesRef: { current: [] },
       nodesRef: { current: [] },
-      setNodes: vi.fn(),
-      onSpacesChange: vi.fn(),
+      updateCanvasDocument,
       updateSpaces,
       createNodeForSession,
     })
@@ -307,7 +317,7 @@ describe('createTerminalNodeAtFlowPosition', () => {
       async () => ({ id: '00000000-0000-4000-8000-000000000001' }) as never,
     )
 
-    const { harness, updateSpaces } = seedStore('workspace-1')
+    const { harness, updateSpaces, updateCanvasDocument } = seedStore('workspace-1')
 
     vi.stubGlobal('window', {
       opencoveApi: {
@@ -349,8 +359,7 @@ describe('createTerminalNodeAtFlowPosition', () => {
       workspacePath: '',
       spacesRef: { current: [] },
       nodesRef: { current: [] },
-      setNodes: vi.fn(),
-      onSpacesChange: vi.fn(),
+      updateCanvasDocument,
       updateSpaces,
       createNodeForSession,
     })

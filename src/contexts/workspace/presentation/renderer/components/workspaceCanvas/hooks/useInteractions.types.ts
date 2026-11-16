@@ -15,6 +15,7 @@ import type {
   SelectionDraftState,
   ShowWorkspaceCanvasMessage,
 } from '../types'
+import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 
 export type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -38,6 +39,7 @@ export interface UseWorkspaceCanvasInteractionsParams {
   setSelectionDraftUi: React.Dispatch<React.SetStateAction<SelectionDraftUiState | null>>
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
   setNodes: SetNodes
+  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
   workspaceId: string
   workspacePath: string
   environmentVariables?: Record<string, string>
@@ -45,7 +47,6 @@ export interface UseWorkspaceCanvasInteractionsParams {
   terminalFontSize: number
   terminalDisplayMetrics: TerminalPtyGeometryDisplayMetrics
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
-  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   standardWindowSizeBucket: StandardWindowSizeBucket
   browserDefaultMode: BrowserMode

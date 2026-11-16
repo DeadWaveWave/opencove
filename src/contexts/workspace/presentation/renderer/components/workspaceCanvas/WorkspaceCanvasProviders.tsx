@@ -33,6 +33,7 @@ export function WorkspaceCanvasProviders({
     ...filesystemParams,
     nodesRef: filesystemParams.nodeStore.nodesRef,
     setNodes: filesystemParams.nodeStore.setNodes,
+    updateCanvasDocument: filesystemParams.nodeStore.updateCanvasDocument,
     createDocumentNode: filesystemParams.nodeStore.createDocumentNode,
     reactFlow,
     expandNode: collapse.expandNode,

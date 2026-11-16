@@ -17,9 +17,7 @@ type FlowNodeCreationParams = Pick<
   | 'browserDefaultMode'
   | 'websiteWindowsEnabled'
   | 'spacesRef'
-  | 'nodesRef'
-  | 'setNodes'
-  | 'onSpacesChange'
+  | 'updateCanvasDocument'
 >
 
 export function useWorkspaceCanvasFlowNodeCreation({
@@ -30,9 +28,7 @@ export function useWorkspaceCanvasFlowNodeCreation({
   browserDefaultMode,
   websiteWindowsEnabled,
   spacesRef,
-  nodesRef,
-  setNodes,
-  onSpacesChange,
+  updateCanvasDocument,
 }: FlowNodeCreationParams) {
   const ui = useCanvasUiCommands()
   const readUi = useReadCanvasUi()
@@ -47,21 +43,10 @@ export function useWorkspaceCanvasFlowNodeCreation({
         standardWindowSizeBucket,
         createNoteNode,
         spacesRef,
-        nodesRef,
-        setNodes,
-        onSpacesChange,
+        updateCanvasDocument,
       })
     },
-    [
-      createNoteNode,
-      nodesRef,
-      onSpacesChange,
-      ui,
-      setNodes,
-      spacesRef,
-      standardWindowSizeBucket,
-      workspaceId,
-    ],
+    [createNoteNode, ui, spacesRef, standardWindowSizeBucket, updateCanvasDocument, workspaceId],
   )
   const createWebsiteNodeAtFlowPoint = useCallback(
     (anchor: Point): void => {
@@ -79,20 +64,16 @@ export function useWorkspaceCanvasFlowNodeCreation({
         url: '',
         createWebsiteNode,
         spacesRef,
-        nodesRef,
-        setNodes,
-        onSpacesChange,
+        updateCanvasDocument,
       })
     },
     [
       browserDefaultMode,
       createWebsiteNode,
-      nodesRef,
-      onSpacesChange,
       ui,
-      setNodes,
       spacesRef,
       standardWindowSizeBucket,
+      updateCanvasDocument,
       websiteWindowsEnabled,
       workspaceId,
     ],
@@ -105,20 +86,16 @@ export function useWorkspaceCanvasFlowNodeCreation({
       createNoteNode,
       standardWindowSizeBucket,
       spacesRef,
-      nodesRef,
-      setNodes,
-      onSpacesChange,
+      updateCanvasDocument,
     })
   }, [
     workspaceId,
     createNoteNode,
-    nodesRef,
-    onSpacesChange,
     readUi,
     ui,
-    setNodes,
     spacesRef,
     standardWindowSizeBucket,
+    updateCanvasDocument,
   ])
 
   return { createNoteNodeAtFlowPoint, createWebsiteNodeAtFlowPoint, createNoteNodeFromContextMenu }

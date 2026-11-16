@@ -9,7 +9,6 @@ type Params = Pick<
   | 'workspaceId'
   | 'expandNode'
   | 'spaces'
-  | 'onSpacesChange'
   | 'onRequestPersistFlush'
   | 'reactFlow'
   | 'nodeDragSession'
@@ -32,6 +31,7 @@ export function useCanvasSpaceExplorer({
     spacesRef: canvasState.spacesRef,
     nodesRef: nodeStore.nodesRef,
     setNodes: nodeStore.setNodes,
+    updateCanvasDocument: nodeStore.updateCanvasDocument,
     createDocumentNode: nodeStore.createDocumentNode,
     createImageNode: nodeStore.createImageNode,
     standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,

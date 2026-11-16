@@ -1,22 +1,15 @@
-import type { MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
 import { resolveInnermostSpaceAtPoint } from '@contexts/space/application/spaceContainment'
 import type { Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { expandSpaceToFitOwnedNodesAndPushAway } from '../../../utils/spaceAutoResize'
 import { sanitizeSpaces } from '../helpers'
+import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 import { useCanvasCollapseStore } from '../../../store/useCanvasCollapseStore'
 import { EMPTY_CANVAS_COLLAPSE } from '../../../utils/canvasCollapse'
 import {
   projectCanvasInteractionLayout,
   restoreCanvasInteractionLayout,
 } from '../../../utils/canvasInteractionLayout'
-
-interface SetNodes {
-  (
-    updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-    options?: { syncLayout?: boolean },
-  ): void
-}
 
 export function findContainingSpaceByAnchor(
   spaces: WorkspaceSpaceState[],
@@ -25,6 +18,14 @@ export function findContainingSpaceByAnchor(
   return resolveInnermostSpaceAtPoint(spaces, anchor)
 }
 
+/**
+ * Assigns a node that a creator has just added, and flushed, to its Space, grows the Space to fit
+ * and pushes its neighbours away. It is one store write, computed from the nodes and the Spaces of
+ * the document when the write runs: the creator's own writes, and any other write that landed
+ * since, are in the layout. The collapse state is not part of the document and is read once,
+ * before. It writes the Spaces always and the nodes only when a position moved, and it asks for no
+ * flush and no terminal layout sync.
+ */
 export function assignNodeToSpaceAndExpand({
   workspaceId,
   createdNodeId,
@@ -33,10 +34,7 @@ export function assignNodeToSpaceAndExpand({
   targetSpaceSnapshot,
   targetSpaceBaseline,
   workspaceSpacesSnapshot,
-  spacesRef,
-  nodesRef,
-  setNodes,
-  onSpacesChange,
+  updateCanvasDocument,
 }: {
   workspaceId?: string
   createdNodeId: string
@@ -45,87 +43,82 @@ export function assignNodeToSpaceAndExpand({
   targetSpaceSnapshot?: WorkspaceSpaceState | null
   targetSpaceBaseline?: WorkspaceSpaceState | null
   workspaceSpacesSnapshot?: WorkspaceSpaceState[] | null
-  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
-  nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
-  setNodes: SetNodes
-  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
+  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
 }): void {
-  const baseSpaces = mergeTargetSpaceSnapshot({
-    spaces: spacesRef.current,
-    targetSpaceId,
-    snapshot: targetSpaceSnapshot,
-    baseline: targetSpaceBaseline,
-    workspaceSpacesSnapshot,
-  })
-  const nextSpaces = sanitizeSpaces(
-    baseSpaces.map(space => {
-      const filtered = space.nodeIds.filter(nodeId => nodeId !== createdNodeId)
-
-      if (space.id !== targetSpaceId) {
-        return { ...space, nodeIds: filtered }
-      }
-
-      return { ...space, nodeIds: [...new Set([...filtered, createdNodeId])] }
-    }),
-  )
-
-  const layoutNodes = hasUsableLayoutRect(createdNode)
-    ? [...nodesRef.current.filter(node => node.id !== createdNode.id), createdNode]
-    : nodesRef.current
   const collapse =
     (workspaceId && useCanvasCollapseStore.getState().workspaces[workspaceId]) ||
     EMPTY_CANVAS_COLLAPSE
-  const presented = projectCanvasInteractionLayout(layoutNodes, nextSpaces, collapse)
-  const expanded = expandSpaceToFitOwnedNodesAndPushAway({
-    targetSpaceId,
-    spaces: presented.spaces,
-    nodeRects: presented.nodes.map(node => ({
-      id: node.id,
-      rect: {
-        x: node.position.x,
-        y: node.position.y,
-        width: node.data.width,
-        height: node.data.height,
-      },
-    })),
-    gap: 0,
-  })
-  const { nextSpaces: pushedSpaces, nextNodePositionById: nodePositionById } =
-    restoreCanvasInteractionLayout(
-      { nextSpaces: expanded.spaces, nextNodePositionById: expanded.nodePositionById },
-      layoutNodes,
-      nextSpaces,
-      collapse,
-    )
 
-  if (nodePositionById.size > 0) {
-    setNodes(
-      prevNodes => {
-        let hasChanged = false
-        const nextNodes = prevNodes.map(node => {
-          const nextPosition = nodePositionById.get(node.id)
-          if (!nextPosition) {
-            return node
+  updateCanvasDocument(
+    ({ nodes, spaces }) => {
+      const baseSpaces = mergeTargetSpaceSnapshot({
+        spaces,
+        targetSpaceId,
+        snapshot: targetSpaceSnapshot,
+        baseline: targetSpaceBaseline,
+        workspaceSpacesSnapshot,
+      })
+      const nextSpaces = sanitizeSpaces(
+        baseSpaces.map(space => {
+          const filtered = space.nodeIds.filter(nodeId => nodeId !== createdNodeId)
+
+          if (space.id !== targetSpaceId) {
+            return { ...space, nodeIds: filtered }
           }
 
-          if (node.position.x === nextPosition.x && node.position.y === nextPosition.y) {
-            return node
-          }
+          return { ...space, nodeIds: [...new Set([...filtered, createdNodeId])] }
+        }),
+      )
 
-          hasChanged = true
-          return {
-            ...node,
-            position: nextPosition,
-          }
-        })
+      const layoutNodes = hasUsableLayoutRect(createdNode)
+        ? [...nodes.filter(node => node.id !== createdNode.id), createdNode]
+        : nodes
+      const presented = projectCanvasInteractionLayout(layoutNodes, nextSpaces, collapse)
+      const expanded = expandSpaceToFitOwnedNodesAndPushAway({
+        targetSpaceId,
+        spaces: presented.spaces,
+        nodeRects: presented.nodes.map(node => ({
+          id: node.id,
+          rect: {
+            x: node.position.x,
+            y: node.position.y,
+            width: node.data.width,
+            height: node.data.height,
+          },
+        })),
+        gap: 0,
+      })
+      const { nextSpaces: pushedSpaces, nextNodePositionById: nodePositionById } =
+        restoreCanvasInteractionLayout(
+          { nextSpaces: expanded.spaces, nextNodePositionById: expanded.nodePositionById },
+          layoutNodes,
+          nextSpaces,
+          collapse,
+        )
 
-        return hasChanged ? nextNodes : prevNodes
-      },
-      { syncLayout: false },
-    )
-  }
+      if (nodePositionById.size === 0) {
+        return { nodes, spaces: pushedSpaces }
+      }
 
-  onSpacesChange(pushedSpaces)
+      let hasChanged = false
+      const movedNodes = nodes.map(node => {
+        const nextPosition = nodePositionById.get(node.id)
+        if (!nextPosition) {
+          return node
+        }
+
+        if (node.position.x === nextPosition.x && node.position.y === nextPosition.y) {
+          return node
+        }
+
+        hasChanged = true
+        return { ...node, position: nextPosition }
+      })
+
+      return { nodes: hasChanged ? movedNodes : nodes, spaces: pushedSpaces }
+    },
+    { syncLayout: false },
+  )
 }
 
 function hasUsableLayoutRect(

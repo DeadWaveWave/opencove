@@ -5,7 +5,7 @@ export function useWorkspaceCanvasTaskUi({
   agentTaskTagOptions,
   nodesRef,
   spacesRef,
-  onSpacesChange,
+  updateCanvasDocument,
   setNodes,
   createNodeForSession,
   buildAgentNodeTitle,
@@ -24,7 +24,7 @@ export function useWorkspaceCanvasTaskUi({
   agentTaskTagOptions: Parameters<typeof useWorkspaceCanvasTaskSupport>[0]['agentTaskTagOptions']
   nodesRef: Parameters<typeof useWorkspaceCanvasTaskSupport>[0]['nodesRef']
   spacesRef: Parameters<typeof useWorkspaceCanvasTaskSupport>[0]['spacesRef']
-  onSpacesChange: Parameters<typeof useWorkspaceCanvasTaskSupport>[0]['onSpacesChange']
+  updateCanvasDocument: Parameters<typeof useWorkspaceCanvasTaskSupport>[0]['updateCanvasDocument']
   setNodes: Parameters<typeof useWorkspaceCanvasTaskSupport>[0]['setNodes']
   createNodeForSession: Parameters<typeof useWorkspaceCanvasTaskSupport>[0]['createNodeForSession']
   buildAgentNodeTitle: Parameters<typeof useWorkspaceCanvasTaskSupport>[0]['buildAgentNodeTitle']
@@ -52,7 +52,7 @@ export function useWorkspaceCanvasTaskUi({
     agentTaskTagOptions,
     nodesRef,
     spacesRef,
-    onSpacesChange,
+    updateCanvasDocument,
     setNodes,
     createNodeForSession,
     buildAgentNodeTitle,
@@ -72,7 +72,7 @@ export function useWorkspaceCanvasTaskUi({
     nodesRef,
     setNodes,
     spacesRef,
-    onSpacesChange,
+    updateCanvasDocument,
     onRequestPersistFlush,
     suggestTaskTitle,
     standardWindowSizeBucket,

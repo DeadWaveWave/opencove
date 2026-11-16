@@ -88,6 +88,30 @@ function setup() {
     controlSurface: { invoke },
   })
   const nodesRef = { current: [] as Node<TerminalNodeData>[] }
+  const spacesRef = {
+    current: [
+      {
+        id: 'space',
+        name: 'Worktree',
+        directoryPath: '/worktree',
+        targetMountId: null,
+        labelColor: null,
+        nodeIds: [] as string[],
+        rect: { x: 0, y: 0, width: 2000, height: 1500 },
+      },
+    ],
+  }
+  // The push-away of the created node writes through one recipe, as the node store runs it.
+  const updateCanvasDocument = (
+    recipe: (document: { nodes: Node<TerminalNodeData>[]; spaces: typeof spacesRef.current }) => {
+      nodes: Node<TerminalNodeData>[]
+      spaces: typeof spacesRef.current
+    },
+  ) => {
+    const next = recipe({ nodes: nodesRef.current, spaces: spacesRef.current })
+    nodesRef.current = next.nodes
+    spacesRef.current = next.spaces
+  }
   const onShowMessage = vi.fn()
   const hook = renderHookWithCanvasStore(
     ({ workspaceId }) => {
@@ -108,24 +132,12 @@ function setup() {
         workspaceId,
         // A detached worktree uses Control Surface spawn, outside the workspace root.
         workspacePath: '/workspace',
-        spacesRef: {
-          current: [
-            {
-              id: 'space',
-              name: 'Worktree',
-              directoryPath: '/worktree',
-              targetMountId: null,
-              labelColor: null,
-              nodeIds: [],
-              rect: { x: 0, y: 0, width: 2000, height: 1500 },
-            },
-          ],
-        },
+        spacesRef,
+        updateCanvasDocument,
         websiteWindowsEnabled: true,
         defaultTerminalProfileId: null,
         terminalFontSize: 13,
         terminalDisplayMetrics: { fontSize: 13 },
-        onSpacesChange: vi.fn(),
       })
     },
     {

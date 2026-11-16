@@ -129,7 +129,7 @@ export function WorkspaceCanvasInner({
     workspacePath,
     environmentVariables,
     spacesRef: canvasState.spacesRef,
-    onSpacesChange,
+    updateCanvasDocument: nodeStore.updateCanvasDocument,
     onRequestPersistFlush,
     onShowMessage,
     createNodeForSession: nodeStore.createNodeForSession,
@@ -141,7 +141,7 @@ export function WorkspaceCanvasInner({
     nodesRef: nodeStore.nodesRef,
     setNodes: nodeStore.setNodes,
     spacesRef: canvasState.spacesRef,
-    onSpacesChange,
+    updateCanvasDocument: nodeStore.updateCanvasDocument,
     onRequestPersistFlush,
     createNodeForSession: nodeStore.createNodeForSession,
     buildAgentNodeTitle: agentSupport.buildAgentNodeTitle,
@@ -157,7 +157,7 @@ export function WorkspaceCanvasInner({
     terminalDisplayMetrics,
   })
   // prettier-ignore
-  const roleUiProps = workspaceCanvasHooks.useWorkspaceCanvasRoleUi({ workspaceId, workspacePath, environmentVariables, agentSettings, canvasState, nodeStore, agentSupport, onSpacesChange, onRequestPersistFlush, onShowMessage, actionRefs })
+  const roleUiProps = workspaceCanvasHooks.useWorkspaceCanvasRoleUi({ workspaceId, workspacePath, environmentVariables, agentSettings, canvasState, nodeStore, agentSupport, onRequestPersistFlush, onShowMessage, actionRefs })
   // prettier-ignore
   const inputMode = workspaceCanvasHooks.useWorkspaceCanvasInputMode({ canvasInputModeSetting: agentSettings.canvasInputMode, canvasWheelBehaviorSetting: agentSettings.canvasWheelBehavior, canvasWheelZoomModifierSetting: agentSettings.canvasWheelZoomModifier, detectedCanvasInputMode: canvasState.detectedCanvasInputMode, inputModalityStateRef: canvasState.inputModalityStateRef, setDetectedCanvasInputMode: canvasState.setDetectedCanvasInputMode, canvasRef: canvasState.canvasRef, trackpadGestureLockRef: canvasState.trackpadGestureLockRef, setIsCanvasWheelGestureCaptureActive: canvasState.setIsCanvasWheelGestureCaptureActive, viewportRef: canvasState.viewportRef, reactFlow, onViewportChange })
   // Committed nodes feed collapse read models; actions read live geometry through nodesRef.
@@ -211,6 +211,7 @@ export function WorkspaceCanvasInner({
     setSelectionDraftUi: canvasState.setSelectionDraftUi,
     reactFlow,
     setNodes: nodeStore.setNodes,
+    updateCanvasDocument: nodeStore.updateCanvasDocument,
     workspaceId,
     workspacePath,
     environmentVariables,
@@ -218,7 +219,6 @@ export function WorkspaceCanvasInner({
     terminalFontSize: agentSettings.terminalFontSize,
     terminalDisplayMetrics,
     spacesRef: canvasState.spacesRef,
-    onSpacesChange,
     nodesRef: nodeStore.nodesRef,
     standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
     browserDefaultMode: agentSettings.browserDefaultMode,
@@ -260,7 +260,7 @@ export function WorkspaceCanvasInner({
     spaceNavigationAnchorIdRef: canvasState.spaceNavigationAnchorIdRef,
     nodesRef: nodeStore.nodesRef,
     setNodes: nodeStore.setNodes,
-    onSpacesChange,
+    updateCanvasDocument: nodeStore.updateCanvasDocument,
     nodeCreation: nodeStore,
     createSpaceFromSelectedNodes: spacesApi.createSpaceFromSelectedNodes,
     launchAgentAtFlowPosition: agentSupport.launchAgentAtFlowPosition,
@@ -306,7 +306,7 @@ export function WorkspaceCanvasInner({
     handleSelectionContextMenu,
   })
   // prettier-ignore
-  const spaceExplorer = useCanvasSpaceExplorer({ workspaceId, canvasState, nodeStore, spaces, onSpacesChange, onRequestPersistFlush, reactFlow, nodeDragSession, finalizeDraggedNodeDrop, agentSettings, expandNode: collapse.expandNode })
+  const spaceExplorer = useCanvasSpaceExplorer({ workspaceId, canvasState, nodeStore, spaces, onRequestPersistFlush, reactFlow, nodeDragSession, finalizeDraggedNodeDrop, agentSettings, expandNode: collapse.expandNode })
   return (
     <WorkspaceCanvasProviders
       nodeTypesParameters={nodeTypesParameters}
@@ -317,7 +317,6 @@ export function WorkspaceCanvasInner({
       workspacePath={workspacePath}
       nodeStore={nodeStore}
       spacesRef={canvasState.spacesRef}
-      onSpacesChange={onSpacesChange}
       onRequestPersistFlush={onRequestPersistFlush}
       onShowMessage={onShowMessage}
     >

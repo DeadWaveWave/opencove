@@ -258,7 +258,7 @@ describe('assignNodeToSpaceAndExpand after a workspace switch', () => {
     expect(a.nodes.find(item => item.id === 'bystander')!.position.x).toBeGreaterThanOrEqual(
       rect.x + rect.width,
     )
-    expect(readWorkspaceDocument('workspace-b')).toBe(documentOfB)
+    expect(readWorkspaceDocument('workspace-b')).toEqual(documentOfB)
     expect(harness.flush).not.toHaveBeenCalled()
   })
 })

@@ -20,6 +20,7 @@ import type { CreateNodeInput, NodePlacementOptions, ShowWorkspaceCanvasMessage 
 import { resolveDefaultRoleWindowSize } from '../constants'
 import type { WorkspaceCanvasActionRefs } from './useActionRefs'
 import { runRoleNodeAction } from './useRoleActions.run'
+import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 import {
   useCanvasDocumentCommands,
   useCanvasUiCommands,
@@ -43,7 +44,7 @@ export function useWorkspaceCanvasRoleActions({
   nodesRef,
   spacesRef,
   setNodes,
-  onSpacesChange,
+  updateCanvasDocument,
   onRequestPersistFlush,
   onShowMessage,
   standardWindowSizeBucket,
@@ -62,7 +63,7 @@ export function useWorkspaceCanvasRoleActions({
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   setNodes: SetNodes
-  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
+  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
   onRequestPersistFlush?: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
   standardWindowSizeBucket: StandardWindowSizeBucket
@@ -124,10 +125,7 @@ export function useWorkspaceCanvasRoleActions({
         createdNodeId: created.id,
         createdNode: created,
         targetSpaceId: targetSpace.id,
-        spacesRef,
-        nodesRef,
-        setNodes,
-        onSpacesChange,
+        updateCanvasDocument,
       })
       onRequestPersistFlush?.()
       return created
@@ -136,12 +134,10 @@ export function useWorkspaceCanvasRoleActions({
       workspaceId,
       agentSettings.defaultProvider,
       createRoleNode,
-      nodesRef,
       onRequestPersistFlush,
-      onSpacesChange,
-      setNodes,
       spacesRef,
       standardWindowSizeBucket,
+      updateCanvasDocument,
     ],
   )
 
@@ -302,7 +298,7 @@ export function useWorkspaceCanvasRoleActions({
         nodesRef,
         spacesRef,
         setNodes,
-        onSpacesChange,
+        updateCanvasDocument,
         updateSpaces: documentCommands.updateSpaces,
         onRequestPersistFlush,
         onShowMessage,
@@ -323,11 +319,11 @@ export function useWorkspaceCanvasRoleActions({
       nodesRef,
       onRequestPersistFlush,
       onShowMessage,
-      onSpacesChange,
       projectRoles,
       setNodes,
       spacesRef,
       t,
+      updateCanvasDocument,
       updateRoleInput,
       workspaceId,
       workspacePath,

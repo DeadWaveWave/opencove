@@ -5,7 +5,7 @@ export function useWorkspaceCanvasTaskSupport({
   agentTaskTagOptions,
   nodesRef,
   spacesRef,
-  onSpacesChange,
+  updateCanvasDocument,
   setNodes,
   createNodeForSession,
   buildAgentNodeTitle,
@@ -21,7 +21,7 @@ export function useWorkspaceCanvasTaskSupport({
   agentTaskTagOptions: Parameters<typeof useWorkspaceCanvasTaskTagOptions>[0]
   nodesRef: Parameters<typeof useWorkspaceCanvasTaskActions>[0]['nodesRef']
   spacesRef: Parameters<typeof useWorkspaceCanvasTaskActions>[0]['spacesRef']
-  onSpacesChange: Parameters<typeof useWorkspaceCanvasTaskActions>[0]['onSpacesChange']
+  updateCanvasDocument: Parameters<typeof useWorkspaceCanvasTaskActions>[0]['updateCanvasDocument']
   setNodes: Parameters<typeof useWorkspaceCanvasTaskActions>[0]['setNodes']
   createNodeForSession: Parameters<typeof useWorkspaceCanvasTaskActions>[0]['createNodeForSession']
   buildAgentNodeTitle: Parameters<typeof useWorkspaceCanvasTaskActions>[0]['buildAgentNodeTitle']
@@ -60,7 +60,7 @@ export function useWorkspaceCanvasTaskSupport({
   const { suggestTaskTitle } = useWorkspaceCanvasTaskActions({
     nodesRef,
     spacesRef,
-    onSpacesChange,
+    updateCanvasDocument,
     setNodes,
     createNodeForSession,
     buildAgentNodeTitle,

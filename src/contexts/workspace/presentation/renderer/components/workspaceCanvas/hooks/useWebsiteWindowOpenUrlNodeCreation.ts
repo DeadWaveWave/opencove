@@ -8,7 +8,7 @@ import {
 } from '@shared/contracts/websiteWindowCanvas'
 import type { Point, TerminalNodeData, WebsiteNodeData, WorkspaceSpaceState } from '../../../types'
 import { createWebsiteNodeAtFlowPosition } from './useInteractions.paneNodeCreation'
-import type { SetNodes } from './useInteractions.types'
+import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 
 export function useWebsiteWindowOpenUrlNodeCreation({
   workspaceId,
@@ -16,8 +16,7 @@ export function useWebsiteWindowOpenUrlNodeCreation({
   reactFlow,
   spacesRef,
   nodesRef,
-  setNodes,
-  onSpacesChange,
+  updateCanvasDocument,
   createWebsiteNode,
   standardWindowSizeBucket,
   browserDefaultMode,
@@ -28,8 +27,7 @@ export function useWebsiteWindowOpenUrlNodeCreation({
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
-  setNodes: SetNodes
-  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
+  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
   createWebsiteNode: (
     anchor: Point,
     website: WebsiteNodeData,
@@ -80,9 +78,7 @@ export function useWebsiteWindowOpenUrlNodeCreation({
         browserDefaultMode,
         createWebsiteNode,
         spacesRef,
-        nodesRef,
-        setNodes,
-        onSpacesChange,
+        updateCanvasDocument,
       })
     }
 
@@ -96,11 +92,10 @@ export function useWebsiteWindowOpenUrlNodeCreation({
     createWebsiteNode,
     enabled,
     nodesRef,
-    onSpacesChange,
     reactFlow,
-    setNodes,
     spacesRef,
     standardWindowSizeBucket,
     browserDefaultMode,
+    updateCanvasDocument,
   ])
 }

@@ -1,17 +1,20 @@
-import { act, cleanup, renderHook } from '@testing-library/react'
+import { act, cleanup } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Node } from '@xyflow/react'
 import type {
   TerminalNodeData,
   WorkspaceSpaceState,
 } from '@contexts/workspace/presentation/renderer/types'
-import { useWorkspaceCanvasNodeCreation } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore.createNodes'
 import { resolveNodesPlacement } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore.resolvePlacement'
 import { assignNodeToSpaceAndExpand } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useInteractions.spaceAssignment'
 import { useCanvasCollapseStore } from '@contexts/workspace/presentation/renderer/store/useCanvasCollapseStore'
 import { EMPTY_CANVAS_COLLAPSE } from '@contexts/workspace/presentation/renderer/utils/canvasCollapse'
 import { projectCanvasInteractionLayout } from '@contexts/workspace/presentation/renderer/utils/canvasInteractionLayout'
 import { isPositionAvailable } from '@contexts/workspace/domain/workspaceNodePlacement'
+import {
+  createCanvasDocumentHarness,
+  renderCanvasNodeStore,
+} from '../../support/canvasDocumentHarness'
 
 vi.mock('@app/renderer/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
 const workspaceId = 'creation-visible-geometry'
@@ -90,32 +93,23 @@ describe('creation uses the visible geometry of every window kind', () => {
         if (nesting === 'child') {
           target.parentSpaceId = parent.id
         }
-        const spacesRef = { current: nesting === 'child' ? [parent, target] : [target] }
-        const nodesRef = { current: [compact, expanded] }
-        const setNodes = (
-          update: (previous: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-        ) => {
-          nodesRef.current = update(nodesRef.current)
-        }
+        // The real node store creates the node and the push-away writes the same store.
+        const harness = createCanvasDocumentHarness({
+          workspaceId,
+          nodes: [compact, expanded],
+          spaces: nesting === 'child' ? [parent, target] : [target],
+        })
         const onShowMessage = vi.fn()
-        const { result } = renderHook(() =>
-          useWorkspaceCanvasNodeCreation({
-            workspaceId,
-            nodesRef,
-            spacesRef,
-            setNodes,
-            onShowMessage,
-            standardWindowSizeBucket: 'regular',
-            browserDefaultMode: 'native',
-          }),
-        )
+        const { result } = renderCanvasNodeStore(harness, {
+          nodeStoreOptions: { onShowMessage, browserDefaultMode: 'native' },
+        })
         let created: Node<TerminalNodeData> | null = null
         await act(async () => {
           const placement = { targetSpaceRect: target.rect, preferredDirection: 'down' as const }
           created =
             kind === 'note'
-              ? result.current.createNoteNode({ x: 124, y: 124 }, { placement })
-              : await result.current.createNodeForSession({
+              ? result.current.nodeStore.createNoteNode({ x: 124, y: 124 }, { placement })
+              : await result.current.nodeStore.createNodeForSession({
                   sessionId: 'new-session',
                   runtimeKind: 'posix',
                   title: kind,
@@ -127,21 +121,19 @@ describe('creation uses the visible geometry of every window kind', () => {
         expect(created).not.toBeNull()
         expect(onShowMessage).not.toHaveBeenCalled()
         const added = created as unknown as Node<TerminalNodeData>
-        assignNodeToSpaceAndExpand({
-          workspaceId,
-          createdNodeId: added.id,
-          createdNode: added,
-          targetSpaceId: target.id,
-          spacesRef,
-          nodesRef,
-          setNodes,
-          onSpacesChange: spaces => {
-            spacesRef.current = spaces
-          },
+        act(() => {
+          assignNodeToSpaceAndExpand({
+            workspaceId,
+            createdNodeId: added.id,
+            createdNode: added,
+            targetSpaceId: target.id,
+            updateCanvasDocument: result.current.nodeStore.updateCanvasDocument,
+          })
         })
+        const stored = harness.readStoreDocument()
         const view = projectCanvasInteractionLayout(
-          nodesRef.current,
-          spacesRef.current,
+          stored.nodes,
+          stored.spaces,
           useCanvasCollapseStore.getState().workspaces[workspaceId],
         )
         const targetAfter = view.spaces.find(item => item.id === target.id)!
@@ -161,7 +153,7 @@ describe('creation uses the visible geometry of every window kind', () => {
             targetAfter.rect!.y + targetAfter.rect!.height - 24,
           )
         }
-        expect(nodesRef.current.find(item => item.id === compact.id)?.data).toMatchObject({
+        expect(stored.nodes.find(item => item.id === compact.id)?.data).toMatchObject({
           width: 1200,
           height: 900,
         })

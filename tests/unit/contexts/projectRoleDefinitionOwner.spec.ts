@@ -107,7 +107,7 @@ describe('resolveNodeRoleDefinition', () => {
         nodesRef: { current: [node] },
         spacesRef: { current: [] },
         setNodes: vi.fn(),
-        onSpacesChange: vi.fn(),
+        updateCanvasDocument: vi.fn(),
         updateSpaces: vi.fn(),
         createNodeForSession,
         updateRoleInput: vi.fn(),

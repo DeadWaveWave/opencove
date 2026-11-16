@@ -1,7 +1,6 @@
 import type { Node } from '@xyflow/react'
 import { act } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
-import { replaceWorkspaceSpaces } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+import { describe, expect, it } from 'vitest'
 import {
   createCanvasDocumentHarness,
   renderCanvasNodeStore,
@@ -44,23 +43,23 @@ describe('assignNodeToSpaceAndExpand', () => {
       { x: -140, y: -40 },
       { width: 720, height: 520 },
     )
-    const spacesRef = { current: [space] }
-    // Models the async launch gap: React has committed the previous projection, so the
-    // just-created node is not present in nodesRef even though node creation returned it.
-    const nodesRef = { current: [seedNote] }
-    const onSpacesChange = vi.fn()
+    // Models the async launch gap: the store holds the just-created node as it was first placed,
+    // while node creation returned the exact node.
+    const placed = createNode(createdTerminal.id, { x: 300, y: 300 }, { width: 100, height: 100 })
+    const harness = createCanvasDocumentHarness({ nodes: [seedNote, placed], spaces: [space] })
+    const view = renderCanvasNodeStore(harness)
 
-    assignNodeToSpaceAndExpand({
-      createdNodeId: createdTerminal.id,
-      createdNode: createdTerminal,
-      targetSpaceId: space.id,
-      spacesRef,
-      nodesRef,
-      setNodes: vi.fn(),
-      onSpacesChange,
+    act(() => {
+      assignNodeToSpaceAndExpand({
+        workspaceId: harness.workspaceId,
+        createdNodeId: createdTerminal.id,
+        createdNode: createdTerminal,
+        targetSpaceId: space.id,
+        updateCanvasDocument: view.result.current.nodeStore.updateCanvasDocument,
+      })
     })
 
-    expect(onSpacesChange).toHaveBeenCalledWith([
+    expect(harness.readStoreDocument().spaces).toEqual([
       expect.objectContaining({
         id: 'tiny-space',
         nodeIds: ['seed-note', 'created-terminal'],
@@ -96,10 +95,7 @@ describe('assignNodeToSpaceAndExpand', () => {
           createdNodeId: created.id,
           createdNode: created,
           targetSpaceId: space.id,
-          spacesRef: view.result.current.canvasState.spacesRef,
-          nodesRef: view.result.current.nodeStore.nodesRef,
-          setNodes: view.result.current.nodeStore.setNodes,
-          onSpacesChange: spaces => replaceWorkspaceSpaces(harness.workspaceId, spaces),
+          updateCanvasDocument: view.result.current.nodeStore.updateCanvasDocument,
         })
       }
     })

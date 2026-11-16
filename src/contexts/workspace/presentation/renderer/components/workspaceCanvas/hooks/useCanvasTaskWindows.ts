@@ -6,6 +6,7 @@ import type { WorkspaceCanvasActionRefs } from './useActionRefs'
 import { useWorkspaceCanvasNodeDeleteConfirmation } from './useNodeDeleteConfirmation'
 import { useWorkspaceCanvasTaskNodeCreation } from './useTaskNodeCreation'
 import { useWorkspaceCanvasTaskEditor } from './useTaskEditor'
+import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 
 type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -18,7 +19,7 @@ export function useWorkspaceCanvasTaskWindows({
   nodesRef,
   setNodes,
   spacesRef,
-  onSpacesChange,
+  updateCanvasDocument,
   onRequestPersistFlush,
   suggestTaskTitle,
   standardWindowSizeBucket,
@@ -31,7 +32,7 @@ export function useWorkspaceCanvasTaskWindows({
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   setNodes: SetNodes
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
-  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
+  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
   onRequestPersistFlush?: () => void
   suggestTaskTitle: (
     requirement: string,
@@ -51,10 +52,8 @@ export function useWorkspaceCanvasTaskWindows({
 }) {
   const { createTaskAtPoint, createTaskFromContextMenu } = useWorkspaceCanvasTaskNodeCreation({
     workspaceId,
-    nodesRef,
-    setNodes,
     spacesRef,
-    onSpacesChange,
+    updateCanvasDocument,
     onRequestPersistFlush,
     standardWindowSizeBucket,
     createTaskNode,

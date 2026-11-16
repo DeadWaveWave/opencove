@@ -60,9 +60,9 @@ function setup() {
       setNodes: update => {
         nodesRef.current = update(nodesRef.current)
       },
+      updateCanvasDocument: vi.fn(),
     },
     spacesRef: { current: [] },
-    onSpacesChange: vi.fn(),
     onShowMessage,
   }
   const view = renderHook(({ workspaceId }) => useFilesystemNodes({ ...params, workspaceId }), {

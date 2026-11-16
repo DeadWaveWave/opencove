@@ -8,6 +8,7 @@ import type { WorkspaceSpaceState } from '../../../src/contexts/workspace/presen
 import {
   createCanvasDocumentHarness,
   renderCanvasDocumentCommands,
+  renderCanvasNodeStore,
   type CanvasDocumentHarness,
 } from '../../support/canvasDocumentHarness'
 
@@ -205,12 +206,12 @@ describe('the mount repair of a terminal created from the pane', () => {
     vi.spyOn(crypto, 'randomUUID').mockReturnValue('00000000-0000-4000-8000-000000000001')
   })
 
-  function launchOnPane(
-    harness: CanvasDocumentHarness,
-    persistedSpaces: WorkspaceSpaceState[],
-    onSpacesChange = vi.fn(),
-  ) {
+  // The launch writes the store twice at most: the repair after `mount.list`, and the push-away
+  // that assigns the created node to its Space.
+  function launchOnPane(harness: CanvasDocumentHarness, persistedSpaces: WorkspaceSpaceState[]) {
     const updateSpaces = renderCanvasDocumentCommands(harness.workspaceId).updateSpaces
+    const updateCanvasDocument =
+      renderCanvasNodeStore(harness).result.current.nodeStore.updateCanvasDocument
     ;(window.opencoveApi as unknown as Record<string, unknown>).persistence = {
       readAppState: vi.fn(async () => ({
         state: {
@@ -240,8 +241,7 @@ describe('the mount repair of a terminal created from the pane', () => {
         },
       },
       nodesRef: { current: [] },
-      setNodes: vi.fn(),
-      onSpacesChange,
+      updateCanvasDocument,
       updateSpaces,
       createNodeForSession: vi.fn(
         async () => ({ id: '00000000-0000-4000-8000-000000000001' }) as never,
@@ -268,10 +268,16 @@ describe('the mount repair of a terminal created from the pane', () => {
 
     expect(harness.readStoreDocument().spaces).toEqual([
       local,
-      { ...persistedTarget, targetMountId: 'mount-1', directoryPath: WORKTREE },
+      {
+        ...persistedTarget,
+        targetMountId: 'mount-1',
+        directoryPath: WORKTREE,
+        nodeIds: ['00000000-0000-4000-8000-000000000001'],
+      },
       persistedOther,
     ])
-    expect(harness.notifications).toHaveBeenCalledTimes(1)
+    // The repair, then the push-away.
+    expect(harness.notifications).toHaveBeenCalledTimes(2)
     expect(harness.flush).not.toHaveBeenCalled()
   })
 
@@ -298,10 +304,16 @@ describe('the mount repair of a terminal created from the pane', () => {
     await launched
 
     expect(harness.readStoreDocument().spaces).toEqual([
-      { ...target, targetMountId: 'mount-1', directoryPath: WORKTREE },
+      {
+        ...target,
+        targetMountId: 'mount-1',
+        directoryPath: WORKTREE,
+        nodeIds: ['00000000-0000-4000-8000-000000000001'],
+      },
       { ...other, name: 'Renamed other' },
     ])
-    expect(harness.notifications).toHaveBeenCalledTimes(1)
+    // The repair, then the push-away.
+    expect(harness.notifications).toHaveBeenCalledTimes(2)
     expect(harness.flush).not.toHaveBeenCalled()
   })
 
@@ -317,9 +329,7 @@ describe('the mount repair of a terminal created from the pane', () => {
     const harness = createCanvasDocumentHarness({ spaces: [target, other] })
     const { resolveMounts } = stubControlSurface()
 
-    const launched = launchOnPane(harness, [other], spaces =>
-      replaceWorkspaceSpaces(WORKSPACE_ID, spaces),
-    )
+    const launched = launchOnPane(harness, [other])
     await vi.waitFor(() =>
       expect(window.opencoveApi.controlSurface.invoke).toHaveBeenCalledWith(
         expect.objectContaining({ id: 'mount.list' }),
@@ -346,7 +356,8 @@ describe('the mount repair of a terminal created from the pane', () => {
 
     await launchOnPane(harness, [target])
 
-    expect(harness.notifications).not.toHaveBeenCalled()
+    // No repair: the push-away is the only write.
+    expect(harness.notifications).toHaveBeenCalledTimes(1)
     expect(harness.flush).not.toHaveBeenCalled()
   })
 })

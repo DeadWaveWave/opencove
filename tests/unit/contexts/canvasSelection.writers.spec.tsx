@@ -203,7 +203,7 @@ describe('node selection writers in useWorkspaceCanvasInteractions', () => {
           terminalFontSize: 13,
           terminalDisplayMetrics: {} as never,
           spacesRef,
-          onSpacesChange: vi.fn(),
+          updateCanvasDocument: vi.fn(),
           nodesRef: holder.nodesRef,
           standardWindowSizeBucket: 'regular',
           browserDefaultMode: 'headless' as never,

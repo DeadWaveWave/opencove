@@ -3,9 +3,11 @@ import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/ag
 import { resolveTerminalPtyGeometryForNodeFrame } from '../../../src/contexts/workspace/domain/terminalPtyGeometry'
 import { resolveDefaultTerminalWindowSize } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/constants'
 import { createTerminalNodeAtFlowPosition } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useInteractions.paneNodeCreation'
+import { replaceWorkspaceSpaces } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import {
   createCanvasDocumentHarness,
   renderCanvasDocumentCommands,
+  renderCanvasNodeStore,
 } from '../../support/canvasDocumentHarness'
 import type { WorkspaceSpaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
 
@@ -26,11 +28,16 @@ describe('createTerminalNodeAtFlowPosition space worktree launch', () => {
     vi.unstubAllGlobals()
   })
 
-  // The mount repair writes through the store. None of these launches needs a repair, so the store
-  // must see no write: the `onSpacesChange` stub only receives the node's Space assignment.
+  // The mount repair writes through the store. None of these launches needs a repair, so the only
+  // write the store sees is the push-away that assigns the node to its Space.
   function seedStore(spaces: WorkspaceSpaceState[] = []) {
     const harness = createCanvasDocumentHarness({ spaces })
-    return { harness, updateSpaces: renderCanvasDocumentCommands(harness.workspaceId).updateSpaces }
+    return {
+      harness,
+      updateSpaces: renderCanvasDocumentCommands(harness.workspaceId).updateSpaces,
+      updateCanvasDocument:
+        renderCanvasNodeStore(harness).result.current.nodeStore.updateCanvasDocument,
+    }
   }
 
   it('refreshes a matched space from persisted state before launching a terminal', async () => {
@@ -65,7 +72,6 @@ describe('createTerminalNodeAtFlowPosition space worktree launch', () => {
     const createNodeForSession = vi.fn(
       async () => ({ id: '00000000-0000-4000-8000-000000000001' }) as never,
     )
-    const onSpacesChange = vi.fn()
     const staleSpace = {
       id: 'space-1',
       name: 'Feature',
@@ -76,7 +82,7 @@ describe('createTerminalNodeAtFlowPosition space worktree launch', () => {
       rect: { x: 0, y: 0, width: 1200, height: 800 },
     }
 
-    const { harness, updateSpaces } = seedStore([staleSpace])
+    const { harness, updateSpaces, updateCanvasDocument } = seedStore([staleSpace])
 
     vi.stubGlobal('window', {
       opencoveApi: {
@@ -119,8 +125,7 @@ describe('createTerminalNodeAtFlowPosition space worktree launch', () => {
       workspacePath: '/repo',
       spacesRef: { current: [staleSpace] },
       nodesRef: { current: [] },
-      setNodes: vi.fn(),
-      onSpacesChange,
+      updateCanvasDocument,
       updateSpaces,
       createNodeForSession,
     })
@@ -159,7 +164,7 @@ describe('createTerminalNodeAtFlowPosition space worktree launch', () => {
       sessionId: 'session-worktree',
       nodeId: '00000000-0000-4000-8000-000000000001',
     })
-    expect(onSpacesChange).toHaveBeenCalledWith([
+    expect(harness.readStoreDocument().spaces).toEqual([
       expect.objectContaining({
         id: 'space-1',
         name: 'Feature',
@@ -168,7 +173,7 @@ describe('createTerminalNodeAtFlowPosition space worktree launch', () => {
         nodeIds: ['00000000-0000-4000-8000-000000000001'],
       }),
     ])
-    expect(harness.notifications).not.toHaveBeenCalled()
+    expect(harness.notifications).toHaveBeenCalledTimes(1)
     expect(harness.flush).not.toHaveBeenCalled()
   })
 
@@ -182,7 +187,6 @@ describe('createTerminalNodeAtFlowPosition space worktree launch', () => {
       projectId: 'workspace-1',
       mounts: [],
     }))
-    const onSpacesChange = vi.fn()
     const originalSpace: WorkspaceSpaceState = {
       id: 'space-1',
       name: 'Feature',
@@ -202,8 +206,9 @@ describe('createTerminalNodeAtFlowPosition space worktree launch', () => {
     const spacesRef: { current: WorkspaceSpaceState[] } = {
       current: [originalSpace],
     }
+    // The user edits the Space in the store while the node is being created.
     const createNodeForSession = vi.fn(async () => {
-      spacesRef.current = [
+      replaceWorkspaceSpaces('workspace-1', [
         {
           ...originalSpace,
           name: 'Renamed Locally',
@@ -213,11 +218,13 @@ describe('createTerminalNodeAtFlowPosition space worktree launch', () => {
           boundary: changedBoundary,
           sortOrder: 42,
         },
-      ]
+      ])
+      // Only what the push-away writes after the edit is counted.
+      harness.notifications.mockClear()
       return { id: '00000000-0000-4000-8000-000000000001' } as never
     })
 
-    const { harness, updateSpaces } = seedStore([originalSpace])
+    const { harness, updateSpaces, updateCanvasDocument } = seedStore([originalSpace])
 
     vi.stubGlobal('window', {
       opencoveApi: {
@@ -260,8 +267,7 @@ describe('createTerminalNodeAtFlowPosition space worktree launch', () => {
       workspacePath: '/repo',
       spacesRef,
       nodesRef: { current: [] },
-      setNodes: vi.fn(),
-      onSpacesChange,
+      updateCanvasDocument,
       updateSpaces,
       createNodeForSession,
     })
@@ -271,7 +277,7 @@ describe('createTerminalNodeAtFlowPosition space worktree launch', () => {
         cwd: '/repo/.opencove/worktrees/feature-a',
       }),
     )
-    expect(onSpacesChange).toHaveBeenCalledWith([
+    expect(harness.readStoreDocument().spaces).toEqual([
       expect.objectContaining({
         id: 'space-1',
         name: 'Renamed Locally',
@@ -283,7 +289,7 @@ describe('createTerminalNodeAtFlowPosition space worktree launch', () => {
         nodeIds: ['00000000-0000-4000-8000-000000000001'],
       }),
     ])
-    expect(harness.notifications).not.toHaveBeenCalled()
+    expect(harness.notifications).toHaveBeenCalledTimes(1)
     expect(harness.flush).not.toHaveBeenCalled()
   })
 })

@@ -24,6 +24,7 @@ import {
   resolveAgentExecutableOverride,
   resolveWorkspaceAgentLaunchBinding,
 } from './useWorkspaceAgentLaunch.shared'
+import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 import {
   useCanvasDocumentCommands,
   useCanvasUiCommands,
@@ -35,13 +36,8 @@ interface UseAgentLauncherParams {
   workspaceId: string
   workspacePath: string
   environmentVariables?: Record<string, string>
-  nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
-  setNodes: (
-    updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-    options?: { syncLayout?: boolean },
-  ) => void
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
-  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
+  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
   onRequestPersistFlush?: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
@@ -57,10 +53,8 @@ export function useWorkspaceCanvasAgentLauncher({
   workspaceId,
   workspacePath,
   environmentVariables,
-  nodesRef,
-  setNodes,
   spacesRef,
-  onSpacesChange,
+  updateCanvasDocument,
   onRequestPersistFlush,
   onShowMessage,
   createNodeForSession,
@@ -202,10 +196,7 @@ export function useWorkspaceCanvasAgentLauncher({
           createdNode: created,
           targetSpaceId: anchorSpace.id,
           targetSpaceSnapshot: anchorSpace,
-          spacesRef,
-          nodesRef,
-          setNodes,
-          onSpacesChange,
+          updateCanvasDocument,
         })
 
         onRequestPersistFlush?.()
@@ -224,14 +215,12 @@ export function useWorkspaceCanvasAgentLauncher({
       createNodeForSession,
       documentCommands,
       environmentVariables,
-      nodesRef,
       onRequestPersistFlush,
       onShowMessage,
-      onSpacesChange,
-      setNodes,
       spacesRef,
       standardWindowSizeBucket,
       t,
+      updateCanvasDocument,
       workspaceId,
       workspacePath,
     ],

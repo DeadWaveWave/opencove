@@ -12,7 +12,7 @@ export function useWorkspaceCanvasAgentSupport({
   workspacePath,
   environmentVariables,
   spacesRef,
-  onSpacesChange,
+  updateCanvasDocument,
   onRequestPersistFlush,
   onShowMessage,
   createNodeForSession,
@@ -32,7 +32,9 @@ export function useWorkspaceCanvasAgentSupport({
   workspacePath: Parameters<typeof useWorkspaceCanvasAgentLauncher>[0]['workspacePath']
   environmentVariables?: Record<string, string>
   spacesRef: Parameters<typeof useWorkspaceCanvasAgentLauncher>[0]['spacesRef']
-  onSpacesChange: Parameters<typeof useWorkspaceCanvasAgentLauncher>[0]['onSpacesChange']
+  updateCanvasDocument: Parameters<
+    typeof useWorkspaceCanvasAgentLauncher
+  >[0]['updateCanvasDocument']
   onRequestPersistFlush?: Parameters<
     typeof useWorkspaceCanvasAgentLauncher
   >[0]['onRequestPersistFlush']
@@ -83,10 +85,8 @@ export function useWorkspaceCanvasAgentSupport({
       workspaceId,
       workspacePath,
       environmentVariables,
-      nodesRef,
-      setNodes,
       spacesRef,
-      onSpacesChange,
+      updateCanvasDocument,
       onRequestPersistFlush,
       onShowMessage,
       createNodeForSession,

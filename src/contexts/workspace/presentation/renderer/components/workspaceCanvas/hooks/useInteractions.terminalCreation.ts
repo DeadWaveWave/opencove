@@ -7,17 +7,13 @@ import type { Point } from '../../../types'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type { CreateNodeInput } from '../types'
 import { createTerminalNodeAtFlowPosition } from './useInteractions.paneNodeCreation'
+import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 import { bindWorkspaceCanvasCreateTerminalAtFlowPointTestAction } from '../testHarness'
 import {
   useCanvasDocumentCommands,
   useCanvasUiCommands,
   useReadCanvasUi,
 } from '../../../store/canvasStoreContext'
-
-type SetNodes = (
-  updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-  options?: { syncLayout?: boolean },
-) => void
 
 export function useWorkspaceCanvasTerminalCreation({
   workspaceId,
@@ -30,8 +26,7 @@ export function useWorkspaceCanvasTerminalCreation({
   terminalFontSize,
   terminalDisplayMetrics,
   createNodeForSession,
-  setNodes,
-  onSpacesChange,
+  updateCanvasDocument,
   onShowMessage,
 }: {
   workspaceId: string
@@ -44,8 +39,7 @@ export function useWorkspaceCanvasTerminalCreation({
   terminalFontSize: number
   terminalDisplayMetrics: TerminalPtyGeometryDisplayMetrics
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
-  setNodes: SetNodes
-  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
+  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
   onShowMessage?: (message: string, level: 'info' | 'warning' | 'error') => void
 }): {
   createTerminalNode: () => Promise<void>
@@ -69,8 +63,7 @@ export function useWorkspaceCanvasTerminalCreation({
         environmentVariables,
         spacesRef,
         nodesRef,
-        setNodes,
-        onSpacesChange,
+        updateCanvasDocument,
         updateSpaces: documentCommands.updateSpaces,
         createNodeForSession,
         onShowMessage,
@@ -82,14 +75,13 @@ export function useWorkspaceCanvasTerminalCreation({
       documentCommands,
       environmentVariables,
       nodesRef,
-      onSpacesChange,
       onShowMessage,
       ui,
-      setNodes,
       spacesRef,
       standardWindowSizeBucket,
       terminalFontSize,
       terminalDisplayMetrics,
+      updateCanvasDocument,
       workspaceId,
       workspacePath,
     ],

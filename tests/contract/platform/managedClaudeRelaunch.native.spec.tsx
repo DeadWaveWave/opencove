@@ -203,6 +203,14 @@ describeWithElectronNativeModules('UI Claude relaunch during normal persistence'
             nodesRef.current = next
             setNodes(next)
           }
+          // The push-away is one recipe over the nodes and the Spaces, as the node store runs it.
+          const updateCanvasDocument: TaskActionContext['updateCanvasDocument'] = recipe => {
+            const next = recipe({ nodes: nodesRef.current, spaces: spacesRef.current })
+            if (next.nodes !== nodesRef.current) {
+              setCanvasNodes(() => next.nodes)
+            }
+            onSpacesChange(next.spaces)
+          }
           const lifecycle = useWorkspaceCanvasAgentNodeLifecycle({
             workspaceId: workspace.id,
             workspacePath: workspace.path,
@@ -225,7 +233,7 @@ describeWithElectronNativeModules('UI Claude relaunch during normal persistence'
               runTaskAgentAction('task', {
                 nodesRef,
                 spacesRef,
-                onSpacesChange,
+                updateCanvasDocument,
                 updateSpaces: vi.fn(),
                 setNodes: setCanvasNodes,
                 createNodeForSession: vi.fn(),
