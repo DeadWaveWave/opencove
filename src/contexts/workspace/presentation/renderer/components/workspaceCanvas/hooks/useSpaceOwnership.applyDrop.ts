@@ -107,9 +107,9 @@ export function useWorkspaceCanvasApplyOwnershipForDrop({
         return
       }
 
-      // The decisions that can stop the drop before it writes (the target Space, the ownership
-      // change and its validation) come from one read of the committed Spaces. What the drop
-      // writes is planned inside the recipe from the document the write is computed from.
+      // What can stop the drop before it writes is decided here, from the committed Spaces: the
+      // target Space, the ownership change and its validation. What the drop writes is planned
+      // inside the recipe, from the document the write is computed from.
       const { spaces: committedSpaces } = readDocument()
       const hasSpaceRectOverride =
         Boolean(spaceRectOverrideById) && (spaceRectOverrideById?.size ?? 0) > 0
