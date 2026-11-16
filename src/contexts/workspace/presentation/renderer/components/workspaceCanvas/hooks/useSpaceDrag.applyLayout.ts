@@ -1,14 +1,12 @@
 import type * as React from 'react'
-import type { Node } from '@xyflow/react'
-import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
+import type { WorkspaceSpaceRect } from '../../../types'
+import type { WorkspaceDocument } from '../../../store/workspaceDocument'
 import type { SpaceDragState } from '../types'
+import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 import { projectWorkspaceSpaceDragLayout } from './useSpaceDrag.finalize'
 import { resolveResizedSpaceRect } from './useSpaceDrag.preview'
 
-type SetNodes = (
-  updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-  options?: { syncLayout?: boolean },
-) => void
+type SetNodes = UseWorkspaceCanvasNodesStoreResult['setNodes']
 
 function areSpaceRectsEqual(a: WorkspaceSpaceRect | null, b: WorkspaceSpaceRect | null): boolean {
   if (a === b) {
@@ -67,65 +65,29 @@ export function applyProjectedWorkspaceSpaceDragLayout({
   dragState,
   dx,
   dy,
-  nodesRef,
-  spacesRef,
+  readDocument,
   setNodes,
   setSpaceFramePreview,
 }: {
   dragState: SpaceDragState
   dx: number
   dy: number
-  nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
-  spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
+  readDocument: () => WorkspaceDocument
   setNodes: SetNodes
   setSpaceFramePreview: React.Dispatch<
     React.SetStateAction<ReadonlyMap<string, WorkspaceSpaceRect> | null>
   >
 }): void {
+  // Per frame: one read of the committed document, no write to it other than the node commit.
+  const { nodes, spaces } = readDocument()
   const projected = projectWorkspaceSpaceDragLayout({
     dragState,
     dx,
     dy,
-    nodes: nodesRef.current,
-    spaces: spacesRef.current,
+    nodes,
+    spaces,
     resolveResizedRect: resolveResizedSpaceRect,
   })
-
-  if (!projected) {
-    setResolvedSpaceFramePreview(
-      setSpaceFramePreview,
-      new Map(
-        spacesRef.current
-          .filter(space => space.rect)
-          .map(space => [space.id, space.rect!] as const),
-      ),
-    )
-    setNodes(
-      prevNodes => {
-        let hasMoved = false
-        const nextNodes = prevNodes.map(node => {
-          const baseline = dragState.allNodePositions.get(node.id)
-          if (!baseline) {
-            return node
-          }
-
-          if (node.position.x === baseline.x && node.position.y === baseline.y) {
-            return node
-          }
-
-          hasMoved = true
-          return {
-            ...node,
-            position: baseline,
-          }
-        })
-
-        return hasMoved ? nextNodes : prevNodes
-      },
-      { syncLayout: false },
-    )
-    return
-  }
 
   setResolvedSpaceFramePreview(
     setSpaceFramePreview,

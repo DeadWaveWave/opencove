@@ -73,9 +73,8 @@
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSelectNode.ts": 8,
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useShortcuts.ts": 4,
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceDirectoryOps.ts": 23,
-    "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceDrag.applyLayout.ts": 11,
-    "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceDrag.finalize.ts": 9,
-    "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceDrag.ts": 36,
+    "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceDrag.applyLayout.ts": 4,
+    "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceDrag.ts": 7,
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceExplorer.materializePlacement.ts": 7,
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceExplorer.placement.ts": 6,
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceExplorer.quickPreviewActions.ts": 6,
@@ -104,7 +103,7 @@
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/types.ts": 1,
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/WorkspacePixelLayer.tsx": 10,
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/WorkspaceCanvasProviders.tsx": 4,
-    "src/contexts/workspace/presentation/renderer/components/WorkspaceCanvasInner.tsx": 94
+    "src/contexts/workspace/presentation/renderer/components/WorkspaceCanvasInner.tsx": 88
   },
   "ref-type": {
     "src/contexts/workspace/presentation/renderer/components/terminalNode/links/TerminalLinkHost.tsx": 1,
@@ -188,8 +187,7 @@
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSelectNode.ts": 1,
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useShortcuts.ts": 2,
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceDirectoryOps.ts": 2,
-    "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceDrag.applyLayout.ts": 2,
-    "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceDrag.ts": 3,
+    "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceDrag.ts": 1,
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceExplorer.materializePlacement.ts": 1,
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceExplorer.placement.ts": 3,
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceExplorer.quickPreviewActions.ts": 1,

@@ -96,13 +96,10 @@ export function WorkspaceCanvasInner({
     workspaceCanvasHooks.useWorkspaceCanvasSpaceDrag({
       workspaceId,
       reactFlow,
-      nodesRef: nodeStore.nodesRef,
-      spacesRef: canvasState.spacesRef,
       setNodes: nodeStore.setNodes,
-      onSpacesChange,
+      updateCanvasDocument: nodeStore.updateCanvasDocument,
       magneticSnappingEnabledRef: canvasState.magneticSnappingEnabledRef,
       setSnapGuides: canvasState.setSnapGuides,
-      onRequestPersistFlush,
     })
   const {
     finalizeDraggedNodeDrop,

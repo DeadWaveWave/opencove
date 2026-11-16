@@ -19,6 +19,11 @@ import {
 } from '@contexts/workspace/presentation/renderer/store/canvasStoreContext'
 import type { TerminalNodeData } from '@contexts/workspace/presentation/renderer/types'
 import {
+  createCanvasDocumentHarness,
+  renderCanvasNodeStore,
+  type CanvasNodeStoreContext,
+} from '../../support/canvasDocumentHarness'
+import {
   SelectionWritersWrapper,
   createNodeHolder,
   createRowNodes,
@@ -448,35 +453,42 @@ describe('marquee in useWorkspaceCanvasSelectionDraft', () => {
 
 describe('Space click selection in useWorkspaceCanvasSpaceDrag', () => {
   function setup(options: { flagged?: string[]; nodeIds?: string[]; spaceIds?: string[] }) {
-    const holder = createNodeHolder(createRowNodes(['a', 'b', 'c', 'd'], options.flagged ?? []))
-    const spaces = [
-      createSpace('s', { x: -50, y: -50, width: 400, height: 400 }, ['a']),
-      createSpace('t', { x: 1500, y: 0, width: 400, height: 400 }, []),
-    ]
-    const spacesRef = { current: spaces }
+    const harness = createCanvasDocumentHarness({
+      nodes: createRowNodes(['a', 'b', 'c', 'd'], options.flagged ?? []),
+      spaces: [
+        createSpace('s', { x: -50, y: -50, width: 400, height: 400 }, ['a']),
+        createSpace('t', { x: 1500, y: 0, width: 400, height: 400 }, []),
+      ],
+    })
+    // The nodes as the store holds them, with the helpers the cases below read.
+    const holder = {
+      get nodes() {
+        return harness.readStoreDocument().nodes
+      },
+      get selectedIds() {
+        return harness
+          .readStoreDocument()
+          .nodes.filter(node => node.selected)
+          .map(node => node.id)
+      },
+    }
     // Stable: the hook clears a drag in progress whenever this callback changes.
     const setSnapGuides = vi.fn()
-    const hook = renderHook(
-      () => {
-        const flow = useReactFlow<Node<TerminalNodeData>>()
-        return {
-          drag: useWorkspaceCanvasSpaceDrag({
-            workspaceId: 'writers',
-            reactFlow: { ...flow, screenToFlowPosition: point => point, getZoom: () => 1 },
-            nodesRef: holder.nodesRef,
-            spacesRef,
-            setNodes: holder.setNodes,
-            onSpacesChange: next => {
-              spacesRef.current = next
-            },
-            magneticSnappingEnabledRef: { current: false },
-            setSnapGuides,
-          }),
-          ...useStoreProbe(),
-        }
-      },
-      { wrapper: SelectionWritersWrapper },
-    )
+    function useDragUnderTest({ workspaceId, nodeStore }: CanvasNodeStoreContext) {
+      const flow = useReactFlow<Node<TerminalNodeData>>()
+      return {
+        drag: useWorkspaceCanvasSpaceDrag({
+          workspaceId,
+          reactFlow: { ...flow, screenToFlowPosition: point => point, getZoom: () => 1 },
+          setNodes: nodeStore.setNodes,
+          updateCanvasDocument: nodeStore.updateCanvasDocument,
+          magneticSnappingEnabledRef: { current: false },
+          setSnapGuides,
+        }),
+        ...useStoreProbe(),
+      }
+    }
+    const hook = renderCanvasNodeStore(harness, { extend: useDragUnderTest })
     act(() =>
       hook.result.current.selection.select({
         nodeIds: options.nodeIds ?? [],

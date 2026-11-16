@@ -28,7 +28,7 @@ export function projectSpaceDragWithCollapse<
     nextSpaces: WorkspaceSpaceState[]
     nextNodePositionById: Map<string, { x: number; y: number }>
   },
->(input: SpaceDragLayoutInput, project: (input: SpaceDragLayoutInput) => T | null): T | null {
+>(input: SpaceDragLayoutInput, project: (input: SpaceDragLayoutInput) => T): T {
   const state = input.dragState.collapseState
   if (!state) {
     return project(input)
@@ -68,7 +68,5 @@ export function projectSpaceDragWithCollapse<
         : {}),
     },
   })
-  return projected
-    ? restoreCanvasInteractionLayout(projected, baselineNodes, input.spaces, state)
-    : null
+  return restoreCanvasInteractionLayout(projected, baselineNodes, input.spaces, state)
 }

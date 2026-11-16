@@ -1,12 +1,16 @@
-import React, { useRef, useState } from 'react'
-import { act, fireEvent, renderHook } from '@testing-library/react'
-import { ReactFlowProvider, useReactFlow, type Node } from '@xyflow/react'
+import type * as React from 'react'
+import { act, fireEvent } from '@testing-library/react'
+import { useReactFlow, type Node } from '@xyflow/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useWorkspaceCanvasSpaceDrag } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceDrag'
 import { useCanvasCollapseStore } from '@contexts/workspace/presentation/renderer/store/useCanvasCollapseStore'
 import type { TerminalNodeData } from '@contexts/workspace/presentation/renderer/types'
 import { createNode, createSpace } from './workspaceNodeProjection.testUtils'
-import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
+import {
+  createCanvasDocumentHarness,
+  renderCanvasNodeStore,
+  type CanvasNodeStoreContext,
+} from '../../support/canvasDocumentHarness'
 
 afterEach(() => {
   vi.useRealTimers()
@@ -29,45 +33,26 @@ function renderNestedResize() {
       nodeIds: ['terminal'],
     }),
   ]
-  const persist = vi.fn()
   const setSnapGuides = vi.fn()
-  const hook = renderHook(
-    () => {
-      const flow = useReactFlow<Node<TerminalNodeData>>()
-      const nodesRef = useRef([node])
-      const spacesRef = useRef(spaces)
-      const [, setSpaces] = useState(spaces)
-      const drag = useWorkspaceCanvasSpaceDrag({
-        workspaceId: 'workspace',
-        reactFlow: {
-          ...flow,
-          screenToFlowPosition: point => point,
-          getZoom: () => 1,
-        },
-        nodesRef,
-        spacesRef,
-        setNodes: update => {
-          nodesRef.current = update(nodesRef.current)
-        },
-        onSpacesChange: next => {
-          spacesRef.current = next
-          setSpaces(next)
-        },
-        magneticSnappingEnabledRef: { current: false },
-        setSnapGuides,
-        onRequestPersistFlush: persist,
-      })
-      return { ...drag, spaces: spacesRef.current, nodes: nodesRef.current }
-    },
-    {
-      wrapper: ({ children }) => (
-        <CanvasStoreTestProvider>
-          <ReactFlowProvider>{children}</ReactFlowProvider>
-        </CanvasStoreTestProvider>
-      ),
-    },
-  )
-  return { ...hook, persist }
+  const harness = createCanvasDocumentHarness({ workspaceId: 'workspace', nodes: [node], spaces })
+  function useDragUnderTest({ workspaceId, nodeStore }: CanvasNodeStoreContext) {
+    const flow = useReactFlow<Node<TerminalNodeData>>()
+    const drag = useWorkspaceCanvasSpaceDrag({
+      workspaceId,
+      reactFlow: {
+        ...flow,
+        screenToFlowPosition: point => point,
+        getZoom: () => 1,
+      },
+      setNodes: nodeStore.setNodes,
+      updateCanvasDocument: nodeStore.updateCanvasDocument,
+      magneticSnappingEnabledRef: { current: false },
+      setSnapGuides,
+    })
+    return { ...drag, ...harness.readStoreDocument() }
+  }
+  const hook = renderCanvasNodeStore(harness, { extend: useDragUnderTest })
+  return { ...hook, persist: harness.flush }
 }
 
 describe('nested compact Space resize lifecycle', () => {
