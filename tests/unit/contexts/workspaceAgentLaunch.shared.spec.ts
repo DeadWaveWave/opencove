@@ -3,6 +3,7 @@ import { createAppError } from '@shared/errors/appError'
 import { act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
+import { useWorkspaceCanvasState } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasState'
 import { useCanvasDocumentCommands } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
 import { replaceWorkspaceSpaces } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import type { WorkspaceSpaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
@@ -519,10 +520,21 @@ describe('workspaceAgentLaunch.shared', () => {
       ],
     }))
     let shown = 'workspace-a'
-    const view = renderInCanvasDocument(() => useCanvasDocumentCommands(), {
-      workspaceId: () => shown,
-    })
-    const updateSpacesOfA = view.result.current.updateSpaces
+    const noNodes: never[] = []
+    const view = renderInCanvasDocument(
+      () => ({
+        commands: useCanvasDocumentCommands(),
+        state: useWorkspaceCanvasState({
+          workspaceId: shown,
+          nodes: noNodes,
+          spaces: useAppStore.getState().workspaces.find(item => item.id === shown)?.spaces ?? [],
+          viewport: { x: 0, y: 0, zoom: 1 },
+        }),
+      }),
+      { workspaceId: () => shown },
+    )
+    const updateSpacesOfA = view.result.current.commands.updateSpaces
+    const spacesRefOfA = view.result.current.state.spacesRef
     const invoke = vi.mocked(window.opencoveApi.controlSurface.invoke)
     let resolveMounts!: (value: unknown) => void
     invoke.mockReturnValueOnce(new Promise(resolve => (resolveMounts = resolve)) as never)
@@ -557,6 +569,12 @@ describe('workspaceAgentLaunch.shared', () => {
     ])
     expect(workspaceB).toBe(workspaceBBefore)
     expect(harness.flush).toHaveBeenCalledTimes(1)
+    // The launch continues after the binding and reads the Spaces again: the `spacesRef` kept from
+    // before the switch still reads workspace A, with the binding written.
+    expect(spacesRefOfA.current.map(item => [item.id, item.targetMountId])).toEqual([
+      ['space-a', 'mount-api'],
+      ['space-late', null],
+    ])
   })
 })
 
