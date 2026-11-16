@@ -470,18 +470,29 @@ jobs:
           OPENCOVE_E2E_SKIP_BUILD: '1'
           OPENCOVE_E2E_TEST_MATCH: '**/*.windows.spec.ts,**/agent.initial-prompt-argv.spec.ts,**/runtime-diagnostics.renderer-crash.spec.ts'
           OPENCOVE_E2E_WINDOW_MODE: inactive
-          # One retry after the merge and on manual runs: a renderer crash at the seed reload failed
-          # this step in 10 of 45 runs without being in the change under test (#698). Pull requests never retry.
-          OPENCOVE_E2E_RETRIES: ${{ github.event_name == 'pull_request' && '0' || '1' }}
+          # One retry on every event: a renderer crash at a reload fails this step about one run in
+          # five without being in the change under test (#698). The next step judges the retried tests.
+          OPENCOVE_E2E_RETRIES: '1'
           OPENCOVE_E2E_DISABLE_CRASH_FALLBACK: '1'
         run: pnpm exec playwright test
 
+      # A pull request keeps a retried test only when that crash is what failed its first attempt:
+      # any other test that passed only on a retry fails the job. After the merge and on manual
+      # runs every retried test is reported and none fails the job.
+      - name: Judge the retried Windows E2E tests
+        id: retried
+        run: node scripts/check-e2e-retried-tests.mjs artifacts/e2e-durations/report.json ${{ github.event_name == 'pull_request' && '--enforce' || '--report-only' }}
+
+      # Also after an absorbed crash: its minidump is the evidence for #698, and the report is
+      # what the judge read.
       - name: Upload Playwright report
-        if: failure()
+        if: ${{ failure() || steps.retried.outputs.retried == 'true' }}
         uses: actions/upload-artifact@v7
         with:
           name: playwright-report-windows-platform-e2e
-          path: test-results/
+          path: |
+            test-results/
+            artifacts/e2e-durations/report.json
           retention-days: 7
 
   # Reports the state of a push run to the ci-red issue. It waits for every job, whatever their
