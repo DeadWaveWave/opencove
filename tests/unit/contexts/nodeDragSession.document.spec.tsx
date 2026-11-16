@@ -207,6 +207,59 @@ describe('node drag session frames', () => {
     })
     expect(view.result.current.nodeSpaceFramePreview?.get('space')).toBeDefined()
   })
+
+  // Both workspaces hold `space-1`, at other places. After the switch, the release of a
+  // Space-dominant drag in B writes B's Space, flushes once and leaves A's Spaces alone.
+  it('releases a Space frame into the workspace of the render that created the callbacks', () => {
+    const nodeOf = (x: number) => noteAt('n1', x, 50)
+    const harness = createCanvasDocumentHarness({
+      workspaceId: 'workspace-a',
+      nodes: [nodeOf(50)],
+      spaces: [createSpace('space-1', A_RECT, ['n1'])],
+    })
+    const stateA = useAppStore.getState().workspaces[0]
+    const nodesB = [nodeOf(1050)]
+    useAppStore.setState({
+      workspaces: [
+        stateA,
+        {
+          ...stateA,
+          id: 'workspace-b',
+          nodes: nodesB,
+          spaces: [createSpace('space-1', { ...A_RECT, x: 1000 }, ['n1'])],
+        },
+      ],
+    })
+    let current = 'workspace-a'
+    const view = renderInCanvasDocument(
+      () => ({
+        session: useWorkspaceCanvasNodeDragSession({
+          workspaceId: current,
+          magneticSnappingEnabledRef: { current: false },
+          setSnapGuides,
+        }),
+        selection: useCanvasSelectionCommands(),
+      }),
+      { workspaceId: () => current },
+    )
+    current = 'workspace-b'
+    view.rerender()
+    const { session, selection } = view.result.current
+    act(() => selection.setSpaceIds(['space-1']))
+    act(() => session.captureDragStartSpaceSelection())
+    act(() => session.beginNodeDragSession(nodesB))
+    act(() => {
+      frameOf(session, nodesB, 'n1', { x: 1150, y: 100 }, true)
+    })
+    const spacesOfA = readWorkspaceDocument('workspace-a')!.spaces
+    harness.flush.mockClear()
+
+    act(() => session.endNodeDragSession())
+
+    expect(readWorkspaceDocument('workspace-b')!.spaces[0].rect).toMatchObject({ x: 1100, y: 50 })
+    expect(readWorkspaceDocument('workspace-a')!.spaces).toBe(spacesOfA)
+    expect(harness.flush).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('releasing a node drag', () => {

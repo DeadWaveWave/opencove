@@ -3,6 +3,8 @@ import type { Node } from '@xyflow/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TERMINAL_LAYOUT_SYNC_EVENT } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/constants'
 import {
+  commitCanvasDocument,
+  readWorkspaceDocument,
   replaceWorkspaceNodes,
   replaceWorkspaceSpaces,
 } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
@@ -166,6 +168,20 @@ describe('a node drop into a Space', () => {
     ])
     expect(harness.notifications).toHaveBeenCalledTimes(1)
     expect(document.nodes[0].position.x).toBeGreaterThanOrEqual(C_RECT.x)
+  })
+
+  // The drop changes no ownership and no override: only the projection grows the Space around the
+  // member that moved inside it. The Spaces of the write must still carry that growth.
+  it('writes the Space that only the projection changes, in the same single update', () => {
+    const { harness, view } = setup([note('n1', 50, 60)])
+    startDrag(view, harness, 'n1')
+    const dropped = releaseAt(harness, 'n1', { x: 380, y: 260 })
+    harness.notifications.mockClear()
+
+    stopAt(view, dropped, { x: 450, y: 300 })
+
+    expect(harness.readStoreDocument().spaces[0].rect?.height).toBeGreaterThan(A_RECT.height)
+    expect(harness.notifications).toHaveBeenCalledTimes(1)
   })
 
   it('flushes once for the drop', () => {
@@ -595,7 +611,7 @@ describe('the worktree warning of a node drop', () => {
 })
 
 describe('a node drag that pushes a Space frame', () => {
-  it('is dropped into the pushed rect by the stop handler of the same call', () => {
+  it('a release with no captured Space selection: the stop handler of the same call drops into the pushed rect', () => {
     const { harness, view } = setup([note('n1', 50, 50), note('n2', 1416, 816)], [spaceA(['n1'])])
     act(() => view.result.current.selection.setSpaceIds(['space-a']))
     const { nodeDragSession, ownership } = view.result.current
@@ -623,6 +639,48 @@ describe('a node drag that pushes a Space frame', () => {
 
     // (650, 100) is outside the rect of the base (it ends at x = 600) and inside the pushed one.
     expect(harness.readStoreDocument().spaces[0].nodeIds).toContain('n2')
+  })
+
+  // The order React Flow produces: the start handler captures the selected Spaces, the release
+  // writes the pushed frame, and the stop handler of the same call sees the copy and leaves early.
+  it('a release with a captured Space selection writes the frame once and the stop handler writes nothing', () => {
+    const { harness, view } = setup([note('n1', 50, 50), note('n2', 1416, 816)], [spaceA(['n1'])])
+    act(() => view.result.current.selection.select({ nodeIds: ['n1'], spaceIds: ['space-a'] }))
+    const nodes = harness.readStoreDocument().nodes
+    const n1 = nodes[0]
+    const { nodeDragSession, ownership } = view.result.current
+    act(() => ownership.handleNodeDragStart({ ...keepSelection }, { ...n1, selected: true }, [n1]))
+    expect(nodeDragSession.getDragStartSpaceSelection()).toEqual(['space-a'])
+    act(() => nodeDragSession.beginNodeDragSession(nodes))
+    act(() => {
+      nodeDragSession.projectNodeDrag({
+        currentNodes: nodes,
+        draggedNodeIds: ['n1'],
+        desiredDraggedPositionById: new Map([['n1', { x: 150, y: 100 }]]),
+        anchorNodeId: 'n1',
+        anchorIsSelected: true,
+      })
+    })
+    harness.notifications.mockClear()
+    harness.flush.mockClear()
+    const before = harness.readStoreDocument()
+
+    act(() => {
+      nodeDragSession.endNodeDragSession()
+      ownership.handleNodeDragStop(
+        { clientX: 200, clientY: 150, shiftKey: true } as React.MouseEvent,
+        n1,
+        [n1],
+      )
+    })
+
+    const after = harness.readStoreDocument()
+    expect(after.spaces[0].rect).toMatchObject({ x: 100, y: 50 })
+    expect(after.spaces[0].nodeIds).toEqual(before.spaces[0].nodeIds)
+    expect(after.nodes).toBe(before.nodes)
+    expect(harness.notifications).toHaveBeenCalledTimes(1)
+    expect(harness.flush).toHaveBeenCalledTimes(1)
+    expect(nodeDragSession.getDragStartSpaceSelection()).toBeNull()
   })
 })
 
@@ -692,5 +750,94 @@ describe('the workspace of a node drop', () => {
     act(() => view.result.current.cancelSpaceWorktreeMismatchDropWarning())
     act(() => handlerOfA(event, guest, [guest]))
     expect(view.result.current.spaceWorktreeMismatchDropWarning?.spaceId).toBe('space-of-a')
+  })
+
+  // Both workspaces hold a Space at the same place. The drop of a task that is doing work must be
+  // refused in B, which only the reader of the render that shows B can tell: A's Spaces do not
+  // hold the node and show no ownership change.
+  it('drops in the workspace of the render that created the handler, and leaves the other alone', () => {
+    const task = taskDoing('t1', 50, 60)
+    createCanvasDocumentHarness({
+      workspaceId: 'workspace-a',
+      nodes: [task],
+      spaces: [{ ...createSpace('space-of-a', C_RECT, []), directoryPath: REPO }],
+    })
+    const stateA = useAppStore.getState().workspaces[0]
+    useAppStore.setState({
+      workspaces: [
+        stateA,
+        {
+          ...stateA,
+          id: 'workspace-b',
+          spaces: [{ ...createSpace('space-of-b', C_RECT, []), directoryPath: REPO }],
+        },
+      ],
+    })
+    let current = 'workspace-a'
+    const onShowMessage = vi.fn()
+    const view = renderInCanvasDocument(
+      () => {
+        const workspaceId = current
+        const nodesOf = () => readWorkspaceDocument(workspaceId)?.nodes ?? []
+        const reactFlow = {
+          screenToFlowPosition: (point: { x: number; y: number }) => point,
+          flowToScreenPosition: (point: { x: number; y: number }) => point,
+          getNodes: nodesOf,
+          getNode: (id: string) => nodesOf().find(node => node.id === id),
+        } as never
+        return useWorkspaceCanvasSpaceOwnership({
+          workspaceId,
+          workspacePath: REPO,
+          reactFlow,
+          nodeDragSession: {
+            captureDragStartSpaceSelection: () => undefined,
+            getDragStartSpaceSelection: () => null,
+            clearDragStartSpaceSelection: () => undefined,
+          },
+          exclusiveNodeDragAnchorIdRef: { current: null },
+          setNodes: (updater, options) =>
+            commitCanvasDocument(
+              workspaceId,
+              document => ({ ...document, nodes: updater(document.nodes) }),
+              options,
+            ),
+          updateCanvasDocument: (recipe, options) =>
+            commitCanvasDocument(
+              workspaceId,
+              document => ({
+                ...document,
+                ...recipe({ nodes: document.nodes, spaces: document.spaces }),
+              }),
+              options,
+            ),
+          onShowMessage,
+          hideWorktreeMismatchDropWarning: true,
+        })
+      },
+      { workspaceId: () => current },
+    )
+    current = 'workspace-b'
+    view.rerender()
+    const documentOfA = readWorkspaceDocument('workspace-a')
+    const handlers = view.result.current
+    act(() => handlers.handleNodeDragStart({ ...keepSelection }, task, [task]))
+    act(() => {
+      replaceWorkspaceNodes('workspace-b', [{ ...task, position: NODE_IN_C }])
+    })
+    const dropped = readWorkspaceDocument('workspace-b')!.nodes[0]
+
+    act(() =>
+      handlers.handleNodeDragStop(
+        { clientX: DROP_INTO_C.x, clientY: DROP_INTO_C.y, shiftKey: true } as React.MouseEvent,
+        dropped,
+        [dropped],
+      ),
+    )
+
+    expect(onShowMessage).toHaveBeenCalledTimes(1)
+    expect(readWorkspaceDocument('workspace-b')!.nodes[0].position).toEqual({ x: 50, y: 60 })
+    expect(readWorkspaceDocument('workspace-b')!.spaces[0].nodeIds).toEqual([])
+    expect(readWorkspaceDocument('workspace-a')!.nodes).toBe(documentOfA!.nodes)
+    expect(readWorkspaceDocument('workspace-a')!.spaces).toBe(documentOfA!.spaces)
   })
 })
