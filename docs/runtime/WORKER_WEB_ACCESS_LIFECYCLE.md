@@ -149,7 +149,7 @@ Web listener replacement is not a restart boundary. Listener generation and Web 
 
 Final Worker shutdown still follows the terminal recovery ordering in `docs/architecture/RECOVERY_MODEL.md`. Composition synchronously begins runtime shutdown before awaiting Web-owner cleanup: it freezes new runtime/listener admission, stops every listener, joins the runtime-global accepted-handler registry independently of client socket lifetime, then drains/checkpoints terminal owners before disposing shared resources. The Worker watchdog exceeds the accepted-request drain deadline, and the Desktop launcher escalation exceeds the Worker watchdog. Web listener drain cannot run this sequence independently.
 
-If Main loses an apply response, it queries Worker status/config revision before retrying. An idempotent retry observes the committed generation or safely prepares the desired durable state. It must not infer failure and restart the Worker. Offline Desktop writes and Desktop Worker startup share an owner-exact configuration lease: a complete owner directory is prepared privately and atomically renamed into authority, a valid live legacy JSON-file claim remains authoritative during mixed-version overlap, malformed claims are reclaimed only after their stale boundary, and release/reclaim quarantine the captured identity before deletion. Main rechecks runtime ownership inside that lease, while Worker holds it from config read through private-owner publication.
+If Main loses an apply response, it queries Worker status/config revision before retrying. An idempotent retry observes the committed generation or safely prepares the desired durable state. It must not infer failure and restart the Worker. Offline Desktop writes and Desktop Worker startup share an owner-exact configuration lease: a complete owner directory is prepared privately and atomically renamed into authority, a valid live legacy JSON-file claim remains authoritative during mixed-version overlap, malformed claims are reclaimed only after their stale boundary, and release/reclaim quarantine the captured identity before deletion. Main rechecks runtime ownership inside that lease, while Worker holds it from config read through private-owner publication. On Windows a rename onto or away from the lease may report EPERM/EACCES/EBUSY for a held lease or a transient handle, and a rename onto a legacy lease file succeeds; the lease therefore looks at the path before it claims, resolves ambiguous codes by observation and bounded retry (one deadline, with backoff), and reports release failures instead of swallowing them. Callers log a release failure without changing their own outcome.
 
 ## Diagnostics
 
@@ -169,7 +169,7 @@ See `WEB_UI_TROUBLESHOOTING.md` for operational checks.
 2. Every private/Web listener generation delegates terminal traffic to one `PtyStreamService` and one Hub.
 3. Candidate bind or persistence failure leaves the previous active and durable configuration usable.
 4. Password, disable and LAN-tightening revocation affect only the corresponding Web-listener/auth transports; private Desktop/CLI bearer clients and PTYs remain live.
-5. A live owned Worker is the sole durable configuration writer; Main writes only under the shared config lease after an in-lease owner recheck, and Worker startup cannot read config concurrently with that write.
+5. A live owned Worker is the sole durable configuration writer; Main writes only under the shared config lease after an in-lease owner recheck, and Worker startup cannot read config concurrently with that write. On Windows the lease resolves EPERM/EACCES/EBUSY by observation and bounded retry, and release failures are reported, never swallowed.
 6. Renderer navigation, xterm replacement and renderer cache are never Web access recovery mechanisms.
 7. Listener generation cleanup is bounded and disposes only generation-owned transport resources.
 8. `dispose()` joins startup/apply/restoration; after it resolves, no prior continuation can bind, activate or re-enable Web policy.
@@ -184,6 +184,7 @@ See `WEB_UI_TROUBLESHOOTING.md` for operational checks.
 - `tests/contract/controlSurface/desktopManagedControlSurface.webAccess.spec.ts`
 - `tests/unit/app/homeWorkerConfig.spec.ts`
 - `tests/unit/contexts/homeWorkerConfigLease.spec.ts`
+- `tests/unit/contexts/homeWorkerConfigLease.windows.spec.ts`
 - `tests/unit/app/controlSurfaceHttpListener.spec.ts`
 - `tests/unit/app/desktopManagedControlSurface.shutdown.spec.ts`
 - `tests/unit/app/workerWebAccessRuntime.spec.ts`
