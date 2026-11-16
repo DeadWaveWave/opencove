@@ -1,7 +1,6 @@
-import { useCallback, type MutableRefObject } from 'react'
-import type { Node } from '@xyflow/react'
+import { useCallback } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
-import type { TerminalNodeData } from '../../../types'
+import { useReadCanvasDocument } from '../../../store/canvasStoreContext'
 import { resolveAgentTreatedActionContext } from '../../../utils/terminalAgentOverlay'
 import type { ShowWorkspaceCanvasMessage } from '../types'
 
@@ -39,17 +38,16 @@ async function readLastAgentMessageWithRetryAttempt(
 }
 
 export function useWorkspaceCanvasAgentLastMessageCopy({
-  nodesRef,
   onShowMessage,
 }: {
-  nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   onShowMessage?: ShowWorkspaceCanvasMessage
 }): (nodeId: string) => Promise<void> {
   const { t } = useTranslation()
+  const readDocument = useReadCanvasDocument()
 
   return useCallback(
     async (nodeId: string): Promise<void> => {
-      const node = nodesRef.current.find(candidate => candidate.id === nodeId) ?? null
+      const node = readDocument().nodes.find(candidate => candidate.id === nodeId) ?? null
       const context = node ? resolveAgentTreatedActionContext(node) : null
       if (!context) {
         if (
@@ -90,6 +88,6 @@ export function useWorkspaceCanvasAgentLastMessageCopy({
         onShowMessage?.(t('messages.agentLastMessageCopyFailed', { message: detail }), 'error')
       }
     },
-    [nodesRef, onShowMessage, t],
+    [onShowMessage, readDocument, t],
   )
 }

@@ -189,9 +189,11 @@ describe('agent terminal layout sync', () => {
       | null = null
     const node = createAgentNode()
     node.data.sessionId = 'runtime-1'
-    const nodesRef = {
-      current: [node],
-    } as React.MutableRefObject<Node<TerminalNodeData>[]>
+    const documentHarness = createCanvasDocumentHarness({
+      workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID,
+      nodes: [node],
+    })
+    const { nodesRef } = storeBackedChannelsOf(CANVAS_STORE_TEST_WORKSPACE_ID)
     const setNodes = vi.fn(
       (
         updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -211,7 +213,8 @@ describe('agent terminal layout sync', () => {
         source: 'codex-file' as const,
       },
     ])
-    const onRequestPersistFlush = vi.fn()
+    // The shell's persist flush, as the document module calls it.
+    const onRequestPersistFlush = documentHarness.flush
 
     Object.defineProperty(window, 'opencoveApi', {
       configurable: true,
@@ -233,10 +236,8 @@ describe('agent terminal layout sync', () => {
 
     function Harness(): null {
       useWorkspaceCanvasPtyTaskCompletion({
-        nodesRef,
         setNodes,
         listAgentSessions,
-        onRequestPersistFlush,
       })
       return null
     }
@@ -268,9 +269,8 @@ describe('agent terminal layout sync', () => {
       const node = createAgentNode()
       node.data.sessionId = 'runtime-1'
       node.data.title = 'codex · gpt-5.2-codex'
-      const nodesRef = {
-        current: [node],
-      } as React.MutableRefObject<Node<TerminalNodeData>[]>
+      createCanvasDocumentHarness({ workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID, nodes: [node] })
+      const { nodesRef } = storeBackedChannelsOf(CANVAS_STORE_TEST_WORKSPACE_ID)
       const setNodes = vi.fn(
         (
           updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -319,7 +319,6 @@ describe('agent terminal layout sync', () => {
 
       function Harness(): null {
         useWorkspaceCanvasPtyTaskCompletion({
-          nodesRef,
           setNodes,
           listAgentSessions,
         })

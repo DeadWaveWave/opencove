@@ -271,7 +271,6 @@ export function WorkspaceCanvasInner({
     agentSettings,
     reactFlow,
     clearNodeSelection,
-    onRequestPersistFlush,
     onShowMessage,
     canvasState,
     nodePublishers,
