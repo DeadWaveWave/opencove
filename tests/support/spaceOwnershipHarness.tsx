@@ -1,7 +1,6 @@
 import { act } from '@testing-library/react'
 import { useMemo } from 'react'
 import type { Edge, Node, ReactFlowInstance } from '@xyflow/react'
-import { vi } from 'vitest'
 import { useWorkspaceCanvasNodeDragSession } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodeDragSession'
 import { useWorkspaceCanvasSpaceOwnership } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceOwnership'
 import type {
@@ -45,7 +44,6 @@ export function renderSpaceOwnershipInDocument(
   options: SpaceOwnershipHarnessOptions = {},
 ) {
   const exclusiveNodeDragAnchorIdRef = { current: null as string | null }
-  const setSnapGuides = vi.fn()
 
   function useOwnershipUnderTest(context: CanvasNodeStoreContext) {
     const { workspaceId, nodeStore } = context
@@ -63,7 +61,6 @@ export function renderSpaceOwnershipInDocument(
     }, [])
     const nodeDragSession = useWorkspaceCanvasNodeDragSession({
       workspaceId,
-      setSnapGuides,
     })
     const ownership = useWorkspaceCanvasSpaceOwnership({
       workspaceId,

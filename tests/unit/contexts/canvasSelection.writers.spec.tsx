@@ -512,8 +512,6 @@ describe('Space click selection in useWorkspaceCanvasSpaceDrag', () => {
           .map(node => node.id)
       },
     }
-    // Stable: the hook clears a drag in progress whenever this callback changes.
-    const setSnapGuides = vi.fn()
     function useDragUnderTest({ workspaceId, nodeStore }: CanvasNodeStoreContext) {
       const flow = useReactFlow<Node<TerminalNodeData>>()
       return {
@@ -522,7 +520,6 @@ describe('Space click selection in useWorkspaceCanvasSpaceDrag', () => {
           reactFlow: { ...flow, screenToFlowPosition: point => point, getZoom: () => 1 },
           setNodes: nodeStore.setNodes,
           updateCanvasDocument: nodeStore.updateCanvasDocument,
-          setSnapGuides,
         }),
         ...useStoreProbe(),
       }

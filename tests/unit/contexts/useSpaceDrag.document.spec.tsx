@@ -33,11 +33,8 @@ import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
 type SetNodes = UseWorkspaceCanvasNodesStoreResult['setNodes']
 type UpdateCanvasDocument = UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
 
-const setSnapGuides = vi.fn()
-
 beforeEach(() => {
   vi.useFakeTimers()
-  setSnapGuides.mockClear()
 })
 
 afterEach(() => {
@@ -68,7 +65,6 @@ function useDragUnderTest({ workspaceId, nodeStore }: CanvasNodeStoreContext) {
       reactFlow: { ...flow, screenToFlowPosition: point => point, getZoom: () => 1 },
       setNodes: nodeStore.setNodes,
       updateCanvasDocument: nodeStore.updateCanvasDocument,
-      setSnapGuides,
     }),
     selection: useCanvasSelectionCommands(),
     interaction: useCanvasInteractionCommands(),
@@ -485,7 +481,6 @@ describe('useWorkspaceCanvasSpaceDrag reads the committed document', () => {
               reactFlow,
               setNodes,
               updateCanvasDocument,
-              setSnapGuides,
             }),
           }
         },

@@ -11,7 +11,13 @@ import {
   CanvasStoreTestProvider,
 } from '../../support/canvasStoreTestHarness'
 import { createCanvasDocumentHarness } from '../../support/canvasDocumentHarness'
-import { useCanvasSelectionCommands } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
+import {
+  useCanvasInteraction,
+  useCanvasSelectionCommands,
+} from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
+import type { CanvasInteractionState } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStore.interaction'
+
+const selectSnapGuides = (interaction: CanvasInteractionState) => interaction.snapGuides
 
 vi.mock('@xyflow/react', () => {
   return {
@@ -99,10 +105,8 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
       const [nodes, setNodes] = useState(initialNodes)
       const nodesRef = useRef(nodes)
       nodesRef.current = nodes
-      const [, setSnapGuides] = useState(null)
       const nodeDragSession = useWorkspaceCanvasNodeDragSession({
         workspaceId: 'workspace-remove',
-        setSnapGuides,
       })
 
       const apply = useWorkspaceCanvasApplyNodeChanges({
@@ -216,14 +220,12 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
       const [nodes, setNodes] = useState(initialNodes)
       const nodesRef = useRef(nodes)
       nodesRef.current = nodes
-      const [, setSnapGuides] = useState(null)
       const selection = useCanvasSelectionCommands()
       useLayoutEffect(() => {
         selection.setSpaceIds(['selected-space'])
       }, [selection])
       const nodeDragSession = useWorkspaceCanvasNodeDragSession({
         workspaceId: 'workspace-persist',
-        setSnapGuides,
       })
 
       const apply = useWorkspaceCanvasApplyNodeChanges({
@@ -350,11 +352,10 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
       const [nodes, setNodes] = useState(initialNodes)
       const nodesRef = useRef(nodes)
       nodesRef.current = nodes
-      const [snapGuides, setSnapGuides] = useState<unknown[] | null>(null)
+      const snapGuides = useCanvasInteraction(selectSnapGuides)
       const isNodeDraggingRef = useRef(false)
       const nodeDragSession = useWorkspaceCanvasNodeDragSession({
         workspaceId: 'workspace-snap',
-        setSnapGuides,
       })
 
       const apply = useWorkspaceCanvasApplyNodeChanges({

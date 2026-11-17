@@ -33,7 +33,6 @@ function renderNestedResize() {
       nodeIds: ['terminal'],
     }),
   ]
-  const setSnapGuides = vi.fn()
   const harness = createCanvasDocumentHarness({ workspaceId: 'workspace', nodes: [node], spaces })
   function useDragUnderTest({ workspaceId, nodeStore }: CanvasNodeStoreContext) {
     const flow = useReactFlow<Node<TerminalNodeData>>()
@@ -46,7 +45,6 @@ function renderNestedResize() {
       },
       setNodes: nodeStore.setNodes,
       updateCanvasDocument: nodeStore.updateCanvasDocument,
-      setSnapGuides,
     })
     return { ...drag, ...harness.readStoreDocument() }
   }

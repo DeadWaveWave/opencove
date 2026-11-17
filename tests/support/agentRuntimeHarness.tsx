@@ -130,6 +130,8 @@ export interface RuntimeCanvasContext {
   workspaceId: string
   canvasState: ReturnType<typeof useWorkspaceCanvasState>
   nodeStore: ReturnType<typeof useWorkspaceCanvasNodesStore>
+  /** The canvas's node publishers: a case that needs a live drag publishes the frame itself. */
+  publishers: ReturnType<typeof useWorkspaceCanvasNodePublishers>
   /**
    * A writer whose identity never changes and that writes through the node store of the latest
    * render. A case that pins a reader's place in a dependency list uses it, so that the writer
@@ -193,12 +195,11 @@ export function renderInTwoWorkspaces<Result>(
           state.workspaces.find(workspace => workspace.id === workspaceId)?.spaces ?? EMPTY_SPACES,
       )
       const canvasState = useWorkspaceCanvasState({
-        workspaceId,
         nodes,
         spaces,
         viewport: { x: 0, y: 0, zoom: 1 },
       })
-      const publishers = useWorkspaceCanvasNodePublishers({ ...canvasState, workspaceId })
+      const publishers = useWorkspaceCanvasNodePublishers({ workspaceId })
       const nodeStore = useWorkspaceCanvasNodesStore({
         workspaceId,
         workspacePath: `/tmp/${workspaceId}`,
@@ -224,6 +225,7 @@ export function renderInTwoWorkspaces<Result>(
         workspaceId,
         canvasState,
         nodeStore,
+        publishers,
         stableSetNodes,
         stableUpdateCanvasDocument,
       })

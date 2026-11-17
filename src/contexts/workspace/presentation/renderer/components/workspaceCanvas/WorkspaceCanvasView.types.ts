@@ -14,7 +14,6 @@ import type {
   WorkspaceSpaceState,
 } from '../../types'
 import type { WorkspaceArrangeStyle } from '../../utils/workspaceArrange'
-import type { WorkspaceSnapGuide } from '../../utils/workspaceSnap'
 import type { SpaceExplorerOpenDocumentBlock } from './hooks/useSpaceExplorer.guards'
 import type {
   SpaceVisual,
@@ -76,7 +75,6 @@ export interface WorkspaceCanvasViewProps {
   isTrackpadCanvasMode: boolean
   useManualCanvasWheelGestures: boolean
   isShiftPressed: boolean
-  snapGuides: WorkspaceSnapGuide[] | null
   spaceVisuals: SpaceVisual[]
   spaceFramePreview: ReadonlyMap<string, WorkspaceSpaceRect> | null
   openExplorerSpaceId: string | null

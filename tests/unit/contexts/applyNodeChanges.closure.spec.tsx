@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useWorkspaceCanvasApplyNodeChanges } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useApplyNodeChanges'
 import { subscribeWorkspaceNodesClosed } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeClosureEvents'
 import type { WorkspaceCanvasNodeDragSession } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodeDragSession'
+import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
 import { pixelNode } from './workspacePixelLayer.fixtures'
 
 vi.mock('../../../src/contexts/workspace/presentation/renderer/utils/nodeRuntimeCleanup', () => ({
@@ -12,7 +13,6 @@ vi.mock('../../../src/contexts/workspace/presentation/renderer/utils/nodeRuntime
 function dragSession(): WorkspaceCanvasNodeDragSession {
   return {
     nodeDragPointerAnchorRef: { current: null },
-    nodeSpaceFramePreview: null,
     dragBaselinePositionByIdRef: { current: null },
     dragBaselineSpaceRectByIdRef: { current: null },
     beginNodeDragSession: vi.fn(),
@@ -50,17 +50,19 @@ describe('ReactFlow removal closure notifications', () => {
       const publish = vi.fn(() => {
         order.push('commit')
       })
-      const view = renderHook(() =>
-        useWorkspaceCanvasApplyNodeChanges({
-          nodesRef,
-          onNodesChange: publish,
-          onNodesCommit: route === 'commit' ? publish : undefined,
-          clearAgentLaunchToken: vi.fn(),
-          normalizePosition: (_id, desired) => desired,
-          applyPendingScrollbacks: nodes => nodes,
-          isNodeDraggingRef: { current: false },
-          nodeDragSession: dragSession(),
-        }),
+      const view = renderHook(
+        () =>
+          useWorkspaceCanvasApplyNodeChanges({
+            nodesRef,
+            onNodesChange: publish,
+            onNodesCommit: route === 'commit' ? publish : undefined,
+            clearAgentLaunchToken: vi.fn(),
+            normalizePosition: (_id, desired) => desired,
+            applyPendingScrollbacks: nodes => nodes,
+            isNodeDraggingRef: { current: false },
+            nodeDragSession: dragSession(),
+          }),
+        { wrapper: CanvasStoreTestProvider },
       )
       const closed = vi.fn((ids: string[]) => {
         expect(ids).toEqual(['terminal-1', 'note-2'])

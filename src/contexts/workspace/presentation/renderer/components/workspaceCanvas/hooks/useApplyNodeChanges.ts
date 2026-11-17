@@ -3,7 +3,9 @@ import { useCallback, useEffect, useRef } from 'react'
 import { applyNodeChanges } from '@xyflow/react'
 import type { Node, NodeChange, NodePositionChange } from '@xyflow/react'
 import type { TerminalNodeData } from '../../../types'
+import { applyLiveNodes } from '../../../utils/canvasLiveNodes'
 import { cleanupNodeRuntimeArtifacts } from '../../../utils/nodeRuntimeCleanup'
+import { useReadCanvasInteraction } from '../../../store/canvasStoreContext'
 import { TERMINAL_LAYOUT_SYNC_EVENT } from '../../terminalNode/constants'
 import { type UseApplyNodeChangesParams } from './useApplyNodeChanges.helpers'
 import { publishWorkspaceNodesClosed } from '../nodeClosureEvents'
@@ -73,6 +75,7 @@ export function useWorkspaceCanvasApplyNodeChanges({
   exclusiveNodeDragAnchorIdRef,
   nodeDragSession,
 }: UseApplyNodeChangesParams): (changes: NodeChange<Node<TerminalNodeData>>[]) => void {
+  const readInteraction = useReadCanvasInteraction()
   const pendingContinuousDragChangesRef = useRef<ContinuousDragPositionChange[] | null>(null)
   const pendingContinuousDragFrameRef = useRef<number | null>(null)
   const lastContinuousDragFlushAtRef = useRef(0)
@@ -98,7 +101,9 @@ export function useWorkspaceCanvasApplyNodeChanges({
         return
       }
 
-      const currentNodes = nodesRef.current
+      // The live view: what React Flow shows now. A drag frame computes from it, and the release too
+      // (S6, PR 3). Without a gesture it is `nodesRef.current` itself.
+      const currentNodes = applyLiveNodes(nodesRef.current, readInteraction().liveNodes)
       const removedIds = new Set(
         filteredChanges.filter(change => change.type === 'remove').map(change => change.id),
       )
@@ -301,9 +306,14 @@ export function useWorkspaceCanvasApplyNodeChanges({
         // after controlled nodes have already changed, creating a feedback loop.
         onSelectedNodeIdsChange?.(nextNodes.filter(node => node.selected).map(node => node.id))
       }
-      if (onNodesCommit && !isDraggingThisFrame) {
+      // A batch for nodes this canvas does not hold, such as a release React Flow delivers after
+      // a workspace switch, changes none of them: it ends the session above and writes nothing.
+      const changesHeldNode = filteredChanges.some(change =>
+        currentNodes.some(node => node.id === change.id),
+      )
+      if (changesHeldNode && onNodesCommit && !isDraggingThisFrame) {
         onNodesCommit(nextNodes)
-      } else {
+      } else if (changesHeldNode) {
         onNodesChange(nextNodes)
       }
       if (removedIds.size > 0) {
@@ -329,6 +339,7 @@ export function useWorkspaceCanvasApplyNodeChanges({
       onNodesCommit,
       onNodesChange,
       onSelectedNodeIdsChange,
+      readInteraction,
     ],
   )
 

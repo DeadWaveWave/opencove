@@ -430,18 +430,22 @@ describe('the render that showed A, called after B is shown', () => {
   })
 })
 
+// What a drag frame does: it writes the live array into the canvas store and `nodesRef`.
+function startLiveDrag(view: View, live: Node<TerminalNodeData>[]) {
+  act(() => {
+    store(view).nodesRef.current = live
+    view.result.current.publishers.publishLiveNodesChange(live)
+  })
+}
+
 describe('placement during a node drag', () => {
   it('avoids the dragged node at the position the store holds, not its live position', async () => {
     const dragged = blockerNode('dragged', { width: 400, height: 300 })
     const { view } = renderStore({ a: { nodes: [dragged] } })
 
-    // A live drag moves the canvas view's copy; the store keeps the committed position.
-    act(() => {
-      const { canvasState } = view.result.current
-      canvasState.hasTransientNodePositionsRef.current = true
-      canvasState.setCanvasNodes([{ ...dragged, position: { x: 4000, y: 0 } }])
-    })
-    expect(view.result.current.canvasState.flowNodes[0].position.x).toBe(4000)
+    // A live drag moves the live array; the store keeps the committed position.
+    startLiveDrag(view, [{ ...dragged, position: { x: 4000, y: 0 } }])
+    expect(view.result.current.canvasState.flowNodes[0].position.x).toBe(0)
 
     const created = await create(view, 'a note')
 
@@ -454,11 +458,7 @@ describe('placement during a node drag', () => {
     const dragged = blockerNode('dragged', { width: 400, height: 300 })
     const { view } = renderStore({ a: { nodes: [dragged] } })
 
-    act(() => {
-      const { canvasState } = view.result.current
-      canvasState.hasTransientNodePositionsRef.current = true
-      canvasState.setCanvasNodes([{ ...dragged, position: { x: 4000, y: 0 } }])
-    })
+    startLiveDrag(view, [{ ...dragged, position: { x: 4000, y: 0 } }])
     expect(documentOf(A).nodes[0].position.x).toBe(0)
 
     // The store still holds `dragged` at the origin; the view does not, so the origin is free.

@@ -10,6 +10,11 @@ import {
   CANVAS_STORE_TEST_WORKSPACE_ID,
   CanvasStoreTestProvider,
 } from '../../support/canvasStoreTestHarness'
+import { useCanvasInteraction } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
+import type { CanvasInteractionState } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStore.interaction'
+
+const selectNodeDragFramePreview = (interaction: CanvasInteractionState) =>
+  interaction.nodeDragFramePreview
 import { createCanvasDocumentHarness } from '../../support/canvasDocumentHarness'
 
 vi.mock('@xyflow/react', () => {
@@ -99,11 +104,9 @@ describe('useWorkspaceCanvasApplyNodeChanges live and commit publishing', () => 
       const [nodes, setNodes] = useState(initialNodes)
       const nodesRef = useRef(nodes)
       nodesRef.current = nodes
-      const [, setSnapGuides] = useState(null)
       const isNodeDraggingRef = useRef(false)
       const nodeDragSession = useWorkspaceCanvasNodeDragSession({
         workspaceId: 'workspace-live-commit',
-        setSnapGuides,
       })
 
       const apply = useWorkspaceCanvasApplyNodeChanges({
@@ -241,11 +244,10 @@ describe('useWorkspaceCanvasApplyNodeChanges live and commit publishing', () => 
     })
 
     function Harness() {
-      const [, setSnapGuides] = useState(null)
       const session = useWorkspaceCanvasNodeDragSession({
         workspaceId: 'workspace-space-preview-retention',
-        setSnapGuides,
       })
+      const preview = useCanvasInteraction(selectNodeDragFramePreview)
       const project = () =>
         session.projectNodeDrag({
           currentNodes: nodes,
@@ -257,9 +259,7 @@ describe('useWorkspaceCanvasApplyNodeChanges live and commit publishing', () => 
 
       return (
         <div>
-          <div data-testid="preview-height">
-            {session.nodeSpaceFramePreview?.get('space')?.height ?? 'none'}
-          </div>
+          <div data-testid="preview-height">{preview?.get('space')?.height ?? 'none'}</div>
           <button
             type="button"
             onClick={() => {
