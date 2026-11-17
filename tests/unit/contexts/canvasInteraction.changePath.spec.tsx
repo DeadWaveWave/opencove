@@ -77,11 +77,12 @@ describe.each(OTHER_BATCHES)('$name', ({ batch, effect, cAfter }) => {
   it('computes from the committed view and leaves a live overlay alone', () => {
     const context = setup()
     const { harness, view, yOf } = context
-    // An overlay no gesture of this hook owns, as a Space drag will publish one (PR 6).
-    const live = harness.readStoreDocument().nodes.map(node => ({
-      ...node,
-      position: node.id === 'a' ? { x: node.position.x, y: 30 } : node.position,
-    }))
+    // An overlay no gesture of this hook owns, as a Space drag will publish one (PR 6). It holds
+    // an entry for `c` too, so that a batch that applied it would mask the write from elsewhere.
+    const live = new Map([
+      ['a', { position: { x: 0, y: 30 }, dragging: true }],
+      ['c', { position: { ...harness.readStoreDocument().nodes[2].position } }],
+    ])
     act(() => view.result.current.interactionCommands.publishLiveNodes(live))
     const overlay = view.result.current.readInteraction().liveNodes
 
@@ -99,12 +100,36 @@ describe.each(OTHER_BATCHES)('$name', ({ batch, effect, cAfter }) => {
   })
 })
 
+// A batch that names no window the document holds changes none of them and writes nothing, of
+// whatever kind: a select, a remove or a settled move of a window that left (a remove of a window
+// that is already gone, or a late select of one) would otherwise write a copy of the committed
+// nodes, with its notification and its persistence. A release needs no such guard: its write
+// applies entries to the windows the store holds and writes nothing when none matches.
+describe.each([
+  { name: 'a select', batch: () => [{ type: 'select', id: 'gone', selected: true }] as never },
+  { name: 'a remove', batch: () => [{ type: 'remove', id: 'gone' }] as never },
+  { name: 'a settled move without a drag', batch: () => drop('gone', 10, 10) },
+])('$name of a window the document does not hold', ({ batch }) => {
+  it('writes nothing', () => {
+    const { harness, view } = setup()
+    const nodesBefore = harness.readStoreDocument().nodes
+    harness.notifications.mockClear()
+
+    act(() => view.result.current.apply(batch()))
+
+    expect(harness.notifications).not.toHaveBeenCalled()
+    expect(harness.readStoreDocument().nodes).toBe(nodesBefore)
+  })
+})
+
 // A release and a drag frame compute from the live view: the windows the gesture holds are where
 // the last frame put them, whatever the committed view says.
 describe('a drag frame and a release', () => {
-  it('compute from the live view, which holds a window added and moved from elsewhere as of the last frame', () => {
+  // The overlay holds the gesture's windows only (S6, PR 5): a window added and moved from
+  // elsewhere is not in it, so every frame and the release see it where the store has it.
+  it('compute from the live view, which holds a window added and moved from elsewhere where the store has it', () => {
     const context = setup()
-    const { view, runFrames, yOf } = context
+    const { view, runFrames, yOf, liveIds } = context
     act(() => view.result.current.apply(drag('a', 0, 30)))
     runFrames()
 
@@ -114,11 +139,12 @@ describe('a drag frame and a release', () => {
     act(() => writeFromElsewhere(context, move('d', 500)))
     act(() => view.result.current.apply(drag('a', 0, 90)))
     runFrames()
-    expect(yOf.live('d')).toBe(0)
+    expect(liveIds()).toEqual(['a'])
+    expect(yOf.shown('d')).toBe(500)
 
     act(() => view.result.current.apply(drop('a', 0, 90)))
     expect(yOf.stored('a')).toBe(90)
-    expect(yOf.stored('d')).toBe(0)
+    expect(yOf.stored('d')).toBe(500)
   })
 
   it('keep a store write made since the last render', () => {
@@ -173,10 +199,9 @@ describe('normalizePosition', () => {
 
   it('reads the committed positions, not the live ones of a gesture', () => {
     const context = setup()
-    const { harness, view } = context
-    const live = harness
-      .readStoreDocument()
-      .nodes.map(node => (node.id === 'c' ? { ...node, position: SPOT } : node))
+    const { view } = context
+    // The overlay puts `c` on the spot; the committed nodes, which placement reads, do not.
+    const live = new Map([['c', { position: SPOT }]])
     act(() => view.result.current.interactionCommands.publishLiveNodes(live))
 
     const resolved = view.result.current.nodeStore.normalizePosition('a', SPOT, sizeOfA(context))

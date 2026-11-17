@@ -10,7 +10,9 @@ import {
   CANVAS_STORE_TEST_WORKSPACE_ID,
   CanvasStoreTestProvider,
 } from '../../support/canvasStoreTestHarness'
+import { changePathIntoState } from '../../support/changePathCallbacks'
 import { createCanvasDocumentHarness } from '../../support/canvasDocumentHarness'
+import { useWorkspaceCanvasNodePublishers } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodePublishers'
 import {
   useCanvasInteraction,
   useCanvasSelectionCommands,
@@ -116,12 +118,11 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
       })
 
       const apply = useWorkspaceCanvasApplyNodeChanges({
-        onNodesChange: next => {
-          setNodes(next)
-        },
+        ...changePathIntoState(setNodes),
         clearAgentLaunchToken: () => undefined,
         normalizePosition: (_nodeId, desired) => desired,
         applyPendingScrollbacks: next => next,
+        nodes,
         isNodeDraggingRef: useRef(false),
         nodeDragSession,
       })
@@ -222,7 +223,10 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
     })
 
     function Harness() {
-      const [, setNodes] = useState(initialNodes)
+      const [nodes, setNodes] = useState(initialNodes)
+      const publishers = useWorkspaceCanvasNodePublishers({
+        workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID,
+      })
       const selection = useCanvasSelectionCommands()
       useLayoutEffect(() => {
         // The selection lives in the canvas store; the base of a batch is decorated from it.
@@ -233,13 +237,13 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
         workspaceId: 'workspace-persist',
       })
 
+      // The release is the real write: the Space frame reaches the document with a flush.
       const apply = useWorkspaceCanvasApplyNodeChanges({
-        onNodesChange: next => {
-          setNodes(next)
-        },
+        ...changePathIntoState(setNodes, publishers.commitNodesRelease),
         clearAgentLaunchToken: () => undefined,
         normalizePosition: (_nodeId, desired) => desired,
         applyPendingScrollbacks: next => next,
+        nodes,
         isNodeDraggingRef: useRef(false),
         nodeDragSession,
       })
@@ -366,12 +370,11 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
       })
 
       const apply = useWorkspaceCanvasApplyNodeChanges({
-        onNodesChange: next => {
-          setNodes(next)
-        },
+        ...changePathIntoState(setNodes),
         clearAgentLaunchToken: () => undefined,
         normalizePosition: (_nodeId, desired) => desired,
         applyPendingScrollbacks: next => next,
+        nodes,
         isNodeDraggingRef,
         nodeDragSession,
       })

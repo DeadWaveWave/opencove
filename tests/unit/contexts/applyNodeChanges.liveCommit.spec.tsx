@@ -16,6 +16,7 @@ import type { CanvasInteractionState } from '../../../src/contexts/workspace/pre
 const selectNodeDragFramePreview = (interaction: CanvasInteractionState) =>
   interaction.nodeDragFramePreview
 import { createCanvasDocumentHarness } from '../../support/canvasDocumentHarness'
+import { applyLiveNodes } from '../../../src/contexts/workspace/presentation/renderer/utils/canvasLiveNodes'
 
 vi.mock('@xyflow/react', () => {
   return {
@@ -64,6 +65,7 @@ describe('useWorkspaceCanvasApplyNodeChanges live and commit publishing', () => 
   it('publishes live drag positions without committing until release', async () => {
     const liveNodesChange = vi.fn()
     const committedNodesChange = vi.fn()
+    const releaseNodesChange = vi.fn()
 
     const { useWorkspaceCanvasApplyNodeChanges } =
       await import('../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useApplyNodeChanges')
@@ -118,15 +120,20 @@ describe('useWorkspaceCanvasApplyNodeChanges live and commit publishing', () => 
       const apply = useWorkspaceCanvasApplyNodeChanges({
         onNodesChange: next => {
           liveNodesChange(next)
-          setNodes(next)
+          setNodes(current => applyLiveNodes(current, next))
         },
         onNodesCommit: next => {
           committedNodesChange(next)
           setNodes(next)
         },
+        onNodesRelease: release => {
+          releaseNodesChange(release)
+          setNodes(current => applyLiveNodes(current, release.liveNodes))
+        },
         clearAgentLaunchToken: () => undefined,
         normalizePosition: (_nodeId, desired) => desired,
         applyPendingScrollbacks: next => next,
+        nodes,
         isNodeDraggingRef,
         nodeDragSession,
       })
@@ -189,7 +196,9 @@ describe('useWorkspaceCanvasApplyNodeChanges live and commit publishing', () => 
     await waitFor(() => {
       expect(screen.getByTestId('node-position')).toHaveTextContent('70,80')
     })
-    expect(committedNodesChange).toHaveBeenCalledTimes(1)
+    // A release is its own write, not a commit of the whole result.
+    expect(releaseNodesChange).toHaveBeenCalledTimes(1)
+    expect(committedNodesChange).not.toHaveBeenCalled()
     expect(finalProjection).toHaveBeenCalledTimes(1)
   })
 

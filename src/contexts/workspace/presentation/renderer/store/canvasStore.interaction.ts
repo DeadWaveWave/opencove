@@ -1,6 +1,6 @@
-import type { Node } from '@xyflow/react'
 import type { SelectionDraftUiState } from '../components/workspaceCanvas/types'
-import type { TerminalNodeData, WorkspaceSpaceRect } from '../types'
+import type { WorkspaceSpaceRect } from '../types'
+import { areLiveNodesEqual, type LiveNodes } from '../utils/canvasLiveNodes'
 import { areWorkspaceSnapGuidesEqual, type WorkspaceSnapGuide } from '../utils/workspaceSnap'
 import type { CanvasSliceWrite } from './canvasStore'
 
@@ -13,10 +13,11 @@ type FramePreview = ReadonlyMap<string, WorkspaceSpaceRect>
  */
 export interface CanvasInteractionState {
   /**
-   * The live array of a node gesture: every node as of the last drag frame. Null while no gesture
-   * is live. `applyLiveNodes` turns it and the committed nodes into what React Flow shows.
+   * The overlay of a node gesture: an entry for each window the gesture owns, as of the last drag
+   * frame, and none for the others. Null while no gesture is live. `applyLiveNodes` turns it and
+   * the committed nodes into what React Flow shows.
    */
-  readonly liveNodes: readonly Node<TerminalNodeData>[] | null
+  readonly liveNodes: LiveNodes | null
   /** The snap guides of a node or Space drag; null while none is shown. */
   readonly snapGuides: WorkspaceSnapGuide[] | null
   /** The Space frames a node drag would produce (a Space-dominant or edge-crossing drop). */
@@ -28,8 +29,8 @@ export interface CanvasInteractionState {
 }
 
 export interface CanvasInteractionCommands {
-  /** Replaces the live array (the same array notifies nobody); each frame of a node drag calls it. */
-  publishLiveNodes(liveNodes: readonly Node<TerminalNodeData>[]): void
+  /** Replaces the overlay (an equal map keeps the stored one and notifies nobody); each frame of a node drag calls it. */
+  publishLiveNodes(liveNodes: LiveNodes): void
   /** A no-op, and notifies nobody, when no gesture is live. */
   endLiveNodes(): void
   /** Equal guides (`areWorkspaceSnapGuidesEqual`) keep the stored ones and notify nobody. */
@@ -103,7 +104,9 @@ export function createCanvasInteractionCommands(
   return {
     publishLiveNodes: liveNodes =>
       write(interaction =>
-        interaction.liveNodes === liveNodes ? interaction : { ...interaction, liveNodes },
+        areLiveNodesEqual(interaction.liveNodes, liveNodes)
+          ? interaction
+          : { ...interaction, liveNodes },
       ),
     endLiveNodes: () =>
       write(interaction =>

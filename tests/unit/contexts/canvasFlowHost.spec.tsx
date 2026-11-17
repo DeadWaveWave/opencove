@@ -65,17 +65,12 @@ describe('CanvasFlowHost', () => {
 
   it('renders the live position with the committed data, and the committed nodes again after the gesture', () => {
     const { view, last } = mountHost({ committedNodes: committed })
-    const live = [
-      {
-        ...committed[0],
-        position: { x: 5, y: 30 },
-        data: { ...committed[0].data, title: 'stale' },
-      },
-      committed[1],
-    ]
+    // The entry carries a position and a flag; the node's data is the committed node's.
+    const live = new Map([['a', { position: { x: 5, y: 30 }, dragging: true }]])
 
     act(() => view.interaction.publishLiveNodes(live))
     expect(last().nodes[0].position).toEqual({ x: 5, y: 30 })
+    expect(last().nodes[0].dragging).toBe(true)
     expect(last().nodes[0].data).toBe(committed[0].data)
     expect(last().nodes[1]).toBe(committed[1])
 

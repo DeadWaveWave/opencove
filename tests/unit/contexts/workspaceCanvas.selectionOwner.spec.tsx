@@ -105,14 +105,16 @@ function renderSelectionOwner() {
           order.push(`select:${ids.join(',')}`)
           canvas.syncSelectedNodeIds(ids)
         },
-        onNodesChange: nodes => {
+        onNodesChange: frame => {
           order.push('publish')
-          publishers.publishLiveNodesChange(nodes)
+          publishers.publishLiveNodesChange(frame)
         },
         onNodesCommit: publishers.commitNodesChange,
+        onNodesRelease: publishers.commitNodesRelease,
         clearAgentLaunchToken: vi.fn(),
         normalizePosition: (_id, point) => point,
         applyPendingScrollbacks: nodes => nodes,
+        nodes: canvas.flowNodes,
         isNodeDraggingRef,
         nodeDragSession: session,
       })

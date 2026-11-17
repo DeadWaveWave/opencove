@@ -1,17 +1,18 @@
 import { killUnownedNodeRuntime } from '../../../utils/managedClaudeLifecycle'
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { applyNodeChanges } from '@xyflow/react'
 import type { Node, NodeChange, NodePositionChange } from '@xyflow/react'
 import type { TerminalNodeData } from '../../../types'
-import { applyLiveNodes } from '../../../utils/canvasLiveNodes'
+import { applyLiveNodes, toLiveNodes } from '../../../utils/canvasLiveNodes'
 import { cleanupNodeRuntimeArtifacts } from '../../../utils/nodeRuntimeCleanup'
 import {
   useCanvasInteractionCommands,
+  useCanvasWorkspaceId,
   useReadCanvasDocument,
   useReadCanvasInteraction,
 } from '../../../store/canvasStoreContext'
 import { TERMINAL_LAYOUT_SYNC_EVENT } from '../../terminalNode/constants'
-import { type UseApplyNodeChangesParams } from './useApplyNodeChanges.helpers'
+import { resolveGrabbedNodeId, type UseApplyNodeChangesParams } from './useApplyNodeChanges.helpers'
 import { useDecorateCommittedNodes } from './useDecorateCommittedNodes'
 import { publishWorkspaceNodesClosed } from '../nodeClosureEvents'
 
@@ -62,6 +63,77 @@ function resolveContinuousDragMinFrameMs(changes: ContinuousDragPositionChange[]
   return changedNodeIds.size > 1 ? MULTI_NODE_CONTINUOUS_DRAG_MIN_FRAME_MS : 0
 }
 
+/**
+ * Takes removed windows out of `nodes` and unlinks what pointed at them: a task loses its linked
+ * agent, an agent its task. Returns `nodes` itself when no window of it is removed or linked.
+ */
+export function removeNodesAndUnlink(
+  nodes: Node<TerminalNodeData>[],
+  removedIds: ReadonlySet<string>,
+): Node<TerminalNodeData>[] {
+  if (removedIds.size === 0) {
+    return nodes
+  }
+
+  const now = new Date().toISOString()
+  let didChange = false
+
+  const next = nodes.flatMap(node => {
+    if (removedIds.has(node.id)) {
+      didChange = true
+      return []
+    }
+
+    if (
+      node.data.kind === 'task' &&
+      node.data.task &&
+      node.data.task.linkedAgentNodeId &&
+      removedIds.has(node.data.task.linkedAgentNodeId)
+    ) {
+      didChange = true
+      return [
+        {
+          ...node,
+          data: {
+            ...node.data,
+            task: {
+              ...node.data.task,
+              linkedAgentNodeId: null,
+              status: node.data.task.status === 'doing' ? 'todo' : node.data.task.status,
+              updatedAt: now,
+            },
+          },
+        },
+      ]
+    }
+
+    if (
+      node.data.kind === 'agent' &&
+      node.data.agent &&
+      node.data.agent.taskId &&
+      removedIds.has(node.data.agent.taskId)
+    ) {
+      didChange = true
+      return [
+        {
+          ...node,
+          data: {
+            ...node.data,
+            agent: {
+              ...node.data.agent,
+              taskId: null,
+            },
+          },
+        },
+      ]
+    }
+
+    return [node]
+  })
+
+  return didChange ? next : nodes
+}
+
 function resolveNow(): number {
   return typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now()
@@ -71,14 +143,17 @@ function resolveNow(): number {
 export function useWorkspaceCanvasApplyNodeChanges({
   onNodesChange,
   onNodesCommit,
+  onNodesRelease,
   onSelectedNodeIdsChange,
   clearAgentLaunchToken,
   normalizePosition,
   applyPendingScrollbacks,
+  nodes,
   isNodeDraggingRef,
   exclusiveNodeDragAnchorIdRef,
   nodeDragSession,
 }: UseApplyNodeChangesParams): (changes: NodeChange<Node<TerminalNodeData>>[]) => void {
+  const workspaceId = useCanvasWorkspaceId()
   const readDocument = useReadCanvasDocument()
   const decorateCommittedNodes = useDecorateCommittedNodes()
   const readInteraction = useReadCanvasInteraction()
@@ -86,6 +161,20 @@ export function useWorkspaceCanvasApplyNodeChanges({
   const pendingContinuousDragChangesRef = useRef<ContinuousDragPositionChange[] | null>(null)
   const pendingContinuousDragFrameRef = useRef<number | null>(null)
   const lastContinuousDragFlushAtRef = useRef(0)
+
+  // This hook is the one writer of the dragging flag and of the exclusive anchor: a batch sets
+  // them, and the end of a gesture that gets no release (an abort, a workspace switch) clears them.
+  const setNodeDragging = useCallback(
+    (isDragging: boolean) => {
+      isNodeDraggingRef.current = isDragging
+    },
+    [isNodeDraggingRef],
+  )
+  const clearExclusiveAnchor = useCallback(() => {
+    if (exclusiveNodeDragAnchorIdRef) {
+      exclusiveNodeDragAnchorIdRef.current = null
+    }
+  }, [exclusiveNodeDragAnchorIdRef])
 
   const applyNodeChangeBatch = useCallback(
     (changes: WorkspaceNodeChange[]) => {
@@ -160,9 +249,14 @@ export function useWorkspaceCanvasApplyNodeChanges({
         nodeDragSession.beginNodeDragSession(currentNodes)
       }
 
+      // What a release writes besides the windows, and the baseline it compares them with: both are
+      // gone once the session ends.
+      let releaseBaseline: ReadonlyMap<string, { x: number; y: number }> | null = null
+      let releaseSpaceRects: ReturnType<typeof nodeDragSession.endNodeDragSession> = null
       if (isRelease) {
         nextNodes = nodeDragSession.applyPendingReleaseProjection(nextNodes)
-        nodeDragSession.endNodeDragSession()
+        releaseBaseline = nodeDragSession.dragBaselinePositionByIdRef.current
+        releaseSpaceRects = nodeDragSession.endNodeDragSession()
       }
 
       if (settledPositionChanges.length > 0) {
@@ -236,68 +330,22 @@ export function useWorkspaceCanvasApplyNodeChanges({
         }).nextNodes
       }
 
-      if (positionChanges.length > 0) {
-        isNodeDraggingRef.current = isDraggingThisFrame
+      // A release ends the gesture, also one with no position change (a select or remove batch
+      // that arrives mid-drag): the session is gone, so what React Flow sends next begins a new
+      // one instead of continuing without a baseline.
+      if (positionChanges.length > 0 || isRelease) {
+        setNodeDragging(isDraggingThisFrame)
       }
 
-      if (
-        exclusiveAnchorId &&
-        exclusiveNodeDragAnchorIdRef &&
-        positionChanges.length > 0 &&
-        !isDraggingThisFrame
-      ) {
-        exclusiveNodeDragAnchorIdRef.current = null
+      if (exclusiveAnchorId && positionChanges.length > 0 && !isDraggingThisFrame) {
+        clearExclusiveAnchor()
       }
 
       if (!isNodeDraggingRef.current) {
         nextNodes = applyPendingScrollbacks(nextNodes)
       }
 
-      if (removedIds.size > 0) {
-        const now = new Date().toISOString()
-
-        nextNodes = nextNodes.map(node => {
-          if (
-            node.data.kind === 'task' &&
-            node.data.task &&
-            node.data.task.linkedAgentNodeId &&
-            removedIds.has(node.data.task.linkedAgentNodeId)
-          ) {
-            return {
-              ...node,
-              data: {
-                ...node.data,
-                task: {
-                  ...node.data.task,
-                  linkedAgentNodeId: null,
-                  status: node.data.task.status === 'doing' ? 'todo' : node.data.task.status,
-                  updatedAt: now,
-                },
-              },
-            }
-          }
-
-          if (
-            node.data.kind === 'agent' &&
-            node.data.agent &&
-            node.data.agent.taskId &&
-            removedIds.has(node.data.agent.taskId)
-          ) {
-            return {
-              ...node,
-              data: {
-                ...node.data,
-                agent: {
-                  ...node.data.agent,
-                  taskId: null,
-                },
-              },
-            }
-          }
-
-          return node
-        })
-      }
+      nextNodes = removeNodesAndUnlink(nextNodes, removedIds)
 
       const shouldSyncLayout = filteredChanges.some(change => {
         if (change.type === 'remove') {
@@ -317,23 +365,45 @@ export function useWorkspaceCanvasApplyNodeChanges({
         // after controlled nodes have already changed, creating a feedback loop.
         onSelectedNodeIdsChange?.(nextNodes.filter(node => node.selected).map(node => node.id))
       }
-      // A batch for nodes this canvas does not hold, such as a release React Flow delivers after
-      // a workspace switch, changes none of them: it ends the session above and writes nothing.
+      // A drag frame publishes the gesture's windows, a release writes them (and the Space frames)
+      // in one commit and then ends the overlay, and any other batch writes its whole result. A
+      // batch that changes no window this canvas holds writes nothing, whatever its kind.
       const changesHeldNode = filteredChanges.some(change =>
         currentNodes.some(node => node.id === change.id),
       )
-      if (changesHeldNode && onNodesCommit && !isDraggingThisFrame) {
-        onNodesCommit(nextNodes)
-        if (isRelease) {
-          // The document first, the overlay after it, in this one block: a render between the two
-          // shows the overlay over the released nodes, never the nodes before the drag.
-          endLiveNodes()
+      if (isRelease) {
+        // The document first, the overlay after it, in this one block: a render between the two
+        // shows the overlay over the released nodes, never the nodes before the drag. The write
+        // applies the entries of the windows the store still holds and nothing else, so a release
+        // of windows that are all gone from here writes nothing; it still ends the gesture.
+        // The windows the batch releases are the gesture's wherever they end, even back on their
+        // baseline after a move from elsewhere.
+        const releaseEntries = new Map(toLiveNodes(nextNodes, releaseBaseline, committedNodes))
+        for (const change of positionChanges) {
+          const released = nextNodes.find(node => node.id === change.id)
+          if (released && !releaseEntries.has(change.id)) {
+            releaseEntries.set(change.id, {
+              position: { x: released.position.x, y: released.position.y },
+              dragging: false,
+            })
+          }
         }
-      } else if (changesHeldNode) {
-        onNodesChange(nextNodes)
-      } else if (isRelease) {
-        // A release of windows that are all gone from here still ends the gesture.
+        onNodesRelease({
+          liveNodes: releaseEntries,
+          removedIds,
+          spaceRects: releaseSpaceRects,
+        })
         endLiveNodes()
+      } else if (changesHeldNode && isDraggingThisFrame) {
+        onNodesChange(
+          toLiveNodes(
+            nextNodes,
+            nodeDragSession.dragBaselinePositionByIdRef.current,
+            committedNodes,
+          ),
+        )
+      } else if (changesHeldNode) {
+        onNodesCommit(nextNodes)
       }
       if (removedIds.size > 0) {
         const survivingIds = new Set(nextNodes.map(node => node.id))
@@ -350,17 +420,20 @@ export function useWorkspaceCanvasApplyNodeChanges({
     [
       applyPendingScrollbacks,
       clearAgentLaunchToken,
+      clearExclusiveAnchor,
       exclusiveNodeDragAnchorIdRef,
       isNodeDraggingRef,
       nodeDragSession,
       normalizePosition,
       onNodesCommit,
       onNodesChange,
+      onNodesRelease,
       onSelectedNodeIdsChange,
       readDocument,
       readInteraction,
       decorateCommittedNodes,
       endLiveNodes,
+      setNodeDragging,
     ],
   )
 
@@ -431,12 +504,55 @@ export function useWorkspaceCanvasApplyNodeChanges({
     [scheduleContinuousDragFrame],
   )
 
-  useEffect(() => {
-    return () => {
-      cancelPendingContinuousDragFrame()
-      pendingContinuousDragChangesRef.current = null
-    }
+  const discardPendingContinuousDrag = useCallback(() => {
+    cancelPendingContinuousDragFrame()
+    pendingContinuousDragChangesRef.current = null
   }, [cancelPendingContinuousDragFrame])
+
+  useEffect(() => discardPendingContinuousDrag, [discardPendingContinuousDrag])
+
+  // The canvas is not keyed by workspace. A drag that was live when the user switched cannot be
+  // finished here, and React Flow may never send its release, so the next workspace's drag must
+  // not start as a continuation of it (`wasDragging` would skip its session).
+  useLayoutEffect(() => {
+    setNodeDragging(false)
+  }, [setNodeDragging, workspaceId])
+
+  // React Flow aborts a node-handle drag when the window it grabbed leaves its node lookup, and
+  // sends no release after it. The removal arrives as a write from elsewhere, not as a change
+  // batch, so only a reaction to the committed nodes sees it when it happens; the next batch would
+  // be the user's next click, which would act as the release. The gesture ends here with nothing
+  // written: no window reaches the document, as for any other drag that does not finish.
+  useEffect(() => {
+    if (!isNodeDraggingRef.current) {
+      return
+    }
+
+    const grabbedNodeId = resolveGrabbedNodeId(
+      nodeDragSession.nodeDragPointerAnchorRef.current,
+      readInteraction().liveNodes,
+    )
+    if (grabbedNodeId === null || nodes.some(node => node.id === grabbedNodeId)) {
+      return
+    }
+
+    // A frame still waiting for its animation frame must not start the gesture again.
+    discardPendingContinuousDrag()
+    setNodeDragging(false)
+    clearExclusiveAnchor()
+    nodeDragSession.clearDragStartSpaceSelection()
+    nodeDragSession.endNodeDragSession()
+    endLiveNodes()
+  }, [
+    clearExclusiveAnchor,
+    discardPendingContinuousDrag,
+    endLiveNodes,
+    isNodeDraggingRef,
+    nodeDragSession,
+    nodes,
+    readInteraction,
+    setNodeDragging,
+  ])
 
   return useCallback(
     (changes: WorkspaceNodeChange[]) => {

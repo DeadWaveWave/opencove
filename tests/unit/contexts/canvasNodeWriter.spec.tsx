@@ -160,9 +160,7 @@ describe('the base of a recipe', () => {
 
   it('never carries the live positions of a gesture', () => {
     const { view } = renderWriter()
-    const live = ROW().map(node =>
-      node.id === 'a' ? { ...node, position: { x: 0, y: 30 } } : node,
-    )
+    const live = new Map([['a', { position: { x: 0, y: 30 }, dragging: true }]])
     act(() => view.result.current.interaction.publishLiveNodes(live))
     const seen: Array<number | undefined> = []
 

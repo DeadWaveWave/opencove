@@ -113,10 +113,9 @@ describe('workspace document commands: the canvas view of the store', () => {
       const view = renderCanvasNodesStore()
       if (liveGesture) {
         act(() =>
-          view.result.current.interaction.publishLiveNodes([
-            { ...stored[0], position: { x: 999, y: 0 } },
-            stored[1],
-          ]),
+          view.result.current.interaction.publishLiveNodes(
+            new Map([['t1', { position: { x: 999, y: 0 } }]]),
+          ),
         )
       }
       let seenX: number | null = null

@@ -351,9 +351,9 @@ const DRAFT = { startX: 1, startY: 2, currentX: 3, currentY: 4, phase: 'active' 
 
 // What a node gesture shows: nothing, until a drag frame writes it.
 const NO_GESTURE = { liveNodes: null, snapGuides: null, nodeDragFramePreview: null }
-const FRAME = [{ id: 'a', position: { x: 0, y: 30 }, data: {} }] as unknown as Parameters<
-  CanvasInteractionCommands['publishLiveNodes']
->[0]
+const FRAME: Parameters<CanvasInteractionCommands['publishLiveNodes']>[0] = new Map([
+  ['a', { position: { x: 0, y: 30 }, dragging: true }],
+])
 const GUIDES = [{ kind: 'v', x: 1, y1: 0, y2: 10 }] as const
 const PREVIEW = new Map([['space-1', { x: 0, y: 0, width: 10, height: 10 }]])
 const selectLiveNodes = (interaction: CanvasInteractionState) => interaction.liveNodes

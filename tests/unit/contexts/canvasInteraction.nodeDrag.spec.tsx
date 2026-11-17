@@ -8,7 +8,7 @@ import {
   WORKSPACE_A as A,
   WORKSPACE_B as B,
 } from '../../support/agentRuntimeHarness'
-import { createRowNodes } from '../../support/canvasSelectionFixtures'
+import { createRowNodes, createSpace } from '../../support/canvasSelectionFixtures'
 import {
   drag,
   drop,
@@ -45,18 +45,30 @@ describe('a node drag frame', () => {
     expect(harness.flush).not.toHaveBeenCalled()
   })
 
-  it('publishes every node as of the frame, the dragged one at its live position', () => {
-    const { view, runFrames } = setup()
+  // The overlay holds the gesture's windows only (S6, PR 5): the dragged one, at its live position.
+  it('publishes only the window the gesture owns, at its live position', () => {
+    const { view, runFrames, liveIds } = setup()
 
     act(() => view.result.current.apply(drag('a', 0, 30)))
     runFrames()
 
-    const live = view.result.current.readInteraction().liveNodes
-    expect(live?.map(node => [node.id, node.position.y])).toEqual([
-      ['a', 30],
-      ['b', 0],
-      ['c', 0],
-    ])
+    expect(liveIds()).toEqual(['a'])
+    expect(view.result.current.readInteraction().liveNodes?.get('a')).toEqual({
+      position: { x: 0, y: 30 },
+      dragging: true,
+    })
+  })
+
+  it('keeps the overlay itself when a frame changes nothing', () => {
+    const { view, runFrames } = setup()
+    act(() => view.result.current.apply(drag('a', 0, 30)))
+    runFrames()
+    const overlay = view.result.current.readInteraction().liveNodes
+
+    act(() => view.result.current.apply(drag('a', 0, 30)))
+    runFrames()
+
+    expect(view.result.current.readInteraction().liveNodes).toBe(overlay)
   })
 })
 
@@ -193,13 +205,13 @@ describe('a canvas write in the middle of a gesture', () => {
   })
 })
 
-// The corner of the base that the overlay's base changes (S6, PR 3): after a write from elsewhere
-// in the middle of a gesture, where do the windows the gesture did not move stand in the next
-// frame and in the release? The same rows ran on the base (through a shim) and gave the same
-// result, which is pinned here as today's rule; PR 5 narrows the overlay and flips the first row.
+// A write from elsewhere in the middle of a gesture (S6, PR 5): the overlay holds the gesture's
+// windows only, so a window the gesture did not move shows where the store now has it and keeps
+// that place through the release. Until PR 5 the overlay held every window as of the last frame:
+// such a move was masked on screen and overwritten at the release.
 describe('a write from elsewhere in the middle of a gesture', () => {
-  it("keeps the old live position of a window the gesture did not move, through the release (today's rule)", () => {
-    const { harness, view, runFrames, yOf } = setup()
+  it('shows a window the gesture did not move where the store has it, and keeps it through the release', () => {
+    const { harness, view, runFrames, yOf, liveIds } = setup()
     act(() => view.result.current.apply(drag('a', 0, 30)))
     runFrames()
 
@@ -213,21 +225,56 @@ describe('a write from elsewhere in the middle of a gesture', () => {
           ),
       )
     })
-    expect(yOf.shown('c')).toBe(0)
+    expect(yOf.shown('c')).toBe(500)
 
     act(() => view.result.current.apply(drag('a', 0, 60)))
     runFrames()
-    expect(yOf.live('c')).toBe(0)
+    expect(yOf.shown('c')).toBe(500)
+    expect(liveIds()).not.toContain('c')
     act(() => view.result.current.apply(drop('a', 0, 60)))
 
     expect(yOf.stored('a')).toBe(60)
-    expect(yOf.stored('c')).toBe(0)
+    expect(yOf.stored('c')).toBe(500)
+    expect(yOf.shown('c')).toBe(500)
   })
 
-  // The rule is "the live position wins wherever it differs", not "wherever the gesture moved
-  // the window": a window added from elsewhere during the gesture joins the live array at its
-  // position of that frame, and a later move of it from elsewhere is masked the same way.
-  it("keeps the live position of a window added from elsewhere and moved from elsewhere after (today's rule)", () => {
+  // A small step of the pointer skips the projection of the other windows, and a big one (24 px or
+  // more) runs it and sets every window it did not move back to its baseline. After neither does
+  // the overlay hold a window the gesture did not move, so a second move of it shows at once.
+  it.each([
+    { kind: 'a small step', y: 34 },
+    { kind: 'a big step', y: 200 },
+  ])('shows a window moved twice from elsewhere at once, after $kind', ({ y }) => {
+    const { harness, view, runFrames, yOf, liveIds } = setup()
+    const moveC = (to: number) =>
+      act(() => {
+        replaceWorkspaceNodes(
+          harness.workspaceId,
+          harness
+            .readStoreDocument()
+            .nodes.map(node =>
+              node.id === 'c' ? { ...node, position: { x: node.position.x, y: to } } : node,
+            ),
+        )
+      })
+    act(() => view.result.current.apply(drag('a', 0, 30)))
+    runFrames()
+    moveC(500)
+    act(() => view.result.current.apply(drag('a', 0, y)))
+    runFrames()
+    expect(liveIds()).toEqual(['a'])
+    expect(yOf.shown('c')).toBe(500)
+
+    moveC(700)
+
+    expect(yOf.shown('c')).toBe(700)
+    act(() => view.result.current.apply(drop('a', 0, y)))
+    expect(yOf.stored('c')).toBe(700)
+  })
+
+  // The rule is "the overlay holds the windows the gesture owns", so a window added from elsewhere
+  // during the gesture and moved from elsewhere after it is never masked.
+  it('shows a window added from elsewhere and moved from elsewhere after, and keeps it', () => {
     const { harness, view, runFrames, yOf } = setup()
     const nodesWith = (change: (nodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[]) =>
       act(() => {
@@ -239,7 +286,7 @@ describe('a write from elsewhere in the middle of a gesture', () => {
     nodesWith(nodes => [...nodes, added])
     act(() => view.result.current.apply(drag('a', 0, 60)))
     runFrames()
-    expect(yOf.live('d')).toBe(0)
+    expect(yOf.shown('d')).toBe(0)
 
     nodesWith(nodes =>
       nodes.map(node => (node.id === 'd' ? { ...node, position: { x: 1200, y: 500 } } : node)),
@@ -247,10 +294,10 @@ describe('a write from elsewhere in the middle of a gesture', () => {
     act(() => view.result.current.apply(drag('a', 0, 90)))
     runFrames()
 
-    expect(yOf.live('d')).toBe(0)
-    expect(yOf.shown('d')).toBe(0)
+    expect(yOf.shown('d')).toBe(500)
     act(() => view.result.current.apply(drop('a', 0, 90)))
-    expect(yOf.stored('d')).toBe(0)
+    expect(yOf.stored('a')).toBe(90)
+    expect(yOf.stored('d')).toBe(500)
   })
 
   it('shows a title changed from elsewhere with the live position', () => {
@@ -276,18 +323,16 @@ describe('a write from elsewhere in the middle of a gesture', () => {
 })
 
 // A canvas writer that moves a window the gesture did not move (a push-away, an arrange, a
-// collapse plan) meets the rule of PR 3: the overlay holds every window as of the last frame, so
-// the move is committed, masked on screen, and overwritten at the release. The same end state as
-// before PR 4, where the write ended the overlay and the next frame reset the window to its
-// baseline; only the instant after the write differs (it showed the move for one frame). PR 5
-// narrows the overlay to the gesture's windows and flips this case.
+// collapse plan) meets the same rule: the move is committed, shown at once, and still there after
+// the release. Until PR 5 it was masked on screen and overwritten at the release (before PR 4 it
+// showed for one frame and was reset by the next).
 describe('a canvas write that moves a window the gesture did not move', () => {
   const moveC = (nodes: Node<TerminalNodeData>[]) =>
     nodes.map(node => (node.id === 'c' ? { ...node, position: { x: 2500, y: 0 } } : node))
   const xOf = (view: ReturnType<typeof setup>['view'], id: string) =>
     view.result.current.shown.find(node => node.id === id)?.position.x
 
-  it("is masked on screen and overwritten at the release (today's rule)", () => {
+  it('is shown at once, in the frames that follow, and after the release', () => {
     const { harness, view, runFrames } = setup()
     const storedX = () =>
       harness.readStoreDocument().nodes.find(node => node.id === 'c')?.position.x
@@ -296,21 +341,22 @@ describe('a canvas write that moves a window the gesture did not move', () => {
 
     act(() => view.result.current.nodeStore.setNodes(moveC))
     expect(storedX()).toBe(2500)
-    expect(xOf(view, 'c')).toBe(800)
+    expect(xOf(view, 'c')).toBe(2500)
 
     act(() => view.result.current.apply(drag('a', 0, 60)))
     runFrames()
-    expect(xOf(view, 'c')).toBe(800)
+    expect(xOf(view, 'c')).toBe(2500)
 
     act(() => view.result.current.apply(drop('a', 0, 60)))
-    expect(storedX()).toBe(800)
+    expect(storedX()).toBe(2500)
+    expect(xOf(view, 'c')).toBe(2500)
+    expect(harness.readStoreDocument().nodes.find(node => node.id === 'a')?.position.y).toBe(60)
   })
 })
 
-// A window that the drag did not hold at its start has no baseline, so the drag's projection
-// keeps whatever position its base gives it. Before PR 4 a canvas write ended the overlay, so the
-// next frame computed from the store and a canvas writer's move of such a window survived the
-// release. From PR 4 the overlay stays and masks it. PR 5 narrows the overlay and flips this.
+// A window that the drag did not hold at its start has no baseline, so the overlay never holds it:
+// a canvas writer's move of it shows and survives the release. Before PR 4 it survived; PR 4 masked
+// and overwrote it; from PR 5 it is kept again, and for the same reason as any other untouched one.
 describe('a window created during the drag, then moved by a canvas writer', () => {
   const addD = (nodes: Node<TerminalNodeData>[]) => [
     ...nodes,
@@ -319,7 +365,7 @@ describe('a window created during the drag, then moved by a canvas writer', () =
   const moveD = (nodes: Node<TerminalNodeData>[]) =>
     nodes.map(node => (node.id === 'd' ? { ...node, position: { x: 5000, y: 0 } } : node))
 
-  it('is masked and overwritten at the release (lost from PR 4; kept before it)', () => {
+  it('is shown where it was moved to and keeps that place through the release', () => {
     const { harness, view, runFrames } = setup()
     const xOf = () => harness.readStoreDocument().nodes.find(node => node.id === 'd')?.position.x
     act(() => view.result.current.apply(drag('a', 0, 30)))
@@ -330,10 +376,13 @@ describe('a window created during the drag, then moved by a canvas writer', () =
 
     act(() => view.result.current.nodeStore.setNodes(moveD))
     expect(xOf()).toBe(5000)
-    expect(view.result.current.shown.find(node => node.id === 'd')?.position.x).toBe(3000)
+    expect(view.result.current.shown.find(node => node.id === 'd')?.position.x).toBe(5000)
 
-    act(() => view.result.current.apply(drop('a', 0, 40)))
-    expect(xOf()).toBe(3000)
+    act(() => view.result.current.apply(drag('a', 0, 50)))
+    runFrames()
+    expect(view.result.current.shown.find(node => node.id === 'd')?.position.x).toBe(5000)
+    act(() => view.result.current.apply(drop('a', 0, 50)))
+    expect(xOf()).toBe(5000)
   })
 })
 
@@ -479,13 +528,15 @@ describe('a gesture across a workspace switch', () => {
     expect(documentOf(B).nodes).toBe(nodesOfB)
   })
 
-  // A release that reaches the callback of A after the switch lands the drag in A, where it
-  // began: the dragged window is stored at the release position, A's overlay ends, B is untouched.
+  // A release that reaches the callback of A after the switch still lands in A, where the drag
+  // began: the dragged window is stored at the release position and B is untouched. The switch
+  // resets `isNodeDraggingRef` (S6, PR 5), so this batch is a settled move, not a release: the
+  // overlay of A, which lives in A's own store and which nothing reads after the switch, is not
+  // ended by it. (PR 4 pinned "A's overlay ends"; that part is gone with the reset.)
   it('lands a release delivered to the callback of A after the switch in A', () => {
     const { view, showB } = renderTwoWorkspaces()
     const runFrames = stubFrames()
     const applyOfA = view.result.current.apply
-    const interactionOfA = view.result.current.readInteraction
     act(() => applyOfA(drag('a', 0, 30)))
     runFrames()
     const nodesOfB = documentOf(B).nodes
@@ -494,8 +545,38 @@ describe('a gesture across a workspace switch', () => {
     act(() => applyOfA(drop('a', 0, 40)))
 
     expect(documentOf(A).nodes.find(node => node.id === 'a')?.position.y).toBe(40)
-    expect(interactionOfA().liveNodes).toBeNull()
     expect(documentOf(B).nodes).toBe(nodesOfB)
+  })
+
+  // Only the grabbed window lands (at its normalized place). What the drag had pushed was in A's
+  // overlay and the session is gone, so the pushed windows are not written. Pinned so that a
+  // later change is deliberate.
+  it('does not write the windows the drag had pushed when its release arrives after the switch', () => {
+    const [inside, dragged, pushed] = createRowNodes(['inside', 'dragged', 'pushed']).map(sized)
+    const { view, showB } = renderInTwoWorkspaces(context => useDragUnderTest(context), {
+      a: {
+        nodes: [
+          { ...inside, position: { x: 24, y: 24 } },
+          { ...dragged, position: { x: 24, y: 700 } },
+          { ...pushed, position: { x: 560, y: 24 } },
+        ],
+        spaces: [createSpace('space', { x: 0, y: 0, width: 520, height: 360 }, ['inside'])],
+      },
+      b: { nodes: createRowNodes(['x']).map(sized) },
+    })
+    const runFrames = stubFrames()
+    const applyOfA = view.result.current.apply
+    act(() => applyOfA(drag('dragged', 60, 200)))
+    runFrames()
+    expect([...view.result.current.readInteraction().liveNodes!.keys()]).toContain('pushed')
+    showB()
+
+    act(() => applyOfA(drop('dragged', 60, 200)))
+
+    const nodesOfA = documentOf(A).nodes
+    expect(nodesOfA.find(node => node.id === 'pushed')?.position).toEqual({ x: 560, y: 24 })
+    expect(nodesOfA.find(node => node.id === 'inside')?.position).toEqual({ x: 24, y: 24 })
+    expect(nodesOfA.find(node => node.id === 'dragged')?.position.y).not.toBe(700)
   })
 
   it('writes neither document when the release arrives after the switch', () => {
