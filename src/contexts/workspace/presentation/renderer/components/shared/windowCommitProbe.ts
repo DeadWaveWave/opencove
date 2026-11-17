@@ -4,6 +4,9 @@ import type { WindowKindFamily } from '../../utils/windowKindFamily'
 const counts: Partial<Record<WindowKindFamily, number>> = {}
 const countsByNode = new Map<string, number>()
 const presentationCounts = new Map<string, number>()
+const canvasCommitCounts = new Map<string, number>()
+const canvasCommitRecords: Array<{ component: string; at: number; changed: string[] }> = []
+const MAX_CANVAS_COMMIT_RECORDS = 500
 type CommitInputs = Record<string, unknown>
 const records: Array<{
   kind: string
@@ -16,6 +19,11 @@ const records: Array<{
 }> = []
 const identities = new WeakMap<object, number>()
 let nextIdentity = 0
+
+/** The gate every commit probe shares. */
+function isTestWindow(): boolean {
+  return window.opencoveApi?.meta?.isTest === true
+}
 
 function describe(value: unknown): unknown {
   if ((typeof value === 'object' && value !== null) || typeof value === 'function') {
@@ -68,10 +76,47 @@ export function useWindowNodeCommitProbe(inputs: { id: string; data: { kind?: st
   })
 }
 
+/**
+ * Test windows only: counts the commits of a canvas component. A passive effect with no dependency
+ * list runs once per commit and never for a render React bails out of, and it holds no state, so it
+ * cannot cause a commit. With `inputs`, each commit also records which inputs changed since the
+ * previous commit: none means the commit came from internal state. Pass an object the component
+ * already owns (its props), so a production render allocates nothing for the probe.
+ */
+export function useCanvasCommitProbe(component: string, inputs?: object) {
+  const previous = useRef<CommitInputs>({})
+  useEffect(() => {
+    if (!isTestWindow()) {
+      return
+    }
+    canvasCommitCounts.set(component, (canvasCommitCounts.get(component) ?? 0) + 1)
+    if (inputs) {
+      const current = inputs as CommitInputs
+      canvasCommitRecords.push({
+        component,
+        at: performance.now(),
+        changed: Object.keys(changedInputs(previous.current, current)),
+      })
+      previous.current = current
+      if (canvasCommitRecords.length > MAX_CANVAS_COMMIT_RECORDS) {
+        canvasCommitRecords.shift()
+      }
+    }
+  })
+}
+
+export function readCanvasCommitCounts(): Record<string, number> {
+  return Object.fromEntries(canvasCommitCounts)
+}
+
+export function readCanvasCommitRecords() {
+  return [...canvasCommitRecords]
+}
+
 /** Includes the compact shell even when a memoized runtime/header does not render. */
 export function useWindowPresentationCommitProbe(nodeId: string): void {
   useEffect(() => {
-    if (window.opencoveApi?.meta?.isTest === true) {
+    if (isTestWindow()) {
       presentationCounts.set(nodeId, (presentationCounts.get(nodeId) ?? 0) + 1)
     }
   })
@@ -129,6 +174,8 @@ export function resetWindowCommitCounts(): void {
   records.length = 0
   countsByNode.clear()
   presentationCounts.clear()
+  canvasCommitCounts.clear()
+  canvasCommitRecords.length = 0
   for (const kind of Object.keys(counts) as WindowKindFamily[]) {
     delete counts[kind]
   }
