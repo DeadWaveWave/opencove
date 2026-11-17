@@ -76,7 +76,12 @@ export function useWorkspaceCanvasCreateSpace({
       directoryPath: string
     }) => {
       // One read plans the whole change; the write below runs in the same call, so nothing can
-      // land between them.
+      // land between them. The write's base is the store when it runs, which is this very document:
+      // the Spaces the recipe returns are `document.spaces` planned forward and cannot differ from
+      // what the write commits. The positions come from the same document too, so they differ
+      // from the base's nodes only while a gesture holds live positions, as every committed read
+      // does (Decision 5). A plan that crossed an await would have to be made again from the
+      // recipe's own arguments.
       const document = readDocument()
       const normalizedNodeIds = payload.nodeIds.filter(nodeId =>
         document.nodes.some(node => node.id === nodeId),
