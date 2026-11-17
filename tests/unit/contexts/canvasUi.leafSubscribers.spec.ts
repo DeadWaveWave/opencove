@@ -88,137 +88,219 @@ function trackedSourceFiles(): string[] {
   return files
 }
 
-/** The names a file imports from the store context, as exported (aliases and `type` removed). */
-function namesImportedFromStoreContext(source: string): string[] {
-  return [...source.matchAll(/import\s+\{([^}]*)\}\s*from\s*'[^']*\/canvasStoreContext'/g)].flatMap(
-    match =>
-      match[1]
-        .split(',')
-        .map(
-          specifier =>
-            specifier
-              .trim()
-              .replace(/^type\s+/, '')
-              .split(/\s+as\s+/)[0],
-        )
-        .filter(Boolean),
-  )
+function parse(source: string, fileName: string): ts.SourceFile {
+  return ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
 }
+
+function walk(node: ts.Node, visit: (node: ts.Node) => void): void {
+  visit(node)
+  ts.forEachChild(node, child => walk(child, visit))
+}
+
+/** The value exports of a module: functions, classes, variables and `export { }` names. */
+function valueExports(file: ts.SourceFile): string[] {
+  const names: string[] = []
+  for (const statement of file.statements) {
+    const exported = ts.canHaveModifiers(statement)
+      ? ts.getModifiers(statement)?.some(modifier => modifier.kind === ts.SyntaxKind.ExportKeyword)
+      : false
+    if (
+      exported &&
+      (ts.isFunctionDeclaration(statement) || ts.isClassDeclaration(statement)) &&
+      statement.name
+    ) {
+      names.push(statement.name.text)
+    }
+    if (exported && ts.isVariableStatement(statement)) {
+      for (const declaration of statement.declarationList.declarations) {
+        if (ts.isIdentifier(declaration.name)) {
+          names.push(declaration.name.text)
+        }
+      }
+    }
+    if (
+      ts.isExportDeclaration(statement) &&
+      !statement.isTypeOnly &&
+      statement.exportClause &&
+      ts.isNamedExports(statement.exportClause)
+    ) {
+      for (const element of statement.exportClause.elements) {
+        if (!element.isTypeOnly) {
+          names.push(element.name.text)
+        }
+      }
+    }
+  }
+  return names.sort()
+}
+
+// What a selector may be built of: reads, comparisons and primitives. An allow-list: a deny-list
+// lets tagged templates, JSX, class expressions and regular expressions through.
+const SELECTOR_NODE_KINDS = new Set<ts.SyntaxKind>([
+  ts.SyntaxKind.Identifier,
+  ts.SyntaxKind.PropertyAccessExpression,
+  ts.SyntaxKind.ParenthesizedExpression,
+  ts.SyntaxKind.BinaryExpression,
+  ts.SyntaxKind.PrefixUnaryExpression,
+  ts.SyntaxKind.ConditionalExpression,
+  ts.SyntaxKind.AsExpression,
+  ts.SyntaxKind.NonNullExpression,
+  ts.SyntaxKind.NullKeyword,
+  ts.SyntaxKind.TrueKeyword,
+  ts.SyntaxKind.FalseKeyword,
+  ts.SyntaxKind.NumericLiteral,
+  ts.SyntaxKind.StringLiteral,
+  ts.SyntaxKind.NoSubstitutionTemplateLiteral,
+  ts.SyntaxKind.QuestionDotToken,
+  ts.SyntaxKind.EqualsEqualsEqualsToken,
+  ts.SyntaxKind.ExclamationEqualsEqualsToken,
+  ts.SyntaxKind.QuestionQuestionToken,
+  ts.SyntaxKind.AmpersandAmpersandToken,
+  ts.SyntaxKind.BarBarToken,
+  ts.SyntaxKind.ExclamationToken,
+  ts.SyntaxKind.QuestionToken,
+  ts.SyntaxKind.ColonToken,
+  ts.SyntaxKind.TypeReference,
+  ts.SyntaxKind.UnknownKeyword,
+])
 
 /**
  * The violations of the selector contract in `source`: every call of `useCanvasInteraction` (under
- * any local name) passes an identifier bound by a module-scope `const` arrow function of the same
- * file, and that arrow returns a field of the slice or a primitive, never a new object or array.
- * An inline function re-subscribes on every render; one that returns a new value loops.
+ * any local name) passes an identifier that is the one binding of its name in the file, a
+ * module-scope `const` arrow function whose parameters have no default and whose body is built
+ * only of reads, comparisons and primitives (`SELECTOR_NODE_KINDS`). An inline function
+ * re-subscribes on every render; a body that allocates renders its subscriber on every
+ * notification, and loops when the selector is inline or the subscription is `useStore`.
  */
 function selectorViolations(source: string, fileName = 'source.tsx'): string[] {
-  const file = ts.createSourceFile(
-    fileName,
-    source,
-    ts.ScriptTarget.Latest,
-    true,
-    ts.ScriptKind.TSX,
-  )
+  const file = parse(source, fileName)
   const localNames = new Set<string>()
-  const moduleConsts = new Map<string, ts.Expression | undefined>()
-  for (const statement of file.statements) {
-    if (ts.isImportDeclaration(statement) && statement.importClause?.namedBindings) {
-      const bindings = statement.importClause.namedBindings
-      if (ts.isNamedImports(bindings)) {
-        for (const element of bindings.elements) {
-          if ((element.propertyName ?? element.name).text === 'useCanvasInteraction') {
-            localNames.add(element.name.text)
-          }
-        }
-      }
-    }
-    if (ts.isVariableStatement(statement) && statement.declarationList.flags & ts.NodeFlags.Const) {
-      for (const declaration of statement.declarationList.declarations) {
-        if (ts.isIdentifier(declaration.name)) {
-          moduleConsts.set(declaration.name.text, declaration.initializer)
-        }
-      }
-    }
-  }
-
+  const bindings = new Map<string, ts.Node[]>()
   const violations: string[] = []
-  const forbidden = [
-    ts.isBlock,
-    ts.isObjectLiteralExpression,
-    ts.isArrayLiteralExpression,
-    ts.isNewExpression,
-    ts.isCallExpression,
-    ts.isArrowFunction,
-    ts.isFunctionExpression,
-  ]
-  const visit = (node: ts.Node): void => {
+  const where = (node: ts.Node) =>
+    `${fileName}:${file.getLineAndCharacterOfPosition(node.getStart()).line + 1}`
+  walk(file, node => {
     if (
-      ts.isCallExpression(node) &&
-      ts.isIdentifier(node.expression) &&
-      localNames.has(node.expression.text)
+      ts.isImportSpecifier(node) &&
+      (node.propertyName ?? node.name).text === 'useCanvasInteraction'
     ) {
-      const argument = node.arguments[0]
-      const where = `${fileName}:${file.getLineAndCharacterOfPosition(node.getStart()).line + 1}`
-      if (!argument || !ts.isIdentifier(argument)) {
-        violations.push(`${where}: the selector is not an identifier bound at module scope`)
-      } else {
-        const initializer = moduleConsts.get(argument.text)
-        if (!initializer || !ts.isArrowFunction(initializer)) {
-          violations.push(`${where}: ${argument.text} is not a module-scope const arrow function`)
-        } else {
-          const offender = [initializer.body, ...flatten(initializer.body)].find(child =>
-            forbidden.some(isForbidden => isForbidden(child)),
-          )
-          if (offender) {
-            violations.push(
-              `${where}: ${argument.text} returns a new value (${ts.SyntaxKind[offender.kind]})`,
-            )
-          }
-        }
-      }
+      localNames.add(node.name.text)
     }
-    ts.forEachChild(node, visit)
-  }
-  visit(file)
+    if (
+      (ts.isVariableDeclaration(node) ||
+        ts.isParameter(node) ||
+        ts.isFunctionDeclaration(node) ||
+        ts.isClassDeclaration(node)) &&
+      node.name &&
+      ts.isIdentifier(node.name)
+    ) {
+      bindings.set(node.name.text, [...(bindings.get(node.name.text) ?? []), node])
+    }
+    if (ts.isPropertyAccessExpression(node) && node.name.text === 'useCanvasInteraction') {
+      violations.push(`${where(node)}: the hook is reached through a namespace`)
+    }
+  })
+
+  walk(file, node => {
+    if (
+      !ts.isCallExpression(node) ||
+      !ts.isIdentifier(node.expression) ||
+      !localNames.has(node.expression.text)
+    ) {
+      return
+    }
+    const argument = node.arguments[0]
+    const declarations =
+      argument && ts.isIdentifier(argument) ? (bindings.get(argument.text) ?? []) : []
+    const declaration = declarations[0]
+    if (
+      declarations.length !== 1 ||
+      !ts.isVariableDeclaration(declaration) ||
+      !ts.isVariableStatement(declaration.parent.parent) ||
+      declaration.parent.parent.parent !== file ||
+      !(declaration.parent.flags & ts.NodeFlags.Const) ||
+      !declaration.initializer ||
+      !ts.isArrowFunction(declaration.initializer)
+    ) {
+      violations.push(
+        `${where(node)}: the selector is not the one module-scope const arrow of its name`,
+      )
+      return
+    }
+    const arrow = declaration.initializer
+    if (arrow.parameters.some(parameter => parameter.initializer)) {
+      violations.push(`${where(node)}: a parameter default allocates`)
+    }
+    walk(arrow.body, child => {
+      if (!SELECTOR_NODE_KINDS.has(child.kind)) {
+        violations.push(`${where(node)}: ${ts.SyntaxKind[child.kind]} in the selector`)
+      }
+    })
+  })
   return violations
 }
 
-function flatten(node: ts.Node): ts.Node[] {
-  const nodes: ts.Node[] = []
-  ts.forEachChild(node, child => {
-    nodes.push(child, ...flatten(child))
-  })
-  return nodes
-}
+const SUBSCRIBERS = [FLOW_HOST, SNAP_GUIDES_OVERLAY, DRAFT_OVERLAY, CANVAS_MENUS].map(
+  file => `${CANVAS_DIR}${file}`,
+)
 
 // Decision 2 of #738: the subscribers of the `interaction` slice are leaves, and the host. They are
 // the flow host (the live nodes and the node-drag preview), the snap guides overlay, the marquee
 // rectangle and the context menu's snapping toggle. Hooks and WorkspaceCanvasInner read the slice
-// at call time (`useReadCanvasInteraction`).
+// at call time (`useReadCanvasInteraction`). The rules are by symbol, not by import text.
 describe('canvas interaction subscriptions', () => {
-  // By import, not by call text: a type argument (`useCanvasInteraction<boolean>(`) or an alias
-  // (`import { useCanvasInteraction as use... }`) would hide a subscriber from a search for the
-  // call. No hook and not WorkspaceCanvasInner imports it.
-  it('only the host, the guides overlay, the draft overlay and the menus import useCanvasInteraction, under any name', () => {
-    const importers = trackedSourceFiles().filter(file =>
-      namesImportedFromStoreContext(readFileSync(file, 'utf8')).includes('useCanvasInteraction'),
+  // Any mention of the hook outside its definition and the four subscribers: an aliased import, a
+  // namespace call (`context.useCanvasInteraction(`), a re-export from a barrel.
+  it('names useCanvasInteraction only in the store context and the four subscribers', () => {
+    const mentioning = trackedSourceFiles().filter(file => {
+      let found = false
+      walk(parse(readFileSync(file, 'utf8'), file), node => {
+        if (ts.isIdentifier(node) && node.text === 'useCanvasInteraction') {
+          found = true
+        }
+      })
+      return found
+    })
+
+    expect(mentioning.sort()).toEqual([STORE_CONTEXT, ...SUBSCRIBERS].sort())
+  })
+
+  // A subscriber may not hand its subscription to someone else through an exported hook.
+  it('the four subscribers export no hook', () => {
+    const hooks = SUBSCRIBERS.flatMap(file =>
+      valueExports(parse(readFileSync(file, 'utf8'), file))
+        .filter(name => /^use[A-Z]/.test(name))
+        .map(name => `${file}:${name}`),
     )
 
-    expect(importers.map(file => file.slice(CANVAS_DIR.length)).sort()).toEqual(
-      [FLOW_HOST, SNAP_GUIDES_OVERLAY, DRAFT_OVERLAY, CANVAS_MENUS].sort(),
+    expect(hooks).toEqual([])
+  })
+
+  // The store's api never leaves the context: a getter for it would let any file subscribe with
+  // zustand's `useStore` (sync priority) or `api.subscribe`, and no text check would see it.
+  it('the store context exports exactly its provider, readers, commands and subscriber hooks', () => {
+    expect(valueExports(parse(readFileSync(STORE_CONTEXT, 'utf8'), STORE_CONTEXT))).toEqual(
+      [
+        'CanvasStoreProvider',
+        'useCanvasDocumentCommands',
+        'useCanvasInteraction',
+        'useCanvasInteractionCommands',
+        'useCanvasSelection',
+        'useCanvasSelectionCommands',
+        'useCanvasUi',
+        'useCanvasUiCommands',
+        'useReadCanvasDocument',
+        'useReadCanvasInteraction',
+        'useReadCanvasSelection',
+        'useReadCanvasUi',
+      ].sort(),
     )
   })
 
-  // A selector that is built in the call re-subscribes on every render, and one that returns a new
-  // object or array is never equal to the last value and loops. The contract is a check, not a
-  // comment: read from the syntax of every importer.
-  it('every subscriber passes a module-scope selector that returns a stored value or a primitive', () => {
-    const files = trackedSourceFiles().filter(file =>
-      namesImportedFromStoreContext(readFileSync(file, 'utf8')).includes('useCanvasInteraction'),
+  it('every subscriber passes a module-scope selector made only of reads, comparisons and primitives', () => {
+    const violations = SUBSCRIBERS.flatMap(file =>
+      selectorViolations(readFileSync(file, 'utf8'), file),
     )
-    expect(files.length).toBe(4)
-
-    const violations = files.flatMap(file => selectorViolations(readFileSync(file, 'utf8'), file))
 
     expect(violations).toEqual([])
   })
@@ -244,17 +326,28 @@ describe('canvas interaction subscriptions', () => {
         1,
       ],
       ['a selector from a parameter', 'function C(pick) { use(pick) }', 1],
-    ])('%s: %i violation(s)', (_name, body, count) => {
+      ['a parameter default', 'const pick = (state, none = []) => state.x ?? none\nuse(pick)', 1],
+      ['a coalesce with a field', 'const pick = (state) => state.x ?? state.y\nuse(pick)', 0],
+      [
+        'a selector shadowed in the component',
+        'const pick = (s) => s.x\nfunction C() { const pick = (s) => s.x.slice(); use(pick) }',
+        1,
+      ],
+      ['a tagged template', 'const pick = (state) => tag`x`\nuse(pick)', 1],
+      ['a regular expression', 'const pick = (state) => /x/\nuse(pick)', 1],
+      ['a let binding', 'let pick = (state) => state.x\nuse(pick)', 1],
+      ['a namespace call', 'ctx.useCanvasInteraction(pick)', 1],
+    ])('%s: %i (0 = accepted, 1 = violations)', (_name, body, count) => {
       const source = `${header}${body.replace(/\buse\(/g, 'useCanvasInteraction(')}`
 
-      expect(selectorViolations(source)).toHaveLength(count)
+      expect(selectorViolations(source).length > 0).toBe(count > 0)
     })
 
     it('follows an alias of the import', () => {
       const source =
         "import { useCanvasInteraction as useSlice } from '../store/canvasStoreContext'\nuseSlice(state => state.x)"
 
-      expect(selectorViolations(source)).toHaveLength(1)
+      expect(selectorViolations(source).length).toBeGreaterThan(0)
     })
   })
 
