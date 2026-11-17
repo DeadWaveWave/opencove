@@ -10,6 +10,7 @@ import type { UseWorkspaceCanvasNodesStoreResult } from '../../../src/contexts/w
 import {
   useCanvasInteractionCommands,
   useCanvasSelectionCommands,
+  useReadCanvasInteraction,
 } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
 import { useCanvasCollapseStore } from '../../../src/contexts/workspace/presentation/renderer/store/useCanvasCollapseStore'
 import {
@@ -68,10 +69,19 @@ function useDragUnderTest({ workspaceId, nodeStore }: CanvasNodeStoreContext) {
     }),
     selection: useCanvasSelectionCommands(),
     interaction: useCanvasInteractionCommands(),
+    readInteraction: useReadCanvasInteraction(),
   }
 }
 
-type DragView = { result: { current: { drag: ReturnType<typeof useWorkspaceCanvasSpaceDrag> } } }
+type DragView = {
+  result: {
+    current: {
+      drag: ReturnType<typeof useWorkspaceCanvasSpaceDrag>
+      readInteraction: () => { snapGuides: unknown }
+      interaction: { setSnapGuides: (guides: never) => void }
+    }
+  }
+}
 
 function renderDrag(harness: CanvasDocumentHarness, options: { magneticSnapping?: boolean } = {}) {
   return renderCanvasNodeStore(harness, { extend: useDragUnderTest, ...options })
@@ -324,6 +334,41 @@ describe('useWorkspaceCanvasSpaceDrag reads the committed document', () => {
 
       // Without the late Space the Space would stop at x = 100; snapping pulls its left edge to 104 (the grid alone would give 96).
       expect(harness.readStoreDocument().spaces[0].rect?.x).toBe(104)
+    })
+
+    // The guides of a Space drag live in the canvas store; the drag ends them, with the release and
+    // with a click that never moved.
+    it('ends the snap guides with the release', () => {
+      const harness = createCanvasDocumentHarness({
+        nodes: [nodeAt('n1', 50, 60)],
+        spaces: [
+          spaceA(),
+          createSpace('space-snap', { x: 104, y: 500, width: 400, height: 400 }, []),
+        ],
+      })
+      const view = renderDrag(harness, { magneticSnapping: true })
+      press(view, 'space-a', INSIDE_A)
+      dragTo({ x: INSIDE_A.x + 100, y: INSIDE_A.y })
+      expect(view.result.current.readInteraction().snapGuides).not.toBeNull()
+
+      release({ x: INSIDE_A.x + 100, y: INSIDE_A.y })
+
+      expect(view.result.current.readInteraction().snapGuides).toBeNull()
+    })
+
+    it('ends the snap guides with a click that did not move', () => {
+      const harness = createCanvasDocumentHarness({
+        nodes: [nodeAt('n1', 50, 60)],
+        spaces: [spaceA()],
+      })
+      const view = renderDrag(harness, { magneticSnapping: true })
+      press(view, 'space-a', INSIDE_A)
+      act(() => view.result.current.interaction.setSnapGuides([{ kind: 'v', x: 1, y1: 0, y2: 10 }]))
+      expect(view.result.current.readInteraction().snapGuides).not.toBeNull()
+
+      release(INSIDE_A)
+
+      expect(view.result.current.readInteraction().snapGuides).toBeNull()
     })
 
     // The toggle is read when a frame runs: the hook does not subscribe to it, so a copy taken at
