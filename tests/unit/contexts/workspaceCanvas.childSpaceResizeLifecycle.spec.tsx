@@ -3,6 +3,7 @@ import { act, fireEvent } from '@testing-library/react'
 import { useReactFlow, type Node } from '@xyflow/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useWorkspaceCanvasSpaceDrag } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceDrag'
+import { useReadCanvasInteraction } from '@contexts/workspace/presentation/renderer/store/canvasStoreContext'
 import { useCanvasCollapseStore } from '@contexts/workspace/presentation/renderer/store/useCanvasCollapseStore'
 import type { TerminalNodeData } from '@contexts/workspace/presentation/renderer/types'
 import { createNode, createSpace } from './workspaceNodeProjection.testUtils'
@@ -46,7 +47,11 @@ function renderNestedResize() {
       setNodes: nodeStore.setNodes,
       updateCanvasDocument: nodeStore.updateCanvasDocument,
     })
-    return { ...drag, ...harness.readStoreDocument() }
+    return {
+      ...drag,
+      ...harness.readStoreDocument(),
+      readInteraction: useReadCanvasInteraction(),
+    }
   }
   const hook = renderCanvasNodeStore(harness, { extend: useDragUnderTest })
   return { ...hook, persist: harness.flush }
@@ -85,9 +90,9 @@ describe('nested compact Space resize lifecycle', () => {
         fireEvent.pointerMove(window, { pointerId: 7, clientX: end.x, clientY: end.y, buttons: 1 })
         vi.advanceTimersByTime(20)
       })
-      const preview = result.current.spaceFramePreview?.get(spaceId)
+      const preview = result.current.readInteraction().spaceDragFramePreview?.get(spaceId)
       act(() => fireEvent.pointerUp(window, { pointerId: 7, clientX: end.x, clientY: end.y }))
-      expect(result.current.spaceFramePreview).toBeNull()
+      expect(result.current.readInteraction().spaceDragFramePreview).toBeNull()
       expect(result.current.spaces.find(space => space.id === spaceId)?.rect).toEqual(preview)
       return preview
     }

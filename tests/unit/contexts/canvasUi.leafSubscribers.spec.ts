@@ -298,6 +298,18 @@ describe('canvas interaction subscriptions', () => {
     )
   })
 
+  // PR 6: the host reads both frame previews in one selector, `spaceDragFramePreview ??
+  // nodeDragFramePreview`, which the contract above accepts: two subscriptions would render the
+  // host twice for a frame that changes both.
+  it('the flow host subscribes to the live nodes and to one selector for both previews', () => {
+    const source = readFileSync(`${CANVAS_DIR}${FLOW_HOST}`, 'utf8')
+
+    expect(source.match(/\buseCanvasInteraction\(/g)).toHaveLength(2)
+    expect(source).toMatch(/=>\s*\w+\.spaceDragFramePreview\s*\?\?\s*\w+\.nodeDragFramePreview\b/)
+    expect(source).not.toMatch(/\buseCanvasInteraction\(selectNodeDragFramePreview\)/)
+    expect(selectorViolations(source, FLOW_HOST)).toEqual([])
+  })
+
   it('every subscriber passes a module-scope selector made only of reads, comparisons and primitives', () => {
     const violations = SUBSCRIBERS.flatMap(file =>
       selectorViolations(readFileSync(file, 'utf8'), file),
@@ -329,6 +341,11 @@ describe('canvas interaction subscriptions', () => {
       ['a selector from a parameter', 'function C(pick) { use(pick) }', 1],
       ['a parameter default', 'const pick = (state, none = []) => state.x ?? none\nuse(pick)', 1],
       ['a coalesce with a field', 'const pick = (state) => state.x ?? state.y\nuse(pick)', 0],
+      [
+        'the two frame previews of the flow host',
+        'const pick = (i) => i.spaceDragFramePreview ?? i.nodeDragFramePreview\nuse(pick)',
+        0,
+      ],
       [
         'a selector shadowed in the component',
         'const pick = (s) => s.x\nfunction C() { const pick = (s) => s.x.slice(); use(pick) }',

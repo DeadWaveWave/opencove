@@ -350,7 +350,12 @@ const selectSelectionDraft = (interaction: CanvasInteractionState) => interactio
 const DRAFT = { startX: 1, startY: 2, currentX: 3, currentY: 4, phase: 'active' } as const
 
 // What a node gesture shows: nothing, until a drag frame writes it.
-const NO_GESTURE = { liveNodes: null, snapGuides: null, nodeDragFramePreview: null }
+const NO_GESTURE = {
+  liveNodes: null,
+  snapGuides: null,
+  nodeDragFramePreview: null,
+  spaceDragFramePreview: null,
+}
 const FRAME: Parameters<CanvasInteractionCommands['publishLiveNodes']>[0] = new Map([
   ['a', { position: { x: 0, y: 30 }, dragging: true }],
 ])
@@ -419,12 +424,14 @@ describe('CanvasStoreProvider interaction slice', () => {
       probe.commands().publishLiveNodes(FRAME)
       probe.commands().setSnapGuides([...GUIDES])
       probe.commands().setNodeDragFramePreview(PREVIEW)
+      probe.commands().setSpaceDragFramePreview(PREVIEW)
       probe.commands().toggleMagneticSnapping()
     })
     expect(probe.read()).toMatchObject({
       liveNodes: FRAME,
       snapGuides: GUIDES,
       nodeDragFramePreview: PREVIEW,
+      spaceDragFramePreview: PREVIEW,
     })
 
     probe.rerender('workspace-b')
@@ -433,6 +440,7 @@ describe('CanvasStoreProvider interaction slice', () => {
       liveNodes: null,
       snapGuides: null,
       nodeDragFramePreview: null,
+      spaceDragFramePreview: null,
       selectionDraft: null,
       magneticSnappingEnabled: false,
     })
@@ -522,6 +530,7 @@ describe('CanvasStoreProvider interaction slice', () => {
 
       write(c => c.setSnapGuides([...GUIDES]))
       write(c => c.setNodeDragFramePreview(PREVIEW))
+      write(c => c.setSpaceDragFramePreview(PREVIEW))
       write(c => c.setSelectionDraft(DRAFT))
       write(c => c.toggleMagneticSnapping())
       expect(lives).toHaveLength(livesBefore)

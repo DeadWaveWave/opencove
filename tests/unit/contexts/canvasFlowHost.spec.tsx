@@ -8,7 +8,8 @@ import { renderWithCanvasStore } from '../../support/canvasStoreTestHarness'
 import { createRowNodes } from '../../support/canvasSelectionFixtures'
 
 // The host hands the canvas view what it renders: the committed nodes with the live overlay applied
-// and the frame preview of the Space drag or, without one, of the node drag.
+// and the frame preview of the Space drag or, without one, of the node drag. Both previews come
+// from the `interaction` slice (#738, PR 6); the host takes no preview from its parent.
 
 const seen = vi.hoisted(() => ({
   props: [] as Array<Record<string, unknown>>,
@@ -26,19 +27,12 @@ vi.mock(
 
 const rect = (x: number) => ({ x, y: 0, width: 100, height: 100 })
 
-function mountHost({
-  committedNodes,
-  spaceDragFramePreview = null,
-}: {
-  committedNodes: Node<TerminalNodeData>[]
-  spaceDragFramePreview?: ReadonlyMap<string, ReturnType<typeof rect>> | null
-}) {
+function mountHost({ committedNodes }: { committedNodes: Node<TerminalNodeData>[] }) {
   seen.props.length = 0
   const props = {
     workspaceId: 'workspace-1',
     marker: 'passed through',
     committedNodes,
-    spaceDragFramePreview,
   } as unknown as ComponentProps<typeof CanvasFlowHost>
   const view = renderWithCanvasStore(<CanvasFlowHost {...props} />)
   const last = () =>
@@ -78,21 +72,64 @@ describe('CanvasFlowHost', () => {
     expect(last().nodes).toBe(committed)
   })
 
-  it('renders the preview of the node drag, and the preview of the Space drag over it', () => {
+  // Both previews are read from the slice. A host that read only the node drag's would show no
+  // frame during a Space drag; one that read only the Space drag's, none during a node drag.
+  it('renders the preview of the node drag when no Space drag is live', () => {
+    const nodeDrag = new Map([['s', rect(1)]])
+    const { view, last } = mountHost({ committedNodes: committed })
+
+    act(() => view.interaction.setNodeDragFramePreview(nodeDrag))
+    expect(last().spaceFramePreview).toBe(nodeDrag)
+
+    act(() => view.interaction.setNodeDragFramePreview(null))
+    expect(last().spaceFramePreview).toBeNull()
+  })
+
+  it('renders the preview of the Space drag from the slice', () => {
+    const spaceDrag = new Map([['s', rect(2)]])
+    const { view, last } = mountHost({ committedNodes: committed })
+
+    act(() => view.interaction.setSpaceDragFramePreview(spaceDrag))
+    expect(last().spaceFramePreview).toBe(spaceDrag)
+
+    act(() => view.interaction.setSpaceDragFramePreview(null))
+    expect(last().spaceFramePreview).toBeNull()
+  })
+
+  it('renders the preview of the Space drag over the one of the node drag, and the latter again after it', () => {
     const nodeDrag = new Map([['s', rect(1)]])
     const spaceDrag = new Map([['s', rect(2)]])
-    const mounted = mountHost({ committedNodes: committed })
+    const { view, last } = mountHost({ committedNodes: committed })
 
-    act(() => mounted.view.interaction.setNodeDragFramePreview(nodeDrag))
-    expect(mounted.last().spaceFramePreview).toBe(nodeDrag)
+    act(() => view.interaction.setNodeDragFramePreview(nodeDrag))
+    act(() => view.interaction.setSpaceDragFramePreview(spaceDrag))
+    expect(last().spaceFramePreview).toBe(spaceDrag)
 
-    act(() => mounted.view.interaction.setNodeDragFramePreview(null))
-    expect(mounted.last().spaceFramePreview).toBeNull()
-    mounted.view.unmount()
+    act(() => view.interaction.setSpaceDragFramePreview(null))
+    expect(last().spaceFramePreview).toBe(nodeDrag)
+  })
 
-    const both = mountHost({ committedNodes: committed, spaceDragFramePreview: spaceDrag })
-    act(() => both.view.interaction.setNodeDragFramePreview(nodeDrag))
-    expect(both.last().spaceFramePreview).toBe(spaceDrag)
+  it('ignores a preview that its parent hands it as a prop', () => {
+    seen.props.length = 0
+    const stray = new Map([['s', rect(9)]])
+    const props = {
+      committedNodes: committed,
+      spaceDragFramePreview: stray,
+    } as unknown as ComponentProps<typeof CanvasFlowHost>
+
+    renderWithCanvasStore(<CanvasFlowHost {...props} />)
+
+    expect(seen.props.at(-1)?.spaceFramePreview).toBeNull()
+  })
+
+  it('does not render again for a Space drag preview equal to the one it shows', () => {
+    const { view } = mountHost({ committedNodes: committed })
+    act(() => view.interaction.setSpaceDragFramePreview(new Map([['s', rect(2)]])))
+    const rendersBefore = seen.props.length
+
+    act(() => view.interaction.setSpaceDragFramePreview(new Map([['s', rect(2)]])))
+
+    expect(seen.props).toHaveLength(rendersBefore)
   })
 
   it('does not render for the guides, the marquee or the snapping toggle', () => {

@@ -1,38 +1,24 @@
-import { act, fireEvent } from '@testing-library/react'
-import { useMemo } from 'react'
-import type * as React from 'react'
-import { useReactFlow, type Node } from '@xyflow/react'
+import { act } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import { TERMINAL_LAYOUT_SYNC_EVENT } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/constants'
-import { useWorkspaceCanvasSpaceDrag } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceDrag'
-import type { UseWorkspaceCanvasNodesStoreResult } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore.types'
-import {
-  useCanvasInteractionCommands,
-  useCanvasSelectionCommands,
-  useReadCanvasInteraction,
-} from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
 import { useCanvasCollapseStore } from '../../../src/contexts/workspace/presentation/renderer/store/useCanvasCollapseStore'
-import {
-  commitCanvasDocument,
-  replaceWorkspaceNodes,
-} from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
-import type {
-  Point,
-  TerminalNodeData,
-} from '../../../src/contexts/workspace/presentation/renderer/types'
-import {
-  createCanvasDocumentHarness,
-  renderCanvasNodeStore,
-  renderInCanvasDocument,
-  type CanvasDocumentHarness,
-  type CanvasNodeStoreContext,
-} from '../../support/canvasDocumentHarness'
+import { replaceWorkspaceNodes } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+import { createCanvasDocumentHarness } from '../../support/canvasDocumentHarness'
 import { createRowNodes, createSpace } from '../../support/canvasSelectionFixtures'
+import {
+  INSIDE_A,
+  SPACE_A_RECT,
+  dragTo,
+  nodeAt,
+  press,
+  release,
+  renderDrag,
+  renderSwitchingSpaceDrag,
+  spaceA,
+  spaceC,
+} from '../../support/spaceDragHarness'
 import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
-
-type SetNodes = UseWorkspaceCanvasNodesStoreResult['setNodes']
-type UpdateCanvasDocument = UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
 
 beforeEach(() => {
   vi.useFakeTimers()
@@ -43,81 +29,7 @@ afterEach(() => {
   useCanvasCollapseStore.setState({ workspaces: {} })
 })
 
-const SPACE_A_RECT = { x: 0, y: 0, width: 600, height: 400 }
 const SPACE_C_RECT = { x: 700, y: 0, width: 500, height: 400 }
-
-function nodeAt(id: string, x: number, y: number): Node<TerminalNodeData> {
-  return { ...createRowNodes([id])[0], position: { x, y } }
-}
-
-function spaceA(nodeIds = ['n1']) {
-  return createSpace('space-a', SPACE_A_RECT, nodeIds)
-}
-
-function spaceC() {
-  return createSpace('space-c', SPACE_C_RECT, [])
-}
-
-function useDragUnderTest({ workspaceId, nodeStore }: CanvasNodeStoreContext) {
-  const flow = useReactFlow<Node<TerminalNodeData>>()
-  return {
-    drag: useWorkspaceCanvasSpaceDrag({
-      workspaceId,
-      reactFlow: { ...flow, screenToFlowPosition: point => point, getZoom: () => 1 },
-      setNodes: nodeStore.setNodes,
-      updateCanvasDocument: nodeStore.updateCanvasDocument,
-    }),
-    selection: useCanvasSelectionCommands(),
-    interaction: useCanvasInteractionCommands(),
-    readInteraction: useReadCanvasInteraction(),
-  }
-}
-
-type DragView = {
-  result: {
-    current: {
-      drag: ReturnType<typeof useWorkspaceCanvasSpaceDrag>
-      readInteraction: () => { snapGuides: unknown }
-      interaction: { setSnapGuides: (guides: never) => void }
-    }
-  }
-}
-
-function renderDrag(harness: CanvasDocumentHarness, options: { magneticSnapping?: boolean } = {}) {
-  return renderCanvasNodeStore(harness, { extend: useDragUnderTest, ...options })
-}
-
-function press(view: DragView, spaceId: string, point: { x: number; y: number }, shiftKey = false) {
-  act(() =>
-    view.result.current.drag.handleSpaceDragHandlePointerDown(
-      {
-        button: 0,
-        shiftKey,
-        clientX: point.x,
-        clientY: point.y,
-        pointerId: 7,
-        preventDefault: vi.fn(),
-        stopPropagation: vi.fn(),
-      } as unknown as React.PointerEvent<HTMLDivElement>,
-      spaceId,
-    ),
-  )
-}
-
-function dragTo(point: { x: number; y: number }) {
-  act(() => {
-    fireEvent.pointerMove(window, { pointerId: 7, clientX: point.x, clientY: point.y, buttons: 1 })
-    vi.advanceTimersByTime(20)
-  })
-}
-
-function release(point: { x: number; y: number }) {
-  act(() => {
-    fireEvent.pointerUp(window, { pointerId: 7, clientX: point.x, clientY: point.y })
-  })
-}
-
-const INSIDE_A = { x: 300, y: 200 }
 
 describe('useWorkspaceCanvasSpaceDrag reads the committed document', () => {
   describe('at pointer down', () => {
@@ -133,7 +45,9 @@ describe('useWorkspaceCanvasSpaceDrag reads the committed document', () => {
       })
       press(view, 'space-c', { x: 900, y: 200 })
 
-      expect(view.result.current.drag.spaceFramePreview?.get('space-c')).toEqual(SPACE_C_RECT)
+      expect(view.result.current.readInteraction().spaceDragFramePreview?.get('space-c')).toEqual(
+        SPACE_C_RECT,
+      )
     })
 
     it('carries a node that a write added to the Space in the same act', () => {
@@ -178,7 +92,10 @@ describe('useWorkspaceCanvasSpaceDrag reads the committed document', () => {
   })
 
   describe('per frame', () => {
-    it('commits the nodes and no Spaces, and does not flush', () => {
+    // On the base a frame wrote the nodes to the store (one notification, the sidebar and the
+    // persistence debounce with it). It now publishes them to the overlay and writes nothing
+    // (#738, Decision 9); `canvasInteraction.spaceDrag.spec` pins the frames in full.
+    it('publishes the nodes to the overlay, writes no Spaces and nothing at all, and does not flush', () => {
       const harness = createCanvasDocumentHarness({
         nodes: [nodeAt('n1', 50, 60)],
         spaces: [spaceA(), spaceC()],
@@ -191,11 +108,13 @@ describe('useWorkspaceCanvasSpaceDrag reads the committed document', () => {
       dragTo({ x: INSIDE_A.x + 40, y: INSIDE_A.y })
 
       const document = harness.readStoreDocument()
-      expect(document.nodes[0].position).toEqual({ x: 90, y: 60 })
+      const interaction = view.result.current.readInteraction()
+      expect(interaction.liveNodes?.get('n1')?.position).toEqual({ x: 90, y: 60 })
+      expect(document.nodes[0].position).toEqual({ x: 50, y: 60 })
       expect(document.spaces).toEqual(spacesBefore)
-      expect(harness.notifications).toHaveBeenCalledTimes(1)
+      expect(harness.notifications).not.toHaveBeenCalled()
       expect(harness.flush).not.toHaveBeenCalled()
-      expect(view.result.current.drag.spaceFramePreview?.get('space-a')).toMatchObject({ x: 40 })
+      expect(interaction.spaceDragFramePreview?.get('space-a')).toMatchObject({ x: 40 })
     })
 
     it('projects from the Spaces the store holds when the frame runs', () => {
@@ -211,10 +130,9 @@ describe('useWorkspaceCanvasSpaceDrag reads the committed document', () => {
       })
       dragTo({ x: INSIDE_A.x + 40, y: INSIDE_A.y })
 
-      expect([...(view.result.current.drag.spaceFramePreview?.keys() ?? [])].sort()).toEqual([
-        'space-a',
-        'space-c',
-      ])
+      expect(
+        [...(view.result.current.readInteraction().spaceDragFramePreview?.keys() ?? [])].sort(),
+      ).toEqual(['space-a', 'space-c'])
     })
 
     it('projects from the nodes the store holds when the frame runs', () => {
@@ -235,10 +153,13 @@ describe('useWorkspaceCanvasSpaceDrag reads the committed document', () => {
       })
       dragTo({ x: INSIDE_A.x + 100, y: INSIDE_A.y })
 
-      expect(harness.readStoreDocument().nodes.map(node => [node.id, node.position.x])).toEqual([
+      // The frame's result is in the overlay; the document holds the nodes until the release.
+      const { liveNodes } = view.result.current.readInteraction()
+      expect([...(liveNodes ?? [])].map(([id, entry]) => [id, entry.position.x])).toEqual([
         ['n1', 150],
         ['n-late', 700],
       ])
+      expect(harness.readStoreDocument().nodes.map(node => node.position.x)).toEqual([50, 650])
     })
 
     it('moves the nodes the store holds, not the ones React Flow holds', () => {
@@ -251,7 +172,7 @@ describe('useWorkspaceCanvasSpaceDrag reads the committed document', () => {
 
       dragTo({ x: INSIDE_A.x + 40, y: INSIDE_A.y })
 
-      expect(harness.readStoreDocument().nodes[0].position.x).toBe(90)
+      expect(view.result.current.readInteraction().liveNodes?.get('n1')?.position.x).toBe(90)
     })
   })
 
@@ -273,10 +194,10 @@ describe('useWorkspaceCanvasSpaceDrag reads the committed document', () => {
       expect(harness.flush).toHaveBeenCalledTimes(1)
       expect(document.spaces[0].rect).toMatchObject({ x: 100, y: 0 })
       expect(document.nodes[0].position).toEqual({ x: 150, y: 60 })
-      expect(view.result.current.drag.spaceFramePreview).toBeNull()
+      expect(view.result.current.readInteraction().spaceDragFramePreview).toBeNull()
     })
 
-    it('writes the Spaces once, and flushes once, after frames committed the nodes', () => {
+    it('writes the Spaces once, and flushes once, after frames that published the nodes', () => {
       const harness = createCanvasDocumentHarness({
         nodes: [nodeAt('n1', 50, 60)],
         spaces: [spaceA()],
@@ -482,75 +403,18 @@ describe('useWorkspaceCanvasSpaceDrag reads the committed document', () => {
   })
 
   describe('after a workspace switch', () => {
-    function renderSwitching() {
-      const harness = createCanvasDocumentHarness({
-        workspaceId: 'workspace-a',
-        nodes: [nodeAt('n1', 50, 60)],
-        spaces: [spaceA()],
-      })
-      useAppStore.setState(state => ({
-        workspaces: [
-          ...state.workspaces,
-          {
-            ...state.workspaces[0],
-            id: 'workspace-b',
-            nodes: [nodeAt('b1', 50, 60)],
-            spaces: [createSpace('space-b', SPACE_A_RECT, ['b1'])],
-          },
-        ],
-      }))
-      let shown = 'workspace-a'
-      // Stable writers: only the reader (and the workspace id) can change when the user switches.
-      const setNodes: SetNodes = (updater, options) => {
-        commitCanvasDocument(
-          shown,
-          document => ({ ...document, nodes: updater(document.nodes) }),
-          options,
-        )
-      }
-      const updateCanvasDocument: UpdateCanvasDocument = (recipe, options) => {
-        commitCanvasDocument(shown, document => ({ ...document, ...recipe(document) }), options)
-      }
-      const view = renderInCanvasDocument(
-        () => {
-          const flow = useReactFlow<Node<TerminalNodeData>>()
-          // Stable, as in the app: a changed instance would hide a dependency lost by a callback.
-          const reactFlow = useMemo(
-            () => ({ ...flow, screenToFlowPosition: (point: Point) => point, getZoom: () => 1 }),
-            [flow],
-          )
-          return {
-            interaction: useCanvasInteractionCommands(),
-            drag: useWorkspaceCanvasSpaceDrag({
-              workspaceId: shown,
-              reactFlow,
-              setNodes,
-              updateCanvasDocument,
-            }),
-          }
-        },
-        { workspaceId: () => shown },
-      )
-      return {
-        harness,
-        view,
-        switchTo: (id: string) => {
-          shown = id
-          view.rerender()
-        },
-      }
-    }
-
     it('drags the Space of the workspace shown now, not the one shown before', () => {
-      const { harness, view, switchTo } = renderSwitching()
+      const { harness, view, switchTo } = renderSwitchingSpaceDrag()
       switchTo('workspace-b')
 
       press(view, 'space-a', INSIDE_A)
-      expect(view.result.current.drag.spaceFramePreview).toBeNull()
+      expect(view.result.current.readInteraction().spaceDragFramePreview).toBeNull()
 
       press(view, 'space-b', INSIDE_A)
       dragTo({ x: INSIDE_A.x + 40, y: INSIDE_A.y })
-      expect([...(view.result.current.drag.spaceFramePreview?.keys() ?? [])]).toEqual(['space-b'])
+      expect([
+        ...(view.result.current.readInteraction().spaceDragFramePreview?.keys() ?? []),
+      ]).toEqual(['space-b'])
       release({ x: INSIDE_A.x + 100, y: INSIDE_A.y })
 
       const workspaces = useAppStore.getState().workspaces
@@ -564,7 +428,7 @@ describe('useWorkspaceCanvasSpaceDrag reads the committed document', () => {
     })
 
     it('snaps against the Spaces of the workspace shown now', () => {
-      const { view, switchTo } = renderSwitching()
+      const { view, switchTo } = renderSwitchingSpaceDrag()
       useAppStore.setState(state => ({
         workspaces: state.workspaces.map(workspace =>
           workspace.id === 'workspace-b'

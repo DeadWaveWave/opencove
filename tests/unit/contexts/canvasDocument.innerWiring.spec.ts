@@ -135,3 +135,17 @@ describe('Inner hands the document writer of its node store to the hooks that ne
     expect(propsOf('WorkspaceCanvasProviders')).toMatch(/\bnodeStore=\{nodeStore\}/)
   })
 })
+
+// The preview of a Space drag is in the `interaction` slice and the flow host reads it there
+// (#738, PR 6): the Space drag hook returns only its pointer handler, and Inner keeps no preview.
+describe('Inner keeps no Space drag preview', () => {
+  it('names neither the preview nor a setter of it', () => {
+    expect(source).not.toMatch(/\b(spaceFramePreview|spaceDragFramePreview|setSpaceFramePreview)\b/)
+  })
+
+  it('takes only the pointer handler from the Space drag hook', () => {
+    expect(source).toMatch(
+      /const \{ handleSpaceDragHandlePointerDown \} =\s+\w+\.useWorkspaceCanvasSpaceDrag\(/,
+    )
+  })
+})
