@@ -14,7 +14,7 @@ import {
 // (default priority), as the canvas's own `setState` calls do today; a write from a discrete event
 // renders in that event's batch. A subscription through `useStore` (`useSyncExternalStore`) would
 // render the frame's write in a microtask, inside the frame: arm A, which S6 does not ship.
-// jsdom has one thread and no paint, so what these tests pin is the lane: a microtask turn is
+// happy-dom has one thread and no paint, so what these tests pin is the lane: a microtask turn is
 // enough to show a sync-priority render and not enough to show a default-priority one.
 
 const selectMagneticSnappingEnabled = (interaction: CanvasInteractionState) =>
