@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react'
 import type { Node } from '@xyflow/react'
-import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
+import type { TerminalNodeData, WorkspaceSpaceRect } from '../../../types'
 import { WORKSPACE_ARRANGE_GRID_PX } from '../../../utils/workspaceArrange.shared'
 import { resolveWorkspaceSnap } from '../../../utils/workspaceSnap'
 import {
@@ -26,36 +26,12 @@ import {
 } from './useNodeDragSession.liveProjection'
 import type { WorkspaceCanvasNodeDragSession } from './useNodeDragSession.types'
 import {
-  useCanvasDocumentCommands,
   useCanvasInteractionCommands,
   useReadCanvasDocument,
   useReadCanvasInteraction,
   useReadCanvasSelection,
 } from '../../../store/canvasStoreContext'
 export type { WorkspaceCanvasNodeDragSession } from './useNodeDragSession.types'
-
-/** The Spaces with the rects of a released frame; the same array when no rect changes. */
-function applySpaceFramePreview(
-  spaces: WorkspaceSpaceState[],
-  preview: ReadonlyMap<string, WorkspaceSpaceRect>,
-): WorkspaceSpaceState[] {
-  let hasSpaceChange = false
-  const nextSpaces = spaces.map(space => {
-    const rect = preview.get(space.id) ?? null
-    if (!rect) {
-      return space
-    }
-
-    if (space.rect && areSpaceRectsEqual(space.rect, rect)) {
-      return space
-    }
-
-    hasSpaceChange = true
-    return { ...space, rect: { ...rect } }
-  })
-
-  return hasSpaceChange ? nextSpaces : spaces
-}
 
 export function useWorkspaceCanvasNodeDragSession({
   workspaceId,
@@ -65,7 +41,6 @@ export function useWorkspaceCanvasNodeDragSession({
   const readSelection = useReadCanvasSelection()
   const readDocument = useReadCanvasDocument()
   const readInteraction = useReadCanvasInteraction()
-  const documentCommands = useCanvasDocumentCommands()
   const { setSnapGuides, setNodeDragFramePreview } = useCanvasInteractionCommands()
   // Private to the session: written once per drag, read per frame, never rendered.
   const dragStartSpaceIdsRef = useRef<readonly string[] | null>(null)
@@ -450,25 +425,18 @@ export function useWorkspaceCanvasNodeDragSession({
     dragStartSpaceIdsRef.current = null
   }, [])
 
-  const endNodeDragSession = useCallback(() => {
-    if (dragSpaceDominantRef.current && committableSpaceFramePreviewRef.current) {
-      const rectOverrideById = committableSpaceFramePreviewRef.current
-      // `updateSpaces` flushes also when nothing changed, and a release that moves no rect must
-      // not flush: decide first, from the committed Spaces, then write from the recipe's own.
-      const { spaces } = readDocument()
-      if (applySpaceFramePreview(spaces, rectOverrideById) !== spaces) {
-        documentCommands.updateSpaces(
-          currentSpaces => applySpaceFramePreview(currentSpaces, rectOverrideById),
-          { flush: true },
-        )
-      }
-    }
+  // Ends the session and hands back what its release should write besides the windows: the Space
+  // frames of a Space-dominant drag, or null. It writes nothing itself: the release writes the
+  // windows and the frames in one commit, and an aborted gesture writes none of it.
+  const endNodeDragSession = useCallback((): ReadonlyMap<string, WorkspaceSpaceRect> | null => {
+    const spaceRects = dragSpaceDominantRef.current ? committableSpaceFramePreviewRef.current : null
 
     dragBaselinePositionByIdRef.current = null
     dragBaselineSpaceRectByIdRef.current = null
     dragSpaceDominantRef.current = false
     clearNodeDragProjection()
-  }, [clearNodeDragProjection, documentCommands, readDocument])
+    return spaceRects
+  }, [clearNodeDragProjection])
 
   useEffect(() => {
     nodeDragPointerAnchorRef.current = null
