@@ -7,33 +7,36 @@ import { useCanvasCollapse } from './workspaceCanvas/collapse/useCanvasCollapse'
 import { WorkspaceCanvasProviders } from './workspaceCanvas/WorkspaceCanvasProviders'
 import { useCanvasSpaceExplorer } from './workspaceCanvas/hooks/useCanvasSpaceExplorer'
 import { useWorkspaceCanvasActionBar } from './workspaceCanvas/hooks/useCanvasActionBarActions'
-export function WorkspaceCanvasInner({
-  workspaceId,
-  onShowMessage,
-  workspacePath,
-  environmentVariables,
-  worktreesRoot,
-  nodes,
-  spaces,
-  activeSpaceId,
-  onActiveSpaceChange,
-  onOpenSpaceContextMenu,
-  shortcutsEnabled = true,
-  onAppendSpaceArchiveRecord,
-  viewport,
-  isMinimapVisible,
-  onViewportChange,
-  onMinimapVisibilityChange,
-  agentSettings,
-  terminalDisplayCalibration = null,
-  terminalDisplayMetrics,
-  onChangePreserveWindowSizesOnArrange,
-  isFocusNodeTargetZoomPreviewing = false,
-  focusNodeId,
-  focusNodeInput,
-  focusSpaceId,
-  focusSequence,
-}: WorkspaceCanvasInnerProps) {
+import { useCanvasCommitProbe } from './shared/windowCommitProbe'
+export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
+  const {
+    workspaceId,
+    onShowMessage,
+    workspacePath,
+    environmentVariables,
+    worktreesRoot,
+    nodes,
+    spaces,
+    activeSpaceId,
+    onActiveSpaceChange,
+    onOpenSpaceContextMenu,
+    shortcutsEnabled = true,
+    onAppendSpaceArchiveRecord,
+    viewport,
+    isMinimapVisible,
+    onViewportChange,
+    onMinimapVisibilityChange,
+    agentSettings,
+    terminalDisplayCalibration = null,
+    terminalDisplayMetrics,
+    onChangePreserveWindowSizesOnArrange,
+    isFocusNodeTargetZoomPreviewing = false,
+    focusNodeId,
+    focusNodeInput,
+    focusSpaceId,
+    focusSequence,
+  } = props
+  useCanvasCommitProbe('WorkspaceCanvasInner', props)
   const reactFlow = useReactFlow<Node<import('../types').TerminalNodeData>, Edge>()
   const canvasState = workspaceCanvasHooks.useWorkspaceCanvasState({
     workspaceId,
