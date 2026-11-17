@@ -2,7 +2,6 @@ import {
   createContext,
   useCallback,
   useContext,
-  useLayoutEffect,
   useMemo,
   useState,
   type ReactElement,
@@ -114,47 +113,10 @@ export function useCanvasSelectionCommands(): CanvasSelectionCommands {
   return useCanvasStore().commands.selection
 }
 
-interface InteractionSnapshot<T> {
-  readonly api: CanvasStore['api']
-  readonly value: T
-}
-
-/**
- * Subscribes to the `interaction` slice, and is the one place that decides when a gesture frame
- * renders its subscribers (arm B of #738, "Render priority"). The value lives in React state that
- * the store's `subscribe` sets, so a write from an animation frame renders at default priority,
- * after the frame, as the canvas's own `setState` calls do; a write from a discrete event renders
- * in that event's batch. `useStore` would render every write at sync
- * priority instead, inside the frame, and is deliberately not used here. Every subscriber of the
- * slice goes through this hook, so guides, previews and nodes stay in one lane.
- *
- * The selector must be a module-scope `const` arrow function that returns a field of the slice or
- * a primitive, never a new object or array: an inline function re-subscribes on every render and a
- * new value is never equal to the last one. `canvasUi.leafSubscribers.spec.ts` reads every caller
- * and fails on either. In the render that receives a new store the hook returns that store's
- * value, never the old one's.
- */
+/** Arm A of #738, "Render priority": a direct `useStore` subscription, sync priority. */
 export function useCanvasInteraction<T>(selector: (interaction: CanvasInteractionState) => T): T {
   const { api } = useCanvasStore()
-  const [snapshot, setSnapshot] = useState<InteractionSnapshot<T>>(() => ({
-    api,
-    value: selector(api.getState().interaction),
-  }))
-
-  useLayoutEffect(() => {
-    const sync = (): void => {
-      const value = selector(api.getState().interaction)
-      setSnapshot(previous =>
-        previous.api === api && Object.is(previous.value, value) ? previous : { api, value },
-      )
-    }
-
-    // A write between the render and this effect never reaches `subscribe`; read once.
-    sync()
-    return api.subscribe(sync)
-  }, [api, selector])
-
-  return snapshot.api === api ? snapshot.value : selector(api.getState().interaction)
+  return useStore(api, state => selector(state.interaction))
 }
 
 /** A stable reader for handlers: it does not subscribe, so callers do not re-render. */
