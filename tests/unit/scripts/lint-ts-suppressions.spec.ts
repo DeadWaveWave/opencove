@@ -109,9 +109,10 @@ describe('TypeScript suppression comments', () => {
     const pkg = JSON.parse(await readFile(resolve(rootDir, 'package.json'), 'utf8'))
 
     // `oxlint --fix` rewrites `@ts-ignore` to `@ts-expect-error` and reports nothing in that run,
-    // so only a second, read-only run sees what the fix left behind.
+    // so only a second, read-only run sees what the fix left behind. That run fails on any warning,
+    // not only on errors, so a new warning cannot pass the gate or CI unread.
     expect(pkg.scripts['lint:fix']).toBe('oxlint --fix .')
-    expect(pkg.scripts.lint).toBe('oxlint .')
+    expect(pkg.scripts.lint).toBe('oxlint --max-warnings=0 .')
     expect(pkg.scripts['verify:checks']).toContain(' && pnpm lint:fix && pnpm lint && ')
   })
 })
