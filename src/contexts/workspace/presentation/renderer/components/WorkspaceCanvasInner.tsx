@@ -63,7 +63,6 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
   })
   const nodeDragSession = workspaceCanvasHooks.useWorkspaceCanvasNodeDragSession({
     workspaceId,
-    magneticSnappingEnabledRef: canvasState.magneticSnappingEnabledRef,
     setSnapGuides: canvasState.setSnapGuides,
   })
   // prettier-ignore
@@ -87,7 +86,6 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
       reactFlow,
       setNodes: nodeStore.setNodes,
       updateCanvasDocument: nodeStore.updateCanvasDocument,
-      magneticSnappingEnabledRef: canvasState.magneticSnappingEnabledRef,
       setSnapGuides: canvasState.setSnapGuides,
     })
   const {
@@ -193,7 +191,6 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
     websiteWindowPasteEnabled: agentSettings.experimentalWebsiteWindowPasteEnabled,
     isShiftPressedRef: canvasState.isShiftPressedRef,
     selectionDraftRef: canvasState.selectionDraftRef,
-    setSelectionDraftUi: canvasState.setSelectionDraftUi,
     reactFlow,
     setNodes: nodeStore.setNodes,
     updateCanvasDocument: nodeStore.updateCanvasDocument,
@@ -329,7 +326,6 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
         isTrackpadCanvasMode={inputMode.isTrackpadCanvasMode}
         useManualCanvasWheelGestures={inputMode.useManualCanvasWheelGestures}
         isShiftPressed={canvasState.isShiftPressed}
-        selectionDraft={canvasState.selectionDraftUi}
         snapGuides={canvasState.snapGuides}
         spaceVisuals={spacesApi.spaceVisuals}
         spaceFramePreview={spaceFramePreview ?? nodeDragSession.nodeSpaceFramePreview}
@@ -345,8 +341,6 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
         activateSpace={spacesApi.activateSpace}
         activateAllSpaces={spacesApi.activateAllSpaces}
         onOpenSpaceContextMenu={onOpenSpaceContextMenu}
-        magneticSnappingEnabled={canvasState.magneticSnappingEnabled}
-        onToggleMagneticSnapping={() => canvasState.setMagneticSnappingEnabled(enabled => !enabled)}
         createTerminalNode={createTerminalNode}
         createNoteNodeFromContextMenu={createNoteNodeFromContextMenu}
         createWebsiteNodeFromContextMenu={createWebsiteNodeFromContextMenu}

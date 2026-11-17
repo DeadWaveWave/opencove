@@ -46,7 +46,6 @@ function renderNestedResize() {
       },
       setNodes: nodeStore.setNodes,
       updateCanvasDocument: nodeStore.updateCanvasDocument,
-      magneticSnappingEnabledRef: { current: false },
       setSnapGuides,
     })
     return { ...drag, ...harness.readStoreDocument() }

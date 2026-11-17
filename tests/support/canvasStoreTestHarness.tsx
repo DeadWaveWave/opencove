@@ -4,14 +4,20 @@ import {
   type RenderHookResult,
   type RenderResult,
 } from '@testing-library/react'
-import { useLayoutEffect, type ReactElement, type ReactNode } from 'react'
+import { useLayoutEffect, useRef, type ReactElement, type ReactNode } from 'react'
 import {
   CanvasStoreProvider,
+  useCanvasInteractionCommands,
   useCanvasSelectionCommands,
   useCanvasUiCommands,
+  useReadCanvasInteraction,
   useReadCanvasSelection,
   useReadCanvasUi,
 } from '../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
+import type {
+  CanvasInteractionCommands,
+  CanvasInteractionState,
+} from '../../src/contexts/workspace/presentation/renderer/store/canvasStore.interaction'
 import type {
   CanvasSelectionCommands,
   CanvasSelectionState,
@@ -24,15 +30,46 @@ import type { ContextMenuState } from '../../src/contexts/workspace/presentation
 
 export const CANVAS_STORE_TEST_WORKSPACE_ID = 'test-workspace'
 
-/** Provides a canvas store to a component under test that is rendered without `WorkspaceCanvas`. */
+/**
+ * Sets the toggle of the store it is first rendered in, before the children's effects. It does
+ * nothing after a workspace switch: the provider carries the toggle to the new store, as in the app.
+ */
+function MagneticSnappingForTest({ enabled }: { enabled: boolean }): null {
+  const read = useReadCanvasInteraction()
+  const commands = useCanvasInteractionCommands()
+  const applied = useRef(false)
+  useLayoutEffect(() => {
+    if (applied.current) {
+      return
+    }
+    applied.current = true
+    if (read().magneticSnappingEnabled !== enabled) {
+      commands.toggleMagneticSnapping()
+    }
+  }, [commands, enabled, read])
+  return null
+}
+
+/**
+ * Provides a canvas store to a component under test that is rendered without `WorkspaceCanvas`.
+ * Magnetic snapping is off unless a test asks for it (the app starts with it on), so a drag
+ * under test never moves a position the test did not choose.
+ */
 export function CanvasStoreTestProvider({
   children,
   workspaceId = CANVAS_STORE_TEST_WORKSPACE_ID,
+  magneticSnapping = false,
 }: {
   children: ReactNode
   workspaceId?: string
+  magneticSnapping?: boolean
 }): ReactElement {
-  return <CanvasStoreProvider workspaceId={workspaceId}>{children}</CanvasStoreProvider>
+  return (
+    <CanvasStoreProvider workspaceId={workspaceId}>
+      <MagneticSnappingForTest enabled={magneticSnapping} />
+      {children}
+    </CanvasStoreProvider>
+  )
 }
 
 export interface CanvasStoreProbe {
@@ -40,6 +77,8 @@ export interface CanvasStoreProbe {
   commands: CanvasUiCommands
   readSelection: () => CanvasSelectionState
   selection: CanvasSelectionCommands
+  readInteraction: () => CanvasInteractionState
+  interaction: CanvasInteractionCommands
 }
 
 function createProbe(): { Probe: () => null; capture: () => CanvasStoreProbe } {
@@ -51,6 +90,8 @@ function createProbe(): { Probe: () => null; capture: () => CanvasStoreProbe } {
       commands: useCanvasUiCommands(),
       readSelection: useReadCanvasSelection(),
       selection: useCanvasSelectionCommands(),
+      readInteraction: useReadCanvasInteraction(),
+      interaction: useCanvasInteractionCommands(),
     }
     return null
   }
@@ -67,6 +108,8 @@ function createProbe(): { Probe: () => null; capture: () => CanvasStoreProbe } {
         commands: captured.commands,
         readSelection: () => captured.readSelection(),
         selection: captured.selection,
+        readInteraction: () => captured.readInteraction(),
+        interaction: captured.interaction,
       }
     },
   }

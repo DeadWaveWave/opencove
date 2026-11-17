@@ -100,10 +100,8 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
       const nodesRef = useRef(nodes)
       nodesRef.current = nodes
       const [, setSnapGuides] = useState(null)
-      const magneticSnappingEnabledRef = useRef(false)
       const nodeDragSession = useWorkspaceCanvasNodeDragSession({
         workspaceId: 'workspace-remove',
-        magneticSnappingEnabledRef,
         setSnapGuides,
       })
 
@@ -219,14 +217,12 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
       const nodesRef = useRef(nodes)
       nodesRef.current = nodes
       const [, setSnapGuides] = useState(null)
-      const magneticSnappingEnabledRef = useRef(false)
       const selection = useCanvasSelectionCommands()
       useLayoutEffect(() => {
         selection.setSpaceIds(['selected-space'])
       }, [selection])
       const nodeDragSession = useWorkspaceCanvasNodeDragSession({
         workspaceId: 'workspace-persist',
-        magneticSnappingEnabledRef,
         setSnapGuides,
       })
 
@@ -355,11 +351,9 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
       const nodesRef = useRef(nodes)
       nodesRef.current = nodes
       const [snapGuides, setSnapGuides] = useState<unknown[] | null>(null)
-      const magneticSnappingEnabledRef = useRef(true)
       const isNodeDraggingRef = useRef(false)
       const nodeDragSession = useWorkspaceCanvasNodeDragSession({
         workspaceId: 'workspace-snap',
-        magneticSnappingEnabledRef,
         setSnapGuides,
       })
 
@@ -417,7 +411,11 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
       )
     }
 
-    render(<Harness />, { wrapper: CanvasStoreTestProvider })
+    render(<Harness />, {
+      wrapper: ({ children }) => (
+        <CanvasStoreTestProvider magneticSnapping>{children}</CanvasStoreTestProvider>
+      ),
+    })
 
     fireEvent.click(screen.getByRole('button', { name: 'Drag' }))
     await waitFor(() => {

@@ -12,7 +12,6 @@ function renderSession(spaces: WorkspaceSpaceState[] = []) {
   return renderHookWithCanvasStore(() =>
     useWorkspaceCanvasNodeDragSession({
       workspaceId: 'drag-session',
-      magneticSnappingEnabledRef: { current: false },
       setSnapGuides: vi.fn(),
     }),
   )

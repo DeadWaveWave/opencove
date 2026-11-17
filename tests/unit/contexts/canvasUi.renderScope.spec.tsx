@@ -38,6 +38,7 @@ vi.mock('@xyflow/react', () => {
       setCenter: vi.fn(),
       getViewport: vi.fn(() => ({ x: 0, y: 0, zoom: 1 })),
       setViewport: vi.fn(),
+      getNodes: () => currentNodes,
     }),
     useStore: (selector: (state: unknown) => unknown) =>
       selector({ nodes: currentNodes, transform: [0, 0, 1] }),
@@ -237,5 +238,46 @@ describe('WorkspaceCanvas menu render scope', () => {
     // Synchronous commit of the rerender: the menu is already gone, never shown under the new id.
     expect(document.querySelector('.workspace-canvas-context-menu')).toBeNull()
     expect(renders.every(visible => !visible)).toBe(true)
+  })
+})
+
+describe('WorkspaceCanvas marquee render scope', () => {
+  it('draws, moves and clears the marquee rectangle without re-rendering WorkspaceCanvasInner', async () => {
+    stubOpencoveApi()
+    seedWorkspaceCanvasStore()
+    const frames: Array<() => void> = []
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
+      frames.push(() => callback(0))
+      return frames.length
+    })
+    const runFrames = async () => {
+      await act(async () => {
+        frames.splice(0).forEach(frame => frame())
+      })
+    }
+    const marquee = () => document.querySelector('.workspace-selection-draft') as HTMLElement | null
+    try {
+      render(<CanvasHarness />)
+      await act(async () => {})
+      expect(marquee()).toBeNull()
+      const rendersBefore = canvasStateCalls.count
+      const pane = screen.getByTestId('react-flow-pane')
+
+      fireEvent.pointerDown(pane, { button: 0, shiftKey: true, clientX: 10, clientY: 20 })
+      await runFrames()
+      expect(marquee()?.getAttribute('data-selection-phase')).toBe('active')
+
+      fireEvent.pointerMove(pane, { buttons: 1, clientX: 60, clientY: 90 })
+      await runFrames()
+      expect(marquee()?.style.width).toBe('50px')
+      expect(marquee()?.style.height).toBe('70px')
+
+      fireEvent.pointerUp(window, { clientX: 60, clientY: 90 })
+      await runFrames()
+      expect(marquee()).toBeNull()
+      expect(canvasStateCalls.count).toBe(rendersBefore)
+    } finally {
+      vi.restoreAllMocks()
+    }
   })
 })

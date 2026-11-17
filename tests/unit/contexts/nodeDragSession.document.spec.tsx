@@ -35,7 +35,6 @@ function useSessionUnderTest({ workspaceId }: CanvasNodeStoreContext) {
   return {
     session: useWorkspaceCanvasNodeDragSession({
       workspaceId,
-      magneticSnappingEnabledRef: { current: false },
       setSnapGuides,
     }),
     selection: useCanvasSelectionCommands(),
@@ -182,7 +181,6 @@ describe('node drag session frames', () => {
       () => {
         return useWorkspaceCanvasNodeDragSession({
           workspaceId: current,
-          magneticSnappingEnabledRef: { current: false },
           setSnapGuides,
         })
       },
@@ -233,7 +231,6 @@ describe('node drag session frames', () => {
       () => ({
         session: useWorkspaceCanvasNodeDragSession({
           workspaceId: current,
-          magneticSnappingEnabledRef: { current: false },
           setSnapGuides,
         }),
         selection: useCanvasSelectionCommands(),

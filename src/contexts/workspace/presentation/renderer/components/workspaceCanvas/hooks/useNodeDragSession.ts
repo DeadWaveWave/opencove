@@ -33,6 +33,7 @@ import type { WorkspaceCanvasNodeDragSession } from './useNodeDragSession.types'
 import {
   useCanvasDocumentCommands,
   useReadCanvasDocument,
+  useReadCanvasInteraction,
   useReadCanvasSelection,
 } from '../../../store/canvasStoreContext'
 export type { WorkspaceCanvasNodeDragSession } from './useNodeDragSession.types'
@@ -62,15 +63,14 @@ function applySpaceFramePreview(
 
 export function useWorkspaceCanvasNodeDragSession({
   workspaceId,
-  magneticSnappingEnabledRef,
   setSnapGuides,
 }: {
   workspaceId: string
-  magneticSnappingEnabledRef: React.MutableRefObject<boolean>
   setSnapGuides: React.Dispatch<React.SetStateAction<WorkspaceSnapGuide[] | null>>
 }): WorkspaceCanvasNodeDragSession {
   const readSelection = useReadCanvasSelection()
   const readDocument = useReadCanvasDocument()
+  const readInteraction = useReadCanvasInteraction()
   const documentCommands = useCanvasDocumentCommands()
   // Private to the session: written once per drag, read per frame, never rendered.
   const dragStartSpaceIdsRef = useRef<readonly string[] | null>(null)
@@ -293,7 +293,7 @@ export function useWorkspaceCanvasNodeDragSession({
         readCanvasInteractionState(workspaceId),
       )
       let pendingReleasePositionById: Map<string, { x: number; y: number }> | null = null
-      if (draggedNodeIds.length > 0 && magneticSnappingEnabledRef.current) {
+      if (draggedNodeIds.length > 0 && readInteraction().magneticSnappingEnabled) {
         const snappedNodes = interaction.nodes.map(node => {
           const desired = desiredDraggedPositionById.get(node.id)
           return desired ? { ...node, position: desired } : node
@@ -409,13 +409,7 @@ export function useWorkspaceCanvasNodeDragSession({
         shouldResolveSecondary ? 'live' : 'primary',
       )
     },
-    [
-      magneticSnappingEnabledRef,
-      readDocument,
-      resolveDragLayoutProjection,
-      setSnapGuides,
-      workspaceId,
-    ],
+    [readDocument, readInteraction, resolveDragLayoutProjection, setSnapGuides, workspaceId],
   )
 
   const applyPendingReleaseProjection = useCallback(

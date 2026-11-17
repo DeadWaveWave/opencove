@@ -17,7 +17,6 @@ import type { WorkspaceArrangeStyle } from '../../utils/workspaceArrange'
 import type { WorkspaceSnapGuide } from '../../utils/workspaceSnap'
 import type { SpaceExplorerOpenDocumentBlock } from './hooks/useSpaceExplorer.guards'
 import type {
-  SelectionDraftState,
   SpaceVisual,
   SpaceWorktreeMismatchDropWarningState,
   SpaceWorktreeOperationPhase,
@@ -28,11 +27,6 @@ import type {
 import type { SpaceExplorerClipboardItem } from './view/WorkspaceSpaceExplorerOverlay.operations'
 import type { WorkspaceCanvasActionKind } from './view/WorkspaceCanvasActionBar'
 import type { CanvasLod } from './view/canvasLod'
-
-export type SelectionDraftUiState = Pick<
-  SelectionDraftState,
-  'startX' | 'startY' | 'currentX' | 'currentY' | 'phase'
->
 
 export interface WorkspaceCanvasViewProps {
   workspaceId: string
@@ -82,7 +76,6 @@ export interface WorkspaceCanvasViewProps {
   isTrackpadCanvasMode: boolean
   useManualCanvasWheelGestures: boolean
   isShiftPressed: boolean
-  selectionDraft: SelectionDraftUiState | null
   snapGuides: WorkspaceSnapGuide[] | null
   spaceVisuals: SpaceVisual[]
   spaceFramePreview: ReadonlyMap<string, WorkspaceSpaceRect> | null
@@ -126,8 +119,6 @@ export interface WorkspaceCanvasViewProps {
   activateSpace: (spaceId: string) => void
   activateAllSpaces: () => void
   onOpenSpaceContextMenu?: (spaceId: string, anchor: { x: number; y: number }) => void
-  magneticSnappingEnabled: boolean
-  onToggleMagneticSnapping: () => void
   createTerminalNode: () => Promise<void>
   createNoteNodeFromContextMenu: () => void
   createWebsiteNodeFromContextMenu: () => void

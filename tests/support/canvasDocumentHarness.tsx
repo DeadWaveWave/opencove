@@ -80,11 +80,13 @@ export function createCanvasDocumentHarness({
 
 function createWrapper(
   workspaceId: string | (() => string),
+  magneticSnapping: boolean,
 ): (props: { children: ReactNode }) => React.ReactElement {
   return function Wrapper({ children }) {
     return (
       <CanvasStoreTestProvider
         workspaceId={typeof workspaceId === 'function' ? workspaceId() : workspaceId}
+        magneticSnapping={magneticSnapping}
       >
         <ReactFlowProvider>{children}</ReactFlowProvider>
       </CanvasStoreTestProvider>
@@ -95,15 +97,22 @@ function createWrapper(
 /**
  * `renderHook` under the canvas store provider of `workspaceId` and a React Flow store. A function
  * is read on every render, so a test switches workspace by changing what it returns and calling
- * `rerender`.
+ * `rerender`. Magnetic snapping starts off unless `magneticSnapping` is true.
  */
 export function renderInCanvasDocument<Result, Props = undefined>(
   callback: (props: Props) => Result,
-  options: { workspaceId?: string | (() => string); initialProps?: Props } = {},
+  options: {
+    workspaceId?: string | (() => string)
+    initialProps?: Props
+    magneticSnapping?: boolean
+  } = {},
 ): RenderHookResult<Result, Props> {
   return renderHook(callback, {
     initialProps: options.initialProps,
-    wrapper: createWrapper(options.workspaceId ?? CANVAS_DOCUMENT_WORKSPACE_ID),
+    wrapper: createWrapper(
+      options.workspaceId ?? CANVAS_DOCUMENT_WORKSPACE_ID,
+      options.magneticSnapping === true,
+    ),
   })
 }
 
@@ -145,9 +154,11 @@ export function renderCanvasNodeStore<Extra extends object = Record<never, never
   {
     workspacePath = `/tmp/${harness.workspaceId}`,
     nodeStoreOptions,
+    magneticSnapping,
     extend,
   }: {
     workspacePath?: string
+    magneticSnapping?: boolean
     /** Further parameters of the node store, such as `onShowMessage`. */
     nodeStoreOptions?: Partial<
       Pick<
@@ -196,6 +207,6 @@ export function renderCanvasNodeStore<Extra extends object = Record<never, never
       }
       return { ...context, ...(extend ? extend(context) : ({} as Extra)) }
     },
-    { workspaceId: harness.workspaceId },
+    { workspaceId: harness.workspaceId, magneticSnapping },
   )
 }

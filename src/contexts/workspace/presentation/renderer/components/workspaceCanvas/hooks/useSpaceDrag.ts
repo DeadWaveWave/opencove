@@ -20,6 +20,7 @@ import {
   useCanvasSelectionCommands,
   useCanvasUiCommands,
   useReadCanvasDocument,
+  useReadCanvasInteraction,
   useReadCanvasSelection,
 } from '../../../store/canvasStoreContext'
 import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
@@ -29,7 +30,6 @@ interface UseSpaceDragParams {
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
   setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']
   updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
-  magneticSnappingEnabledRef: React.MutableRefObject<boolean>
   setSnapGuides: React.Dispatch<React.SetStateAction<WorkspaceSnapGuide[] | null>>
 }
 
@@ -38,7 +38,6 @@ export function useWorkspaceCanvasSpaceDrag({
   reactFlow,
   setNodes,
   updateCanvasDocument,
-  magneticSnappingEnabledRef,
   setSnapGuides,
 }: UseSpaceDragParams): {
   spaceFramePreview: ReadonlyMap<string, WorkspaceSpaceRect> | null
@@ -51,6 +50,7 @@ export function useWorkspaceCanvasSpaceDrag({
   const ui = useCanvasUiCommands()
   const readDocument = useReadCanvasDocument()
   const readSelection = useReadCanvasSelection()
+  const readInteraction = useReadCanvasInteraction()
   const selection = useCanvasSelectionCommands()
 
   const reactFlowStore = useStoreApi()
@@ -90,12 +90,12 @@ export function useWorkspaceCanvasSpaceDrag({
         spaceId,
         desiredRect,
         spaces: readDocument().spaces,
-        magneticSnappingEnabled: magneticSnappingEnabledRef.current,
+        magneticSnappingEnabled: readInteraction().magneticSnappingEnabled,
         setSnapGuides,
         commit: options?.commit,
       })
     },
-    [magneticSnappingEnabledRef, readDocument, setSnapGuides, workspaceId],
+    [readDocument, readInteraction, setSnapGuides, workspaceId],
   )
 
   const resolveProjectedDragDelta = useCallback(
