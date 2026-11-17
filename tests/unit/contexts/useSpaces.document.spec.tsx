@@ -7,10 +7,7 @@ import type {
   TerminalNodeData,
   WorkspaceSpaceState,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
-import {
-  readWorkspaceDocument,
-  replaceWorkspaceSpaces,
-} from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+import { readWorkspaceDocument } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import {
   useCanvasSelectionCommands,
   useCanvasUiCommands,
@@ -23,6 +20,7 @@ import {
   type CanvasNodeStoreContext,
 } from '../../support/canvasDocumentHarness'
 import { createRowNodes, createSpace } from '../../support/canvasSelectionFixtures'
+import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
 
 vi.mock('@app/renderer/i18n', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -82,7 +80,7 @@ function useSpacesUnderTest({ workspaceId, nodeStore, nodes, spaces }: CanvasNod
 // `useWorkspaceCanvasSpaces` in the same commit: the `spaces` prop that effect sees is stale.
 function useLateWriterThenSpaces(context: CanvasNodeStoreContext) {
   useLayoutEffect(() => {
-    replaceWorkspaceSpaces(context.workspaceId, [
+    replaceSpacesInStore(context.workspaceId, [
       ...(readStoreSpaces(context.workspaceId) ?? []),
       space('space-late', [], 900),
     ])
@@ -125,7 +123,7 @@ describe('useWorkspaceCanvasSpaces reads and writes the committed document', () 
     })
 
     act(() => {
-      replaceWorkspaceSpaces(harness.workspaceId, [
+      replaceSpacesInStore(harness.workspaceId, [
         ...harness.readStoreDocument().spaces,
         space('space-late', [], 700),
       ])
@@ -236,7 +234,7 @@ describe('useWorkspaceCanvasSpaces reads and writes the committed document', () 
     let focused = false
 
     act(() => {
-      replaceWorkspaceSpaces(harness.workspaceId, [
+      replaceSpacesInStore(harness.workspaceId, [
         ...harness.readStoreDocument().spaces,
         space('space-late', [], 900),
       ])
@@ -252,7 +250,7 @@ describe('useWorkspaceCanvasSpaces reads and writes the committed document', () 
     const view = renderSpaces(harness)
 
     act(() => {
-      replaceWorkspaceSpaces(harness.workspaceId, [
+      replaceSpacesInStore(harness.workspaceId, [
         ...harness.readStoreDocument().spaces,
         space('space-late', [], 900),
       ])
@@ -267,7 +265,7 @@ describe('useWorkspaceCanvasSpaces reads and writes the committed document', () 
     const view = renderSpaces(harness)
 
     await act(async () => {
-      replaceWorkspaceSpaces(harness.workspaceId, [
+      replaceSpacesInStore(harness.workspaceId, [
         ...harness.readStoreDocument().spaces,
         space('space-late', [], 700),
       ])
@@ -311,7 +309,7 @@ describe('useWorkspaceCanvasSpaces reads and writes the committed document', () 
     const view = renderSpaces(harness)
 
     act(() => {
-      replaceWorkspaceSpaces(harness.workspaceId, [
+      replaceSpacesInStore(harness.workspaceId, [
         ...harness.readStoreDocument().spaces,
         space('space-late', [], 700),
       ])

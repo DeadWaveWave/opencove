@@ -6,7 +6,6 @@ import {
   commitCanvasDocument,
   readWorkspaceDocument,
   replaceWorkspaceNodes,
-  replaceWorkspaceSpaces,
 } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import type {
   TerminalNodeData,
@@ -21,6 +20,7 @@ import {
 import { createRowNodes, createSpace } from '../../support/canvasSelectionFixtures'
 import { renderSpaceOwnershipInDocument } from '../../support/spaceOwnershipHarness'
 import { pixelNode } from './workspacePixelLayer.fixtures'
+import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
 
 // The drop and the warning of a node drag read the committed document when they run, write the
 // nodes and the Spaces of a drop in one store update, and flush once, after the last synchronous
@@ -336,7 +336,7 @@ describe('a node drop that fails the transfer check', () => {
     const dropped = harness.readStoreDocument().nodes[0]
 
     act(() => {
-      replaceWorkspaceSpaces(harness.workspaceId, [
+      replaceSpacesInStore(harness.workspaceId, [
         ...harness.readStoreDocument().spaces,
         createSpace('space-late', { x: 1400, y: 800, width: 400, height: 300 }, []),
       ])
@@ -404,7 +404,7 @@ describe('the reads of a node drop', () => {
     const dropped = harness.readStoreDocument().nodes[0]
 
     act(() => {
-      replaceWorkspaceSpaces(harness.workspaceId, [
+      replaceSpacesInStore(harness.workspaceId, [
         ...harness.readStoreDocument().spaces,
         createSpace('space-late', { x: 1400, y: 800, width: 400, height: 300 }, []),
       ])
@@ -430,7 +430,7 @@ describe('the reads of a node drop', () => {
     const dropped = harness.readStoreDocument().nodes[0]
 
     act(() => {
-      replaceWorkspaceSpaces(harness.workspaceId, [
+      replaceSpacesInStore(harness.workspaceId, [
         ...harness.readStoreDocument().spaces,
         // Its left edge is 1 flow unit to the right of the node's left edge, below the node.
         createSpace('space-snap', { x: FREE_AT.x + 1, y: 1100, width: 400, height: 300 }, []),
@@ -450,7 +450,7 @@ describe('the reads of a node drop', () => {
     const member = note('m', 1040, 540)
     const { harness, view } = setup([note('n2', FREE_AT.x, FREE_AT.y), member], [])
     act(() => {
-      replaceWorkspaceSpaces(harness.workspaceId, [
+      replaceSpacesInStore(harness.workspaceId, [
         createSpace('space-b', { x: 1000, y: 500, width: 400, height: 300 }, ['m']),
       ])
     })
@@ -466,7 +466,7 @@ describe('the reads of a node drop', () => {
           .readStoreDocument()
           .nodes.map(node => (node.id === 'm' ? { ...node, position: { x: 1140, y: 540 } } : node)),
       )
-      replaceWorkspaceSpaces(harness.workspaceId, [
+      replaceSpacesInStore(harness.workspaceId, [
         createSpace('space-b', { x: 1100, y: 500, width: 400, height: 300 }, ['m']),
       ])
     })
@@ -490,7 +490,7 @@ describe('the reads of a node drop', () => {
           return
         }
         replaceWorkspaceNodes(harness.workspaceId, [...harness.readStoreDocument().nodes, lateNode])
-        replaceWorkspaceSpaces(harness.workspaceId, [
+        replaceSpacesInStore(harness.workspaceId, [
           ...harness.readStoreDocument().spaces,
           lateSpace,
         ])
@@ -559,7 +559,7 @@ describe('the worktree warning of a node drop', () => {
     const node = harness.readStoreDocument().nodes[0]
 
     act(() => {
-      replaceWorkspaceSpaces(harness.workspaceId, [
+      replaceSpacesInStore(harness.workspaceId, [
         ...harness.readStoreDocument().spaces,
         {
           ...createSpace('space-late', { x: 0, y: 0, width: 10, height: 10 }, []),
@@ -590,7 +590,7 @@ describe('the worktree warning of a node drop', () => {
     const node = releaseAt(harness, 'n1', FREE_AT)
 
     act(() => {
-      replaceWorkspaceSpaces(harness.workspaceId, [
+      replaceSpacesInStore(harness.workspaceId, [
         ...harness.readStoreDocument().spaces,
         {
           ...createSpace('space-late', { x: 1400, y: 800, width: 400, height: 300 }, []),

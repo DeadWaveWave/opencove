@@ -19,7 +19,6 @@ import {
 } from '@contexts/workspace/presentation/renderer/store/canvasStoreContext'
 import type { TerminalNodeData } from '@contexts/workspace/presentation/renderer/types'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
-import { replaceWorkspaceSpaces } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import {
   createCanvasDocumentHarness,
   renderCanvasNodeStore,
@@ -33,6 +32,7 @@ import {
   createRowNodes,
   createSpace,
 } from '../../support/canvasSelectionFixtures'
+import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
 
 // Each writer of the node selection writes the canvas store's `selection` slice with one command,
 // and keeps writing the `selected` flag on the document nodes and the two React Flow store flags
@@ -662,7 +662,7 @@ describe('the Spaces the selection hooks read (#702, PR 7)', () => {
 
     // In A one Space holds a and b, and c is outside every Space: a is out of c's scope.
     act(() => {
-      replaceWorkspaceSpaces('workspace-a', [createSpace('s-a', narrow, ['a', 'b'])])
+      replaceSpacesInStore('workspace-a', [createSpace('s-a', narrow, ['a', 'b'])])
       view.result.current.select('c', { toggle: true })
     })
     expect(holder.selectedIds).toEqual(['c'])
@@ -671,7 +671,7 @@ describe('the Spaces the selection hooks read (#702, PR 7)', () => {
     switchTo('workspace-b')
     holder.setNodes(nodes => nodes.map(node => ({ ...node, selected: node.id === 'a' })))
     act(() => {
-      replaceWorkspaceSpaces('workspace-b', [createSpace('s-b', wide, ['a', 'b', 'c'])])
+      replaceSpacesInStore('workspace-b', [createSpace('s-b', wide, ['a', 'b', 'c'])])
       view.result.current.select('c', { toggle: true })
     })
     expect(holder.selectedIds).toEqual(['a', 'c'])
@@ -716,7 +716,7 @@ describe('the Spaces the selection hooks read (#702, PR 7)', () => {
       // The Space reaches the store after the marquee started, as a Space created by another
       // writer would: a copy taken at the start does not hold it.
       act(() => {
-        replaceWorkspaceSpaces(workspaceId, [
+        replaceSpacesInStore(workspaceId, [
           createSpace(spaceId, { x: 0, y: 0, width: 360, height: 260 }, ['a']),
         ])
         view.result.current.draft.handleCanvasPointerUpCapture({ clientX: 350, clientY: 250 })

@@ -12,7 +12,6 @@ import { useCanvasCollapseStore } from '../../../src/contexts/workspace/presenta
 import {
   commitCanvasDocument,
   replaceWorkspaceNodes,
-  replaceWorkspaceSpaces,
 } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import type {
   Point,
@@ -26,6 +25,7 @@ import {
   type CanvasNodeStoreContext,
 } from '../../support/canvasDocumentHarness'
 import { createRowNodes, createSpace } from '../../support/canvasSelectionFixtures'
+import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
 
 type SetNodes = UseWorkspaceCanvasNodesStoreResult['setNodes']
 type UpdateCanvasDocument = UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
@@ -122,10 +122,7 @@ describe('useWorkspaceCanvasSpaceDrag reads the committed document', () => {
       const view = renderDrag(harness)
 
       act(() => {
-        replaceWorkspaceSpaces(harness.workspaceId, [
-          ...harness.readStoreDocument().spaces,
-          spaceC(),
-        ])
+        replaceSpacesInStore(harness.workspaceId, [...harness.readStoreDocument().spaces, spaceC()])
       })
       press(view, 'space-c', { x: 900, y: 200 })
 
@@ -141,7 +138,7 @@ describe('useWorkspaceCanvasSpaceDrag reads the committed document', () => {
 
       act(() => {
         replaceWorkspaceNodes(harness.workspaceId, [nodeAt('n1', 50, 60), nodeAt('n2', 300, 150)])
-        replaceWorkspaceSpaces(harness.workspaceId, [spaceA(['n1', 'n2'])])
+        replaceSpacesInStore(harness.workspaceId, [spaceA(['n1', 'n2'])])
       })
       press(view, 'space-a', INSIDE_A)
       release({ x: INSIDE_A.x + 100, y: INSIDE_A.y })
@@ -203,10 +200,7 @@ describe('useWorkspaceCanvasSpaceDrag reads the committed document', () => {
       press(view, 'space-a', INSIDE_A)
 
       act(() => {
-        replaceWorkspaceSpaces(harness.workspaceId, [
-          ...harness.readStoreDocument().spaces,
-          spaceC(),
-        ])
+        replaceSpacesInStore(harness.workspaceId, [...harness.readStoreDocument().spaces, spaceC()])
       })
       dragTo({ x: INSIDE_A.x + 40, y: INSIDE_A.y })
 
@@ -324,7 +318,7 @@ describe('useWorkspaceCanvasSpaceDrag reads the committed document', () => {
       press(view, 'space-a', INSIDE_A)
 
       act(() => {
-        replaceWorkspaceSpaces(harness.workspaceId, [
+        replaceSpacesInStore(harness.workspaceId, [
           ...harness.readStoreDocument().spaces,
           // Its left edge is 4 flow units from A's left edge after A moves 100 to the right.
           createSpace('space-snap', { x: 104, y: 500, width: 400, height: 400 }, []),
@@ -345,10 +339,7 @@ describe('useWorkspaceCanvasSpaceDrag reads the committed document', () => {
       press(view, 'space-a', INSIDE_A)
 
       act(() => {
-        replaceWorkspaceSpaces(harness.workspaceId, [
-          ...harness.readStoreDocument().spaces,
-          spaceC(),
-        ])
+        replaceSpacesInStore(harness.workspaceId, [...harness.readStoreDocument().spaces, spaceC()])
       })
       release({ x: INSIDE_A.x + 100, y: INSIDE_A.y })
 

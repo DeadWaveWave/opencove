@@ -3,9 +3,10 @@ import { createAppError } from '@shared/errors/appError'
 import { act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
-import { useWorkspaceCanvasState } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasState'
-import { useCanvasDocumentCommands } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
-import { replaceWorkspaceSpaces } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+import {
+  useCanvasDocumentCommands,
+  useReadCanvasDocument,
+} from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
 import type { WorkspaceSpaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
 import {
   createCanvasDocumentHarness,
@@ -16,6 +17,7 @@ import {
   launchWorkspaceAgentSession,
   resolveWorkspaceAgentLaunchBinding,
 } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useWorkspaceAgentLaunch.shared'
+import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
 
 function apiSpace(overrides: Partial<WorkspaceSpaceState> = {}): WorkspaceSpaceState {
   return {
@@ -124,7 +126,7 @@ describe('workspaceAgentLaunch.shared', () => {
       updateSpaces,
     })
     act(() => {
-      replaceWorkspaceSpaces('workspace-1', [
+      replaceSpacesInStore('workspace-1', [
         ...harness.readStoreDocument().spaces,
         apiSpace({ id: 'space-late', name: 'Late' }),
       ])
@@ -237,7 +239,7 @@ describe('workspaceAgentLaunch.shared', () => {
       updateSpaces,
     })
     act(() => {
-      replaceWorkspaceSpaces('workspace-1', [apiSpace({ targetMountId: 'mount-api' })])
+      replaceSpacesInStore('workspace-1', [apiSpace({ targetMountId: 'mount-api' })])
     })
     harness.notifications.mockClear()
     resolveMounts({ mounts: [{ mountId: 'mount-api', rootPath: '/project/apps/api' }] })
@@ -520,21 +522,15 @@ describe('workspaceAgentLaunch.shared', () => {
       ],
     }))
     let shown = 'workspace-a'
-    const noNodes: never[] = []
     const view = renderInCanvasDocument(
       () => ({
         commands: useCanvasDocumentCommands(),
-        state: useWorkspaceCanvasState({
-          workspaceId: shown,
-          nodes: noNodes,
-          spaces: useAppStore.getState().workspaces.find(item => item.id === shown)?.spaces ?? [],
-          viewport: { x: 0, y: 0, zoom: 1 },
-        }),
+        readDocument: useReadCanvasDocument(),
       }),
       { workspaceId: () => shown },
     )
     const updateSpacesOfA = view.result.current.commands.updateSpaces
-    const spacesRefOfA = view.result.current.state.spacesRef
+    const readDocumentOfA = view.result.current.readDocument
     const invoke = vi.mocked(window.opencoveApi.controlSurface.invoke)
     let resolveMounts!: (value: unknown) => void
     invoke.mockReturnValueOnce(new Promise(resolve => (resolveMounts = resolve)) as never)
@@ -549,7 +545,7 @@ describe('workspaceAgentLaunch.shared', () => {
     })
     // During the await another writer adds a Space to A, and the user switches to B.
     act(() => {
-      replaceWorkspaceSpaces('workspace-a', [
+      replaceSpacesInStore('workspace-a', [
         ...harness.readStoreDocument().spaces,
         spaceOf('space-late', null),
       ])
@@ -569,9 +565,9 @@ describe('workspaceAgentLaunch.shared', () => {
     ])
     expect(workspaceB).toBe(workspaceBBefore)
     expect(harness.flush).toHaveBeenCalledTimes(1)
-    // The launch continues after the binding and reads the Spaces again: the `spacesRef` kept from
+    // The launch continues after the binding and reads the Spaces again: the reader kept from
     // before the switch still reads workspace A, with the binding written.
-    expect(spacesRefOfA.current.map(item => [item.id, item.targetMountId])).toEqual([
+    expect(readDocumentOfA().spaces.map(item => [item.id, item.targetMountId])).toEqual([
       ['space-a', 'mount-api'],
       ['space-late', null],
     ])

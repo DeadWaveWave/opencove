@@ -3,10 +3,7 @@ import type { Node } from '@xyflow/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import { useScrollbackStore } from '../../../src/contexts/workspace/presentation/renderer/store/useScrollbackStore'
-import {
-  replaceWorkspaceNodes,
-  replaceWorkspaceSpaces,
-} from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+import { replaceWorkspaceNodes } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import type {
   TerminalNodeData,
   WorkspaceSpaceState,
@@ -34,6 +31,7 @@ import {
   renderInCanvasDocument,
 } from '../../support/canvasDocumentHarness'
 import { pixelNode } from './workspacePixelLayer.fixtures'
+import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
 
 // The node store reads the nodes it closes, scrolls and focuses, and its creators read the nodes
 // and the Spaces they place against, from the committed document as the store holds it when they
@@ -333,7 +331,7 @@ describe.each(Object.keys(CREATIONS))('creating %s', name => {
     const { view } = renderStore({ a: { nodes: [] } })
     let created: Node<TerminalNodeData> | null = null
     await act(async () => {
-      replaceWorkspaceSpaces(A, [LATE_SPACE])
+      replaceSpacesInStore(A, [LATE_SPACE])
       created = (await CREATIONS[name](view.result.current)) as Node<TerminalNodeData>
     })
 
@@ -501,7 +499,7 @@ describe('the plugin window creation', () => {
   it('opens the window in a Space that was added to the store in the same act', async () => {
     const { view } = renderStore({ a: { nodes: [] } })
     act(() => {
-      replaceWorkspaceSpaces(A, [LATE_SPACE])
+      replaceSpacesInStore(A, [LATE_SPACE])
       store(view).createPluginNode(ANCHOR, 'plugin-1')
     })
 

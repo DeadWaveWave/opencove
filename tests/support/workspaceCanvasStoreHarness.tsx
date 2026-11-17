@@ -4,9 +4,10 @@ import { useAppStore } from '../../src/app/renderer/shell/store/useAppStore'
 import type { WorkspaceDocument } from '../../src/contexts/workspace/presentation/renderer/store/workspaceDocument'
 import {
   bindWorkspaceDocumentStore,
+  commitCanvasDocument,
   readWorkspaceDocument,
   replaceWorkspaceNodes,
-  replaceWorkspaceSpaces,
+  type WorkspaceDocumentCommandResult,
 } from '../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import type {
   TerminalNodeData,
@@ -45,6 +46,14 @@ export function seedWorkspaceCanvasStore({
     isMinimapVisible: false,
   }
   useAppStore.setState({ workspaces: [workspace], activeWorkspaceId: workspaceId })
+}
+
+/** Replaces the Spaces of a workspace in the store with one write, as a test's seed or interference. */
+export function replaceSpacesInStore(
+  workspaceId: string,
+  spaces: WorkspaceSpaceState[],
+): WorkspaceDocumentCommandResult {
+  return commitCanvasDocument(workspaceId, document => ({ ...document, spaces }))
 }
 
 const EMPTY_NODES: Node<TerminalNodeData>[] = []
@@ -121,7 +130,7 @@ export function storeBackedChannelsOf(
       return read().spaces
     },
     set current(next: WorkspaceSpaceState[]) {
-      replaceWorkspaceSpaces(workspaceId, next)
+      replaceSpacesInStore(workspaceId, next)
     },
   }
   return {

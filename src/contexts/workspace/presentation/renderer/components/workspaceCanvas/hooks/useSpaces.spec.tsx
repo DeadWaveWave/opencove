@@ -4,7 +4,7 @@ import { ReactFlowProvider, type Node, type ReactFlowInstance } from '@xyflow/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '@app/renderer/shell/store/useAppStore'
 import type { TerminalNodeData, WorkspaceSpaceState, WorkspaceState } from '../../../types'
-import { replaceWorkspaceSpaces } from '../../../store/workspaceDocumentCommands'
+import { commitCanvasDocument } from '../../../store/workspaceDocumentCommands'
 import { useWorkspaceCanvasSpaces } from './useSpaces'
 import { CanvasStoreTestProvider } from '../../../../../../../../tests/support/canvasStoreTestHarness'
 
@@ -144,7 +144,7 @@ describe('useWorkspaceCanvasSpaces', () => {
 
     // Archiving removes the Space from the store, then the canvas renders without it.
     act(() => {
-      replaceWorkspaceSpaces('workspace-1', [])
+      commitCanvasDocument('workspace-1', document => ({ ...document, spaces: [] }))
     })
     rendered.rerender(
       <ReactFlowProvider>

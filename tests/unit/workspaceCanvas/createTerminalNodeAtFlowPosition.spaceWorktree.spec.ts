@@ -3,7 +3,6 @@ import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/ag
 import { resolveTerminalPtyGeometryForNodeFrame } from '../../../src/contexts/workspace/domain/terminalPtyGeometry'
 import { resolveDefaultTerminalWindowSize } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/constants'
 import { createTerminalNodeAtFlowPosition } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useInteractions.paneNodeCreation'
-import { replaceWorkspaceSpaces } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import {
   createCanvasDocumentHarness,
   renderCanvasDocumentCommands,
@@ -11,6 +10,7 @@ import {
   renderCanvasNodeStore,
 } from '../../support/canvasDocumentHarness'
 import type { WorkspaceSpaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
+import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
 
 function regularTerminalLaunchGeometry() {
   return resolveTerminalPtyGeometryForNodeFrame({
@@ -206,7 +206,7 @@ describe('createTerminalNodeAtFlowPosition space worktree launch', () => {
     }
     // The user edits the Space in the store while the node is being created.
     const createNodeForSession = vi.fn(async () => {
-      replaceWorkspaceSpaces('workspace-1', [
+      replaceSpacesInStore('workspace-1', [
         {
           ...originalSpace,
           name: 'Renamed Locally',

@@ -4,7 +4,6 @@ import { describe, expect, it, vi } from 'vitest'
 import type { Node } from '@xyflow/react'
 import { useWorkspaceCanvasSpaceDirectoryOps } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceDirectoryOps'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
-import { replaceWorkspaceSpaces } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import type {
   TerminalNodeData,
   WorkspaceSpaceState,
@@ -14,6 +13,7 @@ import {
   renderCanvasNodeStore,
   type CanvasNodeStoreContext,
 } from '../../support/canvasDocumentHarness'
+import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
 
 function useDirectoryOpsUnderTest({ workspaceId, canvasState, nodeStore }: CanvasNodeStoreContext) {
   return useWorkspaceCanvasSpaceDirectoryOps({
@@ -21,7 +21,7 @@ function useDirectoryOpsUnderTest({ workspaceId, canvasState, nodeStore }: Canva
     spacesRef: canvasState.spacesRef,
     nodesRef: nodeStore.nodesRef,
     setNodes: nodeStore.setNodes,
-    onSpacesChange: nextSpaces => replaceWorkspaceSpaces(workspaceId, nextSpaces),
+    onSpacesChange: nextSpaces => replaceSpacesInStore(workspaceId, nextSpaces),
     onRequestPersistFlush: vi.fn(),
     closeNode: vi.fn(async () => undefined),
   })

@@ -11,7 +11,6 @@ import {
   requestWorkspaceDocumentPersistFlush,
   removeWorkspaceSpaceArchiveRecord,
   replaceWorkspaceNodes,
-  replaceWorkspaceSpaces,
   setWorkspaceActiveSpace,
   setWorkspaceMinimapVisible,
   setWorkspaceViewport,
@@ -223,7 +222,10 @@ describe('workspace document commands', () => {
     expect(useAppStore.getState().workspaces[0].activeSpaceId).toBeNull()
 
     setWorkspaceActiveSpace('a', 'a-space')
-    replaceWorkspaceSpaces('a', [space('other', ['terminal-1', 'terminal-1'])])
+    commitCanvasDocument('a', document => ({
+      ...document,
+      spaces: [space('other', ['terminal-1', 'terminal-1'])],
+    }))
     const afterSpaces = useAppStore.getState().workspaces[0]
     expect(afterSpaces.spaces[0].nodeIds).toEqual(['terminal-1'])
     expect(afterSpaces.activeSpaceId).toBeNull()
@@ -243,7 +245,7 @@ describe('workspace document commands', () => {
     expect(document?.nodes).toBe(workspaceA.nodes)
     expect(document?.spaces).toBe(workspaceA.spaces)
 
-    replaceWorkspaceSpaces('a', [space('later', [])])
+    commitCanvasDocument('a', current => ({ ...current, spaces: [space('later', [])] }))
     expect(readWorkspaceDocument('a')?.spaces.map(item => item.id)).toEqual(['later'])
     // A document read earlier is a snapshot: it does not follow the store.
     expect(document?.spaces).toBe(workspaceA.spaces)

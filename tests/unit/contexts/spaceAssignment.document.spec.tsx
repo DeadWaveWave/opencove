@@ -10,7 +10,6 @@ import { assignNodeToSpaceAndExpand } from '../../../src/contexts/workspace/pres
 import {
   readWorkspaceDocument,
   replaceWorkspaceNodes,
-  replaceWorkspaceSpaces,
 } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import type {
   TerminalNodeData,
@@ -21,7 +20,10 @@ import {
   renderCanvasNodeStore,
   renderInCanvasDocument,
 } from '../../support/canvasDocumentHarness'
-import { useWorkspaceCanvasStoreNodes } from '../../support/workspaceCanvasStoreHarness'
+import {
+  useWorkspaceCanvasStoreNodes,
+  replaceSpacesInStore,
+} from '../../support/workspaceCanvasStoreHarness'
 
 // The push-away that follows a node creation reads the document when it writes and writes the
 // moved nodes and the pushed Spaces in one store update (#702, PR 6). The node was already added
@@ -444,7 +446,7 @@ describe('assignNodeToSpaceAndExpand and the Space snapshot of the caller', () =
 
     act(() => {
       // A write that lands between the caller's decision and the push-away.
-      replaceWorkspaceSpaces(harness.workspaceId, [
+      replaceSpacesInStore(harness.workspaceId, [
         { ...baseline, name: 'Renamed Locally' },
         space({ id: 'late', nodeIds: [], rect: null }),
       ])

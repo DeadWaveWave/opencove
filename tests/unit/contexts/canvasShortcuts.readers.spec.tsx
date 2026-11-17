@@ -9,10 +9,7 @@ import { useWorkspaceCanvasShortcutActions } from '../../../src/contexts/workspa
 import { useWorkspaceCanvasShortcuts } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useShortcuts'
 import { useWorkspaceCanvasCreationActivation } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCreationActivation'
 import { useCanvasSelectionCommands } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
-import {
-  replaceWorkspaceNodes,
-  replaceWorkspaceSpaces,
-} from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+import { replaceWorkspaceNodes } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import type {
   TerminalNodeData,
   WorkspaceSpaceState,
@@ -23,6 +20,7 @@ import {
 } from '../../support/canvasDocumentHarness'
 import { createRowNodes, createSpace } from '../../support/canvasSelectionFixtures'
 import { pixelNode } from './workspacePixelLayer.fixtures'
+import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
 
 // The shortcuts, the close-selected-node shortcut and the creation activation read the committed
 // nodes and Spaces of the workspace whose render made them, from the store, when they run (#702,
@@ -220,7 +218,7 @@ describe('the shortcut actions', () => {
 
       act(() => {
         replaceWorkspaceNodes(WORKSPACE_A, [noteAt('node')])
-        replaceWorkspaceSpaces(WORKSPACE_A, [createSpace('space', RIGHT_OF_CENTER, ['node'])])
+        replaceSpacesInStore(WORKSPACE_A, [createSpace('space', RIGHT_OF_CENTER, ['node'])])
       })
       navigateNodeRight()
 
@@ -270,7 +268,7 @@ describe('the shortcut actions', () => {
       const { navigateSpaceRight, activateSpace, clearNodeSelection } = mount()
 
       act(() => {
-        replaceWorkspaceSpaces(WORKSPACE_A, [createSpace('stored', RIGHT_OF_CENTER)])
+        replaceSpacesInStore(WORKSPACE_A, [createSpace('stored', RIGHT_OF_CENTER)])
       })
       navigateSpaceRight()
 
