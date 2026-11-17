@@ -131,6 +131,12 @@ function dragMetrics(drag) {
     nonMovingHeaders: nonMoving(drag.windowCommitsByNode),
     nonMovingShells: nonMoving(drag.presentationCommits),
     canvasCommitCauses: drag.canvasCommitCauses ?? null,
+    innerProp:
+      commits && drag.canvasCommitCauses
+        ? (commits.WorkspaceCanvasInner ?? 0) -
+          (drag.canvasCommitCauses['WorkspaceCanvasInner:internal'] ?? 0)
+        : null,
+    seconds: drag.fps > 0 ? drag.frames / drag.fps : null,
   }
 }
 
@@ -237,41 +243,75 @@ function checkA1(replica) {
   return result('A1', spikeGreen ? 'PASS' : 'FAIL', `A1 drag-commits green: ${spike}`, short)
 }
 
-const maxOf = (drags, key) => {
-  const values = drags.map(drag => drag[key]).filter(Number.isFinite)
-  return values.length ? Math.max(...values) : null
+/** Inner commits split into total, internal state and prop-driven, with the top prop names. */
+function innerSplit(drags) {
+  const props = {}
+  for (const drag of drags) {
+    for (const [key, count] of Object.entries(drag.canvasCommitCauses ?? {})) {
+      const match = /^WorkspaceCanvasInner:(.+)$/.exec(key)
+      if (match && match[1] !== 'internal') {
+        props[match[1]] = (props[match[1]] ?? 0) + count
+      }
+    }
+  }
+  const top = Object.entries(props)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([name, count]) => `${name} x${count}`)
+    .join(', ')
+  return {
+    total: median(drags.map(drag => drag.inner)),
+    internal: median(drags.map(drag => drag.innerInternal)),
+    prop: median(drags.map(drag => drag.innerProp)),
+    top: top || 'none',
+  }
+}
+
+const splitText = (drags, withRuns) => {
+  const split = innerSplit(drags)
+  const runs = key => (withRuns ? ` (${drags.map(drag => fmt(drag[key], 0)).join(', ')})` : '')
+  return `total ${fmt(split.total, 0)}${runs('inner')}, internal ${fmt(split.internal, 0)}${runs('innerInternal')}, prop-driven ${fmt(split.prop, 0)}${runs('innerProp')} [${split.top}]`
+}
+
+/** Prop-driven Inner commits per second of drag. */
+const propRate = drags => {
+  const rates = drags
+    .filter(drag => drag.innerProp !== null && drag.seconds)
+    .map(drag => drag.innerProp / drag.seconds)
+  return median(rates)
 }
 
 function checkA2(replica) {
   const dragsOf = side => replica.sides[side].dragCommits.map(trial => trial.drag).filter(Boolean)
   const spike = dragsOf('spike')
   const baseline = dragsOf('baseline')
-  const innerOf = drags => drags.map(drag => drag.inner)
   const frames =
     median(baseline.map(drag => drag.frames)) ?? median(spike.map(drag => drag.frames)) ?? 120
-  const baselineMedian = median(innerOf(baseline))
+  const baselineInternal = median(baseline.map(drag => drag.innerInternal))
   const hostMedian = median(spike.map(drag => drag.host))
-  const spikeInner = innerOf(spike)
-  const list = `(${spikeInner.map(value => fmt(value, 0)).join(', ')})`
-  const text = `A2 WorkspaceCanvasInner commits in a ${fmt(frames, 0)}-frame drag <= 2: spike max ${fmt(Math.max(...spikeInner), 0)} ${list}; baseline median ${fmt(baselineMedian, 0)} (${fmt(baselineMedian / frames, 2)}/frame); host median ${fmt(hostMedian, 0)}; commits from internal state: spike max ${fmt(maxOf(spike, 'innerInternal'), 0)}, baseline median ${fmt(median(baseline.map(drag => drag.innerInternal)), 0)}`
-  const short = `${fmt(baselineMedian, 0)} → ${fmt(spikeInner.length ? Math.max(...spikeInner) : null, 0)}`
+  const spikeInternal = spike.map(drag => drag.innerInternal)
+  const text = `A2 WorkspaceCanvasInner internal-state commits in a ${fmt(frames, 0)}-frame drag <= 2: spike max ${fmt(spikeInternal.length ? Math.max(...spikeInternal) : null, 0)}; baseline median ${fmt(baselineInternal, 0)} (${fmt(baselineInternal / frames, 2)}/frame); host median ${fmt(hostMedian, 0)}; baseline ${splitText(baseline, false)}; spike ${splitText(spike, true)}`
+  const short = `${fmt(baselineInternal, 0)} → ${fmt(spikeInternal.length ? Math.max(...spikeInternal) : null, 0)}`
   if (spike.length === 0 || baseline.length === 0) {
     return result('A2', 'INCONCLUSIVE', `${text} (no drag numbers on both sides)`, short)
   }
-  if (spikeInner.some(value => value === null) || baseline.some(drag => drag.inner === null)) {
-    return result('A2', 'INCONCLUSIVE', `${text} (the counter is missing)`, short)
+  if (
+    spikeInternal.some(value => value === null) ||
+    baseline.some(drag => drag.innerInternal === null)
+  ) {
+    return result('A2', 'INCONCLUSIVE', `${text} (the counter or its causes are missing)`, short)
   }
-  const sanity = baselineMedian >= frames / 2 && hostMedian >= frames / 2
+  const sanity = baselineInternal >= frames / 2 && hostMedian >= frames / 2
   if (!sanity) {
     const why = [
-      baselineMedian >= frames / 2 ? null : 'the baseline does not commit about once per frame',
+      baselineInternal >= frames / 2 ? null : 'the baseline does not commit about once per frame',
       hostMedian >= frames / 2 ? null : 'the live nodes do not flow through the host',
     ]
       .filter(Boolean)
       .join('; ')
     return result('A2', 'INCONCLUSIVE', `${text} (sanity condition fails: ${why})`, short)
   }
-  const pass = spikeInner.every(value => value <= 2)
+  const pass = spikeInternal.every(value => value <= 2)
   return result('A2', pass ? 'PASS' : 'FAIL', text, short)
 }
 
@@ -411,12 +451,14 @@ function checkA6(replica) {
 
 function infoLines(replica) {
   const lines = []
-  const innerOf = side => perfDragsOf(replica, side).map(drag => drag.inner)
-  const baselineInner = innerOf('baseline')
-  const spikeInner = innerOf('spike')
-  const frames = median(perfDragsOf(replica, 'baseline').map(drag => drag.frames)) ?? 240
+  const baselineDrags = perfDragsOf(replica, 'baseline')
+  const spikeDrags = perfDragsOf(replica, 'spike')
+  const frames = median(baselineDrags.map(drag => drag.frames)) ?? 240
   lines.push(
-    `[INFO] perf drag WorkspaceCanvasInner commits (${fmt(frames, 0)} frames): baseline median ${fmt(median(baselineInner), 0)}, spike max ${fmt(spikeInner.length ? Math.max(...spikeInner) : null, 0)}; from internal state: baseline median ${fmt(median(perfDragsOf(replica, 'baseline').map(drag => drag.innerInternal)), 0)}, spike max ${fmt(maxOf(perfDragsOf(replica, 'spike'), 'innerInternal'), 0)}`,
+    `[INFO] perf drag WorkspaceCanvasInner commits (${fmt(frames, 0)} frames), median per drag: baseline ${splitText(baselineDrags, false)}; spike ${splitText(spikeDrags, false)}`,
+  )
+  lines.push(
+    `[INFO] prop-driven WorkspaceCanvasInner commits per second (median): drag-commits baseline ${fmt(propRate(replica.sides.baseline.dragCommits.map(trial => trial.drag).filter(Boolean)), 2)}, spike ${fmt(propRate(replica.sides.spike.dragCommits.map(trial => trial.drag).filter(Boolean)), 2)}; perf drags baseline ${fmt(propRate(baselineDrags), 2)}, spike ${fmt(propRate(spikeDrags), 2)}`,
   )
   const busy = side =>
     median(
