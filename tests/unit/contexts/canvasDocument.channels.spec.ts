@@ -11,29 +11,22 @@ const CANVAS_DIR = 'src/contexts/workspace/presentation/renderer/components/work
 
 const ALLOWED_FILES: Record<string, readonly string[]> = {
   nodesRef: [
-    'src/contexts/workspace/presentation/renderer/components/WorkspaceCanvasInner.tsx',
     '~/hooks/useApplyNodeChanges.helpers.ts',
     '~/hooks/useApplyNodeChanges.ts',
     '~/hooks/useCanvasNodePublishers.ts',
     '~/hooks/useCanvasRuntimeIntegrations.ts',
     '~/hooks/useNodesStore.ts',
     '~/hooks/useNodesStore.types.ts',
-    '~/hooks/useSpaceDirectoryOps.ts',
     '~/view/WorkspacePixelLayer.tsx',
   ],
   spacesRef: [
-    'src/contexts/workspace/presentation/renderer/components/WorkspaceCanvasInner.tsx',
     '~/hooks/useCanvasNodeTypes.ts',
     '~/hooks/useCanvasState.ts',
-    '~/hooks/useSpaceDirectoryOps.ts',
     '~/nodeTypes.context.ts',
     '~/nodeTypes.task.tsx',
     '~/nodeTypes.tsx',
   ],
-  onSpacesChange: [
-    'src/contexts/workspace/presentation/renderer/components/WorkspaceCanvasInner.tsx',
-    '~/hooks/useSpaceDirectoryOps.ts',
-  ],
+  onSpacesChange: [],
   onRequestPersistFlush: [
     'src/app/preload/api.d.ts',
     'src/app/preload/index.ts',
@@ -42,8 +35,6 @@ const ALLOWED_FILES: Record<string, readonly string[]> = {
     'src/app/renderer/shell/components/WorkspaceMain.tsx',
     'src/app/renderer/shell/hooks/useAppQuitPersistenceFlush.ts',
     'src/contexts/task/presentation/renderer/components/promptTemplates/TaskPromptTemplatesMenu.tsx',
-    'src/contexts/workspace/presentation/renderer/components/WorkspaceCanvasInner.tsx',
-    '~/hooks/useSpaceDirectoryOps.ts',
     '~/types.ts',
   ],
 }

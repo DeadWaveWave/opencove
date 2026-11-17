@@ -1,5 +1,4 @@
-import React, { useRef, useState } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { Node } from '@xyflow/react'
 import { useWorkspaceCanvasSpaceDirectoryOps } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceDirectoryOps'
@@ -7,6 +6,11 @@ import type {
   TerminalNodeData,
   WorkspaceSpaceState,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
+import {
+  createCanvasDocumentHarness,
+  renderCanvasNodeStore,
+  type CanvasNodeStoreContext,
+} from '../../support/canvasDocumentHarness'
 
 function createNoteNode(id: string, title: string): Node<TerminalNodeData> {
   return {
@@ -75,7 +79,6 @@ function createTaskNode(id: string, title: string): Node<TerminalNodeData> {
 
 describe('useWorkspaceCanvasSpaceDirectoryOps archiveSpace', () => {
   it('removes the archived space and all nodes inside it', () => {
-    const onRequestPersistFlush = vi.fn()
     const closeNode = vi.fn(async () => undefined)
 
     const initialNodes: Node<TerminalNodeData>[] = [
@@ -96,61 +99,27 @@ describe('useWorkspaceCanvasSpaceDirectoryOps archiveSpace', () => {
       },
     ]
 
-    function Harness() {
-      const [nodes, setNodesState] = useState(initialNodes)
-      const [spaces, setSpacesState] = useState(initialSpaces)
-      const nodesRef = useRef(nodes)
-      const spacesRef = useRef(spaces)
+    const harness = createCanvasDocumentHarness({ nodes: initialNodes, spaces: initialSpaces })
+    const view = renderCanvasNodeStore(harness, {
+      workspacePath: '/repo',
+      extend: function useDirectoryOpsUnderTest({ nodeStore }: CanvasNodeStoreContext) {
+        return useWorkspaceCanvasSpaceDirectoryOps({
+          workspacePath: '/repo',
+          updateCanvasDocument: nodeStore.updateCanvasDocument,
+          closeNode,
+        })
+      },
+    })
 
-      nodesRef.current = nodes
-      spacesRef.current = spaces
+    act(() => {
+      view.result.current.updateSpaceDirectory('space-1', '/repo', { archiveSpace: true })
+    })
 
-      const { updateSpaceDirectory } = useWorkspaceCanvasSpaceDirectoryOps({
-        workspacePath: '/repo',
-        spacesRef,
-        nodesRef,
-        setNodes: updater => {
-          setNodesState(prevNodes => {
-            const nextNodes = updater(prevNodes)
-            nodesRef.current = nextNodes
-            return nextNodes
-          })
-        },
-        onSpacesChange: nextSpaces => {
-          spacesRef.current = nextSpaces
-          setSpacesState(nextSpaces)
-        },
-        onRequestPersistFlush,
-        closeNode,
-      })
-
-      return (
-        <div>
-          <div data-testid="node-count">{nodes.length}</div>
-          <div data-testid="space-count">{spaces.length}</div>
-          <div data-testid="titles">{nodes.map(node => node.data.title).join(', ')}</div>
-          <button
-            type="button"
-            onClick={() => {
-              updateSpaceDirectory('space-1', '/repo', { archiveSpace: true })
-            }}
-          >
-            Archive Space
-          </button>
-        </div>
-      )
-    }
-
-    render(<Harness />)
-
-    fireEvent.click(screen.getByRole('button', { name: 'Archive Space' }))
-
-    expect(screen.getByTestId('space-count')).toHaveTextContent('0')
-    expect(screen.getByTestId('node-count')).toHaveTextContent('1')
-    expect(screen.getByTestId('titles')).toHaveTextContent('Outside Note')
-    expect(screen.getByTestId('titles')).not.toHaveTextContent('Task 1')
-    expect(screen.getByTestId('titles')).not.toHaveTextContent('Note 1')
+    const document = harness.readStoreDocument()
+    expect(document.spaces).toHaveLength(0)
+    expect(document.nodes).toHaveLength(1)
+    expect(document.nodes.map(node => node.data.title).join(', ')).toBe('Outside Note')
     expect(closeNode).not.toHaveBeenCalled()
-    expect(onRequestPersistFlush).toHaveBeenCalledTimes(1)
+    expect(harness.flush).toHaveBeenCalledTimes(1)
   })
 })

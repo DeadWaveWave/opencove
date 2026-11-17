@@ -1,140 +1,143 @@
 import { useCallback } from 'react'
 import type { Node } from '@xyflow/react'
-import { computeSpaceDirectoryUpdate } from '@contexts/space/application/updateSpaceDirectory'
+import {
+  computeSpaceDirectoryUpdate,
+  type SpaceDirectoryUpdateResult,
+} from '@contexts/space/application/updateSpaceDirectory'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
+import { useReadCanvasDocument } from '../../../store/canvasStoreContext'
+import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
+
+type UpdateSpaceDirectoryOptions = {
+  markNodeDirectoryMismatch?: boolean
+  archiveSpace?: boolean
+  renameSpaceTo?: string
+  targetMountId?: string | null
+}
+
+// The nodes the directory change touches: the archive removes them, a worktree binding rewrites
+// their expected directory. The same array when nothing changes.
+function applyDirectoryUpdateToNodes(
+  prevNodes: Node<TerminalNodeData>[],
+  result: SpaceDirectoryUpdateResult<WorkspaceSpaceState>,
+): Node<TerminalNodeData>[] {
+  if (result.targetNodeIds.size === 0) {
+    return prevNodes
+  }
+
+  if (result.archiveSpace) {
+    const nextNodes = prevNodes.filter(node => !result.targetNodeIds.has(node.id))
+    return nextNodes.length === prevNodes.length ? prevNodes : nextNodes
+  }
+
+  if (!result.markNodeDirectoryMismatch) {
+    return prevNodes
+  }
+
+  let hasChanged = false
+
+  const nextNodes = prevNodes.map(node => {
+    if (!result.targetNodeIds.has(node.id)) {
+      return node
+    }
+
+    if (node.data.kind === 'agent' && node.data.agent) {
+      if (node.data.agent.expectedDirectory === result.nextDirectoryPath) {
+        return node
+      }
+
+      hasChanged = true
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          agent: {
+            ...node.data.agent,
+            expectedDirectory: result.nextDirectoryPath,
+          },
+        },
+      }
+    }
+
+    if (node.data.kind === 'terminal') {
+      const executionDirectory =
+        typeof node.data.executionDirectory === 'string' &&
+        node.data.executionDirectory.trim().length > 0
+          ? node.data.executionDirectory
+          : result.previousEffectiveDirectory
+
+      if (
+        node.data.executionDirectory === executionDirectory &&
+        node.data.expectedDirectory === result.nextDirectoryPath
+      ) {
+        return node
+      }
+
+      hasChanged = true
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          executionDirectory,
+          expectedDirectory: result.nextDirectoryPath,
+        },
+      }
+    }
+
+    return node
+  })
+
+  return hasChanged ? nextNodes : prevNodes
+}
 
 export function useWorkspaceCanvasSpaceDirectoryOps({
   workspacePath,
-  spacesRef,
-  nodesRef,
-  setNodes,
-  onSpacesChange,
-  onRequestPersistFlush,
+  updateCanvasDocument,
   closeNode,
 }: {
   workspacePath: string
-  spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
-  nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
-  setNodes: (
-    updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-    options?: { syncLayout?: boolean },
-  ) => void
-  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
-  onRequestPersistFlush?: () => void
+  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
   closeNode: (nodeId: string) => Promise<void>
 }): {
   updateSpaceDirectory: (
     spaceId: string,
     directoryPath: string,
-    options?: {
-      markNodeDirectoryMismatch?: boolean
-      archiveSpace?: boolean
-      renameSpaceTo?: string
-      targetMountId?: string | null
-    },
+    options?: UpdateSpaceDirectoryOptions,
   ) => void
   getSpaceBlockingNodes: (spaceId: string) => { agentNodeIds: string[]; terminalNodeIds: string[] }
   closeNodesById: (nodeIds: string[]) => Promise<void>
 } {
+  const readDocument = useReadCanvasDocument()
+
   const updateSpaceDirectory = useCallback(
-    (
-      spaceId: string,
-      directoryPath: string,
-      options?: {
-        markNodeDirectoryMismatch?: boolean
-        archiveSpace?: boolean
-        renameSpaceTo?: string
-        targetMountId?: string | null
-      },
-    ) => {
-      const result = computeSpaceDirectoryUpdate({
-        workspacePath,
-        spaces: spacesRef.current,
-        spaceId,
-        directoryPath,
-        options,
-      })
-      if (!result) {
+    (spaceId: string, directoryPath: string, options?: UpdateSpaceDirectoryOptions) => {
+      const plan = (spaces: WorkspaceSpaceState[]) =>
+        computeSpaceDirectoryUpdate({ workspacePath, spaces, spaceId, directoryPath, options })
+
+      // A Space that is not there changes nothing: no write and no flush.
+      if (!plan(readDocument().spaces)) {
         return
       }
 
-      onSpacesChange(result.nextSpaces)
-
-      if (result.archiveSpace && result.targetNodeIds.size > 0) {
-        setNodes(prevNodes => {
-          const nextNodes = prevNodes.filter(node => !result.targetNodeIds.has(node.id))
-          return nextNodes.length === prevNodes.length ? prevNodes : nextNodes
-        })
-      } else if (result.markNodeDirectoryMismatch && result.targetNodeIds.size > 0) {
-        setNodes(
-          prevNodes => {
-            let hasChanged = false
-
-            const nextNodes = prevNodes.map(node => {
-              if (!result.targetNodeIds.has(node.id)) {
-                return node
-              }
-
-              if (node.data.kind === 'agent' && node.data.agent) {
-                if (node.data.agent.expectedDirectory === result.nextDirectoryPath) {
-                  return node
-                }
-
-                hasChanged = true
-                return {
-                  ...node,
-                  data: {
-                    ...node.data,
-                    agent: {
-                      ...node.data.agent,
-                      expectedDirectory: result.nextDirectoryPath,
-                    },
-                  },
-                }
-              }
-
-              if (node.data.kind === 'terminal') {
-                const executionDirectory =
-                  typeof node.data.executionDirectory === 'string' &&
-                  node.data.executionDirectory.trim().length > 0
-                    ? node.data.executionDirectory
-                    : result.previousEffectiveDirectory
-
-                if (
-                  node.data.executionDirectory === executionDirectory &&
-                  node.data.expectedDirectory === result.nextDirectoryPath
-                ) {
-                  return node
-                }
-
-                hasChanged = true
-                return {
-                  ...node,
-                  data: {
-                    ...node.data,
-                    executionDirectory,
-                    expectedDirectory: result.nextDirectoryPath,
-                  },
-                }
-              }
-
-              return node
-            })
-
-            return hasChanged ? nextNodes : prevNodes
-          },
-          { syncLayout: false },
-        )
-      }
-
-      onRequestPersistFlush?.()
+      // The Spaces and the nodes they hold are one store update, planned from the document the
+      // write runs on, and the update flushes on itself. Only the archive reshapes the layout.
+      updateCanvasDocument(
+        ({ nodes, spaces }) => {
+          const result = plan(spaces)
+          return result
+            ? { nodes: applyDirectoryUpdateToNodes(nodes, result), spaces: result.nextSpaces }
+            : { nodes, spaces }
+        },
+        { syncLayout: options?.archiveSpace === true, flush: true },
+      )
     },
-    [onRequestPersistFlush, onSpacesChange, setNodes, spacesRef, workspacePath],
+    [readDocument, updateCanvasDocument, workspacePath],
   )
 
   const getSpaceBlockingNodes = useCallback(
     (spaceId: string): { agentNodeIds: string[]; terminalNodeIds: string[] } => {
-      const space = spacesRef.current.find(candidate => candidate.id === spaceId)
+      const document = readDocument()
+      const space = document.spaces.find(candidate => candidate.id === spaceId)
       if (!space) {
         return { agentNodeIds: [], terminalNodeIds: [] }
       }
@@ -143,7 +146,7 @@ export function useWorkspaceCanvasSpaceDirectoryOps({
       const agentNodeIds: string[] = []
       const terminalNodeIds: string[] = []
 
-      for (const node of nodesRef.current) {
+      for (const node of document.nodes) {
         if (!spaceNodeIds.has(node.id)) {
           continue
         }
@@ -160,7 +163,7 @@ export function useWorkspaceCanvasSpaceDirectoryOps({
 
       return { agentNodeIds, terminalNodeIds }
     },
-    [nodesRef, spacesRef],
+    [readDocument],
   )
 
   const closeNodesById = useCallback(
