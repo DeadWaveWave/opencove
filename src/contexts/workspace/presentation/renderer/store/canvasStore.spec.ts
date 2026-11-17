@@ -8,6 +8,9 @@ import type {
   SpaceTargetMountPickerState,
   TaskEditorState,
 } from '../components/workspaceCanvas/types'
+import type { Node } from '@xyflow/react'
+import type { TerminalNodeData } from '../types'
+import type { WorkspaceSnapGuide } from '../utils/workspaceSnap'
 import { createCanvasStore } from './canvasStore'
 import { createInitialCanvasSelectionState } from './canvasStore.selection'
 import { createInitialCanvasUiState } from './canvasStore.ui'
@@ -55,6 +58,14 @@ const deleteConfirmation: NodeDeleteConfirmationState = {
   primaryNodeTitle: 'Note',
   emptyingSpaces: [],
 }
+
+// Only the identity of the array matters to the slice, so the nodes carry no data.
+const rowNodes = (ids: string[]) =>
+  ids.map((id, index) => ({
+    id,
+    position: { x: index * 400, y: 0 },
+    data: {},
+  })) as unknown as Node<TerminalNodeData>[]
 
 describe('canvas store', () => {
   it('starts with every menu, dialog and rename closed', () => {
@@ -534,6 +545,8 @@ describe('canvas store', () => {
   })
 
   describe('interaction', () => {
+    // What a node gesture shows: nothing, until a drag frame writes it.
+    const NO_GESTURE = { liveNodes: null, snapGuides: null, nodeDragFramePreview: null }
     const draft: SelectionDraftUiState = {
       startX: 10,
       startY: 20,
@@ -543,7 +556,7 @@ describe('canvas store', () => {
     }
 
     it('starts with no marquee and magnetic snapping on, in the state and in the initial state', () => {
-      const expected = { selectionDraft: null, magneticSnappingEnabled: true }
+      const expected = { ...NO_GESTURE, selectionDraft: null, magneticSnappingEnabled: true }
       const { api } = createCanvasStore()
 
       expect(api.getState().interaction).toEqual(expected)
@@ -554,6 +567,7 @@ describe('canvas store', () => {
       const { api } = createCanvasStore({ magneticSnappingEnabled: false })
 
       expect(api.getState().interaction).toEqual({
+        ...NO_GESTURE,
         selectionDraft: null,
         magneticSnappingEnabled: false,
       })
@@ -666,9 +680,161 @@ describe('canvas store', () => {
       first.commands.interaction.toggleMagneticSnapping()
 
       expect(second.api.getState().interaction).toEqual({
+        ...NO_GESTURE,
         selectionDraft: null,
         magneticSnappingEnabled: true,
       })
+    })
+
+    describe('the live nodes of a gesture', () => {
+      const frame = rowNodes(['a', 'b'])
+
+      it('stores the live array, notifies once per new array and not for the same one', () => {
+        const { api, commands } = createCanvasStore()
+        const listener = vi.fn()
+        api.subscribe(listener)
+
+        commands.interaction.publishLiveNodes(frame)
+        expect(api.getState().interaction.liveNodes).toBe(frame)
+        expect(listener).toHaveBeenCalledTimes(1)
+
+        commands.interaction.publishLiveNodes(frame)
+        expect(listener).toHaveBeenCalledTimes(1)
+
+        const next = [...frame]
+        commands.interaction.publishLiveNodes(next)
+        expect(api.getState().interaction.liveNodes).toBe(next)
+        expect(listener).toHaveBeenCalledTimes(2)
+      })
+
+      it('ends the gesture once, and ending with nothing live notifies nobody', () => {
+        const { api, commands } = createCanvasStore()
+        const listener = vi.fn()
+        api.subscribe(listener)
+
+        commands.interaction.endLiveNodes()
+        expect(listener).not.toHaveBeenCalled()
+
+        commands.interaction.publishLiveNodes(frame)
+        commands.interaction.endLiveNodes()
+        commands.interaction.endLiveNodes()
+
+        expect(api.getState().interaction.liveNodes).toBeNull()
+        expect(listener).toHaveBeenCalledTimes(2)
+      })
+    })
+
+    describe('the snap guides', () => {
+      const vertical: WorkspaceSnapGuide = { kind: 'v', x: 100, y1: 0, y2: 50 }
+      const horizontal: WorkspaceSnapGuide = { kind: 'h', y: 20, x1: 0, x2: 80 }
+
+      it('notifies once per changing write and keeps the stored guides for equal ones', () => {
+        const { api, commands } = createCanvasStore()
+        const listener = vi.fn()
+        api.subscribe(listener)
+
+        commands.interaction.setSnapGuides([vertical])
+        expect(listener).toHaveBeenCalledTimes(1)
+        const stored = api.getState().interaction.snapGuides
+
+        commands.interaction.setSnapGuides([{ ...vertical }])
+        expect(listener).toHaveBeenCalledTimes(1)
+        expect(api.getState().interaction.snapGuides).toBe(stored)
+
+        commands.interaction.setSnapGuides([{ ...vertical, y2: 51 }])
+        commands.interaction.setSnapGuides([{ ...vertical, y2: 51 }, horizontal])
+        expect(listener).toHaveBeenCalledTimes(3)
+      })
+
+      it('clears the guides once, and a clear with none shown notifies nobody', () => {
+        const { api, commands } = createCanvasStore()
+        const listener = vi.fn()
+        api.subscribe(listener)
+
+        commands.interaction.setSnapGuides(null)
+        expect(listener).not.toHaveBeenCalled()
+
+        commands.interaction.setSnapGuides([horizontal])
+        commands.interaction.setSnapGuides(null)
+        commands.interaction.setSnapGuides(null)
+
+        expect(api.getState().interaction.snapGuides).toBeNull()
+        expect(listener).toHaveBeenCalledTimes(2)
+      })
+    })
+
+    describe('the node drag frame preview', () => {
+      const rect = { x: 0, y: 0, width: 300, height: 200 }
+      const preview = () => new Map([['space-1', { ...rect }]])
+
+      it('notifies once per changing write and keeps the stored preview for an equal one', () => {
+        const { api, commands } = createCanvasStore()
+        const listener = vi.fn()
+        api.subscribe(listener)
+
+        commands.interaction.setNodeDragFramePreview(preview())
+        expect(listener).toHaveBeenCalledTimes(1)
+        const stored = api.getState().interaction.nodeDragFramePreview
+
+        // Another map with the same ids and the same rects.
+        commands.interaction.setNodeDragFramePreview(preview())
+        expect(listener).toHaveBeenCalledTimes(1)
+        expect(api.getState().interaction.nodeDragFramePreview).toBe(stored)
+      })
+
+      it('compares the ids and every field of every rect', () => {
+        const { api, commands } = createCanvasStore()
+        commands.interaction.setNodeDragFramePreview(preview())
+        const listener = vi.fn()
+        api.subscribe(listener)
+
+        for (const next of [
+          new Map([['space-1', { ...rect, x: 1 }]]),
+          new Map([['space-1', { ...rect, y: 1 }]]),
+          new Map([['space-1', { ...rect, width: 301 }]]),
+          new Map([['space-1', { ...rect, height: 201 }]]),
+          new Map([['space-2', { ...rect }]]),
+          new Map([
+            ['space-1', { ...rect }],
+            ['space-2', { ...rect }],
+          ]),
+        ]) {
+          commands.interaction.setNodeDragFramePreview(next)
+          commands.interaction.setNodeDragFramePreview(preview())
+        }
+
+        expect(listener).toHaveBeenCalledTimes(12)
+      })
+
+      it('clears the preview once, and a clear with none shown notifies nobody', () => {
+        const { api, commands } = createCanvasStore()
+        const listener = vi.fn()
+        api.subscribe(listener)
+
+        commands.interaction.setNodeDragFramePreview(null)
+        expect(listener).not.toHaveBeenCalled()
+
+        commands.interaction.setNodeDragFramePreview(preview())
+        commands.interaction.setNodeDragFramePreview(null)
+        commands.interaction.setNodeDragFramePreview(null)
+
+        expect(api.getState().interaction.nodeDragFramePreview).toBeNull()
+        expect(listener).toHaveBeenCalledTimes(2)
+      })
+    })
+
+    it('keeps the gesture commands stable across state changes', () => {
+      const store = createCanvasStore()
+      const { publishLiveNodes, endLiveNodes, setSnapGuides, setNodeDragFramePreview } =
+        store.commands.interaction
+
+      store.commands.interaction.publishLiveNodes(rowNodes(['a']))
+      store.commands.interaction.setSnapGuides([{ kind: 'v', x: 1, y1: 0, y2: 1 }])
+
+      expect(store.commands.interaction.publishLiveNodes).toBe(publishLiveNodes)
+      expect(store.commands.interaction.endLiveNodes).toBe(endLiveNodes)
+      expect(store.commands.interaction.setSnapGuides).toBe(setSnapGuides)
+      expect(store.commands.interaction.setNodeDragFramePreview).toBe(setNodeDragFramePreview)
     })
   })
 })

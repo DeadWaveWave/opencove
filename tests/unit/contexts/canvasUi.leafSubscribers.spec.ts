@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
+import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
 
 const CANVAS_DIR = 'src/contexts/workspace/presentation/renderer/components/workspaceCanvas/'
@@ -15,6 +16,8 @@ const REMOVED_NAMES = [
 ]
 const DRAFT_OVERLAY = 'view/WorkspaceSelectionDraftOverlay.tsx'
 const CANVAS_MENUS = 'view/WorkspaceCanvasMenus.tsx'
+const FLOW_HOST = 'CanvasFlowHost.tsx'
+const SNAP_GUIDES_OVERLAY = 'view/WorkspaceSnapGuidesOverlay.tsx'
 const STORE_DIR = 'src/contexts/workspace/presentation/renderer/store/'
 const STORE_CONTEXT = `${STORE_DIR}canvasStoreContext.tsx`
 const HOOKS_DIR = 'src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/'
@@ -102,21 +105,157 @@ function namesImportedFromStoreContext(source: string): string[] {
   )
 }
 
-// Decision 2 of #738: the subscribers of the `interaction` slice are leaves. So far they are the
-// marquee rectangle and the context menu's snapping toggle; the host and the guides join them in
-// later pull requests of S6. Hooks read the slice at call time (`useReadCanvasInteraction`).
+/**
+ * The violations of the selector contract in `source`: every call of `useCanvasInteraction` (under
+ * any local name) passes an identifier bound by a module-scope `const` arrow function of the same
+ * file, and that arrow returns a field of the slice or a primitive, never a new object or array.
+ * An inline function re-subscribes on every render; one that returns a new value loops.
+ */
+function selectorViolations(source: string, fileName = 'source.tsx'): string[] {
+  const file = ts.createSourceFile(
+    fileName,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  )
+  const localNames = new Set<string>()
+  const moduleConsts = new Map<string, ts.Expression | undefined>()
+  for (const statement of file.statements) {
+    if (ts.isImportDeclaration(statement) && statement.importClause?.namedBindings) {
+      const bindings = statement.importClause.namedBindings
+      if (ts.isNamedImports(bindings)) {
+        for (const element of bindings.elements) {
+          if ((element.propertyName ?? element.name).text === 'useCanvasInteraction') {
+            localNames.add(element.name.text)
+          }
+        }
+      }
+    }
+    if (ts.isVariableStatement(statement) && statement.declarationList.flags & ts.NodeFlags.Const) {
+      for (const declaration of statement.declarationList.declarations) {
+        if (ts.isIdentifier(declaration.name)) {
+          moduleConsts.set(declaration.name.text, declaration.initializer)
+        }
+      }
+    }
+  }
+
+  const violations: string[] = []
+  const forbidden = [
+    ts.isBlock,
+    ts.isObjectLiteralExpression,
+    ts.isArrayLiteralExpression,
+    ts.isNewExpression,
+    ts.isCallExpression,
+    ts.isArrowFunction,
+    ts.isFunctionExpression,
+  ]
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isCallExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      localNames.has(node.expression.text)
+    ) {
+      const argument = node.arguments[0]
+      const where = `${fileName}:${file.getLineAndCharacterOfPosition(node.getStart()).line + 1}`
+      if (!argument || !ts.isIdentifier(argument)) {
+        violations.push(`${where}: the selector is not an identifier bound at module scope`)
+      } else {
+        const initializer = moduleConsts.get(argument.text)
+        if (!initializer || !ts.isArrowFunction(initializer)) {
+          violations.push(`${where}: ${argument.text} is not a module-scope const arrow function`)
+        } else {
+          const offender = [initializer.body, ...flatten(initializer.body)].find(child =>
+            forbidden.some(isForbidden => isForbidden(child)),
+          )
+          if (offender) {
+            violations.push(
+              `${where}: ${argument.text} returns a new value (${ts.SyntaxKind[offender.kind]})`,
+            )
+          }
+        }
+      }
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(file)
+  return violations
+}
+
+function flatten(node: ts.Node): ts.Node[] {
+  const nodes: ts.Node[] = []
+  ts.forEachChild(node, child => {
+    nodes.push(child, ...flatten(child))
+  })
+  return nodes
+}
+
+// Decision 2 of #738: the subscribers of the `interaction` slice are leaves, and the host. They are
+// the flow host (the live nodes and the node-drag preview), the snap guides overlay, the marquee
+// rectangle and the context menu's snapping toggle. Hooks and WorkspaceCanvasInner read the slice
+// at call time (`useReadCanvasInteraction`).
 describe('canvas interaction subscriptions', () => {
   // By import, not by call text: a type argument (`useCanvasInteraction<boolean>(`) or an alias
   // (`import { useCanvasInteraction as use... }`) would hide a subscriber from a search for the
-  // call. Hooks and WorkspaceCanvasInner never import it.
-  it('only the draft overlay and the canvas menus import useCanvasInteraction, under any name', () => {
+  // call. No hook and not WorkspaceCanvasInner imports it.
+  it('only the host, the guides overlay, the draft overlay and the menus import useCanvasInteraction, under any name', () => {
     const importers = trackedSourceFiles().filter(file =>
       namesImportedFromStoreContext(readFileSync(file, 'utf8')).includes('useCanvasInteraction'),
     )
 
     expect(importers.map(file => file.slice(CANVAS_DIR.length)).sort()).toEqual(
-      [DRAFT_OVERLAY, CANVAS_MENUS].sort(),
+      [FLOW_HOST, SNAP_GUIDES_OVERLAY, DRAFT_OVERLAY, CANVAS_MENUS].sort(),
     )
+  })
+
+  // A selector that is built in the call re-subscribes on every render, and one that returns a new
+  // object or array is never equal to the last value and loops. The contract is a check, not a
+  // comment: read from the syntax of every importer.
+  it('every subscriber passes a module-scope selector that returns a stored value or a primitive', () => {
+    const files = trackedSourceFiles().filter(file =>
+      namesImportedFromStoreContext(readFileSync(file, 'utf8')).includes('useCanvasInteraction'),
+    )
+    expect(files.length).toBe(4)
+
+    const violations = files.flatMap(file => selectorViolations(readFileSync(file, 'utf8'), file))
+
+    expect(violations).toEqual([])
+  })
+
+  describe('the selector check itself', () => {
+    const header = "import { useCanvasInteraction } from '../store/canvasStoreContext'\n"
+
+    it.each([
+      ['a module-scope field selector', 'const pick = (state) => state.liveNodes\nuse(pick)', 0],
+      ['a nested field', 'const pick = (state) => state.a.b\nuse(pick)', 0],
+      ['a comparison', 'const pick = (state) => state.a === null\nuse(pick)', 0],
+      ['an inline arrow', 'use(state => state.liveNodes)', 1],
+      ['an inline function', 'use(function (state) { return state.liveNodes })', 1],
+      ['a selector from a call', 'use(makeSelector())', 1],
+      ['an object result', 'const pick = (state) => ({ a: state.x })\nuse(pick)', 1],
+      ['a block body', 'const pick = (state) => { return state.x }\nuse(pick)', 1],
+      ['an array result', 'const pick = (state) => [state.x]\nuse(pick)', 1],
+      ['a new instance', 'const pick = (state) => new Set(state.x)\nuse(pick)', 1],
+      ['a call in the body', 'const pick = (state) => state.x.filter(Boolean)\nuse(pick)', 1],
+      [
+        'a selector declared in the component',
+        'function C() { const pick = (s) => s.x; use(pick) }',
+        1,
+      ],
+      ['a selector from a parameter', 'function C(pick) { use(pick) }', 1],
+    ])('%s: %i violation(s)', (_name, body, count) => {
+      const source = `${header}${body.replace(/\buse\(/g, 'useCanvasInteraction(')}`
+
+      expect(selectorViolations(source)).toHaveLength(count)
+    })
+
+    it('follows an alias of the import', () => {
+      const source =
+        "import { useCanvasInteraction as useSlice } from '../store/canvasStoreContext'\nuseSlice(state => state.x)"
+
+      expect(selectorViolations(source)).toHaveLength(1)
+    })
   })
 
   // One hook decides the render priority of every subscriber (arm B of #738). A file that reached

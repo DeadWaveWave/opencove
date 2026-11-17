@@ -48,9 +48,27 @@ describe('the retired canvas channels', () => {
     expect(canvasState.setMagneticSnappingEnabled).toBeUndefined()
   })
 
+  // #738 (S6 of #647), the node drag overlay: the canvas state keeps no copy of the nodes of a
+  // gesture and no guides. The live nodes and the guides live in the canvas store, and the flow
+  // host and the guides overlay subscribe to them.
+  it('do not keep a copy of the canvas nodes, the transient flag or the snap guides in the canvas state', () => {
+    const canvasState = {} as ReturnType<typeof useWorkspaceCanvasState>
+
+    // @ts-expect-error -- setCanvasNodes is retired; a drag frame writes publishLiveNodes (#738)
+    expect(canvasState.setCanvasNodes).toBeUndefined()
+    // @ts-expect-error -- snapGuides is retired; the guides overlay subscribes with useCanvasInteraction (#738)
+    expect(canvasState.snapGuides).toBeUndefined()
+    // @ts-expect-error -- setSnapGuides is retired; write with the setSnapGuides command (#738)
+    expect(canvasState.setSnapGuides).toBeUndefined()
+    // @ts-expect-error -- hasTransientNodePositionsRef is retired; read liveNodes from the store (#738)
+    expect(canvasState.hasTransientNodePositionsRef).toBeUndefined()
+  })
+
   it('are not part of the canvas view props', () => {
     const props = {} as WorkspaceCanvasViewProps
 
+    // @ts-expect-error -- snapGuides is retired; the guides overlay subscribes itself (#738)
+    expect(props.snapGuides).toBeUndefined()
     // @ts-expect-error -- selectionDraft is retired; the draft overlay subscribes itself (#738)
     expect(props.selectionDraft).toBeUndefined()
     // @ts-expect-error -- magneticSnappingEnabled is retired; the menus subscribe themselves (#738)

@@ -1,8 +1,10 @@
 import React, { useEffect } from 'react'
 import { render, waitFor } from '@testing-library/react'
+import { ReactFlowProvider } from '@xyflow/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CanvasInteractionState } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStore.interaction'
 import type { CanvasInteractionCommands } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStore.interaction'
+import { WorkspaceSnapGuidesOverlay } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/WorkspaceSnapGuidesOverlay'
 import {
   CanvasStoreProvider,
   useCanvasInteraction,
@@ -102,5 +104,37 @@ describe('interaction subscribers: render priority', () => {
 
     expect(harness.renders.length).toBeGreaterThan(rendersBefore)
     expect(harness.renders.at(-1)).toBe(false)
+  })
+
+  // The guides belong to the nodes of their frame: the overlay renders in the same lane as the
+  // host, so a frame of guides is never a frame ahead of its nodes.
+  it('renders the snap guides overlay after the frame for a guide written in one, as the host does', async () => {
+    const holder: Harness = { renders: [], commands: null }
+    function CommandsProbe(): null {
+      const commands = useCanvasInteractionCommands()
+      useEffect(() => {
+        holder.commands = commands
+      }, [commands])
+      return null
+    }
+    const view = render(
+      <CanvasStoreProvider workspaceId="priority-guides">
+        <ReactFlowProvider>
+          <CommandsProbe />
+          <WorkspaceSnapGuidesOverlay />
+        </ReactFlowProvider>
+      </CanvasStoreProvider>,
+    )
+    expect(holder.commands).not.toBeNull()
+    expect(view.queryByTestId('workspace-snap-guides')).toBeNull()
+
+    window.requestAnimationFrame(() =>
+      holder.commands?.setSnapGuides([{ kind: 'v', x: 10, y1: 0, y2: 40 }]),
+    )
+    frames.shift()?.()
+    await microtasks()
+    expect(view.queryByTestId('workspace-snap-guides')).toBeNull()
+
+    await waitFor(() => expect(view.queryByTestId('workspace-snap-guides')).not.toBeNull())
   })
 })
