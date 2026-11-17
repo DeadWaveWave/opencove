@@ -5,7 +5,10 @@ import type { Node, NodeChange, NodePositionChange } from '@xyflow/react'
 import type { TerminalNodeData } from '../../../types'
 import { applyLiveNodes } from '../../../utils/canvasLiveNodes'
 import { cleanupNodeRuntimeArtifacts } from '../../../utils/nodeRuntimeCleanup'
-import { useReadCanvasInteraction } from '../../../store/canvasStoreContext'
+import {
+  useCanvasInteractionCommands,
+  useReadCanvasInteraction,
+} from '../../../store/canvasStoreContext'
 import { TERMINAL_LAYOUT_SYNC_EVENT } from '../../terminalNode/constants'
 import { type UseApplyNodeChangesParams } from './useApplyNodeChanges.helpers'
 import { publishWorkspaceNodesClosed } from '../nodeClosureEvents'
@@ -76,6 +79,7 @@ export function useWorkspaceCanvasApplyNodeChanges({
   nodeDragSession,
 }: UseApplyNodeChangesParams): (changes: NodeChange<Node<TerminalNodeData>>[]) => void {
   const readInteraction = useReadCanvasInteraction()
+  const { endLiveNodes } = useCanvasInteractionCommands()
   const pendingContinuousDragChangesRef = useRef<ContinuousDragPositionChange[] | null>(null)
   const pendingContinuousDragFrameRef = useRef<number | null>(null)
   const lastContinuousDragFlushAtRef = useRef(0)
@@ -315,6 +319,9 @@ export function useWorkspaceCanvasApplyNodeChanges({
         onNodesCommit(nextNodes)
       } else if (changesHeldNode) {
         onNodesChange(nextNodes)
+      } else if (wasDragging && !isDraggingThisFrame) {
+        // A release of windows that are all gone from here still ends the gesture.
+        endLiveNodes()
       }
       if (removedIds.size > 0) {
         const survivingIds = new Set(nextNodes.map(node => node.id))
@@ -340,6 +347,7 @@ export function useWorkspaceCanvasApplyNodeChanges({
       onNodesChange,
       onSelectedNodeIdsChange,
       readInteraction,
+      endLiveNodes,
     ],
   )
 

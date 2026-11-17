@@ -309,6 +309,101 @@ describe('a write from elsewhere in the middle of a gesture', () => {
   })
 })
 
+// Today's rule until PR 4: a canvas write during a gesture commits the live positions and nothing
+// jumps, also when a write from elsewhere landed since the last frame (the node store's mirror
+// then holds the committed view, and the live positions are only in the overlay).
+describe('a canvas write after a write from elsewhere, before the next frame', () => {
+  const retitle = (id: string, title: string) => (nodes: Node<TerminalNodeData>[]) =>
+    nodes.map(node => (node.id === id ? { ...node, data: { ...node.data, title } } : node))
+
+  it('commits the live positions and shows no jump', () => {
+    const { harness, view, runFrames, yOf } = setup()
+    act(() => view.result.current.apply(drag('a', 0, 30)))
+    runFrames()
+    act(() => {
+      replaceWorkspaceNodes(
+        harness.workspaceId,
+        retitle('b', 'from elsewhere')(harness.readStoreDocument().nodes),
+      )
+    })
+    expect(yOf.shown('a')).toBe(30)
+
+    act(() => view.result.current.nodeStore.setNodes(retitle('c', 'renamed')))
+
+    expect(yOf.stored('a')).toBe(30)
+    expect(yOf.shown('a')).toBe(30)
+    expect(harness.readStoreDocument().nodes.find(node => node.id === 'b')?.data.title).toBe(
+      'from elsewhere',
+    )
+  })
+
+  it('a select batch right after a write from elsewhere commits the live position', () => {
+    const { harness, view, runFrames, yOf } = setup()
+    act(() => view.result.current.apply(drag('a', 0, 30)))
+    runFrames()
+    act(() => {
+      replaceWorkspaceNodes(
+        harness.workspaceId,
+        retitle('b', 'from elsewhere')(harness.readStoreDocument().nodes),
+      )
+    })
+
+    act(() => view.result.current.apply([{ type: 'select', id: 'b', selected: true }] as never))
+
+    expect(yOf.stored('a')).toBe(30)
+    expect(yOf.shown('a')).toBe(30)
+  })
+})
+
+// Outside a gesture a canvas write computes from the store, so a position written since the last
+// render is kept (`isLiveGestureActive` must be false then).
+describe('a canvas write with no gesture live', () => {
+  it('keeps a position the store received since the last render', () => {
+    const { harness, view, yOf } = setup()
+
+    act(() => {
+      replaceWorkspaceNodes(
+        harness.workspaceId,
+        harness
+          .readStoreDocument()
+          .nodes.map(node =>
+            node.id === 'c' ? { ...node, position: { x: node.position.x, y: 500 } } : node,
+          ),
+      )
+      view.result.current.nodeStore.setNodes(nodes =>
+        nodes.map(node =>
+          node.id === 'b' ? { ...node, data: { ...node.data, title: 'renamed' } } : node,
+        ),
+      )
+    })
+
+    expect(yOf.stored('c')).toBe(500)
+  })
+})
+
+// A release that names no window this canvas still holds (a selection drag whose windows were all
+// removed from elsewhere) writes nothing, and the gesture still ends.
+describe('a release whose windows were all removed from elsewhere', () => {
+  it('writes nothing and ends the overlay', () => {
+    const { harness, view, runFrames, yOf } = setup()
+    act(() => view.result.current.apply(drag('a', 0, 30)))
+    runFrames()
+    act(() => {
+      replaceWorkspaceNodes(
+        harness.workspaceId,
+        harness.readStoreDocument().nodes.filter(node => node.id !== 'a'),
+      )
+    })
+    const nodesBefore = harness.readStoreDocument().nodes
+
+    act(() => view.result.current.apply(drop('a', 0, 30)))
+
+    expect(harness.readStoreDocument().nodes).toBe(nodesBefore)
+    expect(view.result.current.readInteraction().liveNodes).toBeNull()
+    expect(yOf.shown('b')).toBe(yOf.stored('b'))
+  })
+})
+
 // The provider creates a store for each workspace, so a gesture of A never reaches B; a release
 // that React Flow delivers after the switch finds none of A's nodes in B and writes nothing.
 describe('a gesture across a workspace switch', () => {
