@@ -137,6 +137,7 @@ function dragMetrics(drag) {
           (drag.canvasCommitCauses['WorkspaceCanvasInner:internal'] ?? 0)
         : null,
     seconds: drag.fps > 0 ? drag.frames / drag.fps : null,
+    inputToCommitMs: Number.isFinite(drag.inputToCommitMs) ? drag.inputToCommitMs : null,
   }
 }
 
@@ -466,6 +467,11 @@ function infoLines(replica) {
     )
   lines.push(
     `[INFO] JS busy ms per frame (profiled drag): baseline ${fmt(busy('baseline'))}, spike ${fmt(busy('spike'))}`,
+  )
+  const latency = drags =>
+    median(drags.map(drag => drag.inputToCommitMs).filter(value => Number.isFinite(value)))
+  lines.push(
+    `[INFO] input to commit ms (median per drag, then median): baseline ${fmt(latency(baselineDrags))}, spike ${fmt(latency(spikeDrags))}`,
   )
   const dc = (side, key) =>
     median(replica.sides[side].dragCommits.map(trial => trial.drag?.[key]).filter(Number.isFinite))
