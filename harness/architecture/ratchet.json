@@ -1055,7 +1055,7 @@
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNativeFilesystemDrop.ts": 1,
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore.createPluginNode.ts": 1,
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore.createWebsiteNode.ts": 1,
-    "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore.ts": 3,
+    "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore.ts": 4,
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSelectionDraft.ts": 1,
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceExplorer.ts": 1,
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaces.createSpaceSelection.ts": 3,

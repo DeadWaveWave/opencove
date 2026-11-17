@@ -37,6 +37,8 @@ export interface UseWorkspaceCanvasNodesStoreParams {
   workspaceId: string
   workspacePath: string
   nodes: Node<TerminalNodeData>[]
+  onNodesCommitted: (nodes: Node<TerminalNodeData>[]) => void
+  isLiveGestureActive: () => boolean
   onShowMessage?: ShowWorkspaceCanvasMessage
   onNodeCreated?: (nodeId: string) => void
   standardWindowSizeBucket: StandardWindowSizeBucket
@@ -65,6 +67,7 @@ export interface CanvasDocumentRecipeInput {
 }
 
 export interface UseWorkspaceCanvasNodesStoreResult {
+  nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   pendingScrollbackByNodeRef: React.MutableRefObject<Map<string, string>>
   isNodeDraggingRef: React.MutableRefObject<boolean>
   setNodes: (

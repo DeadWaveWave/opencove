@@ -10,21 +10,11 @@ import {
   CANVAS_STORE_TEST_WORKSPACE_ID,
   CanvasStoreTestProvider,
 } from '../../support/canvasStoreTestHarness'
-import { changePathIntoState } from '../../support/changePathCallbacks'
 import { createCanvasDocumentHarness } from '../../support/canvasDocumentHarness'
-import { useWorkspaceCanvasNodePublishers } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodePublishers'
-import {
-  useCanvasInteraction,
-  useCanvasSelectionCommands,
-} from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
-import type { CanvasInteractionState } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStore.interaction'
-
-const selectSnapGuides = (interaction: CanvasInteractionState) => interaction.snapGuides
+import { useCanvasSelectionCommands } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
 
 vi.mock('@xyflow/react', () => {
   return {
-    // The change path reads the drag surface mode of React Flow's store when a batch runs.
-    useStoreApi: () => ({ getState: () => ({}) }),
     applyNodeChanges: (
       changes: Array<Record<string, unknown>>,
       nodes: Array<Record<string, unknown>>,
@@ -105,24 +95,26 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
       },
     ]
 
-    // The change path reads the nodes of the document, as the store holds them when a batch runs.
-    createCanvasDocumentHarness({
-      workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID,
-      nodes: initialNodes,
-    })
-
     function Harness() {
       const [nodes, setNodes] = useState(initialNodes)
+      const nodesRef = useRef(nodes)
+      nodesRef.current = nodes
+      const [, setSnapGuides] = useState(null)
+      const magneticSnappingEnabledRef = useRef(false)
       const nodeDragSession = useWorkspaceCanvasNodeDragSession({
         workspaceId: 'workspace-remove',
+        magneticSnappingEnabledRef,
+        setSnapGuides,
       })
 
       const apply = useWorkspaceCanvasApplyNodeChanges({
-        ...changePathIntoState(setNodes),
+        nodesRef,
+        onNodesChange: next => {
+          setNodes(next)
+        },
         clearAgentLaunchToken: () => undefined,
         normalizePosition: (_nodeId, desired) => desired,
         applyPendingScrollbacks: next => next,
-        nodes,
         isNodeDraggingRef: useRef(false),
         nodeDragSession,
       })
@@ -224,26 +216,28 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
 
     function Harness() {
       const [nodes, setNodes] = useState(initialNodes)
-      const publishers = useWorkspaceCanvasNodePublishers({
-        workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID,
-      })
+      const nodesRef = useRef(nodes)
+      nodesRef.current = nodes
+      const [, setSnapGuides] = useState(null)
+      const magneticSnappingEnabledRef = useRef(false)
       const selection = useCanvasSelectionCommands()
       useLayoutEffect(() => {
-        // The selection lives in the canvas store; the base of a batch is decorated from it.
-        selection.setNodeIds(['outside-node'])
         selection.setSpaceIds(['selected-space'])
       }, [selection])
       const nodeDragSession = useWorkspaceCanvasNodeDragSession({
         workspaceId: 'workspace-persist',
+        magneticSnappingEnabledRef,
+        setSnapGuides,
       })
 
-      // The release is the real write: the Space frame reaches the document with a flush.
       const apply = useWorkspaceCanvasApplyNodeChanges({
-        ...changePathIntoState(setNodes, publishers.commitNodesRelease),
+        nodesRef,
+        onNodesChange: next => {
+          setNodes(next)
+        },
         clearAgentLaunchToken: () => undefined,
         normalizePosition: (_nodeId, desired) => desired,
         applyPendingScrollbacks: next => next,
-        nodes,
         isNodeDraggingRef: useRef(false),
         nodeDragSession,
       })
@@ -356,25 +350,27 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
       },
     ]
 
-    createCanvasDocumentHarness({
-      workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID,
-      nodes: initialNodes,
-    })
-
     function Harness() {
       const [nodes, setNodes] = useState(initialNodes)
-      const snapGuides = useCanvasInteraction(selectSnapGuides)
+      const nodesRef = useRef(nodes)
+      nodesRef.current = nodes
+      const [snapGuides, setSnapGuides] = useState<unknown[] | null>(null)
+      const magneticSnappingEnabledRef = useRef(true)
       const isNodeDraggingRef = useRef(false)
       const nodeDragSession = useWorkspaceCanvasNodeDragSession({
         workspaceId: 'workspace-snap',
+        magneticSnappingEnabledRef,
+        setSnapGuides,
       })
 
       const apply = useWorkspaceCanvasApplyNodeChanges({
-        ...changePathIntoState(setNodes),
+        nodesRef,
+        onNodesChange: next => {
+          setNodes(next)
+        },
         clearAgentLaunchToken: () => undefined,
         normalizePosition: (_nodeId, desired) => desired,
         applyPendingScrollbacks: next => next,
-        nodes,
         isNodeDraggingRef,
         nodeDragSession,
       })
@@ -421,11 +417,7 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
       )
     }
 
-    render(<Harness />, {
-      wrapper: ({ children }) => (
-        <CanvasStoreTestProvider magneticSnapping>{children}</CanvasStoreTestProvider>
-      ),
-    })
+    render(<Harness />, { wrapper: CanvasStoreTestProvider })
 
     fireEvent.click(screen.getByRole('button', { name: 'Drag' }))
     await waitFor(() => {

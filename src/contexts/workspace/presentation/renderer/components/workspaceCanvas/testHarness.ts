@@ -162,13 +162,6 @@ export function bindWorkspaceCanvasSetZoomTestAction(
   setZoomHandler = handler
 }
 
-/** `syncWorkspaceCanvasTestState`, only in a test window (`meta.isTest`); a no-op in production. */
-export function syncWorkspaceCanvasTestStateInTestWindow(nodes: Node<TerminalNodeData>[]): void {
-  if (typeof window !== 'undefined' && window.opencoveApi?.meta?.isTest === true) {
-    syncWorkspaceCanvasTestState(nodes)
-  }
-}
-
 export function syncWorkspaceCanvasTestState(nodes: Node<TerminalNodeData>[]): void {
   if (typeof window === 'undefined') {
     return

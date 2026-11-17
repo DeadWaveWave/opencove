@@ -48,22 +48,6 @@ async function readPersistedNotePosition(
   )
 }
 
-// The release reaches the saved state through the debounced persistence write, so a read taken
-// right after the mouse-up can still see the position from before the drag: poll until it moves.
-async function expectPersistedNoteMovedBy(
-  window: Page,
-  nodeId: string,
-  before: { x: number; y: number },
-  minimum: { x: number; y: number },
-): Promise<void> {
-  const movedBy = async (axis: 'x' | 'y'): Promise<number | null> => {
-    const after = await readPersistedNotePosition(window, nodeId)
-    return after ? after[axis] - before[axis] : null
-  }
-  await expect.poll(() => movedBy('x')).toBeGreaterThan(minimum.x)
-  await expect.poll(() => movedBy('y')).toBeGreaterThan(minimum.y)
-}
-
 test.describe('Workspace Canvas - Selection (Note Drag)', () => {
   test('drags a selected note from textarea body', async () => {
     const { electronApp, window } = await launchApp()
@@ -124,10 +108,16 @@ test.describe('Workspace Canvas - Selection (Note Drag)', () => {
         targetPosition: { x: 760, y: 520 },
       })
 
-      await expectPersistedNoteMovedBy(window, 'mouse-selected-note-body-drag-node', beforeDrag, {
-        x: 60,
-        y: 120,
-      })
+      const afterDrag = await readPersistedNotePosition(
+        window,
+        'mouse-selected-note-body-drag-node',
+      )
+      if (!afterDrag) {
+        throw new Error('note position unavailable after selected body drag')
+      }
+
+      expect(afterDrag.x).toBeGreaterThan(beforeDrag.x + 60)
+      expect(afterDrag.y).toBeGreaterThan(beforeDrag.y + 120)
     } finally {
       await electronApp.close()
     }
@@ -218,11 +208,14 @@ test.describe('Workspace Canvas - Selection (Note Drag)', () => {
         targetPosition: { x: 760, y: 520 },
       })
 
+      const afterDrag = await readPersistedNotePosition(window, 'note-title-blank-drag-node')
+      if (!afterDrag) {
+        throw new Error('note position unavailable after title drag')
+      }
       await expect(titleInput).toHaveCount(0)
-      await expectPersistedNoteMovedBy(window, 'note-title-blank-drag-node', beforeDrag, {
-        x: 120,
-        y: 120,
-      })
+
+      expect(afterDrag.x).toBeGreaterThan(beforeDrag.x + 120)
+      expect(afterDrag.y).toBeGreaterThan(beforeDrag.y + 120)
     } finally {
       await electronApp.close()
     }

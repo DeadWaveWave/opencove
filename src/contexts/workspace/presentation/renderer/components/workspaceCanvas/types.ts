@@ -109,12 +109,6 @@ export interface SelectionDraftState {
   phase: 'active' | 'settling'
 }
 
-/** What the marquee rectangle shows: the draft without its pointer and selection bookkeeping. */
-export type SelectionDraftUiState = Pick<
-  SelectionDraftState,
-  'startX' | 'startY' | 'currentX' | 'currentY' | 'phase'
->
-
 export interface SpaceTargetMountPickerState {
   nodeIds: readonly string[]
   rect: WorkspaceSpaceRect | null

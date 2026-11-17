@@ -245,7 +245,7 @@ describe('workspace canvas arrange hook', () => {
       const view = renderCanvasNodeStore(harness, { extend: useArrangeUnderTest })
       act(() => view.result.current.selection.setNodeIds(['b']))
       expect(harness.readStoreDocument().nodes[1].selected).toBeFalsy()
-      expect(view.result.current.canvasState.flowNodes[1].selected).toBe(true)
+      expect(view.result.current.nodeStore.nodesRef.current[1].selected).toBe(true)
 
       act(() => view.result.current.arrange.arrangeCanvas())
 

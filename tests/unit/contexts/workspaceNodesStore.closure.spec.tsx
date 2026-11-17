@@ -6,11 +6,7 @@ import { useWorkspaceCanvasNodesStore } from '../../../src/contexts/workspace/pr
 import { useWorkspaceCanvasNodeDeleteConfirmation } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodeDeleteConfirmation'
 import { subscribeWorkspaceNodesClosed } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeClosureEvents'
 import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
-import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
-import {
-  readWorkspaceDocument,
-  registerWorkspaceDocumentPersistFlush,
-} from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+import { registerWorkspaceDocumentPersistFlush } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import {
   useCanvasUiCommands,
   useReadCanvasUi,
@@ -28,21 +24,19 @@ vi.mock('../../../src/contexts/workspace/presentation/renderer/utils/nodeRuntime
 
 const disposers: Array<() => void> = []
 
-const documentNodes = () => readWorkspaceDocument('workspace-1')?.nodes
-
-function renderStore(nodes = [pixelNode()], onStoreWrite = vi.fn(), onFlush = vi.fn()) {
+function renderStore(nodes = [pixelNode()], onNodesCommitted = vi.fn(), onFlush = vi.fn()) {
   const requestNodeDeleteRef = { current: (_nodeIds: string[]) => undefined }
   seedWorkspaceCanvasStore({ nodes })
   // The store flushes through the persist flush the shell registered with the document module.
   disposers.push(registerWorkspaceDocumentPersistFlush(onFlush))
-  // The write of the closure to the app store, which the canvas's node store no longer announces.
-  disposers.push(useAppStore.subscribe(() => onStoreWrite()))
   return renderHook(
     () => {
       const store = useWorkspaceCanvasNodesStore({
         workspaceId: 'workspace-1',
         workspacePath: '',
         nodes: useWorkspaceCanvasStoreNodes(),
+        onNodesCommitted,
+        isLiveGestureActive: () => false,
         standardWindowSizeBucket: 'regular',
         browserDefaultMode: 'iframe',
       })
@@ -103,7 +97,7 @@ describe('node store successful closure', () => {
     )
     const closed = vi.fn((ids: string[]) => {
       expect(ids).toEqual(['terminal-1'])
-      expect(documentNodes()).toEqual([])
+      expect(view.result.current.nodesRef.current).toEqual([])
       order.push('closed')
     })
     unsubscribe = subscribeWorkspaceNodesClosed(closed)
@@ -158,7 +152,7 @@ describe('node store successful closure', () => {
         release()
         await closing
       })
-      expect(documentNodes()).toEqual([])
+      expect(view.result.current.nodesRef.current).toEqual([])
       expect(closed).toHaveBeenCalledExactlyOnceWith([node.id])
     },
   )

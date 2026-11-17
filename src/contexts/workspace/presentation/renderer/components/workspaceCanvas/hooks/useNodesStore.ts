@@ -7,14 +7,17 @@ import { useScrollbackStore } from '../../../store/useScrollbackStore'
 import { useWebsiteWindowStore } from '../../../store/useWebsiteWindowStore'
 import { findNearestFreePosition } from '../../../utils/collision'
 import { cleanupNodeRuntimeArtifacts } from '../../../utils/nodeRuntimeCleanup'
+import { TERMINAL_LAYOUT_SYNC_EVENT } from '../../terminalNode/constants'
 import { focusNodeInViewport } from '../helpers'
 import { syncWorkspaceCanvasTestState } from '../testHarness'
 import {
   resolveAgentNodeMinSize,
   resolveCanonicalNodeMinSize,
 } from '../../../utils/workspaceNodeSizing'
+import { ensureNodesHaveInitialDimensions } from '../../../utils/reactFlowNodeDimensions'
+import { resolveCanvasDocumentBase } from '../../../utils/canvasDocumentBase'
+import { commitCanvasDocument, isActiveWorkspace } from '../../../store/workspaceDocumentCommands'
 import { useCanvasDocumentCommands, useReadCanvasDocument } from '../../../store/canvasStoreContext'
-import { useCanvasNodeWriter } from './useCanvasNodeWriter'
 import { removeNodeWithRelations } from './useNodesStore.closeNode'
 import { resolveWorkspaceLayoutAfterNodeResize } from './useNodesStore.resolveResizeLayout'
 import { useWorkspaceCanvasNodeCreation } from './useNodesStore.createNodes'
@@ -25,6 +28,8 @@ import { useWorkspaceCanvasRoleNodeMutations } from './useNodesStore.roleMutatio
 import { useWorkspaceCanvasWebsiteNodeMutations } from './useNodesStore.websiteMutations'
 import { resolveRenamedWorkspaceNodeTitle, shouldRenameWorkspaceNode } from './useNodesStore.title'
 import type {
+  CanvasDocumentRecipeInput,
+  CanvasDocumentWriteOptions,
   UseWorkspaceCanvasNodesStoreParams,
   UseWorkspaceCanvasNodesStoreResult,
 } from './useNodesStore.types'
@@ -36,6 +41,8 @@ export function useWorkspaceCanvasNodesStore({
   workspaceId,
   workspacePath,
   nodes,
+  onNodesCommitted,
+  isLiveGestureActive,
   onShowMessage,
   onNodeCreated,
   standardWindowSizeBucket,
@@ -43,11 +50,11 @@ export function useWorkspaceCanvasNodesStore({
 }: UseWorkspaceCanvasNodesStoreParams): UseWorkspaceCanvasNodesStoreResult {
   const reactFlow = useReactFlow<Node<TerminalNodeData>, Edge>()
   // What this store reads to act on a node, and its creators to place a new one, is the committed
-  // document as it is when the call runs, for the workspace of this render. It writes through the
-  // canvas's node writer under the name its callers know, `setNodes`.
+  // document as it is when the call runs, for the workspace of this render. The canvas view's copy
+  // below stays only for the commit path and the nearest free position (Decision 7 of #702).
   const readDocument = useReadCanvasDocument()
   const { requestPersistFlush } = useCanvasDocumentCommands()
-  const { updateNodes: setNodes, updateCanvasDocument } = useCanvasNodeWriter()
+  const nodesRef = useRef(nodes)
   const agentLaunchTokenByNodeIdRef = useRef<Map<string, number>>(new Map())
   const pendingScrollbackByNodeRef = useRef<Map<string, string>>(new Map())
   const isNodeDraggingRef = useRef(false)
@@ -109,10 +116,78 @@ export function useWorkspaceCanvasNodesStore({
   }, [fallbackCreatedNodeId, nodes, onNodeCreated, reactFlow, readDocument])
 
   useLayoutEffect(() => {
+    nodesRef.current = nodes
     if (window.opencoveApi?.meta?.isTest === true) {
       syncWorkspaceCanvasTestState(nodes)
     }
   }, [nodes])
+  // Computes from the store's document as it is when this runs, so a write that landed since the
+  // last React commit is not overwritten. Writes to this hook's own workspace even if the user has
+  // switched away since the flow began; the canvas-local copies follow only while it is active.
+  const updateCanvasDocument = useCallback(
+    (
+      recipe: (document: CanvasDocumentRecipeInput) => CanvasDocumentRecipeInput,
+      options: CanvasDocumentWriteOptions = {},
+    ) => {
+      let previousDocumentNodes: Node<TerminalNodeData>[] | null = null
+      const result = commitCanvasDocument(
+        workspaceId,
+        document => {
+          previousDocumentNodes = document.nodes
+          // nodesRef shows the active workspace; a late write for another one must not inherit it.
+          const isShown = isActiveWorkspace(workspaceId)
+          const base = resolveCanvasDocumentBase(
+            document.nodes,
+            isShown ? nodesRef.current : document.nodes,
+            { includeLivePositions: isShown && isLiveGestureActive() },
+          )
+          const output = recipe({ nodes: base, spaces: document.spaces })
+          const nextNodes = ensureNodesHaveInitialDimensions(output.nodes)
+          if (nextNodes === base && output.spaces === document.spaces) {
+            return document
+          }
+          return {
+            ...document,
+            nodes: nextNodes === base ? document.nodes : nextNodes,
+            spaces: output.spaces,
+          }
+        },
+        { flush: options.flush },
+      )
+
+      if (
+        result.status !== 'applied' ||
+        result.document.nodes === previousDocumentNodes ||
+        !isActiveWorkspace(workspaceId)
+      ) {
+        return
+      }
+
+      const committedNodes = result.document.nodes
+      nodesRef.current = committedNodes
+      if (window.opencoveApi?.meta?.isTest === true) {
+        syncWorkspaceCanvasTestState(committedNodes)
+      }
+      onNodesCommitted(committedNodes)
+
+      if (options.syncLayout ?? true) {
+        window.dispatchEvent(new Event(TERMINAL_LAYOUT_SYNC_EVENT))
+      }
+    },
+    [isLiveGestureActive, onNodesCommitted, workspaceId],
+  )
+  const setNodes = useCallback(
+    (
+      updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
+      options: CanvasDocumentWriteOptions = {},
+    ) => {
+      updateCanvasDocument(
+        ({ nodes: prevNodes, spaces }) => ({ nodes: updater(prevNodes), spaces }),
+        options,
+      )
+    },
+    [updateCanvasDocument],
+  )
   const { updateTerminalTitle, clearTerminalAgentOverlay } =
     useTerminalAgentOverlayMutations(setNodes)
   const upsertNode = useCallback(
@@ -187,14 +262,9 @@ export function useWorkspaceCanvasNodesStore({
     [clearAgentLaunchToken, readDocument, requestPersistFlush, setNodes],
   )
 
-  // The committed nodes as the document holds them now, never a gesture's live positions: its
-  // one caller is the change path's settled move without a drag, when the two agree.
-  const normalizePosition = useCallback(
-    (nodeId: string, desired: Point, size: Size): Point => {
-      return findNearestFreePosition(desired, size, readDocument().nodes, nodeId)
-    },
-    [readDocument],
-  )
+  const normalizePosition = useCallback((nodeId: string, desired: Point, size: Size): Point => {
+    return findNearestFreePosition(desired, size, nodesRef.current, nodeId)
+  }, [])
 
   const resizeNode = useCallback(
     (nodeId: string, desiredFrame: NodeFrame) => {
@@ -409,6 +479,7 @@ export function useWorkspaceCanvasNodesStore({
   })
 
   return {
+    nodesRef,
     pendingScrollbackByNodeRef,
     isNodeDraggingRef,
     setNodes,

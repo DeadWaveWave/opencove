@@ -196,6 +196,7 @@ describe('node selection writers in useWorkspaceCanvasInteractions', () => {
           websiteWindowPasteEnabled: false,
           isShiftPressedRef: { current: false },
           selectionDraftRef: { current: null },
+          setSelectionDraftUi: vi.fn(),
           reactFlow,
           setNodes: holder.setNodes,
           workspaceId: 'writers',
@@ -317,6 +318,7 @@ describe('marquee in useWorkspaceCanvasSelectionDraft', () => {
           isTrackpadCanvasMode: true,
           isShiftPressedRef: { current: false },
           selectionDraftRef,
+          setSelectionDraftUi: vi.fn(),
           reactFlow,
           setNodes: holder.setNodes,
         }),
@@ -512,6 +514,8 @@ describe('Space click selection in useWorkspaceCanvasSpaceDrag', () => {
           .map(node => node.id)
       },
     }
+    // Stable: the hook clears a drag in progress whenever this callback changes.
+    const setSnapGuides = vi.fn()
     function useDragUnderTest({ workspaceId, nodeStore }: CanvasNodeStoreContext) {
       const flow = useReactFlow<Node<TerminalNodeData>>()
       return {
@@ -520,6 +524,8 @@ describe('Space click selection in useWorkspaceCanvasSpaceDrag', () => {
           reactFlow: { ...flow, screenToFlowPosition: point => point, getZoom: () => 1 },
           setNodes: nodeStore.setNodes,
           updateCanvasDocument: nodeStore.updateCanvasDocument,
+          magneticSnappingEnabledRef: { current: false },
+          setSnapGuides,
         }),
         ...useStoreProbe(),
       }
@@ -688,6 +694,7 @@ describe('the Spaces the selection hooks read (#702, PR 7)', () => {
         isTrackpadCanvasMode: true,
         isShiftPressedRef: { current: false },
         selectionDraftRef,
+        setSelectionDraftUi: vi.fn(),
         reactFlow,
         setNodes: holder.setNodes,
       }),

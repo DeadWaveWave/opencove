@@ -1,6 +1,6 @@
 import { useReactFlow, type Edge, type Node } from '@xyflow/react'
 import * as workspaceCanvasHooks from './workspaceCanvas/hooks'
-import { CanvasFlowHost } from './workspaceCanvas/CanvasFlowHost'
+import { TerminalDisplayAlignedWorkspaceCanvasView } from './workspaceCanvas/TerminalDisplayAlignedWorkspaceCanvasView'
 import { openQuickMenuSettings } from './workspaceCanvas/openQuickMenuSettings'
 import type { WorkspaceCanvasInnerProps } from './workspaceCanvas/types'
 import { useCanvasCollapse } from './workspaceCanvas/collapse/useCanvasCollapse'
@@ -39,11 +39,15 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
   useCanvasCommitProbe('WorkspaceCanvasInner', props)
   const reactFlow = useReactFlow<Node<import('../types').TerminalNodeData>, Edge>()
   const canvasState = workspaceCanvasHooks.useWorkspaceCanvasState({
+    workspaceId,
     nodes,
     spaces,
     viewport,
   })
-  const nodePublishers = workspaceCanvasHooks.useWorkspaceCanvasNodePublishers({ workspaceId })
+  const nodePublishers = workspaceCanvasHooks.useWorkspaceCanvasNodePublishers({
+    ...canvasState,
+    workspaceId,
+  })
   // prettier-ignore
   const exclusiveNodeDragAnchorIdRef = workspaceCanvasHooks.useWorkspaceCanvasWorkspaceReset(workspaceId, canvasState.selectedNodeIds.length)
   const actionRefs = workspaceCanvasHooks.useWorkspaceCanvasActionRefs()
@@ -51,11 +55,17 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
     workspaceId,
     workspacePath,
     nodes: canvasState.flowNodes,
+    onNodesCommitted: nodePublishers.publishCommittedNodes,
+    isLiveGestureActive: nodePublishers.isLiveGestureActive,
     onShowMessage,
     standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
     browserDefaultMode: agentSettings.browserDefaultMode,
   })
-  const nodeDragSession = workspaceCanvasHooks.useWorkspaceCanvasNodeDragSession({ workspaceId })
+  const nodeDragSession = workspaceCanvasHooks.useWorkspaceCanvasNodeDragSession({
+    workspaceId,
+    magneticSnappingEnabledRef: canvasState.magneticSnappingEnabledRef,
+    setSnapGuides: canvasState.setSnapGuides,
+  })
   // prettier-ignore
   const { updateSpaceDirectory, getSpaceBlockingNodes, closeNodesById } = workspaceCanvasHooks.useWorkspaceCanvasSpaceDirectoryOps({ workspacePath, updateCanvasDocument: nodeStore.updateCanvasDocument, closeNode: nodeStore.closeNode })
   const spacesApi = workspaceCanvasHooks.useWorkspaceCanvasSpaces({
@@ -77,6 +87,8 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
       reactFlow,
       setNodes: nodeStore.setNodes,
       updateCanvasDocument: nodeStore.updateCanvasDocument,
+      magneticSnappingEnabledRef: canvasState.magneticSnappingEnabledRef,
+      setSnapGuides: canvasState.setSnapGuides,
     })
   const {
     finalizeDraggedNodeDrop,
@@ -181,6 +193,7 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
     websiteWindowPasteEnabled: agentSettings.experimentalWebsiteWindowPasteEnabled,
     isShiftPressedRef: canvasState.isShiftPressedRef,
     selectionDraftRef: canvasState.selectionDraftRef,
+    setSelectionDraftUi: canvasState.setSelectionDraftUi,
     reactFlow,
     setNodes: nodeStore.setNodes,
     updateCanvasDocument: nodeStore.updateCanvasDocument,
@@ -282,7 +295,7 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
       nodeStore={nodeStore}
       onShowMessage={onShowMessage}
     >
-      <CanvasFlowHost
+      <TerminalDisplayAlignedWorkspaceCanvasView
         workspaceId={workspaceId}
         terminalFontSize={agentSettings.terminalFontSize}
         terminalFontFamily={agentSettings.terminalFontFamily}
@@ -302,7 +315,7 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
         handleCanvasDragOver={handleCanvasDragOver}
         handleCanvasDrop={handleCanvasDrop}
         {...actionBarActions}
-        committedNodes={canvasState.flowNodes}
+        nodes={canvasState.flowNodes}
         edges={taskAgentEdges}
         nodeTypes={nodeTypes}
         onNodesChange={applyChanges}
@@ -316,8 +329,10 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
         isTrackpadCanvasMode={inputMode.isTrackpadCanvasMode}
         useManualCanvasWheelGestures={inputMode.useManualCanvasWheelGestures}
         isShiftPressed={canvasState.isShiftPressed}
+        selectionDraft={canvasState.selectionDraftUi}
+        snapGuides={canvasState.snapGuides}
         spaceVisuals={spacesApi.spaceVisuals}
-        spaceDragFramePreview={spaceFramePreview}
+        spaceFramePreview={spaceFramePreview ?? nodeDragSession.nodeSpaceFramePreview}
         handleSpaceDragHandlePointerDown={handleSpaceDragHandlePointerDown}
         commitSpaceRename={spacesApi.commitSpaceRename}
         activateSpaceTitle={spacesApi.activateSpaceTitle}
@@ -330,6 +345,8 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
         activateSpace={spacesApi.activateSpace}
         activateAllSpaces={spacesApi.activateAllSpaces}
         onOpenSpaceContextMenu={onOpenSpaceContextMenu}
+        magneticSnappingEnabled={canvasState.magneticSnappingEnabled}
+        onToggleMagneticSnapping={() => canvasState.setMagneticSnappingEnabled(enabled => !enabled)}
         createTerminalNode={createTerminalNode}
         createNoteNodeFromContextMenu={createNoteNodeFromContextMenu}
         createWebsiteNodeFromContextMenu={createWebsiteNodeFromContextMenu}

@@ -1,5 +1,5 @@
 import { act } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { useWorkspaceCanvasNodeDragSession } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodeDragSession'
 import type { WorkspaceSpaceState } from '@contexts/workspace/presentation/renderer/types'
 import { pixelNode } from './workspacePixelLayer.fixtures'
@@ -12,6 +12,8 @@ function renderSession(spaces: WorkspaceSpaceState[] = []) {
   return renderHookWithCanvasStore(() =>
     useWorkspaceCanvasNodeDragSession({
       workspaceId: 'drag-session',
+      magneticSnappingEnabledRef: { current: false },
+      setSnapGuides: vi.fn(),
     }),
   )
 }

@@ -18,7 +18,6 @@ import {
   renderInCanvasDocument,
 } from '../../support/canvasDocumentHarness'
 import { createRowNodes, createSpace } from '../../support/canvasSelectionFixtures'
-import { releaseSession } from '../../support/changePathCallbacks'
 import { renderSpaceOwnershipInDocument } from '../../support/spaceOwnershipHarness'
 import { pixelNode } from './workspacePixelLayer.fixtures'
 import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
@@ -615,7 +614,7 @@ describe('a node drag that pushes a Space frame', () => {
   it('a release with no captured Space selection: the stop handler of the same call drops into the pushed rect', () => {
     const { harness, view } = setup([note('n1', 50, 50), note('n2', 1416, 816)], [spaceA(['n1'])])
     act(() => view.result.current.selection.setSpaceIds(['space-a']))
-    const { nodeDragSession, ownership, publishers } = view.result.current
+    const { nodeDragSession, ownership } = view.result.current
     const n1 = harness.readStoreDocument().nodes[0]
     const n2 = harness.readStoreDocument().nodes[1]
     act(() => nodeDragSession.beginNodeDragSession([n1, n2]))
@@ -630,7 +629,7 @@ describe('a node drag that pushes a Space frame', () => {
     })
 
     act(() => {
-      releaseSession(nodeDragSession, publishers)
+      nodeDragSession.endNodeDragSession()
       ownership.handleNodeDragStop(
         { clientX: 650, clientY: 100, shiftKey: true } as React.MouseEvent,
         n2,
@@ -649,7 +648,7 @@ describe('a node drag that pushes a Space frame', () => {
     act(() => view.result.current.selection.select({ nodeIds: ['n1'], spaceIds: ['space-a'] }))
     const nodes = harness.readStoreDocument().nodes
     const n1 = nodes[0]
-    const { nodeDragSession, ownership, publishers } = view.result.current
+    const { nodeDragSession, ownership } = view.result.current
     act(() => ownership.handleNodeDragStart({ ...keepSelection }, { ...n1, selected: true }, [n1]))
     expect(nodeDragSession.getDragStartSpaceSelection()).toEqual(['space-a'])
     act(() => nodeDragSession.beginNodeDragSession(nodes))
@@ -667,7 +666,7 @@ describe('a node drag that pushes a Space frame', () => {
     const before = harness.readStoreDocument()
 
     act(() => {
-      releaseSession(nodeDragSession, publishers)
+      nodeDragSession.endNodeDragSession()
       ownership.handleNodeDragStop(
         { clientX: 200, clientY: 150, shiftKey: true } as React.MouseEvent,
         n1,

@@ -1,12 +1,6 @@
 import React from 'react'
 import type { WorkspaceCanvasViewProps } from '../WorkspaceCanvasView.types'
-import type { CanvasInteractionState } from '../../../store/canvasStore.interaction'
-import {
-  useCanvasInteraction,
-  useCanvasInteractionCommands,
-  useCanvasUi,
-  useCanvasUiCommands,
-} from '../../../store/canvasStoreContext'
+import { useCanvasUi, useCanvasUiCommands } from '../../../store/canvasStoreContext'
 import { useWorkspaceCanvasMenuDismissals } from './useCanvasMenuDismissals'
 import { useSpacePathOpeners } from './useSpacePathOpeners'
 import {
@@ -16,9 +10,6 @@ import {
 } from '../hooks/useCanvasSpaceMenuState'
 import { WorkspaceContextMenu } from './WorkspaceContextMenu'
 import { WorkspaceSpaceActionMenu } from './WorkspaceSpaceActionMenu'
-
-const selectMagneticSnappingEnabled = (interaction: CanvasInteractionState) =>
-  interaction.magneticSnappingEnabled
 
 export function WorkspaceCanvasMenus({
   nodes,
@@ -39,6 +30,8 @@ export function WorkspaceCanvasMenus({
   insertQuickPhrase,
   openQuickMenuSettings,
   spaces,
+  magneticSnappingEnabled,
+  onToggleMagneticSnapping,
   arrangeAll,
   arrangeCanvas,
   arrangeInSpace,
@@ -77,6 +70,8 @@ export function WorkspaceCanvasMenus({
   | 'insertQuickPhrase'
   | 'openQuickMenuSettings'
   | 'spaces'
+  | 'magneticSnappingEnabled'
+  | 'onToggleMagneticSnapping'
   | 'arrangeAll'
   | 'arrangeCanvas'
   | 'arrangeInSpace'
@@ -100,8 +95,6 @@ export function WorkspaceCanvasMenus({
   const contextMenu = useCanvasUi(state => state.contextMenu)
   const spaceActionMenu = useCanvasUi(state => state.spaceActionMenu)
   const ui = useCanvasUiCommands()
-  const magneticSnappingEnabled = useCanvasInteraction(selectMagneticSnappingEnabled)
-  const { toggleMagneticSnapping } = useCanvasInteractionCommands()
   const availablePathOpeners = useSpacePathOpeners(spaceActionMenu)
   useWorkspaceCanvasMenuDismissals()
 
@@ -150,7 +143,7 @@ export function WorkspaceCanvasMenus({
         keybindings={agentSettings.keybindings}
         spaces={spaces}
         magneticSnappingEnabled={magneticSnappingEnabled}
-        onToggleMagneticSnapping={toggleMagneticSnapping}
+        onToggleMagneticSnapping={onToggleMagneticSnapping}
         arrangePreserveWindowSizes={arrangePreserveWindowSizes}
         onChangeArrangePreserveWindowSizes={onChangePreserveWindowSizesOnArrange}
         canArrangeAll={canArrangeAll}

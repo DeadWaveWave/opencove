@@ -37,6 +37,7 @@ export function useWorkspaceCanvasInteractions({
   websiteWindowPasteEnabled,
   isShiftPressedRef,
   selectionDraftRef,
+  setSelectionDraftUi,
   reactFlow,
   setNodes,
   updateCanvasDocument,
@@ -192,6 +193,7 @@ export function useWorkspaceCanvasInteractions({
     isTrackpadCanvasMode,
     isShiftPressedRef,
     selectionDraftRef,
+    setSelectionDraftUi,
     reactFlow,
     setNodes,
   })

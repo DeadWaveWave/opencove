@@ -409,7 +409,7 @@ describe('useWorkspaceCanvasSpaces reads and writes the committed document', () 
       const harness = createCanvasDocumentHarness({ nodes: terminalRow(['a']) })
       const view = renderSpaces(harness)
       act(() => view.result.current.selection.setNodeIds(['a']))
-      expect(view.result.current.canvasState.flowNodes[0].selected).toBe(true)
+      expect(view.result.current.nodeStore.nodesRef.current[0].selected).toBe(true)
 
       await act(async () => {
         view.result.current.spacesApi.createSpaceFromSelectedNodes()
@@ -428,7 +428,7 @@ describe('useWorkspaceCanvasSpaces reads and writes the committed document', () 
       })
       const view = renderSpaces(harness)
       act(() => view.result.current.selection.setNodeIds(['t1']))
-      expect(view.result.current.canvasState.flowNodes[0].selected).toBe(true)
+      expect(view.result.current.nodeStore.nodesRef.current[0].selected).toBe(true)
 
       act(() => {
         view.result.current.spacesApi.createChildSpaceInParent('parent', { nodeIds: ['t1'] })

@@ -10,18 +10,23 @@ import {
 } from '../../../utils/canvasInteractionLayout'
 import { readCanvasInteractionState } from './useNodeDragSession.collapse'
 import {
-  useCanvasInteractionCommands,
   useCanvasSelectionCommands,
   useCanvasUiCommands,
   useReadCanvasDocument,
   useReadCanvasSelection,
 } from '../../../store/canvasStoreContext'
 
+type SelectionDraftUiState = Pick<
+  SelectionDraftState,
+  'startX' | 'startY' | 'currentX' | 'currentY' | 'phase'
+>
+
 interface UseSelectionDraftParams {
   workspaceId?: string
   isTrackpadCanvasMode: boolean
   isShiftPressedRef: MutableRefObject<boolean>
   selectionDraftRef: MutableRefObject<SelectionDraftState | null>
+  setSelectionDraftUi: React.Dispatch<React.SetStateAction<SelectionDraftUiState | null>>
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
   setNodes: (
     updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -34,6 +39,7 @@ export function useWorkspaceCanvasSelectionDraft({
   isTrackpadCanvasMode,
   isShiftPressedRef,
   selectionDraftRef,
+  setSelectionDraftUi,
   reactFlow,
   setNodes,
 }: UseSelectionDraftParams): {
@@ -45,7 +51,6 @@ export function useWorkspaceCanvasSelectionDraft({
   const readSelection = useReadCanvasSelection()
   const readDocument = useReadCanvasDocument()
   const selection = useCanvasSelectionCommands()
-  const { setSelectionDraft } = useCanvasInteractionCommands()
 
   const cancelSelectionOnWindowBlur = !(
     typeof window !== 'undefined' && window.opencoveApi?.meta?.isTest === true
@@ -82,7 +87,7 @@ export function useWorkspaceCanvasSelectionDraft({
         return false
       }
 
-      setSelectionDraft(null)
+      setSelectionDraftUi(null)
 
       if (pointer) {
         draft.currentX = pointer.clientX
@@ -174,7 +179,7 @@ export function useWorkspaceCanvasSelectionDraft({
       selectionDraftRef,
       readSelection,
       selection,
-      setSelectionDraft,
+      setSelectionDraftUi,
       setNodes,
     ],
   )
@@ -215,7 +220,7 @@ export function useWorkspaceCanvasSelectionDraft({
         selectionDraftRef.current = null
       }
 
-      setSelectionDraft(null)
+      setSelectionDraftUi(null)
     }
 
     window.addEventListener('pointerup', handleGlobalPointerUp, true)
@@ -236,7 +241,7 @@ export function useWorkspaceCanvasSelectionDraft({
     detachGlobalPointerListeners,
     finalizeSelectionDraft,
     selectionDraftRef,
-    setSelectionDraft,
+    setSelectionDraftUi,
   ])
 
   useEffect(() => {
@@ -252,9 +257,9 @@ export function useWorkspaceCanvasSelectionDraft({
         pendingSelectionUiFrameRef.current = null
       }
 
-      setSelectionDraft(null)
+      setSelectionDraftUi(null)
     }
-  }, [detachGlobalPointerListeners, setSelectionDraft])
+  }, [detachGlobalPointerListeners, setSelectionDraftUi])
 
   const scheduleSelectionDraftUiUpdate = useCallback(() => {
     if (pendingSelectionUiFrameRef.current !== null) {
@@ -269,7 +274,7 @@ export function useWorkspaceCanvasSelectionDraft({
         return
       }
 
-      setSelectionDraft({
+      setSelectionDraftUi({
         startX: draft.startX,
         startY: draft.startY,
         currentX: draft.currentX,
@@ -277,7 +282,7 @@ export function useWorkspaceCanvasSelectionDraft({
         phase: draft.phase,
       })
     })
-  }, [selectionDraftRef, setSelectionDraft])
+  }, [selectionDraftRef, setSelectionDraftUi])
 
   const handleCanvasPointerDownCapture = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
@@ -379,7 +384,7 @@ export function useWorkspaceCanvasSelectionDraft({
         phase: 'active',
       }
 
-      setSelectionDraft({
+      setSelectionDraftUi({
         startX: event.clientX,
         startY: event.clientY,
         currentX: event.clientX,
@@ -399,7 +404,7 @@ export function useWorkspaceCanvasSelectionDraft({
       registerGlobalPointerListeners,
       selectionDraftRef,
       ui,
-      setSelectionDraft,
+      setSelectionDraftUi,
       workspaceId,
     ],
   )

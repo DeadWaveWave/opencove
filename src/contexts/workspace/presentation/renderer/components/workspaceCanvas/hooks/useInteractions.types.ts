@@ -22,6 +22,11 @@ export type SetNodes = (
   options?: { syncLayout?: boolean },
 ) => void
 
+export type SelectionDraftUiState = Pick<
+  SelectionDraftState,
+  'startX' | 'startY' | 'currentX' | 'currentY' | 'phase'
+>
+
 export interface UseWorkspaceCanvasInteractionsParams {
   canvasRef: React.RefObject<HTMLDivElement | null>
   isTrackpadCanvasMode: boolean
@@ -31,6 +36,7 @@ export interface UseWorkspaceCanvasInteractionsParams {
   websiteWindowPasteEnabled: boolean
   isShiftPressedRef: React.MutableRefObject<boolean>
   selectionDraftRef: React.MutableRefObject<SelectionDraftState | null>
+  setSelectionDraftUi: React.Dispatch<React.SetStateAction<SelectionDraftUiState | null>>
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
   setNodes: SetNodes
   updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']

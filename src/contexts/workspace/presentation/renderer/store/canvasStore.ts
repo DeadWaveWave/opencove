@@ -1,13 +1,4 @@
 import { createStore, type StoreApi } from 'zustand/vanilla'
-import type {
-  CanvasInteractionCommands,
-  CanvasInteractionInitialState,
-  CanvasInteractionState,
-} from './canvasStore.interaction'
-import {
-  createCanvasInteractionCommands,
-  createInitialCanvasInteractionState,
-} from './canvasStore.interaction'
 import type { CanvasSelectionCommands, CanvasSelectionState } from './canvasStore.selection'
 import {
   createCanvasSelectionCommands,
@@ -19,13 +10,11 @@ import { createCanvasUiCommands, createInitialCanvasUiState } from './canvasStor
 export interface CanvasStoreState {
   readonly ui: CanvasUiState
   readonly selection: CanvasSelectionState
-  readonly interaction: CanvasInteractionState
 }
 
 export interface CanvasStoreCommands {
   readonly ui: CanvasUiCommands
   readonly selection: CanvasSelectionCommands
-  readonly interaction: CanvasInteractionCommands
 }
 
 /** Read-only handle: the raw `setState` of the zustand store is deliberately not part of it. */
@@ -43,11 +32,10 @@ export interface CanvasStore {
 export type CanvasSliceWrite<T> = (recipe: (slice: T) => T) => void
 
 /** One store per mounted canvas: UI projection only, never persisted. */
-export function createCanvasStore(initial?: CanvasInteractionInitialState): CanvasStore {
+export function createCanvasStore(): CanvasStore {
   const store = createStore<CanvasStoreState>()(() => ({
     ui: createInitialCanvasUiState(),
     selection: createInitialCanvasSelectionState(),
-    interaction: createInitialCanvasInteractionState(initial),
   }))
   const writeSlice =
     <K extends keyof CanvasStoreState>(key: K): CanvasSliceWrite<CanvasStoreState[K]> =>
@@ -66,7 +54,6 @@ export function createCanvasStore(initial?: CanvasInteractionInitialState): Canv
     commands: {
       ui: createCanvasUiCommands(writeSlice('ui')),
       selection: createCanvasSelectionCommands(writeSlice('selection')),
-      interaction: createCanvasInteractionCommands(writeSlice('interaction')),
     },
   }
 }

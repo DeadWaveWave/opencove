@@ -80,13 +80,11 @@ export function createCanvasDocumentHarness({
 
 function createWrapper(
   workspaceId: string | (() => string),
-  magneticSnapping: boolean,
 ): (props: { children: ReactNode }) => React.ReactElement {
   return function Wrapper({ children }) {
     return (
       <CanvasStoreTestProvider
         workspaceId={typeof workspaceId === 'function' ? workspaceId() : workspaceId}
-        magneticSnapping={magneticSnapping}
       >
         <ReactFlowProvider>{children}</ReactFlowProvider>
       </CanvasStoreTestProvider>
@@ -97,22 +95,15 @@ function createWrapper(
 /**
  * `renderHook` under the canvas store provider of `workspaceId` and a React Flow store. A function
  * is read on every render, so a test switches workspace by changing what it returns and calling
- * `rerender`. Magnetic snapping starts off unless `magneticSnapping` is true.
+ * `rerender`.
  */
 export function renderInCanvasDocument<Result, Props = undefined>(
   callback: (props: Props) => Result,
-  options: {
-    workspaceId?: string | (() => string)
-    initialProps?: Props
-    magneticSnapping?: boolean
-  } = {},
+  options: { workspaceId?: string | (() => string); initialProps?: Props } = {},
 ): RenderHookResult<Result, Props> {
   return renderHook(callback, {
     initialProps: options.initialProps,
-    wrapper: createWrapper(
-      options.workspaceId ?? CANVAS_DOCUMENT_WORKSPACE_ID,
-      options.magneticSnapping === true,
-    ),
+    wrapper: createWrapper(options.workspaceId ?? CANVAS_DOCUMENT_WORKSPACE_ID),
   })
 }
 
@@ -154,11 +145,9 @@ export function renderCanvasNodeStore<Extra extends object = Record<never, never
   {
     workspacePath = `/tmp/${harness.workspaceId}`,
     nodeStoreOptions,
-    magneticSnapping,
     extend,
   }: {
     workspacePath?: string
-    magneticSnapping?: boolean
     /** Further parameters of the node store, such as `onShowMessage`. */
     nodeStoreOptions?: Partial<
       Pick<
@@ -178,15 +167,21 @@ export function renderCanvasNodeStore<Extra extends object = Record<never, never
           EMPTY_SPACES,
       )
       const canvasState = useWorkspaceCanvasState({
+        workspaceId: harness.workspaceId,
         nodes,
         spaces,
         viewport: { x: 0, y: 0, zoom: 1 },
       })
-      const publishers = useWorkspaceCanvasNodePublishers({ workspaceId: harness.workspaceId })
+      const publishers = useWorkspaceCanvasNodePublishers({
+        ...canvasState,
+        workspaceId: harness.workspaceId,
+      })
       const nodeStore = useWorkspaceCanvasNodesStore({
         workspaceId: harness.workspaceId,
         workspacePath,
         nodes: canvasState.flowNodes,
+        onNodesCommitted: publishers.publishCommittedNodes,
+        isLiveGestureActive: publishers.isLiveGestureActive,
         standardWindowSizeBucket: 'regular',
         browserDefaultMode: 'iframe',
         ...nodeStoreOptions,
@@ -201,6 +196,6 @@ export function renderCanvasNodeStore<Extra extends object = Record<never, never
       }
       return { ...context, ...(extend ? extend(context) : ({} as Extra)) }
     },
-    { workspaceId: harness.workspaceId, magneticSnapping },
+    { workspaceId: harness.workspaceId },
   )
 }

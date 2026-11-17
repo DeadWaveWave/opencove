@@ -266,6 +266,8 @@ describe('the focus of a created node when no handler is given', () => {
           workspaceId: A,
           workspacePath: `/tmp/${A}`,
           nodes: NO_NODES,
+          onNodesCommitted: vi.fn(),
+          isLiveGestureActive: () => false,
           standardWindowSizeBucket: 'regular',
           browserDefaultMode: 'iframe',
         }),
@@ -428,60 +430,50 @@ describe('the render that showed A, called after B is shown', () => {
   })
 })
 
-// What a drag frame does: it publishes the gesture's windows to the canvas store.
-function startLiveDrag(view: View, live: Node<TerminalNodeData>[]) {
-  act(() => {
-    view.result.current.publishers.publishLiveNodesChange(
-      new Map(live.map(node => [node.id, { position: node.position, dragging: true }])),
-    )
-  })
-}
-
-// The nearest free position reads the committed nodes of the document (S6, PR 4). Its one caller is
-// the change path's settled move without a drag, when the committed and the live positions agree;
-// a gesture's live positions are never an obstacle.
 describe('placement during a node drag', () => {
   it('avoids the dragged node at the position the store holds, not its live position', async () => {
     const dragged = blockerNode('dragged', { width: 400, height: 300 })
     const { view } = renderStore({ a: { nodes: [dragged] } })
 
-    // A live drag moves the live array; the store keeps the committed position.
-    startLiveDrag(view, [{ ...dragged, position: { x: 4000, y: 0 } }])
-    expect(view.result.current.canvasState.flowNodes[0].position.x).toBe(0)
+    // A live drag moves the canvas view's copy; the store keeps the committed position.
+    act(() => {
+      const { canvasState } = view.result.current
+      canvasState.hasTransientNodePositionsRef.current = true
+      canvasState.setCanvasNodes([{ ...dragged, position: { x: 4000, y: 0 } }])
+    })
+    expect(view.result.current.canvasState.flowNodes[0].position.x).toBe(4000)
 
     const created = await create(view, 'a note')
 
     expect(overlaps(created, { position: { x: 0, y: 0 }, width: 400, height: 300 })).toBe(false)
   })
 
-  it('keeps the nearest free position on the committed nodes, where the dragged node is stored', () => {
+  // Decision 7 of #702 keeps the nearest free position on the canvas view until S6: a window that
+  // is being moved snaps against the other windows where the canvas shows them now.
+  it('keeps the nearest free position on the canvas view, where the dragged node is now', () => {
     const dragged = blockerNode('dragged', { width: 400, height: 300 })
     const { view } = renderStore({ a: { nodes: [dragged] } })
 
-    startLiveDrag(view, [{ ...dragged, position: { x: 4000, y: 0 } }])
+    act(() => {
+      const { canvasState } = view.result.current
+      canvasState.hasTransientNodePositionsRef.current = true
+      canvasState.setCanvasNodes([{ ...dragged, position: { x: 4000, y: 0 } }])
+    })
     expect(documentOf(A).nodes[0].position.x).toBe(0)
 
-    // The store holds `dragged` at the origin and the live overlay does not matter: the origin is
-    // taken, so the result is off it.
+    // The store still holds `dragged` at the origin; the view does not, so the origin is free.
     const position = store(view).normalizePosition(
       'moving',
       { x: 0, y: 0 },
       { width: 400, height: 300 },
     )
 
-    expect(position).not.toEqual({ x: 0, y: 0 })
-    expect(
-      overlaps(
-        { ...dragged, position, id: 'moving' },
-        { position: { x: 0, y: 0 }, width: 400, height: 300 },
-        { width: 400, height: 300 },
-      ),
-    ).toBe(false)
+    expect(position).toEqual({ x: 0, y: 0 })
   })
 
-  // The obstacle list is the document's: a window the store holds at the desired spot moves the
-  // result off it, also one that no render has shown yet.
-  it('moves a window off another window that the store holds at the desired spot', () => {
+  // The obstacle list is the canvas view's too: a window the view shows at the desired spot moves
+  // the result off it.
+  it('moves a window off another window that the canvas view shows at the desired spot', () => {
     const { view } = renderStore({
       a: { nodes: [blockerNode('shown', { width: 400, height: 300 })] },
     })

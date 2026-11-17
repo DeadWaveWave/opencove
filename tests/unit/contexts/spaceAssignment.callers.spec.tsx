@@ -201,6 +201,7 @@ describe('the push-away of the interactions as the canvas composes them', () => 
     websiteWindowPasteEnabled: true,
     isShiftPressedRef,
     selectionDraftRef,
+    setSelectionDraftUi: vi.fn(),
     reactFlow: { ...reactFlow, getNodes: () => [], getNode: () => undefined },
     setNodes,
     workspaceId: 'workspace',

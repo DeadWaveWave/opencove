@@ -1,7 +1,6 @@
 import React from 'react'
 import { useStore } from '@xyflow/react'
-import type { CanvasInteractionState } from '../../../store/canvasStore.interaction'
-import { useCanvasInteraction } from '../../../store/canvasStoreContext'
+import type { WorkspaceSnapGuide } from '../../../utils/workspaceSnap'
 
 function useViewportTransform(): {
   x: number
@@ -32,12 +31,11 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max)
 }
 
-const selectSnapGuides = (interaction: CanvasInteractionState) => interaction.snapGuides
-
-// A leaf subscriber of the `interaction` slice (Decision 2 of #738): a frame of guides renders this
-// component and nothing above it, in the same lane as the nodes they belong to.
-export function WorkspaceSnapGuidesOverlay(): React.JSX.Element | null {
-  const guides = useCanvasInteraction(selectSnapGuides)
+export function WorkspaceSnapGuidesOverlay({
+  guides,
+}: {
+  guides: WorkspaceSnapGuide[] | null
+}): React.JSX.Element | null {
   const transform = useViewportTransform()
 
   if (!guides || guides.length === 0) {

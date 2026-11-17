@@ -2,12 +2,8 @@ import { act } from '@testing-library/react'
 import type { Node } from '@xyflow/react'
 import { describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
-import { useWorkspaceCanvasNodePublishers } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodePublishers'
 import { useWorkspaceCanvasNodeDragSession } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodeDragSession'
-import {
-  useCanvasSelectionCommands,
-  useReadCanvasInteraction,
-} from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
+import { useCanvasSelectionCommands } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
 import { readWorkspaceDocument } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
 import {
@@ -17,11 +13,10 @@ import {
   type CanvasNodeStoreContext,
 } from '../../support/canvasDocumentHarness'
 import { createRowNodes, createSpace } from '../../support/canvasSelectionFixtures'
-import { releaseSession } from '../../support/changePathCallbacks'
 import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
 
 // The node drag session reads the committed Spaces when a frame, the start or the release runs, and
-// hands back the Spaces of a released Space frame, which the release writes (#702, PR 3; #738, PR 5).
+// writes the Spaces of a released Space frame through `updateSpaces` (#702, PR 3).
 
 vi.mock(
   '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands',
@@ -34,11 +29,16 @@ vi.mock(
   },
 )
 
+const setSnapGuides = vi.fn()
+
 function useSessionUnderTest({ workspaceId }: CanvasNodeStoreContext) {
   return {
-    session: useWorkspaceCanvasNodeDragSession({ workspaceId }),
+    session: useWorkspaceCanvasNodeDragSession({
+      workspaceId,
+      magneticSnappingEnabledRef: { current: false },
+      setSnapGuides,
+    }),
     selection: useCanvasSelectionCommands(),
-    readInteraction: useReadCanvasInteraction(),
   }
 }
 
@@ -87,9 +87,9 @@ describe('node drag session frames', () => {
       frameOf(session, [static1, drag], 'drag', { x: 24, y: 24 })
     })
 
-    expect(
-      view.result.current.readInteraction().nodeDragFramePreview?.get('space')?.height,
-    ).toBeGreaterThan(360)
+    expect(view.result.current.session.nodeSpaceFramePreview?.get('space')?.height).toBeGreaterThan(
+      360,
+    )
   })
 
   it('projects a Space-dominant frame from the Spaces the store holds when the frame runs', () => {
@@ -113,9 +113,10 @@ describe('node drag session frames', () => {
     })
 
     // The moved Space runs into the late one and pushes it; the preview names both.
-    expect(
-      [...(view.result.current.readInteraction().nodeDragFramePreview?.keys() ?? [])].sort(),
-    ).toEqual(['space-1', 'space-late'])
+    expect([...(view.result.current.session.nodeSpaceFramePreview?.keys() ?? [])].sort()).toEqual([
+      'space-1',
+      'space-late',
+    ])
   })
 
   it('starts a Space-dominant drag from the rects the store holds when it begins', () => {
@@ -134,9 +135,7 @@ describe('node drag session frames', () => {
       frameOf(session, [n1], 'n1', { x: 150, y: 100 }, true)
     })
 
-    expect(
-      view.result.current.readInteraction().nodeDragFramePreview?.get('space-1'),
-    ).toMatchObject({
+    expect(view.result.current.session.nodeSpaceFramePreview?.get('space-1')).toMatchObject({
       x: 100,
       y: 50,
     })
@@ -180,31 +179,31 @@ describe('node drag session frames', () => {
     })
     let current = 'workspace-a'
     const view = renderInCanvasDocument(
-      () => ({
-        session: useWorkspaceCanvasNodeDragSession({ workspaceId: current }),
-        readInteraction: useReadCanvasInteraction(),
-      }),
+      () => {
+        return useWorkspaceCanvasNodeDragSession({
+          workspaceId: current,
+          magneticSnappingEnabledRef: { current: false },
+          setSnapGuides,
+        })
+      },
       { workspaceId: () => current },
     )
-    const sessionOfA = view.result.current.session
-    const readInteractionOfA = view.result.current.readInteraction
+    const sessionOfA = view.result.current
     current = 'workspace-b'
     view.rerender()
     const nodes = stateA.nodes
 
     act(() => {
-      view.result.current.session.beginNodeDragSession(nodes)
-      frameOf(view.result.current.session, nodes, 'n2', { x: 24, y: 24 })
+      view.result.current.beginNodeDragSession(nodes)
+      frameOf(view.result.current as never, nodes, 'n2', { x: 24, y: 24 })
     })
-    expect(view.result.current.readInteraction().nodeDragFramePreview).toBeNull()
+    expect(view.result.current.nodeSpaceFramePreview).toBeNull()
 
     act(() => {
       sessionOfA.beginNodeDragSession(nodes)
-      frameOf(sessionOfA, nodes, 'n2', { x: 24, y: 24 })
+      frameOf(sessionOfA as never, nodes, 'n2', { x: 24, y: 24 })
     })
-    // The callbacks of A read A's Spaces and write A's canvas store; B's shows none of it.
-    expect(readInteractionOfA().nodeDragFramePreview?.get('space')).toBeDefined()
-    expect(view.result.current.readInteraction().nodeDragFramePreview).toBeNull()
+    expect(view.result.current.nodeSpaceFramePreview?.get('space')).toBeDefined()
   })
 
   // Both workspaces hold `space-1`, at other places. After the switch, the release of a
@@ -232,15 +231,18 @@ describe('node drag session frames', () => {
     let current = 'workspace-a'
     const view = renderInCanvasDocument(
       () => ({
-        session: useWorkspaceCanvasNodeDragSession({ workspaceId: current }),
-        publishers: useWorkspaceCanvasNodePublishers({ workspaceId: current }),
+        session: useWorkspaceCanvasNodeDragSession({
+          workspaceId: current,
+          magneticSnappingEnabledRef: { current: false },
+          setSnapGuides,
+        }),
         selection: useCanvasSelectionCommands(),
       }),
       { workspaceId: () => current },
     )
     current = 'workspace-b'
     view.rerender()
-    const { session, publishers, selection } = view.result.current
+    const { session, selection } = view.result.current
     act(() => selection.setSpaceIds(['space-1']))
     act(() => session.captureDragStartSpaceSelection())
     act(() => session.beginNodeDragSession(nodesB))
@@ -250,7 +252,7 @@ describe('node drag session frames', () => {
     const spacesOfA = readWorkspaceDocument('workspace-a')!.spaces
     harness.flush.mockClear()
 
-    act(() => releaseSession(session, publishers))
+    act(() => session.endNodeDragSession())
 
     expect(readWorkspaceDocument('workspace-b')!.spaces[0].rect).toMatchObject({ x: 1100, y: 50 })
     expect(readWorkspaceDocument('workspace-a')!.spaces).toBe(spacesOfA)
@@ -267,57 +269,18 @@ describe('releasing a node drag', () => {
     const { session } = view.result.current
     act(() => session.captureDragStartSpaceSelection())
     act(() => session.beginNodeDragSession([n1]))
-    const { publishers } = view.result.current
-    return { harness, view, session, publishers, n1 }
+    return { harness, view, session, n1 }
   }
 
-  // The session only ends: what a Space-dominant release writes is handed back to the release,
-  // which writes it together with the windows (S6, PR 5).
-  it('hands back the Space frames of a Space-dominant drag and writes nothing itself', () => {
+  it('writes the pushed frame once and flushes once', () => {
     const { harness, session, n1 } = setupDominant()
     act(() => {
       frameOf(session, [n1], 'n1', { x: 150, y: 100 }, true)
     })
     harness.notifications.mockClear()
     harness.flush.mockClear()
-    let handedBack = null as ReturnType<typeof session.endNodeDragSession>
 
-    act(() => {
-      handedBack = session.endNodeDragSession()
-    })
-
-    expect(handedBack?.get('space-1')).toMatchObject({ x: 100, y: 50 })
-    expect(harness.notifications).not.toHaveBeenCalled()
-    expect(harness.flush).not.toHaveBeenCalled()
-    expect(harness.readStoreDocument().spaces[0].rect).toMatchObject(A_RECT)
-  })
-
-  it('hands back nothing without a committable preview, and after it has ended once', () => {
-    const { session, n1 } = setupDominant()
-    act(() => {
-      frameOf(session, [n1], 'n1', { x: 150, y: 100 }, false)
-    })
-    let first = new Map() as ReturnType<typeof session.endNodeDragSession>
-    let second = new Map() as ReturnType<typeof session.endNodeDragSession>
-
-    act(() => {
-      first = session.endNodeDragSession()
-      second = session.endNodeDragSession()
-    })
-
-    expect(first).toBeNull()
-    expect(second).toBeNull()
-  })
-
-  it('writes the pushed frame once and flushes once', () => {
-    const { harness, session, publishers, n1 } = setupDominant()
-    act(() => {
-      frameOf(session, [n1], 'n1', { x: 150, y: 100 }, true)
-    })
-    harness.notifications.mockClear()
-    harness.flush.mockClear()
-
-    act(() => releaseSession(session, publishers))
+    act(() => session.endNodeDragSession())
 
     expect(harness.readStoreDocument().spaces[0].rect).toMatchObject({ x: 100, y: 50 })
     expect(harness.notifications).toHaveBeenCalledTimes(1)
@@ -325,35 +288,35 @@ describe('releasing a node drag', () => {
   })
 
   it('writes and flushes nothing when the preview holds the rects the Spaces have', () => {
-    const { harness, session, publishers, n1 } = setupDominant()
+    const { harness, session, n1 } = setupDominant()
     act(() => {
       frameOf(session, [n1], 'n1', { x: 50, y: 50 }, true)
     })
     harness.notifications.mockClear()
     harness.flush.mockClear()
 
-    act(() => releaseSession(session, publishers))
+    act(() => session.endNodeDragSession())
 
     expect(harness.notifications).not.toHaveBeenCalled()
     expect(harness.flush).not.toHaveBeenCalled()
   })
 
   it('writes and flushes nothing without a committable preview', () => {
-    const { harness, session, publishers, n1 } = setupDominant()
+    const { harness, session, n1 } = setupDominant()
     act(() => {
       frameOf(session, [n1], 'n1', { x: 150, y: 100 }, false)
     })
     harness.notifications.mockClear()
     harness.flush.mockClear()
 
-    act(() => releaseSession(session, publishers))
+    act(() => session.endNodeDragSession())
 
     expect(harness.notifications).not.toHaveBeenCalled()
     expect(harness.flush).not.toHaveBeenCalled()
   })
 
   it('keeps the Spaces a write added between the last frame and the release', () => {
-    const { harness, session, publishers, n1 } = setupDominant()
+    const { harness, session, n1 } = setupDominant()
     act(() => {
       frameOf(session, [n1], 'n1', { x: 150, y: 100 }, true)
     })
@@ -363,7 +326,7 @@ describe('releasing a node drag', () => {
         ...harness.readStoreDocument().spaces,
         createSpace('space-late', { x: 2000, y: 2000, width: 100, height: 100 }, []),
       ])
-      releaseSession(session, publishers)
+      session.endNodeDragSession()
     })
 
     expect(harness.readStoreDocument().spaces.map(space => space.id)).toEqual([

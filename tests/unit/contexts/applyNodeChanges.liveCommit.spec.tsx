@@ -10,18 +10,10 @@ import {
   CANVAS_STORE_TEST_WORKSPACE_ID,
   CanvasStoreTestProvider,
 } from '../../support/canvasStoreTestHarness'
-import { useCanvasInteraction } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
-import type { CanvasInteractionState } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStore.interaction'
-
-const selectNodeDragFramePreview = (interaction: CanvasInteractionState) =>
-  interaction.nodeDragFramePreview
 import { createCanvasDocumentHarness } from '../../support/canvasDocumentHarness'
-import { applyLiveNodes } from '../../../src/contexts/workspace/presentation/renderer/utils/canvasLiveNodes'
 
 vi.mock('@xyflow/react', () => {
   return {
-    // The change path reads the drag surface mode of React Flow's store when a batch runs.
-    useStoreApi: () => ({ getState: () => ({}) }),
     applyNodeChanges: (
       changes: Array<Record<string, unknown>>,
       nodes: Array<Record<string, unknown>>,
@@ -65,7 +57,6 @@ describe('useWorkspaceCanvasApplyNodeChanges live and commit publishing', () => 
   it('publishes live drag positions without committing until release', async () => {
     const liveNodesChange = vi.fn()
     const committedNodesChange = vi.fn()
-    const releaseNodesChange = vi.fn()
 
     const { useWorkspaceCanvasApplyNodeChanges } =
       await import('../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useApplyNodeChanges')
@@ -104,36 +95,32 @@ describe('useWorkspaceCanvasApplyNodeChanges live and commit publishing', () => 
       },
     ]
 
-    // The change path reads the nodes of the document, as the store holds them when a batch runs.
-    createCanvasDocumentHarness({
-      workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID,
-      nodes: initialNodes,
-    })
-
     function Harness() {
       const [nodes, setNodes] = useState(initialNodes)
+      const nodesRef = useRef(nodes)
+      nodesRef.current = nodes
+      const [, setSnapGuides] = useState(null)
+      const magneticSnappingEnabledRef = useRef(false)
       const isNodeDraggingRef = useRef(false)
       const nodeDragSession = useWorkspaceCanvasNodeDragSession({
         workspaceId: 'workspace-live-commit',
+        magneticSnappingEnabledRef,
+        setSnapGuides,
       })
 
       const apply = useWorkspaceCanvasApplyNodeChanges({
+        nodesRef,
         onNodesChange: next => {
           liveNodesChange(next)
-          setNodes(current => applyLiveNodes(current, next))
+          setNodes(next)
         },
         onNodesCommit: next => {
           committedNodesChange(next)
           setNodes(next)
         },
-        onNodesRelease: release => {
-          releaseNodesChange(release)
-          setNodes(current => applyLiveNodes(current, release.liveNodes))
-        },
         clearAgentLaunchToken: () => undefined,
         normalizePosition: (_nodeId, desired) => desired,
         applyPendingScrollbacks: next => next,
-        nodes,
         isNodeDraggingRef,
         nodeDragSession,
       })
@@ -196,9 +183,7 @@ describe('useWorkspaceCanvasApplyNodeChanges live and commit publishing', () => 
     await waitFor(() => {
       expect(screen.getByTestId('node-position')).toHaveTextContent('70,80')
     })
-    // A release is its own write, not a commit of the whole result.
-    expect(releaseNodesChange).toHaveBeenCalledTimes(1)
-    expect(committedNodesChange).not.toHaveBeenCalled()
+    expect(committedNodesChange).toHaveBeenCalledTimes(1)
     expect(finalProjection).toHaveBeenCalledTimes(1)
   })
 
@@ -258,10 +243,13 @@ describe('useWorkspaceCanvasApplyNodeChanges live and commit publishing', () => 
     })
 
     function Harness() {
+      const magneticSnappingEnabledRef = useRef(false)
+      const [, setSnapGuides] = useState(null)
       const session = useWorkspaceCanvasNodeDragSession({
         workspaceId: 'workspace-space-preview-retention',
+        magneticSnappingEnabledRef,
+        setSnapGuides,
       })
-      const preview = useCanvasInteraction(selectNodeDragFramePreview)
       const project = () =>
         session.projectNodeDrag({
           currentNodes: nodes,
@@ -273,7 +261,9 @@ describe('useWorkspaceCanvasApplyNodeChanges live and commit publishing', () => 
 
       return (
         <div>
-          <div data-testid="preview-height">{preview?.get('space')?.height ?? 'none'}</div>
+          <div data-testid="preview-height">
+            {session.nodeSpaceFramePreview?.get('space')?.height ?? 'none'}
+          </div>
           <button
             type="button"
             onClick={() => {

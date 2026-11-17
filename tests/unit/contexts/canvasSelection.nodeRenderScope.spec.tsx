@@ -153,9 +153,6 @@ function CanvasHarness() {
 // `RENDERS_PER_SELECT_BATCH` was measured on the base of the PR (6bb49379), before any production
 // change: 2 for a select batch that changes the selection, and 2 for an equal one.
 const RENDERS_PER_SELECT_BATCH = 2
-// S6 (#738, PR 3): the equal batch still writes the document, and the canvas no longer copies the
-// document's nodes into a state of its own in a layout effect, so that write renders it once.
-const RENDERS_PER_EQUAL_SELECT_BATCH = 1
 
 describe('WorkspaceCanvas node selection render scope', () => {
   it('renders the canvas state hooks the same number of times for one select change', async () => {
@@ -174,7 +171,7 @@ describe('WorkspaceCanvas node selection render scope', () => {
   })
 
   // The node still reaches the document through the mirror commit, so an equal batch renders the
-  // canvas for that write; the selection store itself notifies nobody.
+  // canvas as before; the store itself notifies nobody.
   it('renders the canvas state hooks the same number of times for an equal select change', async () => {
     stubOpencoveApi()
     seedWorkspaceCanvasStore({ nodes: createRowNodes(['a', 'b']) })
@@ -188,6 +185,6 @@ describe('WorkspaceCanvas node selection render scope', () => {
     fireEvent.click(screen.getByTestId('select-a'))
     await act(async () => {})
 
-    expect(canvasStateCalls.count - before).toBe(RENDERS_PER_EQUAL_SELECT_BATCH)
+    expect(canvasStateCalls.count - before).toBe(RENDERS_PER_SELECT_BATCH)
   })
 })

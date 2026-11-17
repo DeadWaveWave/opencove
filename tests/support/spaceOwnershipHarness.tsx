@@ -1,6 +1,7 @@
 import { act } from '@testing-library/react'
 import { useMemo } from 'react'
 import type { Edge, Node, ReactFlowInstance } from '@xyflow/react'
+import { vi } from 'vitest'
 import { useWorkspaceCanvasNodeDragSession } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodeDragSession'
 import { useWorkspaceCanvasSpaceOwnership } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceOwnership'
 import type {
@@ -44,6 +45,8 @@ export function renderSpaceOwnershipInDocument(
   options: SpaceOwnershipHarnessOptions = {},
 ) {
   const exclusiveNodeDragAnchorIdRef = { current: null as string | null }
+  const setSnapGuides = vi.fn()
+  const magneticSnappingEnabledRef = { current: options.magneticSnapping === true }
 
   function useOwnershipUnderTest(context: CanvasNodeStoreContext) {
     const { workspaceId, nodeStore } = context
@@ -61,6 +64,8 @@ export function renderSpaceOwnershipInDocument(
     }, [])
     const nodeDragSession = useWorkspaceCanvasNodeDragSession({
       workspaceId,
+      magneticSnappingEnabledRef,
+      setSnapGuides,
     })
     const ownership = useWorkspaceCanvasSpaceOwnership({
       workspaceId,
@@ -84,7 +89,6 @@ export function renderSpaceOwnershipInDocument(
 
   const view = renderCanvasNodeStore(harness, {
     extend: useOwnershipUnderTest,
-    magneticSnapping: options.magneticSnapping === true,
     workspacePath: options.workspacePath ?? '/tmp/repo',
   })
   const seededNodeIds = options.selectedNodeIds ?? []
