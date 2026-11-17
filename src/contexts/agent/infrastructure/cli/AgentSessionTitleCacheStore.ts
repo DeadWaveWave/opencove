@@ -122,7 +122,7 @@ export async function createAgentSessionTitleCacheStore(storeOptions: {
       for (const filePath of filePaths) {
         deleteStatement.run(filePath)
       }
-    })
+    }).immediate
     deleteMany(missing)
 
     return missing.length

@@ -413,10 +413,9 @@ export function createMockDatabaseModule(mockDbByPath: Map<string, MockDbState>)
       }
     }
 
-    public transaction<TArgs extends unknown[], TResult>(
-      fn: (...args: TArgs) => TResult,
-    ): (...args: TArgs) => TResult {
-      return (...args: TArgs) => fn(...args)
+    public transaction<TArgs extends unknown[], TResult>(fn: (...args: TArgs) => TResult) {
+      const execute = (...args: TArgs) => fn(...args)
+      return Object.assign(execute, { immediate: execute })
     }
 
     public close(): void {}

@@ -78,12 +78,12 @@ export function createSqliteArchiveStorage(db: Database.Database): AgentTurnArch
       deleteOne.run(seq)
     }
     return 'persisted' as const
-  })
+  }).immediate
   const revokeNodes = db.transaction((ids: readonly string[]) => {
     for (const id of ids) {
       revoke.run(id)
     }
-  })
+  }).immediate
   const sweep = db.transaction(
     (now: number, existingNodeIds?: ReadonlySet<string>, throughSeq = captureWatermark()) => {
       let remaining = limits.sweepBatch as number
@@ -142,7 +142,7 @@ export function createSqliteArchiveStorage(db: Database.Database): AgentTurnArch
       sweepWatermark = undefined
       return false
     },
-  )
+  ).immediate
   const decode = (value: unknown): ArchivedAgentTurn | undefined => {
     if (!value) {
       return undefined
@@ -159,13 +159,13 @@ export function createSqliteArchiveStorage(db: Database.Database): AgentTurnArch
     db.pragma('wal_checkpoint(PASSIVE)')
   }
   return {
-    append: record => append.immediate(record),
+    append: record => append(record),
     getExact: (nodeId, turnId) => decode(exact.get(nodeId, turnId)),
     getExactBySession: (sessionId, turnId) => decode(session.get(sessionId, turnId)),
     clearNode: nodeId => revoke.run(nodeId).changes,
-    revokeNodes: ids => revokeNodes.immediate(ids),
+    revokeNodes: ids => revokeNodes(ids),
     captureWatermark,
-    sweep: (now, existing, through) => sweep.immediate(now, existing, through),
+    sweep: (now, existing, through) => sweep(now, existing, through),
     checkpoint,
     dispose: () => {
       if (db.open) {

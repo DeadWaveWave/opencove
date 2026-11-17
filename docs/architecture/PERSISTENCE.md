@@ -29,6 +29,17 @@ truth：恢复优先使用该 binding，并通过 topology registry 解析 endpo
 该列为 `NULL` 或缺少合法 binding 时才从 Space `targetMountId` 推导。Remote binding 无法解析
 时必须保留原 binding 并返回显式恢复问题，不能将 remote path 作为本地 cwd 启动。
 
+## SQLite Write Transactions
+
+Main 与 Worker 使用独立 SQLite 连接写入 WAL 数据库。所有可能写入的显式事务在
+BEGIN 时取得写锁，better-sqlite3 调用选择 `.immediate()`，使连接的 busy timeout
+覆盖锁竞争。DEFERRED 事务先读后写时，升级写锁可能立即返回 `SQLITE_BUSY` 或
+`SQLITE_BUSY_SNAPSHOT`。嵌套调用由 better-sqlite3 转为 savepoint。
+
+`architecture.sqliteWriteTransaction` 在创建事务时检查 `.immediate` / `.exclusive`
+选择，保存的 callable 也须在创建时选定模式。只读例外在 `harness/architecture/rules.json`
+按文件和函数登记。busy timeout 等待同步阻塞所属 JS 线程，事务内的工作应保持短小。
+
 ## SQLite Versioning
 
 用户机器上的迁移不依赖 drizzle-kit migration 文件。当前策略：

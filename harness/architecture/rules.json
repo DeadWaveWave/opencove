@@ -186,6 +186,23 @@
     }
   ],
   "checks": {
+    "sqliteTransactions": {
+      "id": "architecture.sqliteWriteTransaction",
+      "severity": "error",
+      "doc": "docs/architecture/PERSISTENCE.md#sqlite-write-transactions",
+      "readOnly": [
+        {
+          "file": "src/platform/persistence/sqlite/PersistenceStore.ts",
+          "function": "readAppStateSnapshot",
+          "reason": "Reads a consistent revision and app-state snapshot without writing."
+        },
+        {
+          "file": "src/platform/persistence/sqlite/managedClaudeResumeRead.ts",
+          "function": "definitive",
+          "reason": "Reads managed resume observations at a clean transaction boundary."
+        }
+      ]
+    },
     "fileRuntimeCycles": {
       "severity": "error"
     },

@@ -63,6 +63,13 @@ type-only import 反向依赖任何 context。规则可用 `fromPatterns` / `all
 - `architecture.contextEntryShape`（`error`）：入口文件含有具名 `export { ... } from` / `export type { ... } from` 之外的语句，或 re-export 了自身 layer 目录之外的文件。
 - `architecture.contextSelfEntryImport`（`error`）：context 内的文件 import 自己的入口。
 
+## SQLite 事务规则
+
+`checks.sqliteTransactions` 要求源码里的 `.transaction(...)` 在创建处选择
+`.immediate` 或 `.exclusive`，可以立即调用或保存该 callable。它也检查字符串字面量
+属性访问，并拒绝提取未调用的 `.transaction` 方法。规则按语法检查，字符串和注释不计入。
+DEFERRED 只读例外按文件与最近的具名函数登记，每项须说明理由。新增写事务必须选定写锁模式。
+
 ## Variant 规则
 
 `variantRules` 块（`rules.json`）声明封闭的 variant 集合（当前：agent provider、node kind），并配置下面两条规则的 severity。

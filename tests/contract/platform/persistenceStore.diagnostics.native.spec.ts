@@ -6,6 +6,18 @@ import { expect, it, vi } from 'vitest'
 import { describeWithElectronNativeModules } from '../electronNativeSuite'
 import { createPersistenceStore } from '../../../src/platform/persistence/sqlite/PersistenceStore'
 
+vi.mock('../../../src/platform/persistence/sqlite/migrate', async importOriginal => {
+  const { migrate } =
+    await importOriginal<typeof import('../../../src/platform/persistence/sqlite/migrate')>()
+  return {
+    migrate(db: Database.Database) {
+      migrate(db)
+      // Exercise a real busy-handler timeout without spending 5 s per diagnostic assertion.
+      db.pragma('busy_timeout = 25')
+    },
+  }
+})
+
 describeWithElectronNativeModules('SQLite save diagnostics', () => {
   it.each(['raw', 'app'] as const)(
     'retains SQLITE_BUSY from a real locked %s write',
@@ -16,9 +28,8 @@ describeWithElectronNativeModules('SQLite save diagnostics', () => {
       const blocker = new Database(dbPath)
       const state = { formatVersion: 1, activeWorkspaceId: null, workspaces: [], settings: {} }
       try {
-        // Hold a real write lock until the store returns. Its deferred transaction reads
-        // first, so SQLite rejects the read-to-write upgrade immediately with SQLITE_BUSY;
-        // the store's default 5 s busy timeout does not need an override or a timed release.
+        // Hold the lock past this connection's test-only 25 ms busy timeout. A timed-out
+        // BEGIN IMMEDIATE must retain the native SQLite error in the diagnostic result.
         blocker.exec('BEGIN EXCLUSIVE')
         const result =
           mode === 'raw'

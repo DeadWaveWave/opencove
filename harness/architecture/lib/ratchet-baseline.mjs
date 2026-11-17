@@ -40,6 +40,9 @@ export function collectRuleSeverities(config) {
   if (checks.rendererBridge) {
     severities.set(checks.rendererBridge.id, checks.rendererBridge.severity)
   }
+  if (checks.sqliteTransactions) {
+    severities.set(checks.sqliteTransactions.id, checks.sqliteTransactions.severity)
+  }
   for (const [rule, severity] of collectContextRuleSeverities(config)) {
     severities.set(rule, severity)
   }
