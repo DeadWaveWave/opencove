@@ -17,6 +17,7 @@ import {
 import { ensureNodesHaveInitialDimensions } from '../../../utils/reactFlowNodeDimensions'
 import { resolveCanvasDocumentBase } from '../../../utils/canvasDocumentBase'
 import { commitCanvasDocument, isActiveWorkspace } from '../../../store/workspaceDocumentCommands'
+import { useCanvasDocumentCommands, useReadCanvasDocument } from '../../../store/canvasStoreContext'
 import { removeNodeWithRelations } from './useNodesStore.closeNode'
 import { resolveWorkspaceLayoutAfterNodeResize } from './useNodesStore.resolveResizeLayout'
 import { useWorkspaceCanvasNodeCreation } from './useNodesStore.createNodes'
@@ -40,16 +41,19 @@ export function useWorkspaceCanvasNodesStore({
   workspaceId,
   workspacePath,
   nodes,
-  spacesRef,
   onNodesCommitted,
   isLiveGestureActive,
-  onRequestPersistFlush,
   onShowMessage,
   onNodeCreated,
   standardWindowSizeBucket,
   browserDefaultMode,
 }: UseWorkspaceCanvasNodesStoreParams): UseWorkspaceCanvasNodesStoreResult {
   const reactFlow = useReactFlow<Node<TerminalNodeData>, Edge>()
+  // What this store reads to act on a node, and its creators to place a new one, is the committed
+  // document as it is when the call runs, for the workspace of this render. The canvas view's copy
+  // below stays only for the commit path and the nearest free position (Decision 7 of #702).
+  const readDocument = useReadCanvasDocument()
+  const { requestPersistFlush } = useCanvasDocumentCommands()
   const nodesRef = useRef(nodes)
   const agentLaunchTokenByNodeIdRef = useRef<Map<string, number>>(new Map())
   const pendingScrollbackByNodeRef = useRef<Map<string, string>>(new Map())
@@ -78,7 +82,7 @@ export function useWorkspaceCanvasNodesStore({
     }
 
     const targetNode =
-      nodesRef.current.find(node => node.id === fallbackCreatedNodeId) ??
+      readDocument().nodes.find(node => node.id === fallbackCreatedNodeId) ??
       reactFlow.getNode?.(fallbackCreatedNodeId) ??
       null
 
@@ -109,7 +113,7 @@ export function useWorkspaceCanvasNodesStore({
         createdNodeViewportSettleTimerRef.current = null
       }
     }
-  }, [fallbackCreatedNodeId, nodes, onNodeCreated, reactFlow])
+  }, [fallbackCreatedNodeId, nodes, onNodeCreated, reactFlow, readDocument])
 
   useLayoutEffect(() => {
     nodesRef.current = nodes
@@ -208,7 +212,7 @@ export function useWorkspaceCanvasNodesStore({
     async (nodeId: string) => {
       clearAgentLaunchToken(nodeId)
 
-      const target = nodesRef.current.find(node => node.id === nodeId)
+      const target = readDocument().nodes.find(node => node.id === nodeId)
       if (
         target &&
         (target.data.kind === 'terminal' || target.data.kind === 'agent') &&
@@ -252,9 +256,10 @@ export function useWorkspaceCanvasNodesStore({
       })
       publishWorkspaceNodesClosed(closedNodeIds)
 
-      onRequestPersistFlush?.()
+      // After the closure is announced, as before: the flush follows the write and its publication.
+      requestPersistFlush()
     },
-    [clearAgentLaunchToken, onRequestPersistFlush, setNodes],
+    [clearAgentLaunchToken, readDocument, requestPersistFlush, setNodes],
   )
 
   const normalizePosition = useCallback((nodeId: string, desired: Point, size: Size): Point => {
@@ -314,11 +319,12 @@ export function useWorkspaceCanvasNodesStore({
         return { nodes: resolved.nodes, spaces: resolved.spaces }
       })
 
+      // The write decides whether there is anything to persist.
       if (didResolve) {
-        onRequestPersistFlush?.()
+        requestPersistFlush()
       }
     },
-    [onRequestPersistFlush, updateCanvasDocument],
+    [requestPersistFlush, updateCanvasDocument],
   )
 
   const applyPendingScrollbacks = useCallback(
@@ -346,7 +352,7 @@ export function useWorkspaceCanvasNodesStore({
 
   const updateNodeScrollback = useCallback(
     (nodeId: string, scrollback: string) => {
-      const node = nodesRef.current.find(candidate => candidate.id === nodeId)
+      const node = readDocument().nodes.find(candidate => candidate.id === nodeId)
       if (!node || node.data.kind === 'task') {
         return
       }
@@ -359,7 +365,7 @@ export function useWorkspaceCanvasNodesStore({
       setNodeScrollback(nodeId, scrollback)
       persistNodeScrollback(node, scrollback)
     },
-    [setNodeScrollback],
+    [readDocument, setNodeScrollback],
   )
 
   const renameTerminalTitle = useCallback(
@@ -394,30 +400,22 @@ export function useWorkspaceCanvasNodesStore({
 
           return hasChanged ? nextNodes : prevNodes
         },
-        { syncLayout: false },
+        { syncLayout: false, flush: true },
       )
-
-      onRequestPersistFlush?.()
     },
-    [onRequestPersistFlush, setNodes],
+    [setNodes],
   )
 
-  const { updateNoteText, renameNoteTitle } = useWorkspaceCanvasNoteNodeMutations({
-    setNodes,
-    onRequestPersistFlush,
-  })
+  const { updateNoteText, renameNoteTitle } = useWorkspaceCanvasNoteNodeMutations({ setNodes })
   const { updateRoleProvider, updateRoleInput, appendRoleRunRecord } =
-    useWorkspaceCanvasRoleNodeMutations({
-      setNodes,
-      onRequestPersistFlush,
-    })
+    useWorkspaceCanvasRoleNodeMutations({ setNodes })
   const {
     updateWebsiteUrl,
     setWebsitePinned,
     setWebsiteSession,
     setWebsiteMode,
     setWebsiteFullscreen,
-  } = useWorkspaceCanvasWebsiteNodeMutations({ setNodes, onRequestPersistFlush })
+  } = useWorkspaceCanvasWebsiteNodeMutations({ setNodes })
 
   const setNodeLabelColorOverride = useCallback(
     (nodeIds: readonly string[], labelColorOverride: NodeLabelColorOverride) => {
@@ -453,12 +451,10 @@ export function useWorkspaceCanvasNodesStore({
 
           return hasChanged ? nextNodes : prevNodes
         },
-        { syncLayout: false },
+        { syncLayout: false, flush: true },
       )
-
-      onRequestPersistFlush?.()
     },
-    [onRequestPersistFlush, setNodes],
+    [setNodes],
   )
 
   const publishCreatedNodes = useCreatedNodePublisher(setNodes)
@@ -475,9 +471,6 @@ export function useWorkspaceCanvasNodesStore({
   } = useWorkspaceCanvasNodeCreation({
     workspaceId,
     workspacePath,
-    nodesRef,
-    spacesRef,
-    onRequestPersistFlush,
     onShowMessage,
     onNodeCreated: onNodeCreated ?? fallbackOnNodeCreated,
     setNodes: publishCreatedNodes,

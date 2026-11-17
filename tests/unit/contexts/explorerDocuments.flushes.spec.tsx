@@ -16,7 +16,10 @@ import {
 // PR 12): each is requested once, after the last write of its branch, and as often as before. A
 // flush is counted with the number of store writes that came before it and the document it saw, so
 // one that is dropped, doubled or requested before its write fails. A branch that created nothing
-// and flushed nothing before flushes nothing now.
+// and flushed nothing before flushes nothing now. A node the hooks create is also flushed by its
+// creator, on the creator's own write (#702, PR 13), as it was through the shell's callback before
+// the node store read the document: the creator's flush comes first, the hook's after its last
+// write.
 
 vi.mock('@app/renderer/i18n', () => {
   const translation = { t: (key: string) => key }
@@ -121,7 +124,7 @@ describe('the file opened from a folder node', () => {
     })
   }
 
-  it('flushes once, after the node is created and assigned to its Space', async () => {
+  it('flushes after the node is created and again after it is assigned to its Space', async () => {
     const { view, flushes, harness } = renderFilesystemNodes({
       a: { nodes: [folder()], spaces: [spaceAt('space-a', ['folder'])] },
     })
@@ -129,23 +132,24 @@ describe('the file opened from a folder node', () => {
 
     await open(view)
 
-    await vi.waitFor(() => expect(flushes).toHaveLength(1))
-    expect(flushes[0].notificationsBefore).toBe(2)
-    const document = flushes[0].document
+    await vi.waitFor(() => expect(flushes).toHaveLength(2))
+    expect(flushes[0].notificationsBefore).toBe(1)
+    expect(flushes[1].notificationsBefore).toBe(2)
+    const document = flushes[1].document
     const node = document.nodes.find(candidate => candidate.data.kind === 'document')!
     expect(node.data.document?.uri).toBe(FILE_URI)
     expect(document.spaces[0].nodeIds).toContain(node.id)
   })
 
-  it('flushes once, after the node is created, when the folder is on the root canvas', async () => {
+  it('flushes after the node is created and again by the hook, when the folder is on the root canvas', async () => {
     const { view, flushes, harness } = renderFilesystemNodes({ a: { nodes: [folder()] } })
     harness.notifications.mockClear()
 
     await open(view)
 
-    await vi.waitFor(() => expect(flushes).toHaveLength(1))
-    expect(flushes[0].notificationsBefore).toBe(1)
-    expect(flushes[0].document.nodes.map(node => node.data.kind)).toEqual(['folder', 'document'])
+    await vi.waitFor(() => expect(flushes).toHaveLength(2))
+    expect(flushes.map(flush => flush.notificationsBefore)).toEqual([1, 1])
+    expect(flushes[1].document.nodes.map(node => node.data.kind)).toEqual(['folder', 'document'])
   })
 
   it('flushes nothing when the node store makes no node', async () => {
@@ -195,7 +199,7 @@ describe('the document opening', () => {
     anchor: { x: 100, y: 100 },
   })
 
-  it('flushes once, after the document is created and assigned to its Space', async () => {
+  it('flushes after the document is created and again after it is assigned to its Space', async () => {
     const { view, flushes, harness } = renderOpening({ a: { spaces: [spaceAt('space-a')] } })
     harness.notifications.mockClear()
 
@@ -203,13 +207,14 @@ describe('the document opening', () => {
       await view.result.current(request('space-a'))
     })
 
-    expect(flushes).toHaveLength(1)
-    expect(flushes[0].notificationsBefore).toBe(2)
-    const document = flushes[0].document
+    expect(flushes).toHaveLength(2)
+    expect(flushes[0].notificationsBefore).toBe(1)
+    expect(flushes[1].notificationsBefore).toBe(2)
+    const document = flushes[1].document
     expect(document.spaces[0].nodeIds).toEqual([document.nodes[0].id])
   })
 
-  it('flushes once, after the document is created, on the root canvas', async () => {
+  it('flushes after the document is created and again by the hook, on the root canvas', async () => {
     const { view, flushes, harness } = renderOpening({ a: {} })
     harness.notifications.mockClear()
 
@@ -217,9 +222,9 @@ describe('the document opening', () => {
       await view.result.current(request(null))
     })
 
-    expect(flushes).toHaveLength(1)
-    expect(flushes[0].notificationsBefore).toBe(1)
-    expect(flushes[0].document.nodes).toHaveLength(1)
+    expect(flushes).toHaveLength(2)
+    expect(flushes.map(flush => flush.notificationsBefore)).toEqual([1, 1])
+    expect(flushes[1].document.nodes).toHaveLength(1)
   })
 
   it('flushes nothing when it reuses a document that is already open', async () => {
@@ -279,20 +284,21 @@ describe('the document opening', () => {
 describe('the image materialized by the explorer', () => {
   const IMAGE_URI = 'file:///repo/picture.png'
 
-  it('flushes once, after the image node is created and assigned to its Space', async () => {
+  it('flushes after the image node is created and again after it is assigned to its Space', async () => {
     const { view, flushes, harness } = renderExplorer({ a: { spaces: [spaceAt('space-a')] } })
     harness.notifications.mockClear()
 
     await act(async () => {
       view.result.current.openFileInSpace('space-a', IMAGE_URI)
-      await vi.waitFor(() => expect(flushes).toHaveLength(1))
+      await vi.waitFor(() => expect(flushes).toHaveLength(2))
     })
 
-    const document = flushes[0].document
+    const document = flushes[1].document
     const image = document.nodes.find(node => node.data.kind === 'image')!
     expect(image).toBeDefined()
     expect(document.spaces[0].nodeIds).toContain(image.id)
-    expect(flushes[0].notificationsBefore).toBe(2)
+    expect(flushes[0].notificationsBefore).toBe(1)
+    expect(flushes[1].notificationsBefore).toBe(2)
     expect(created(A, 'image')).toBeDefined()
   })
 
@@ -309,7 +315,7 @@ describe('the image materialized by the explorer', () => {
     expect(flushes).toHaveLength(0)
   })
 
-  it('flushes once for the document that the explorer opens through the shared opening', async () => {
+  it('flushes for the document that the explorer opens through the shared opening, creator then hook', async () => {
     mocks.preview.mockResolvedValue({
       kind: 'document',
       naturalWidth: undefined,
@@ -320,11 +326,11 @@ describe('the image materialized by the explorer', () => {
 
     await act(async () => {
       view.result.current.openFileInSpace('space-a', FILE_URI)
-      await vi.waitFor(() => expect(flushes).toHaveLength(1))
+      await vi.waitFor(() => expect(flushes).toHaveLength(2))
     })
 
-    expect(flushes[0].document.spaces[0].nodeIds).toHaveLength(1)
-    expect(flushes[0].document.nodes[0].data.kind).toBe('document')
+    expect(flushes[1].document.spaces[0].nodeIds).toHaveLength(1)
+    expect(flushes[1].document.nodes[0].data.kind).toBe('document')
   })
 
   it('flushes nothing when the node store makes no image node', async () => {

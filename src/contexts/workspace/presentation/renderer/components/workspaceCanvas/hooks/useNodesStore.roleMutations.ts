@@ -1,20 +1,15 @@
 import { useCallback } from 'react'
-import type { Node } from '@xyflow/react'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
+import type { Node } from '@xyflow/react'
 import type { RoleNodeData, TerminalNodeData } from '../../../types'
+import type { CanvasDocumentWriteOptions } from './useNodesStore.types'
 
 type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-  options?: { syncLayout?: boolean },
+  options?: CanvasDocumentWriteOptions,
 ) => void
 
-export function useWorkspaceCanvasRoleNodeMutations({
-  setNodes,
-  onRequestPersistFlush,
-}: {
-  setNodes: SetNodes
-  onRequestPersistFlush?: () => void
-}): {
+export function useWorkspaceCanvasRoleNodeMutations({ setNodes }: { setNodes: SetNodes }): {
   updateRoleProvider: (nodeId: string, provider: AgentProvider) => void
   updateRoleInput: (nodeId: string, input: string) => void
   appendRoleRunRecord: (
@@ -55,12 +50,10 @@ export function useWorkspaceCanvasRoleNodeMutations({
 
           return hasChanged ? nextNodes : prevNodes
         },
-        { syncLayout: false },
+        { syncLayout: false, flush: true },
       )
-
-      onRequestPersistFlush?.()
     },
-    [onRequestPersistFlush, setNodes],
+    [setNodes],
   )
 
   const updateRoleInput = useCallback(
@@ -94,12 +87,10 @@ export function useWorkspaceCanvasRoleNodeMutations({
 
           return hasChanged ? nextNodes : prevNodes
         },
-        { syncLayout: false },
+        { syncLayout: false, flush: true },
       )
-
-      onRequestPersistFlush?.()
     },
-    [onRequestPersistFlush, setNodes],
+    [setNodes],
   )
 
   const appendRoleRunRecord = useCallback(
@@ -135,12 +126,10 @@ export function useWorkspaceCanvasRoleNodeMutations({
 
           return hasChanged ? nextNodes : prevNodes
         },
-        { syncLayout: false },
+        { syncLayout: false, flush: true },
       )
-
-      onRequestPersistFlush?.()
     },
-    [onRequestPersistFlush, setNodes],
+    [setNodes],
   )
 
   return {

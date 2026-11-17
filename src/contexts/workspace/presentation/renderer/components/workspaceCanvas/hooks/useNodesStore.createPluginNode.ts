@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import type { Node } from '@xyflow/react'
-import type { Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
+import type { Point, TerminalNodeData } from '../../../types'
+import type { WorkspaceDocument } from '../../../store/workspaceDocument'
 import { useAppStore } from '@app/renderer/shell/store/useAppStore'
 import { getPluginManifest } from '@contexts/plugins/presentation/renderer/usePluginRegistry'
 import type { ShowWorkspaceCanvasMessage } from '../types'
@@ -9,12 +10,13 @@ import { findContainingSpaceByAnchor } from './useInteractions.spaceAssignment'
 
 export function useWorkspaceCanvasPluginNodeCreation({
   workspaceId,
-  spacesRef,
+  readDocument,
   onNodeCreated,
   onShowMessage,
 }: {
   workspaceId?: string
-  spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
+  /** The document reader of the render that creates the hook: this file may not import a store hook. */
+  readDocument: () => WorkspaceDocument
   onNodeCreated?: (nodeId: string) => void
   onShowMessage?: ShowWorkspaceCanvasMessage
 }): (anchor: Point, pluginId: string) => Node<TerminalNodeData> | null {
@@ -30,7 +32,7 @@ export function useWorkspaceCanvasPluginNodeCreation({
       ) {
         return null
       }
-      const targetSpace = findContainingSpaceByAnchor(spacesRef.current, anchor)
+      const targetSpace = findContainingSpaceByAnchor(readDocument().spaces, anchor)
       // The Worker owns all creation, placement and singleton identity across projects/clients.
       void window.opencoveApi.controlSurface
         .invoke<{ nodeId: string; projectId: string; created: boolean }>({
@@ -54,6 +56,6 @@ export function useWorkspaceCanvasPluginNodeCreation({
         .catch(error => onShowMessage?.(pluginErrorMessage(error), 'error'))
       return null
     },
-    [onNodeCreated, onShowMessage, spacesRef, workspaceId],
+    [onNodeCreated, onShowMessage, readDocument, workspaceId],
   )
 }

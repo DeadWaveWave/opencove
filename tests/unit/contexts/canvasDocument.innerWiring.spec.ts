@@ -88,6 +88,15 @@ describe('Inner hands the document writer of its node store to the hooks that ne
     )
   })
 
+  // The node store reads the nodes and Spaces it needs through its own reader and flushes on its
+  // writes or through the document commands (#702, PR 13). Inner hands it the canvas view's nodes
+  // for the commit path and no Spaces ref or flush callback.
+  it('passes the node store neither the Spaces ref nor the flush callback', () => {
+    expect(callOf('useWorkspaceCanvasNodesStore')).not.toMatch(
+      /\b(nodesRef|spacesRef|onSpacesChange|onRequestPersistFlush)\b/,
+    )
+  })
+
   it('passes none of the retired channels to the Providers', () => {
     expect(propsOf('WorkspaceCanvasProviders')).not.toMatch(
       /\b(nodesRef|spacesRef|onSpacesChange|onRequestPersistFlush)\b/,

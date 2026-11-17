@@ -1,6 +1,7 @@
 import React from 'react'
 import { act, cleanup, renderHook } from '@testing-library/react'
 import { ReactFlowProvider, type Node } from '@xyflow/react'
+import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import { useWorkspaceCanvasNodesStore } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore'
@@ -47,13 +48,18 @@ function renderCanvasNodesStore(
         workspaceId: 'workspace-1',
         workspacePath: '/tmp/workspace-1',
         nodes: canvasNodes,
-        spacesRef: { current: [] },
         onNodesCommitted,
         isLiveGestureActive: () => isLiveGestureActive,
         standardWindowSizeBucket: 'regular',
         browserDefaultMode: 'iframe',
       }),
-    { wrapper: ({ children }) => <ReactFlowProvider>{children}</ReactFlowProvider> },
+    {
+      wrapper: ({ children }) => (
+        <CanvasStoreTestProvider workspaceId="workspace-1">
+          <ReactFlowProvider>{children}</ReactFlowProvider>
+        </CanvasStoreTestProvider>
+      ),
+    },
   )
   return { ...view, onNodesCommitted }
 }

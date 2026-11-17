@@ -5,8 +5,12 @@ import { describe, expect, it } from 'vitest'
 import type {
   Point,
   TerminalNodeData,
-  WorkspaceSpaceState,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
+import {
+  CANVAS_STORE_TEST_WORKSPACE_ID,
+  CanvasStoreTestProvider,
+} from '../../support/canvasStoreTestHarness'
+import { seedWorkspaceCanvasStore } from '../../support/workspaceCanvasStoreHarness'
 import type { CreateNodeInput } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/types'
 import type {
   CreateNoteNodeOptions,
@@ -57,7 +61,6 @@ function makeNoteNode({
 function renderHarness(): HarnessApi {
   const Harness = forwardRef<HarnessApi>(function Harness(_props, ref): React.JSX.Element {
     const nodesRef = useRef<Node<TerminalNodeData>[]>([])
-    const spacesRef = useRef<WorkspaceSpaceState[]>([])
     const [, setNodesState] = useState<Node<TerminalNodeData>[]>([])
 
     const setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes'] = updater => {
@@ -68,8 +71,6 @@ function renderHarness(): HarnessApi {
 
     const { createNodeForSession, createNoteNode } = useWorkspaceCanvasNodeCreation({
       defaultTerminalWindowScalePercent: 100,
-      nodesRef,
-      spacesRef,
       setNodes,
     })
 
@@ -86,7 +87,12 @@ function renderHarness(): HarnessApi {
   })
 
   const ref = React.createRef<HarnessApi>()
-  render(<Harness ref={ref} />)
+  seedWorkspaceCanvasStore({ workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID })
+  render(
+    <CanvasStoreTestProvider>
+      <Harness ref={ref} />
+    </CanvasStoreTestProvider>,
+  )
 
   if (!ref.current) {
     throw new Error('Harness did not initialize')

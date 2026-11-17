@@ -152,10 +152,7 @@ export function renderCanvasNodeStore<Extra extends object = Record<never, never
     nodeStoreOptions?: Partial<
       Pick<
         Parameters<typeof useWorkspaceCanvasNodesStore>[0],
-        | 'onShowMessage'
-        | 'browserDefaultMode'
-        | 'standardWindowSizeBucket'
-        | 'onRequestPersistFlush'
+        'onShowMessage' | 'browserDefaultMode' | 'standardWindowSizeBucket'
       >
     >
     extend?: (context: CanvasNodeStoreContext) => Extra
@@ -183,7 +180,6 @@ export function renderCanvasNodeStore<Extra extends object = Record<never, never
         workspaceId: harness.workspaceId,
         workspacePath,
         nodes: canvasState.flowNodes,
-        spacesRef: canvasState.spacesRef,
         onNodesCommitted: publishers.publishCommittedNodes,
         isLiveGestureActive: publishers.isLiveGestureActive,
         standardWindowSizeBucket: 'regular',

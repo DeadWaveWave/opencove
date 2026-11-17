@@ -203,7 +203,6 @@ export function renderInTwoWorkspaces<Result>(
         workspaceId,
         workspacePath: `/tmp/${workspaceId}`,
         nodes: canvasState.flowNodes,
-        spacesRef: canvasState.spacesRef,
         onNodesCommitted: publishers.publishCommittedNodes,
         isLiveGestureActive: publishers.isLiveGestureActive,
         standardWindowSizeBucket: 'regular',

@@ -1,5 +1,4 @@
 import { useCallback } from 'react'
-import type { MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { ProjectRoleDefinition } from '@contexts/settings/domain/projectRoles'
@@ -7,29 +6,28 @@ import type {
   AgentProvider,
   StandardWindowSizeBucket,
 } from '@contexts/settings/domain/agentSettings'
-import type { Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
+import type { Point, TerminalNodeData } from '../../../types'
+import { useReadCanvasDocument } from '../../../store/canvasStoreContext'
 import { guardNodeFromSyncOverwrite } from '../../../utils/syncNodeGuards'
 import { resolveDefaultRoleWindowSize } from '../constants'
 import type { NodePlacementOptions, ShowWorkspaceCanvasMessage } from '../types'
+import type { CanvasDocumentWriteOptions } from './useNodesStore.types'
 import { EMPTY_NODE_KIND_DATA } from './useNodesStore.nodeData'
 import { resolveNodesPlacement } from './useNodesStore.resolvePlacement'
 
-type SetNodes = (updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[]) => void
+type SetNodes = (
+  updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
+  options?: CanvasDocumentWriteOptions,
+) => void
 
 export function useWorkspaceCanvasRoleNodeCreation({
   workspaceId,
-  nodesRef,
-  spacesRef,
-  onRequestPersistFlush,
   onShowMessage,
   onNodeCreated,
   setNodes,
   standardWindowSizeBucket,
 }: {
   workspaceId?: string
-  nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
-  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
-  onRequestPersistFlush?: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
   onNodeCreated?: (nodeId: string) => void
   setNodes: SetNodes
@@ -42,6 +40,7 @@ export function useWorkspaceCanvasRoleNodeCreation({
   ) => Node<TerminalNodeData> | null
 } {
   const { t } = useTranslation()
+  const readDocument = useReadCanvasDocument()
 
   const createRoleNode = useCallback(
     (
@@ -52,10 +51,10 @@ export function useWorkspaceCanvasRoleNodeCreation({
       const defaultRoleSize = resolveDefaultRoleWindowSize(standardWindowSizeBucket)
       const resolvedPlacement = resolveNodesPlacement({
         workspaceId,
-        getSpaces: () => spacesRef.current,
+        getSpaces: () => readDocument().spaces,
         anchor,
         size: defaultRoleSize,
-        getNodes: () => nodesRef.current,
+        getNodes: () => readDocument().nodes,
         targetSpaceRect: placementOptions?.targetSpaceRect ?? null,
         preferredDirection: placementOptions?.preferredDirection,
         avoidRects: placementOptions?.avoidRects,
@@ -105,18 +104,15 @@ export function useWorkspaceCanvasRoleNodeCreation({
       }
 
       guardNodeFromSyncOverwrite(nextNode.id, 2_500)
-      setNodes(prevNodes => [...prevNodes, nextNode])
+      setNodes(prevNodes => [...prevNodes, nextNode], { flush: true })
       onNodeCreated?.(nextNode.id)
-      onRequestPersistFlush?.()
       return nextNode
     },
     [
-      nodesRef,
       onNodeCreated,
-      onRequestPersistFlush,
       onShowMessage,
+      readDocument,
       setNodes,
-      spacesRef,
       standardWindowSizeBucket,
       workspaceId,
       t,

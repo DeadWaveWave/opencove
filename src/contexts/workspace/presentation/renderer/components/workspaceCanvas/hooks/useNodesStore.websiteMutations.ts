@@ -6,10 +6,8 @@ import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 
 export function useWorkspaceCanvasWebsiteNodeMutations({
   setNodes,
-  onRequestPersistFlush,
 }: {
   setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']
-  onRequestPersistFlush?: () => void
 }): Pick<
   UseWorkspaceCanvasNodesStoreResult,
   | 'updateWebsiteUrl'
@@ -56,12 +54,10 @@ export function useWorkspaceCanvasWebsiteNodeMutations({
 
           return hasChanged ? nextNodes : prevNodes
         },
-        { syncLayout: false },
+        { syncLayout: false, flush: true },
       )
-
-      onRequestPersistFlush?.()
     },
-    [onRequestPersistFlush, setNodes],
+    [setNodes],
   )
 
   const setWebsitePinned = useCallback(
@@ -100,12 +96,10 @@ export function useWorkspaceCanvasWebsiteNodeMutations({
 
           return hasChanged ? nextNodes : prevNodes
         },
-        { syncLayout: false },
+        { syncLayout: false, flush: true },
       )
-
-      onRequestPersistFlush?.()
     },
-    [onRequestPersistFlush, setNodes],
+    [setNodes],
   )
 
   const setWebsiteSession = useCallback(
@@ -148,12 +142,10 @@ export function useWorkspaceCanvasWebsiteNodeMutations({
 
           return hasChanged ? nextNodes : prevNodes
         },
-        { syncLayout: false },
+        { syncLayout: false, flush: true },
       )
-
-      onRequestPersistFlush?.()
     },
-    [onRequestPersistFlush, setNodes],
+    [setNodes],
   )
 
   const setWebsiteMode = useCallback(
@@ -188,12 +180,10 @@ export function useWorkspaceCanvasWebsiteNodeMutations({
 
           return hasChanged ? nextNodes : prevNodes
         },
-        { syncLayout: false },
+        { syncLayout: false, flush: true },
       )
-
-      onRequestPersistFlush?.()
     },
-    [onRequestPersistFlush, setNodes],
+    [setNodes],
   )
 
   const setWebsiteFullscreen = useCallback(
@@ -203,37 +193,38 @@ export function useWorkspaceCanvasWebsiteNodeMutations({
         return
       }
 
-      setNodes(prevNodes => {
-        let hasChanged = false
-        const nextNodes = prevNodes.map(node => {
-          if (node.id !== normalizedNodeId || node.data.kind !== 'website') {
-            return node
-          }
+      setNodes(
+        prevNodes => {
+          let hasChanged = false
+          const nextNodes = prevNodes.map(node => {
+            if (node.id !== normalizedNodeId || node.data.kind !== 'website') {
+              return node
+            }
 
-          const previousWebsite = node.data.website
-          hasChanged = true
-          return {
-            ...node,
-            position: frame.position,
-            data: {
-              ...node.data,
-              width: frame.size.width,
-              height: frame.size.height,
-              website: createWebsiteNodeData({
-                ...previousWebsite,
-                isFullscreen,
-                previousFrame,
-              }),
-            },
-          }
-        })
+            const previousWebsite = node.data.website
+            hasChanged = true
+            return {
+              ...node,
+              position: frame.position,
+              data: {
+                ...node.data,
+                width: frame.size.width,
+                height: frame.size.height,
+                website: createWebsiteNodeData({
+                  ...previousWebsite,
+                  isFullscreen,
+                  previousFrame,
+                }),
+              },
+            }
+          })
 
-        return hasChanged ? nextNodes : prevNodes
-      })
-
-      onRequestPersistFlush?.()
+          return hasChanged ? nextNodes : prevNodes
+        },
+        { flush: true },
+      )
     },
-    [onRequestPersistFlush, setNodes],
+    [setNodes],
   )
 
   return {

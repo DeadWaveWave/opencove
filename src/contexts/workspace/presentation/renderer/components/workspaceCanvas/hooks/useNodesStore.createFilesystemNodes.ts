@@ -5,6 +5,7 @@ import type { NodeWorkerBinding } from '@shared/types/nodeWorkerBinding'
 import { resolveFileUriName } from '@shared/utils/fileUriScope'
 import { normalizeFolderNodeData } from '@shared/utils/folderNodeData'
 import type { DocumentNodeData, FolderNodeData, Point, TerminalNodeData } from '../../../types'
+import { useReadCanvasDocument } from '../../../store/canvasStoreContext'
 import { useCanvasCollapseStore } from '../../../store/useCanvasCollapseStore'
 import {
   EMPTY_CANVAS_COLLAPSE,
@@ -21,15 +22,13 @@ import type { UseWorkspaceCanvasNodeCreationParams } from './useNodesStore.types
 
 export function useWorkspaceCanvasFilesystemNodeCreation({
   workspaceId: canvasWorkspaceId,
-  nodesRef,
-  spacesRef,
   setNodes,
-  onRequestPersistFlush,
   onShowMessage,
   onNodeCreated,
   standardWindowSizeBucket,
 }: Omit<UseWorkspaceCanvasNodeCreationParams, 'browserDefaultMode'>) {
   const { t } = useTranslation()
+  const readDocument = useReadCanvasDocument()
   const create = useCallback(
     (
       anchor: Point,
@@ -49,17 +48,18 @@ export function useWorkspaceCanvasFilesystemNodeCreation({
           kind: payload.kind,
           bucket: standardWindowSizeBucket,
         })
+      const snapshot = readDocument()
       const layout = payload.workspaceId
         ? projectCanvasInteractionLayout(
-            nodesRef.current,
-            spacesRef.current,
+            snapshot.nodes,
+            snapshot.spaces,
             useCanvasCollapseStore.getState().workspaces[payload.workspaceId] ??
               EMPTY_CANVAS_COLLAPSE,
           )
-        : { nodes: nodesRef.current, spaces: spacesRef.current }
+        : { nodes: snapshot.nodes, spaces: snapshot.spaces }
       const resolved = resolveNodesPlacement({
         workspaceId: payload.workspaceId ?? canvasWorkspaceId,
-        getSpaces: () => spacesRef.current,
+        getSpaces: () => snapshot.spaces,
         anchor,
         size: payload.workspaceId ? getCollapsedNodeSize() : size,
         getNodes: () => layout.nodes,
@@ -104,19 +104,16 @@ export function useWorkspaceCanvasFilesystemNodeCreation({
         }))
       }
       guardNodeFromSyncOverwrite(node.id, 2_500)
-      setNodes(previous => [...previous, node])
+      setNodes(previous => [...previous, node], { flush: true })
       if (placement?.focusViewportOnCreate !== false) {
         onNodeCreated?.(node.id)
       }
-      onRequestPersistFlush?.()
       return node
     },
     [
       canvasWorkspaceId,
-      nodesRef,
-      spacesRef,
+      readDocument,
       setNodes,
-      onRequestPersistFlush,
       onShowMessage,
       onNodeCreated,
       standardWindowSizeBucket,

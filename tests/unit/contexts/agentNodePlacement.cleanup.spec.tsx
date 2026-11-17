@@ -6,6 +6,11 @@ import { registerOperationIntrospectionHandlers } from '../../../src/app/main/co
 import { createAppError } from '../../../src/shared/errors/appError'
 import type { CreateNodeInput } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/types'
 import type { ManagedClaudeLifecycleReceipt } from '../../../src/shared/contracts/managedClaudeLaunch'
+import {
+  CanvasStoreTestProvider,
+  CANVAS_STORE_TEST_WORKSPACE_ID,
+} from '../../support/canvasStoreTestHarness'
+import { seedWorkspaceCanvasStore } from '../../support/workspaceCanvasStoreHarness'
 import { compatibilityFixture, context } from './managedClaudeLaunchCompatibility.helpers'
 
 const receipt: ManagedClaudeLifecycleReceipt = {
@@ -51,14 +56,15 @@ function fixture(cleanupSupport = false) {
   })
   const setNodes = vi.fn(),
     message = vi.fn()
-  const hook = renderHook(() =>
-    useWorkspaceCanvasNodeCreation({
-      nodesRef: { current: [] },
-      spacesRef: { current: [] },
-      setNodes,
-      workspaceId: 'workspace',
-      onShowMessage: message,
-    }),
+  seedWorkspaceCanvasStore({ workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID })
+  const hook = renderHook(
+    () =>
+      useWorkspaceCanvasNodeCreation({
+        setNodes,
+        workspaceId: 'workspace',
+        onShowMessage: message,
+      }),
+    { wrapper: CanvasStoreTestProvider },
   )
   const place = (managedClaudeLifecycle?: ManagedClaudeLifecycleReceipt) =>
     hook.result.current.createNodeForSession({

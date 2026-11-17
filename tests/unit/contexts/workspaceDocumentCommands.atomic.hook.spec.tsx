@@ -1,6 +1,7 @@
 import React from 'react'
 import { act, cleanup, renderHook } from '@testing-library/react'
 import { ReactFlowProvider } from '@xyflow/react'
+import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import { useWorkspaceCanvasNodesStore } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore'
@@ -37,21 +38,23 @@ function renderCanvasNodesStore() {
   return renderHook(
     () => {
       const nodes = useAppStore(state => state.workspaces[0].nodes)
-      const spaces = useAppStore(state => state.workspaces[0].spaces)
-      const spacesRef = React.useRef(spaces)
-      spacesRef.current = spaces
       return useWorkspaceCanvasNodesStore({
         workspaceId: 'workspace-1',
         workspacePath: '/tmp/workspace-1',
         nodes,
-        spacesRef,
         onNodesCommitted: () => undefined,
         isLiveGestureActive: () => false,
         standardWindowSizeBucket: 'regular',
         browserDefaultMode: 'iframe',
       })
     },
-    { wrapper: ({ children }) => <ReactFlowProvider>{children}</ReactFlowProvider> },
+    {
+      wrapper: ({ children }) => (
+        <CanvasStoreTestProvider workspaceId="workspace-1">
+          <ReactFlowProvider>{children}</ReactFlowProvider>
+        </CanvasStoreTestProvider>
+      ),
+    },
   )
 }
 

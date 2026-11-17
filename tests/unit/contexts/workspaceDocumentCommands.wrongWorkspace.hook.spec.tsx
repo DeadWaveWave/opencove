@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react'
 import { act, cleanup, renderHook } from '@testing-library/react'
 import { ReactFlowProvider } from '@xyflow/react'
+import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
 import { afterEach, describe, expect, it } from 'vitest'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import { useWorkspaceCanvasNodesStore } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore'
@@ -27,7 +28,9 @@ function renderCanvasNodesStore(
   initialWorkspaceId: string,
   { decorateWorkspaceB = false }: { decorateWorkspaceB?: boolean } = {},
 ) {
-  return renderHook(
+  // The provider follows the workspace the hook is rendered for, as the canvas's does.
+  const provided = { workspaceId: initialWorkspaceId }
+  const view = renderHook(
     ({ workspaceId }: { workspaceId: string }) => {
       const storeNodes = useAppStore(
         state => state.workspaces.find(candidate => candidate.id === workspaceId)!.nodes,
@@ -49,7 +52,6 @@ function renderCanvasNodesStore(
         workspaceId,
         workspacePath: `/tmp/${workspaceId}`,
         nodes,
-        spacesRef: { current: [] },
         onNodesCommitted: () => undefined,
         isLiveGestureActive: () => decorateWorkspaceB,
         standardWindowSizeBucket: 'regular',
@@ -58,9 +60,20 @@ function renderCanvasNodesStore(
     },
     {
       initialProps: { workspaceId: initialWorkspaceId },
-      wrapper: ({ children }) => <ReactFlowProvider>{children}</ReactFlowProvider>,
+      wrapper: ({ children }) => (
+        <CanvasStoreTestProvider workspaceId={provided.workspaceId}>
+          <ReactFlowProvider>{children}</ReactFlowProvider>
+        </CanvasStoreTestProvider>
+      ),
     },
   )
+  return {
+    ...view,
+    rerender: (props: { workspaceId: string }) => {
+      provided.workspaceId = props.workspaceId
+      view.rerender(props)
+    },
+  }
 }
 
 describe('workspace document commands: a late canvas write lands in the workspace that started it', () => {
