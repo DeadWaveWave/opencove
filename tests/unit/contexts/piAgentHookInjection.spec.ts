@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { createTestAgentLaunchArtifactRoot } from '../../support/agentLaunchArtifactRoot'
 import { readFile, stat } from 'node:fs/promises'
 import { describe, expect, it } from 'vitest'
 import { createPiHookChannel } from '../../../src/app/main/controlSurface/agentHook/piHookChannel'
@@ -11,7 +12,10 @@ describe('Pi launch-scoped hook injection', () => {
     'does not inject host credentials or extension paths into a WSL profile %s',
     async profileId => {
       const channel = createPiHookChannel()
-      const provider = new PiAgentProviderContribution({ channel })
+      const provider = new PiAgentProviderContribution({
+        artifactRoot: createTestAgentLaunchArtifactRoot(),
+        channel,
+      })
       const artifacts = new AgentLaunchArtifactScope()
       try {
         const plan = await provider.launcher.createLaunchPlan({
@@ -38,7 +42,10 @@ describe('Pi launch-scoped hook injection', () => {
 
   it('shares injection across managed launch and shell invocation and owns artifact cleanup', async () => {
     const channel = createPiHookChannel()
-    const provider = new PiAgentProviderContribution({ channel })
+    const provider = new PiAgentProviderContribution({
+      artifactRoot: createTestAgentLaunchArtifactRoot(),
+      channel,
+    })
     const artifacts = new AgentLaunchArtifactScope()
     try {
       const plan = await provider.launcher.createLaunchPlan({

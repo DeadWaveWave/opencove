@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { createTestAgentLaunchArtifactRoot } from '../support/agentLaunchArtifactRoot'
 import { spawn } from 'node:child_process'
 import { expect, it } from 'vitest'
 import { createClaudeHookChannel } from '../../src/app/main/controlSurface/agentHook/claudeHookChannel'
@@ -17,6 +18,7 @@ it.each(['claude', 'codex'] as const)(
       const reservation = await channel.reserveSpawn({ residentContext: 'canvas' })
       expect(reservation.usesHook).toBe(true)
       const relay = await createAgentHookRelay({
+        artifactRoot: createTestAgentLaunchArtifactRoot(),
         provider,
         runtimeExecutable: process.execPath,
         runtimePlatform: process.platform,

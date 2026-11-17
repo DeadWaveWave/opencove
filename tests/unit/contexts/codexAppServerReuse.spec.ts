@@ -1,3 +1,4 @@
+import { createTestAgentLaunchArtifactRoot } from '../../support/agentLaunchArtifactRoot'
 import { EventEmitter } from 'node:events'
 import { connect } from 'node:net'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -53,6 +54,7 @@ describe.skipIf(process.platform === 'win32').each(['HOME', 'CODEX_HOME'])(
         const artifacts = new AgentLaunchArtifactScope()
         const trust = vi.fn(async () => "hooks.state={'hook'={trusted_hash='sha256:abc'}}")
         const provider = new CodexAgentProviderContribution({
+          artifactRoot: createTestAgentLaunchArtifactRoot(),
           channel,
           hookTrustResolver: trust,
           runtimePlatform: 'linux',

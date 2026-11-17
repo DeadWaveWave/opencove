@@ -1,3 +1,4 @@
+import { createTestAgentLaunchArtifactRoot } from '../../support/agentLaunchArtifactRoot'
 import { TerminalRuntimeAvailability } from '../../../src/contexts/terminal/application/TerminalRuntimeAvailability'
 import { AgentProviderRegistry } from '../../../src/contexts/agent/application/services/AgentProviderRegistry'
 import { createBuiltinAgentProviderContributions } from '../../../src/contexts/agent/infrastructure/providers/catalog/BuiltinAgentProviderCatalog'
@@ -15,5 +16,7 @@ export function createReadyTerminalAdmissionDeps(): {
 }
 
 export function createTestAgentProviderRegistry(): AgentProviderRegistry {
-  return new AgentProviderRegistry(createBuiltinAgentProviderContributions())
+  return new AgentProviderRegistry(
+    createBuiltinAgentProviderContributions({ artifactRoot: createTestAgentLaunchArtifactRoot() }),
+  )
 }

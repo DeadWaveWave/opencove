@@ -47,7 +47,7 @@ describe('Agent IPC launch registration', () => {
         }),
         removeHandler: vi.fn((channel: string) => handlers.delete(channel)),
       }
-      vi.doMock('electron', () => ({ ipcMain }))
+      vi.doMock('electron', () => ({ app: { getPath: () => process.cwd() }, ipcMain }))
 
       let emitExit: ((event: { sessionId: string; exitCode: number }) => void) | null = null
       let resolveSpawn!: (value: { sessionId: string }) => void

@@ -63,7 +63,10 @@ import {
 import { normalizePersistedAppState } from '../../../../platform/persistence/sqlite/normalize'
 import { AgentProviderRegistry } from '../../application/services/AgentProviderRegistry'
 import { createManagedAgentLaunchPlan } from '../../application/use-cases/createManagedAgentLaunchPlan'
-import { createBuiltinAgentProviderContributions } from '../../infrastructure/providers/catalog/BuiltinAgentProviderCatalog'
+import {
+  createAgentLaunchArtifactRoot,
+  createBuiltinAgentProviderContributions,
+} from '../../infrastructure/providers/catalog/BuiltinAgentProviderCatalog'
 import { rollbackAgentLaunchArtifacts } from '../../application/services/AgentLaunchArtifactOwner'
 import { AgentLaunchSessionRegistrationOwner } from '../../application/services/AgentLaunchSessionRegistrationOwner'
 
@@ -124,6 +127,7 @@ export function registerAgentIpcHandlers(
 ): IpcRegistrationDisposable {
   const providerRegistry = new AgentProviderRegistry(
     createBuiltinAgentProviderContributions({
+      artifactRoot: createAgentLaunchArtifactRoot(electron.app.getPath('userData')),
       appVersion,
       runtimeExecutable: process.execPath,
       runtimePlatform: process.platform,

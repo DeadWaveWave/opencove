@@ -28,7 +28,10 @@ import {
 import { createClaudeHookChannel } from '../main/controlSurface/agentHook/claudeHookChannel'
 import { createCodexHookChannel } from '../main/controlSurface/agentHook/codexHookChannel'
 import { AgentProviderRegistry } from '../../contexts/agent/application/services/AgentProviderRegistry'
-import { createBuiltinAgentProviderContributions } from '../../contexts/agent/infrastructure/providers/catalog/BuiltinAgentProviderCatalog'
+import {
+  createAgentLaunchArtifactRoot,
+  createBuiltinAgentProviderContributions,
+} from '../../contexts/agent/infrastructure/providers/catalog/BuiltinAgentProviderCatalog'
 import {
   cleanupLegacyManagedHooksAtStartup,
   reportLegacyManagedHookCleanupFailures,
@@ -192,6 +195,7 @@ async function main(): Promise<void> {
   const agentProviderRegistry = new AgentProviderRegistry(
     // Share the launch identity owner with the file state watcher.
     createBuiltinAgentProviderContributions({
+      artifactRoot: createAgentLaunchArtifactRoot(userDataPath),
       appVersion,
       channels: agentHookChannels,
       codexSessionDiscovery,

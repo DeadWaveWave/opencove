@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { createTestAgentLaunchArtifactRoot } from '../support/agentLaunchArtifactRoot'
 import { spawn } from 'node:child_process'
 import { chmod, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
@@ -56,11 +57,16 @@ async function prepare(provider: 'codex' | 'claude', notify = false) {
   const contribution =
     provider === 'codex'
       ? new CodexAgentProviderContribution({
+          artifactRoot: createTestAgentLaunchArtifactRoot(),
           channel,
           runtimeExecutable,
           hookTrustResolver: async () => (notify ? null : 'hooks.state={}'),
         })
-      : new ClaudeCodeAgentProviderContribution({ channel, runtimeExecutable })
+      : new ClaudeCodeAgentProviderContribution({
+          artifactRoot: createTestAgentLaunchArtifactRoot(),
+          channel,
+          runtimeExecutable,
+        })
   const plan = await contribution.launcher.createLaunchPlan({
     artifacts,
     mode: 'new',

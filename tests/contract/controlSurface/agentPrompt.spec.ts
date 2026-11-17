@@ -1,3 +1,4 @@
+import { createTestAgentLaunchArtifactRoot } from '../../support/agentLaunchArtifactRoot'
 import { agentPromptResultSchema } from '../../../src/shared/contracts/dto/agentPrompt'
 import { sessionGrantAllowsOperation } from '../../../src/app/main/controlSurface/http/sessionGrantAuthorization'
 import { describe, expect, it, vi } from 'vitest'
@@ -52,7 +53,11 @@ describe('agent.prompt contract', () => {
       },
     })
     const surface = createControlSurface()
-    const providers = new AgentProviderRegistry(createBuiltinAgentProviderContributions())
+    const providers = new AgentProviderRegistry(
+      createBuiltinAgentProviderContributions({
+        artifactRoot: createTestAgentLaunchArtifactRoot(),
+      }),
+    )
     registerAgentPromptHandlers(surface, hub, providers)
     hub.agentRuns.registry.register({
       sessionId: 's',

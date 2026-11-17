@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { createTestAgentLaunchArtifactRoot } from '../../support/agentLaunchArtifactRoot'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { createControlSurface } from '../../../src/app/main/controlSurface/controlSurface'
 import { registerAgentPromptHandlers } from '../../../src/app/main/controlSurface/handlers/agentPromptHandlers'
@@ -27,7 +28,11 @@ function fixture(provider: AgentProviderId, caller: 'grant' | 'bearer' | 'cookie
   const service = registerAgentPromptHandlers(
     surface,
     f.hub,
-    new AgentProviderRegistry(createBuiltinAgentProviderContributions()),
+    new AgentProviderRegistry(
+      createBuiltinAgentProviderContributions({
+        artifactRoot: createTestAgentLaunchArtifactRoot(),
+      }),
+    ),
   )
   const { grant } = new SessionGrantRegistry(() => true).issue({
     sessionId: 'caller-session',

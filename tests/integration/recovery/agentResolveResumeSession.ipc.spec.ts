@@ -72,7 +72,7 @@ describe('agent:resolve-resume-session IPC', () => {
       await fs.mkdir(cwd, { recursive: true })
 
       const { handlers, ipcMain } = createIpcHarness()
-      vi.doMock('electron', () => ({ ipcMain }))
+      vi.doMock('electron', () => ({ app: { getPath: () => process.cwd() }, ipcMain }))
 
       const runtime = {} as unknown as PtyRuntime
       const approvedWorkspaces = {

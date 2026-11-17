@@ -1,3 +1,4 @@
+import { createTestAgentLaunchArtifactRoot } from '../../support/agentLaunchArtifactRoot'
 import { describe, expect, it, vi } from 'vitest'
 import { AgentLaunchArtifactScope } from '../../../src/contexts/agent/application/services/AgentLaunchArtifactScope'
 import { KimiAgentProviderContribution } from '../../../src/contexts/agent/infrastructure/providers/kimi/KimiAgentProviderContribution'
@@ -28,7 +29,10 @@ function launchCommand(overrides: Record<string, unknown> = {}) {
 describe('PiAgentProviderContribution', () => {
   it('owns executable detection and new launch semantics', async () => {
     const detector = { inspect: vi.fn(async () => availability('pi', 'pi')) }
-    const provider = new PiAgentProviderContribution({ detector })
+    const provider = new PiAgentProviderContribution({
+      artifactRoot: createTestAgentLaunchArtifactRoot(),
+      detector,
+    })
 
     await expect(provider.detector.inspect('/custom/pi')).resolves.toEqual(availability('pi', 'pi'))
     const plan = await provider.launcher.createLaunchPlan(
@@ -47,7 +51,9 @@ describe('PiAgentProviderContribution', () => {
   })
 
   it('resumes an explicit session without inventing permission flags', async () => {
-    const provider = new PiAgentProviderContribution()
+    const provider = new PiAgentProviderContribution({
+      artifactRoot: createTestAgentLaunchArtifactRoot(),
+    })
     const plan = await provider.launcher.createLaunchPlan(
       launchCommand({
         mode: 'resume',

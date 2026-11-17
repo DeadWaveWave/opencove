@@ -10,7 +10,10 @@ import type {
 } from '../../../shared/contracts/dto'
 import type { AgentProviderRegistry } from '../../../contexts/agent/application/services/AgentProviderRegistry'
 import { AgentProviderRegistry as Registry } from '../../../contexts/agent/application/services/AgentProviderRegistry'
-import { createBuiltinAgentProviderContributions } from '../../../contexts/agent/infrastructure/providers/catalog/BuiltinAgentProviderCatalog'
+import {
+  createAgentLaunchArtifactRoot,
+  createBuiltinAgentProviderContributions,
+} from '../../../contexts/agent/infrastructure/providers/catalog/BuiltinAgentProviderCatalog'
 import type { AgentHookChannel } from '../../../shared/runtime/agentHook/agentHookChannel'
 import { TerminalAgentActivityGateway } from '../../../contexts/agent/infrastructure/terminal-activity/TerminalAgentActivityGateway'
 import { TerminalAgentTelemetryAssetStore } from '../../../contexts/agent/infrastructure/terminal-activity/TerminalAgentTelemetryAssetStore'
@@ -38,7 +41,12 @@ export function createTerminalAgentActivityRuntime(options: {
 } {
   const agentProviderRegistry =
     options.agentProviderRegistry ??
-    new Registry(createBuiltinAgentProviderContributions({ appVersion: options.appVersion }))
+    new Registry(
+      createBuiltinAgentProviderContributions({
+        artifactRoot: createAgentLaunchArtifactRoot(options.userDataPath),
+        appVersion: options.appVersion,
+      }),
+    )
   for (const channel of options.agentHookChannels) {
     channel.setResidentContextEnabled?.(async () => {
       const store = await options.getPersistenceStore?.()

@@ -22,16 +22,22 @@ vi.mock('../../../src/app/main/controlSurface/handlers/sessionAgentTestStub', ()
   resolveWorkerAgentTestStub: () => null,
 }))
 vi.mock(
-  '../../../src/contexts/agent/infrastructure/providers/shared/TemporaryProviderConfig',
+  '../../../src/contexts/agent/infrastructure/providers/shared/AgentLaunchArtifactFile',
   async importOriginal => {
     const actual =
       await importOriginal<
-        typeof import('../../../src/contexts/agent/infrastructure/providers/shared/TemporaryProviderConfig')
+        typeof import('../../../src/contexts/agent/infrastructure/providers/shared/AgentLaunchArtifactFile')
       >()
     return {
       ...actual,
-      createTemporaryProviderConfig: async (prefix: string, filename: string, contents: string) => {
-        const file = await actual.createTemporaryProviderConfig(
+      createAgentLaunchArtifactFile: async (
+        root: Parameters<typeof actual.createAgentLaunchArtifactFile>[0],
+        prefix: string,
+        filename: string,
+        contents: string,
+      ) => {
+        const file = await actual.createAgentLaunchArtifactFile(
+          root,
           `${prefix}${seam.executor}-`,
           filename,
           contents,

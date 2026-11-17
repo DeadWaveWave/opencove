@@ -14,6 +14,7 @@ const fixture = vi.hoisted(() => ({
   dispose: vi.fn(async () => {}),
 }))
 vi.mock('electron', () => ({
+  app: { getPath: () => process.cwd() },
   ipcMain: {
     handle: (id: string, handler: (...args: unknown[]) => unknown) =>
       fixture.handlers.set(id, handler),
@@ -24,9 +25,10 @@ vi.mock('../../../src/platform/os/CommandEnvironmentService', () => ({
   getCommandExecutionEnvironment: async (env = {}) => env,
 }))
 vi.mock(
-  '../../../src/contexts/agent/infrastructure/providers/shared/TemporaryProviderConfig',
-  () => ({
-    createTemporaryProviderConfig: async () => ({
+  '../../../src/contexts/agent/infrastructure/providers/shared/AgentLaunchArtifactFile',
+  async importOriginal => ({
+    ...(await importOriginal<object>()),
+    createAgentLaunchArtifactFile: async () => ({
       path: 'C:\\Temp\\prompt folder\\prompt.txt',
       dispose: fixture.dispose,
     }),

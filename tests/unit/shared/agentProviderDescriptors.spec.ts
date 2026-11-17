@@ -1,3 +1,4 @@
+import { createTestAgentLaunchArtifactRoot } from '../../support/agentLaunchArtifactRoot'
 import { describe, expect, it } from 'vitest'
 import {
   AGENT_PROVIDER_DESCRIPTORS,
@@ -59,7 +60,9 @@ describe('agent provider descriptors', () => {
   })
 
   it('names each contribution from the descriptor label', () => {
-    const contributions = createBuiltinAgentProviderContributions()
+    const contributions = createBuiltinAgentProviderContributions({
+      artifactRoot: createTestAgentLaunchArtifactRoot(),
+    })
     expect(contributions.map(contribution => contribution.descriptor.id)).toEqual([
       ...AGENT_PROVIDER_IDS,
     ])

@@ -1,3 +1,4 @@
+import { createAgentLaunchArtifactRoot } from '../../src/contexts/agent/infrastructure/providers/catalog/BuiltinAgentProviderCatalog'
 import { spawn as spawnChild } from 'node:child_process'
 import { access, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -132,8 +133,13 @@ async function createHarness(options: { provider: TerminalAgentShimProvider; ctr
   await channel.start()
   const contribution =
     options.provider === 'claude-code'
-      ? new ClaudeCodeAgentProviderContribution({ channel, runtimeExecutable: process.execPath })
+      ? new ClaudeCodeAgentProviderContribution({
+          artifactRoot: createAgentLaunchArtifactRoot(root),
+          channel,
+          runtimeExecutable: process.execPath,
+        })
       : new CodexAgentProviderContribution({
+          artifactRoot: createAgentLaunchArtifactRoot(root),
           channel,
           runtimeExecutable: process.execPath,
           runtimePlatform: 'win32',

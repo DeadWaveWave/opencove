@@ -1,3 +1,4 @@
+import { createTestAgentLaunchArtifactRoot } from '../../support/agentLaunchArtifactRoot'
 import { expect, it, vi } from 'vitest'
 import { AGENT_PROVIDER_IDS } from '../../../src/shared/contracts/dto'
 import { createBuiltinAgentProviderContributions } from '../../../src/contexts/agent/infrastructure/providers/catalog/BuiltinAgentProviderCatalog'
@@ -26,21 +27,20 @@ it('generic grant launch admission refuses a NUL sentence', () => {
     } as GrantCheckDeps),
   ).toThrow()
 })
-it.each(createBuiltinAgentProviderContributions())(
-  'shared planner preflights NUL before invoking $descriptor.id launcher',
-  async contribution => {
-    const createLaunchPlan = vi.fn(contribution.launcher.createLaunchPlan)
-    const provider = { ...contribution, launcher: { ...contribution.launcher, createLaunchPlan } }
-    await expect(
-      createManagedAgentLaunchPlan(provider, {
-        mode: 'new',
-        prompt: 'plugins\0 explain this project',
-        resumeSessionId: null,
-        model: null,
-        agentFullAccess: false,
-        workspaceDirectory: '/tmp',
-      }),
-    ).rejects.toMatchObject({ code: 'common.invalid_input' })
-    expect(createLaunchPlan).not.toHaveBeenCalled()
-  },
-)
+it.each(
+  createBuiltinAgentProviderContributions({ artifactRoot: createTestAgentLaunchArtifactRoot() }),
+)('shared planner preflights NUL before invoking $descriptor.id launcher', async contribution => {
+  const createLaunchPlan = vi.fn(contribution.launcher.createLaunchPlan)
+  const provider = { ...contribution, launcher: { ...contribution.launcher, createLaunchPlan } }
+  await expect(
+    createManagedAgentLaunchPlan(provider, {
+      mode: 'new',
+      prompt: 'plugins\0 explain this project',
+      resumeSessionId: null,
+      model: null,
+      agentFullAccess: false,
+      workspaceDirectory: '/tmp',
+    }),
+  ).rejects.toMatchObject({ code: 'common.invalid_input' })
+  expect(createLaunchPlan).not.toHaveBeenCalled()
+})

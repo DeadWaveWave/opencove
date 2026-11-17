@@ -10,9 +10,13 @@ import type {
 import { buildAgentLaunchCommand } from '../../cli/AgentCommandFactory'
 import { ExistingAgentProviderDetector } from '../shared/AgentProviderDetector'
 import { createAgentHookRelay } from '../shared/AgentHookRelay'
-import { createTemporaryProviderConfig } from '../shared/TemporaryProviderConfig'
+import {
+  createAgentLaunchArtifactFile,
+  type AgentLaunchArtifactRoot,
+} from '../shared/AgentLaunchArtifactFile'
 
 export interface ClaudeCodeAgentProviderContributionOptions {
+  readonly artifactRoot: AgentLaunchArtifactRoot
   readonly channel?: AgentHookChannel
   readonly detector?: AgentProviderDetector
   readonly runtimeExecutable?: string
@@ -60,11 +64,13 @@ export class ClaudeCodeAgentProviderContribution implements AgentProviderContrib
     },
   }
 
+  private readonly artifactRoot: AgentLaunchArtifactRoot
   private readonly channel?: AgentHookChannel
   private readonly runtimeExecutable: string
   private readonly runtimePlatform: NodeJS.Platform
 
-  constructor(options: ClaudeCodeAgentProviderContributionOptions = {}) {
+  constructor(options: ClaudeCodeAgentProviderContributionOptions) {
+    this.artifactRoot = options.artifactRoot
     this.channel = options.channel
     this.runtimeExecutable = options.runtimeExecutable ?? process.execPath
     this.runtimePlatform = options.runtimePlatform ?? process.platform
@@ -105,12 +111,14 @@ export class ClaudeCodeAgentProviderContribution implements AgentProviderContrib
     }
     command.artifacts.track('claude-hook-reservation', reservation)
     const relay = await createAgentHookRelay({
+      artifactRoot: this.artifactRoot,
       provider: 'claude',
       runtimeExecutable: this.runtimeExecutable,
       runtimePlatform: this.runtimePlatform,
       artifacts: command.artifacts,
     })
-    const settings = await createTemporaryProviderConfig(
+    const settings = await createAgentLaunchArtifactFile(
+      this.artifactRoot,
       'opencove-claude-settings-',
       'settings.json',
       JSON.stringify({ hooks: createClaudeHooks(relay.command, relay.args) }),

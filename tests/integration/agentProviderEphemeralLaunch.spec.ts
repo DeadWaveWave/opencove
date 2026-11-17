@@ -1,3 +1,4 @@
+import { createTestAgentLaunchArtifactRoot } from '../support/agentLaunchArtifactRoot'
 import { access, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -70,6 +71,7 @@ describe('ephemeral Agent Provider launch', () => {
     try {
       const claude = await createManagedAgentLaunchPlan(
         new ClaudeCodeAgentProviderContribution({
+          artifactRoot: createTestAgentLaunchArtifactRoot(),
           channel: claudeChannel,
           runtimeExecutable: '/runtime/node',
         }),
@@ -91,6 +93,7 @@ describe('ephemeral Agent Provider launch', () => {
 
       const codex = await createManagedAgentLaunchPlan(
         new CodexAgentProviderContribution({
+          artifactRoot: createTestAgentLaunchArtifactRoot(),
           channel: codexChannel,
           hookTrustResolver: vi.fn(async () => null),
           runtimeExecutable: '/runtime/node',
@@ -110,7 +113,7 @@ describe('ephemeral Agent Provider launch', () => {
       codex.plan.onStarted?.(codexSession.sessionId)
 
       const pi = await createManagedAgentLaunchPlan(
-        new PiAgentProviderContribution(),
+        new PiAgentProviderContribution({ artifactRoot: createTestAgentLaunchArtifactRoot() }),
         launchCommand('pi'),
       )
       expect(pi.plan).toMatchObject({ command: 'pi', env: {} })

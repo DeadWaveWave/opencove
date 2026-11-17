@@ -1,3 +1,4 @@
+import { createTestAgentLaunchArtifactRoot } from '../../support/agentLaunchArtifactRoot'
 import { describe, expect, it } from 'vitest'
 import { AgentProviderRegistry } from '../../../src/contexts/agent/application/services/AgentProviderRegistry'
 import {
@@ -39,7 +40,9 @@ function contribution(id: 'claude-code' | 'codex'): AgentProviderContribution {
 
 describe('built-in Agent Provider catalog', () => {
   it('resolves formal contributions before generic entries in union order', () => {
-    const contributions = createBuiltinAgentProviderContributions()
+    const contributions = createBuiltinAgentProviderContributions({
+      artifactRoot: createTestAgentLaunchArtifactRoot(),
+    })
     expect(contributions.map(item => item.descriptor.id)).toEqual([
       'claude-code',
       'codex',

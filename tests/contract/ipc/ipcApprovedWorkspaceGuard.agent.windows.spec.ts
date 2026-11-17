@@ -82,7 +82,7 @@ describe('IPC approved workspace guards on Windows', () => {
 
     try {
       const { handlers, ipcMain } = createIpcHarness()
-      vi.doMock('electron', () => ({ ipcMain }))
+      vi.doMock('electron', () => ({ app: { getPath: () => process.cwd() }, ipcMain }))
       vi.doMock('node:child_process', () => {
         const execFile = vi.fn((file, args, options, callback) => {
           const cb = typeof options === 'function' ? options : callback

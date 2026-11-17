@@ -1,3 +1,4 @@
+import { createTestAgentLaunchArtifactRoot } from '../../support/agentLaunchArtifactRoot'
 import { describe, expect, it, vi } from 'vitest'
 import { AgentLaunchArtifactScope } from '../../../src/contexts/agent/application/services/AgentLaunchArtifactScope'
 import { CodexAgentProviderContribution } from '../../../src/contexts/agent/infrastructure/providers/codex/CodexAgentProviderContribution'
@@ -12,6 +13,7 @@ describe('Windows Codex session file policy', () => {
       throw new Error('app-server must not start')
     })
     const provider = new CodexAgentProviderContribution({
+      artifactRoot: createTestAgentLaunchArtifactRoot(),
       runtimePlatform: 'win32',
       channel: { reserveSpawn } as unknown as AgentHookChannel,
       hookTrustResolver,

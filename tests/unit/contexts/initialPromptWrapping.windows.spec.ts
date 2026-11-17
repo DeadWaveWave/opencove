@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { createTestAgentLaunchArtifactRoot } from '../../support/agentLaunchArtifactRoot'
 import { execFileSync } from 'node:child_process'
 import { expect, it } from 'vitest'
 import { TerminalProfileResolver } from '../../../src/platform/terminal/TerminalProfileResolver'
@@ -31,7 +32,10 @@ const prompts = [
   'Explain\r\n"quotes" \\ and \'single\'; $x `literal`',
   'C:\\folder with space\\',
 ]
-for (const provider of createBuiltinAgentProviderContributions({ runtimePlatform: 'win32' })) {
+for (const provider of createBuiltinAgentProviderContributions({
+  artifactRoot: createTestAgentLaunchArtifactRoot(),
+  runtimePlatform: 'win32',
+})) {
   for (const profileId of ['powershell', 'pwsh', 'wsl:Ubuntu']) {
     it.each(prompts)(
       `${provider.descriptor.id}/${profileId} preserves final receiver operand %j`,

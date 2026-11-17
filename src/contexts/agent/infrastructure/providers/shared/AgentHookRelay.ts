@@ -1,6 +1,9 @@
 import { agentHookReplyScript } from './AgentHookReplyScript'
 import type { CreateAgentLaunchPlanCommand } from '../../../application/ports/AgentProviderContribution'
-import { createTemporaryProviderConfig } from './TemporaryProviderConfig'
+import {
+  createAgentLaunchArtifactFile,
+  type AgentLaunchArtifactRoot,
+} from './AgentLaunchArtifactFile'
 
 export interface AgentHookRelayInvocation {
   readonly command: string
@@ -9,13 +12,15 @@ export interface AgentHookRelayInvocation {
 }
 
 export async function createAgentHookRelay(options: {
+  artifactRoot: AgentLaunchArtifactRoot
   provider: 'codex' | 'claude'
   runtimeExecutable: string
   runtimePlatform: NodeJS.Platform
   artifacts: CreateAgentLaunchPlanCommand['artifacts']
 }): Promise<AgentHookRelayInvocation> {
   const { provider, runtimeExecutable, runtimePlatform, artifacts } = options
-  const relay = await createTemporaryProviderConfig(
+  const relay = await createAgentLaunchArtifactFile(
+    options.artifactRoot,
     `opencove-${provider}-hook-`,
     'relay.mjs',
     `const provider = ${JSON.stringify(provider)};\n${agentHookReplyScript}\n${relayScript}`,
@@ -29,7 +34,8 @@ export async function createAgentHookRelay(options: {
     return { command, args, shellCommand: [command, ...args].map(quotePosix).join(' ') }
   }
 
-  const launcher = await createTemporaryProviderConfig(
+  const launcher = await createAgentLaunchArtifactFile(
+    options.artifactRoot,
     `opencove-${provider}-hook-`,
     'launch.ps1',
     createWindowsLauncher(runtimeExecutable, relay.path),

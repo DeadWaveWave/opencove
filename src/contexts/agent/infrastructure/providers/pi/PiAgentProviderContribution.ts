@@ -12,7 +12,10 @@ import {
 } from '../terminal-cli/TerminalCliContribution'
 
 import type { AgentHookChannel } from '../../../../../shared/runtime/agentHook/agentHookChannel'
-import { createTemporaryProviderConfig } from '../shared/TemporaryProviderConfig'
+import {
+  createAgentLaunchArtifactFile,
+  type AgentLaunchArtifactRoot,
+} from '../shared/AgentLaunchArtifactFile'
 import { piAgentStatusExtensionSource } from './PiAgentStatusExtension'
 
 const piLaunch = {
@@ -32,12 +35,11 @@ export class PiAgentProviderContribution extends TerminalCliAgentProviderContrib
   readonly hookInjection: AgentHookInjectionPlanner
   private readonly channel?: AgentHookChannel
 
-  constructor(
-    options: {
-      readonly detector?: AgentProviderDetector
-      readonly channel?: AgentHookChannel
-    } = {},
-  ) {
+  constructor(options: {
+    readonly artifactRoot: AgentLaunchArtifactRoot
+    readonly detector?: AgentProviderDetector
+    readonly channel?: AgentHookChannel
+  }) {
     super('pi', piLaunch.executable, options satisfies TerminalCliAgentProviderOptions)
     this.channel = options.channel
     this.hookInjection = {
@@ -51,7 +53,8 @@ export class PiAgentProviderContribution extends TerminalCliAgentProviderContrib
         }
         command.artifacts.track('pi-hook-reservation', reservation)
         try {
-          const extension = await createTemporaryProviderConfig(
+          const extension = await createAgentLaunchArtifactFile(
+            options.artifactRoot,
             'opencove-pi-hook-',
             'status.ts',
             piAgentStatusExtensionSource,

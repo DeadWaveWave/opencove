@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { createTestAgentLaunchArtifactRoot } from '../../support/agentLaunchArtifactRoot'
 import { expect, it, vi } from 'vitest'
 import {
   localCanvasResidentContext,
@@ -47,8 +48,13 @@ it.each([
     const artifacts = new AgentLaunchArtifactScope()
     const contribution =
       provider === 'claude'
-        ? new ClaudeCodeAgentProviderContribution({ channel, runtimePlatform: platform })
+        ? new ClaudeCodeAgentProviderContribution({
+            artifactRoot: createTestAgentLaunchArtifactRoot(),
+            channel,
+            runtimePlatform: platform,
+          })
         : new CodexAgentProviderContribution({
+            artifactRoot: createTestAgentLaunchArtifactRoot(),
             channel,
             runtimePlatform: platform,
             hookTrustResolver: async () => (lifecycle ? 'hooks.state={}' : null),

@@ -1,6 +1,6 @@
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { expect, test } from '@playwright/test'
 import { jsonOutput, terminalCommand } from './cli.terminal.helpers'
 import { clearAndSeedWorkspace, launchApp, seededWorkspaceId } from './workspace-canvas.helpers'
@@ -87,6 +87,36 @@ test.describe('agent.prompt from a canvas terminal', () => {
             await window.locator('[data-testid="task-node-run-agent"]').click()
             const agent = window.locator('.terminal-node').first()
             await expect(agent).toContainText('STRICT_READY')
+            if (scenario === 'send') {
+              // The strict stub has read --settings / --config and will execute these files
+              // again on each turn. The profile owns them for the whole agent lifetime.
+              const userDataDir = await electronApp.evaluate(({ app }) => app.getPath('userData'))
+              const launchRoot = join(userDataDir, 'runtime', 'agent-launch')
+              const directories = await readdir(launchRoot)
+              const files = (
+                await Promise.all(
+                  directories.map(async directory =>
+                    (await readdir(join(launchRoot, directory))).map(file =>
+                      join(launchRoot, directory, file),
+                    ),
+                  ),
+                )
+              ).flat()
+              expect(files.some(file => file.endsWith('relay.mjs'))).toBe(true)
+              if (provider === 'claude-code') {
+                const settingsPath = files.find(file => file.endsWith('settings.json'))!
+                expect(settingsPath).toBeTruthy()
+                const settings = JSON.parse(await readFile(settingsPath, 'utf8'))
+                const hook = settings.hooks.UserPromptSubmit[0].hooks[0]
+                const hookPath = hook.args.at(-1)
+                expect(dirname(dirname(hookPath))).toBe(launchRoot)
+                expect(files).toContain(hookPath)
+              }
+              await test.info().attach('agent-launch-artifact-paths', {
+                body: JSON.stringify({ userDataDir, files }, null, 2),
+                contentType: 'application/json',
+              })
+            }
             await expect.poll(() => resolveFirstAgentSessionId(window)).not.toBeNull()
             const sessionId = (await resolveFirstAgentSessionId(window))!
             // Establish readiness with an actual turn. No startup-idle shortcut.

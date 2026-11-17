@@ -20,6 +20,7 @@ it('desktop Claude launch uses one resolved shell environment for both reservati
   vi.stubEnv('OPENCOVE_TEST_USE_REAL_AGENTS', '1')
   const handlers = new Map<string, (...args: unknown[]) => unknown>()
   vi.doMock('electron', () => ({
+    app: { getPath: () => process.cwd() },
     ipcMain: {
       handle: (id: string, handler: (...args: unknown[]) => unknown) => handlers.set(id, handler),
       removeHandler() {},

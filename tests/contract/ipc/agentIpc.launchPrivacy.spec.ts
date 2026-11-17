@@ -13,6 +13,7 @@ const seam = vi.hoisted(() => ({
   resolve: vi.fn(),
 }))
 vi.mock('electron', () => ({
+  app: { getPath: () => process.cwd() },
   ipcMain: {
     handle: (id: string, handler: (...args: unknown[]) => unknown) =>
       seam.handlers.set(id, handler),
