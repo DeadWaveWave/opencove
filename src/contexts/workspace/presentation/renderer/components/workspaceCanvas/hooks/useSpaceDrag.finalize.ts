@@ -2,6 +2,7 @@ import type { Node } from '@xyflow/react'
 import { clampRectInsideRect } from '@contexts/space/application/spaceContainment'
 import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
 import type { SpaceDragState } from '../types'
+import type { CanvasInteractionCommands } from '../../../store/canvasStore.interaction'
 import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 import { type LayoutDirection } from '../../../utils/spaceLayout'
 import { projectWorkspacePushAwayLayout } from '../../../utils/workspacePushAwayProjection'
@@ -205,15 +206,20 @@ export function finalizeWorkspaceSpaceDrag({
   dy,
   resolveResizedRect,
   updateCanvasDocument,
+  endLiveNodes,
+  setSpaceDragFramePreview,
 }: {
   dragState: SpaceDragState
   dx: number
   dy: number
   resolveResizedRect: ResolveResizedRect
   updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
+  endLiveNodes: CanvasInteractionCommands['endLiveNodes']
+  setSpaceDragFramePreview: CanvasInteractionCommands['setSpaceDragFramePreview']
 }): void {
   // The layout is planned inside the recipe, from the document the write is computed from, and
-  // the node positions and the Spaces are one store update. The flush rides on it.
+  // the node positions and the Spaces are one store update. The flush rides on it. This is the one
+  // write of a Space drag: its frames only published to the overlay.
   updateCanvasDocument(
     ({ nodes: prevNodes, spaces: prevSpaces }) => {
       const projected = projectWorkspaceSpaceDragLayout({
@@ -246,6 +252,10 @@ export function finalizeWorkspaceSpaceDrag({
     },
     { syncLayout: false, flush: true },
   )
+  // The document first, the overlay and the preview after it, in this one block: a render between
+  // the two would show the overlay over the released nodes, never the nodes before the drag.
+  endLiveNodes()
+  setSpaceDragFramePreview(null)
 }
 
 function restoreBaselineNodes(

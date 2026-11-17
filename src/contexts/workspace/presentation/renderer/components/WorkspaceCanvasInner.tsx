@@ -71,13 +71,12 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
     spaces,
     onShowMessage,
   })
-  const { spaceFramePreview, handleSpaceDragHandlePointerDown } =
-    workspaceCanvasHooks.useWorkspaceCanvasSpaceDrag({
-      workspaceId,
-      reactFlow,
-      setNodes: nodeStore.setNodes,
-      updateCanvasDocument: nodeStore.updateCanvasDocument,
-    })
+  const { handleSpaceDragHandlePointerDown } = workspaceCanvasHooks.useWorkspaceCanvasSpaceDrag({
+    workspaceId,
+    reactFlow,
+    setNodes: nodeStore.setNodes,
+    updateCanvasDocument: nodeStore.updateCanvasDocument,
+  })
   const {
     finalizeDraggedNodeDrop,
     handleNodeDragStart,
@@ -317,7 +316,6 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
         useManualCanvasWheelGestures={inputMode.useManualCanvasWheelGestures}
         isShiftPressed={canvasState.isShiftPressed}
         spaceVisuals={spacesApi.spaceVisuals}
-        spaceDragFramePreview={spaceFramePreview}
         handleSpaceDragHandlePointerDown={handleSpaceDragHandlePointerDown}
         commitSpaceRename={spacesApi.commitSpaceRename}
         activateSpaceTitle={spacesApi.activateSpaceTitle}

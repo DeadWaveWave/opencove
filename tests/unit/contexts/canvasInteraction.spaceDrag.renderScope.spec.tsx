@@ -222,8 +222,13 @@ describe('a Space drag in the mounted canvas', () => {
     expect(canvasStateCalls.count).toBe(rendersAfterFirstFrame)
   })
 
-  it('does not render WorkspaceCanvasInner for the pointer down either, and shows the preview', async () => {
-    const { press } = await mountCanvas()
+  // The first pointer down also selects the Space, which renders Inner once (the selection of
+  // windows is in the render of the canvas state): a click first, so that the pointer down under
+  // test only sets the preview.
+  it('does not render WorkspaceCanvasInner for the pointer down, and shows the preview', async () => {
+    const { press, release } = await mountCanvas()
+    await press()
+    await release(0)
     const before = canvasStateCalls.count
 
     await press()
@@ -237,23 +242,23 @@ describe('a Space drag in the mounted canvas', () => {
     await press()
 
     await frame(40)
-    await frame(80)
+    await frame(74)
 
-    expect(view.renders.at(-1)?.preview).toEqual([[SPACE_ID, 30]])
-    expect(shown('a')).toBe(80)
+    expect(view.renders.at(-1)?.preview).toEqual([[SPACE_ID, 24]])
+    expect(shown('a')).toBe(74)
     expect(shown('b')).toBe(1600)
     expect(readWorkspaceDocument(WORKSPACE_ID)?.nodes.map(node => node.position.x)).toEqual([
       0, 1600,
     ])
     expect(readWorkspaceDocument(WORKSPACE_ID)?.spaces[0].rect?.x).toBe(-50)
 
-    await release(80)
+    await release(74)
 
     expect(readWorkspaceDocument(WORKSPACE_ID)?.nodes.map(node => node.position.x)).toEqual([
-      80, 1600,
+      74, 1600,
     ])
-    expect(readWorkspaceDocument(WORKSPACE_ID)?.spaces[0].rect?.x).toBe(30)
-    expect(shown('a')).toBe(80)
+    expect(readWorkspaceDocument(WORKSPACE_ID)?.spaces[0].rect?.x).toBe(24)
+    expect(shown('a')).toBe(74)
     expect(view.renders.at(-1)?.preview).toBeNull()
   })
 
@@ -265,9 +270,9 @@ describe('a Space drag in the mounted canvas', () => {
     await press()
     await frame(40)
     const firstLive = view.renders.length - 1
-    await frame(80)
+    await frame(74)
 
-    await release(80)
+    await release(74)
 
     const xOfA = view.renders.slice(firstLive).map(shownAt => shownAt.nodes[0].x)
     expect(xOfA.every(x => x !== 0)).toBe(true)

@@ -7,21 +7,22 @@ import type { CanvasSliceWrite } from './canvasStore'
 type FramePreview = ReadonlyMap<string, WorkspaceSpaceRect>
 
 /**
- * What a gesture shows while it runs: UI projection only, never persisted, never synced. The Space
- * drag's frame preview and the live positions of a Space drag join it in the later pull requests
- * of S6.
+ * What a gesture shows while it runs: UI projection only, never persisted, never synced. A node
+ * drag and a Space drag both publish here; the document changes once, at the release.
  */
 export interface CanvasInteractionState {
   /**
-   * The overlay of a node gesture: an entry for each window the gesture owns, as of the last drag
-   * frame, and none for the others. Null while no gesture is live. `applyLiveNodes` turns it and
-   * the committed nodes into what React Flow shows.
+   * The overlay of a node or Space gesture: an entry for each window the gesture owns, as of the
+   * last drag frame, and none for the others. Null while no gesture is live. `applyLiveNodes`
+   * turns it and the committed nodes into what React Flow shows.
    */
   readonly liveNodes: LiveNodes | null
   /** The snap guides of a node or Space drag; null while none is shown. */
   readonly snapGuides: WorkspaceSnapGuide[] | null
   /** The Space frames a node drag would produce (a Space-dominant or edge-crossing drop). */
   readonly nodeDragFramePreview: FramePreview | null
+  /** The Space frames of a Space drag (move or resize), from the pointer down to the release. */
+  readonly spaceDragFramePreview: FramePreview | null
   /** The marquee rectangle; null while no box selection is drawn. */
   readonly selectionDraft: SelectionDraftUiState | null
   /** A session preference, not per-frame state; the provider carries it across a workspace switch. */
@@ -31,12 +32,14 @@ export interface CanvasInteractionState {
 export interface CanvasInteractionCommands {
   /** Replaces the overlay (an equal map keeps the stored one and notifies nobody); each frame of a node drag calls it. */
   publishLiveNodes(liveNodes: LiveNodes): void
-  /** A no-op, and notifies nobody, when no gesture is live. */
+  /** A no-op, and notifies nobody, when no gesture is live. A node release and a Space release both end it. */
   endLiveNodes(): void
   /** Equal guides (`areWorkspaceSnapGuidesEqual`) keep the stored ones and notify nobody. */
   setSnapGuides(guides: WorkspaceSnapGuide[] | null): void
   /** An equal preview (the same ids, the same rects) keeps the stored one and notifies nobody. */
   setNodeDragFramePreview(preview: FramePreview | null): void
+  /** An equal preview (the same ids, the same rects) keeps the stored one and notifies nobody. */
+  setSpaceDragFramePreview(preview: FramePreview | null): void
   /** An equal draft (the same five fields) keeps the stored one and notifies nobody. */
   setSelectionDraft(draft: SelectionDraftUiState | null): void
   toggleMagneticSnapping(): void
@@ -53,6 +56,7 @@ export function createInitialCanvasInteractionState(
     liveNodes: null,
     snapGuides: null,
     nodeDragFramePreview: null,
+    spaceDragFramePreview: null,
     selectionDraft: null,
     magneticSnappingEnabled: initial.magneticSnappingEnabled ?? true,
   }
@@ -123,6 +127,12 @@ export function createCanvasInteractionCommands(
         areFramePreviewsEqual(interaction.nodeDragFramePreview, preview)
           ? interaction
           : { ...interaction, nodeDragFramePreview: preview },
+      ),
+    setSpaceDragFramePreview: preview =>
+      write(interaction =>
+        areFramePreviewsEqual(interaction.spaceDragFramePreview, preview)
+          ? interaction
+          : { ...interaction, spaceDragFramePreview: preview },
       ),
     setSelectionDraft: draft =>
       write(interaction =>

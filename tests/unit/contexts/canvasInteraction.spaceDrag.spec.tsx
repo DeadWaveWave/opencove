@@ -52,7 +52,9 @@ describe('a frame of a Space drag', () => {
 
     expect(harness.notifications).not.toHaveBeenCalled()
     expect(harness.flush).not.toHaveBeenCalled()
-    expect(harness.readStoreDocument()).toBe(documentBefore)
+    // The arrays themselves, not equal copies: nothing was written.
+    expect(harness.readStoreDocument().nodes).toBe(documentBefore.nodes)
+    expect(harness.readStoreDocument().spaces).toBe(documentBefore.spaces)
   })
 
   it('puts the positions of the windows it moves in the overlay, with no dragging flag', () => {
@@ -110,6 +112,22 @@ describe('a frame of a Space drag', () => {
     const { liveNodes } = view.result.current.readInteraction()
     expect([...(liveNodes?.keys() ?? [])].sort()).toEqual(['n-pushed', 'n1'])
     expect(liveNodes?.get('n-pushed')?.position.x).toBe(700)
+  })
+
+  it('leaves out a window created during the drag that the drag does not push', () => {
+    const { harness, view } = renderOpenSpace()
+    press(view, 'space-a', INSIDE_A)
+    act(() => {
+      replaceWorkspaceNodes(harness.workspaceId, [
+        ...harness.readStoreDocument().nodes,
+        nodeAt('n-created', 3000, 60),
+      ])
+    })
+
+    dragTo({ x: INSIDE_A.x + 40, y: INSIDE_A.y })
+
+    // It has no drag-start place, so it is compared with the store, which agrees with the frame.
+    expect(view.result.current.readInteraction().liveNodes?.has('n-created')).toBe(false)
   })
 
   it('keeps the overlay and the preview themselves when a frame changes nothing', () => {
