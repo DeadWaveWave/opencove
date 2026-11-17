@@ -9,19 +9,14 @@ import { describe, expect, it } from 'vitest'
 // fails. `~/` stands for the workspaceCanvas component directory.
 const CANVAS_DIR = 'src/contexts/workspace/presentation/renderer/components/workspaceCanvas/'
 
-// The end of the slice (#702, PR 14). `nodesRef` stays in the six files of Decision 7, which the
-// node store owns until S6. `spacesRef` and `onSpacesChange` are gone. The `onRequestPersistFlush`
-// that remains is not the canvas's: the quit flush subscription of the preload bridge and its
-// browser stand-in, and the shell's quit handler.
+// The end of the slice (#702, PR 14) and of the node store's mirror (#738, PR 4). `nodesRef` is
+// left only in `WorkspacePixelLayer.tsx`, where it is a local ref of that component's own `nodes`
+// prop (S9's floor). `spacesRef` and `onSpacesChange` are gone. The `onRequestPersistFlush` that
+// remains is not the canvas's: the quit flush subscription of the preload bridge and its browser
+// stand-in, and the shell's quit handler. The names after it are retired by #738: no file names
+// them again.
 const ALLOWED_FILES: Record<string, readonly string[]> = {
-  nodesRef: [
-    '~/hooks/useApplyNodeChanges.helpers.ts',
-    '~/hooks/useApplyNodeChanges.ts',
-    '~/hooks/useCanvasRuntimeIntegrations.ts',
-    '~/hooks/useNodesStore.ts',
-    '~/hooks/useNodesStore.types.ts',
-    '~/view/WorkspacePixelLayer.tsx',
-  ],
+  nodesRef: ['~/view/WorkspacePixelLayer.tsx'],
   spacesRef: [],
   onSpacesChange: [],
   onRequestPersistFlush: [
@@ -30,6 +25,10 @@ const ALLOWED_FILES: Record<string, readonly string[]> = {
     'src/app/renderer/browser/browserOpenCoveApi.ts',
     'src/app/renderer/shell/hooks/useAppQuitPersistenceFlush.ts',
   ],
+  isLiveGestureActive: [],
+  onNodesCommitted: [],
+  publishCommittedNodes: [],
+  resolveCanvasDocumentBase: [],
 }
 
 function trackedSourceFiles(): string[] {

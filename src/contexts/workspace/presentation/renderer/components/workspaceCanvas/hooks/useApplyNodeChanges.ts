@@ -7,10 +7,12 @@ import { applyLiveNodes } from '../../../utils/canvasLiveNodes'
 import { cleanupNodeRuntimeArtifacts } from '../../../utils/nodeRuntimeCleanup'
 import {
   useCanvasInteractionCommands,
+  useReadCanvasDocument,
   useReadCanvasInteraction,
 } from '../../../store/canvasStoreContext'
 import { TERMINAL_LAYOUT_SYNC_EVENT } from '../../terminalNode/constants'
 import { type UseApplyNodeChangesParams } from './useApplyNodeChanges.helpers'
+import { useDecorateCommittedNodes } from './useDecorateCommittedNodes'
 import { publishWorkspaceNodesClosed } from '../nodeClosureEvents'
 
 type WorkspaceNodeChange = NodeChange<Node<TerminalNodeData>>
@@ -67,7 +69,6 @@ function resolveNow(): number {
 }
 
 export function useWorkspaceCanvasApplyNodeChanges({
-  nodesRef,
   onNodesChange,
   onNodesCommit,
   onSelectedNodeIdsChange,
@@ -78,6 +79,8 @@ export function useWorkspaceCanvasApplyNodeChanges({
   exclusiveNodeDragAnchorIdRef,
   nodeDragSession,
 }: UseApplyNodeChangesParams): (changes: NodeChange<Node<TerminalNodeData>>[]) => void {
+  const readDocument = useReadCanvasDocument()
+  const decorateCommittedNodes = useDecorateCommittedNodes()
   const readInteraction = useReadCanvasInteraction()
   const { endLiveNodes } = useCanvasInteractionCommands()
   const pendingContinuousDragChangesRef = useRef<ContinuousDragPositionChange[] | null>(null)
@@ -105,13 +108,24 @@ export function useWorkspaceCanvasApplyNodeChanges({
         return
       }
 
-      // The live view: what React Flow shows now. A drag frame computes from it, and the release too
-      // (S6, PR 3). Without a gesture it is `nodesRef.current` itself.
-      const currentNodes = applyLiveNodes(nodesRef.current, readInteraction().liveNodes)
       const removedIds = new Set(
         filteredChanges.filter(change => change.type === 'remove').map(change => change.id),
       )
+      const positionChanges = filteredChanges.filter(
+        (change): change is NodePositionChange =>
+          change.type === 'position' && !removedIds.has(change.id),
+      )
+      const isDraggingThisFrame = positionChanges.some(change => change.dragging !== false)
+      const isRelease = wasDragging && !isDraggingThisFrame
 
+      // The base is read from the stores when the batch runs (S6, PR 4). A drag frame and a release
+      // compute from the live view, what React Flow shows now; every other batch from the
+      // committed view, so a live overlay that no gesture of this hook owns never reaches it.
+      const committedNodes = decorateCommittedNodes(readDocument().nodes)
+      const currentNodes =
+        isDraggingThisFrame || isRelease
+          ? applyLiveNodes(committedNodes, readInteraction().liveNodes)
+          : committedNodes
       if (removedIds.size > 0) {
         removedIds.forEach(removedId => {
           clearAgentLaunchToken(removedId)
@@ -134,12 +148,6 @@ export function useWorkspaceCanvasApplyNodeChanges({
 
       let nextNodes = applyNodeChanges<Node<TerminalNodeData>>(nonRemoveChanges, survivingNodes)
 
-      const positionChanges = filteredChanges.filter(
-        (change): change is NodePositionChange =>
-          change.type === 'position' && !removedIds.has(change.id),
-      )
-      const isDraggingThisFrame = positionChanges.some(change => change.dragging !== false)
-
       const settledPositionChanges: NodePositionChange[] = filteredChanges.filter(
         (change): change is NodePositionChange =>
           change.type === 'position' &&
@@ -152,7 +160,7 @@ export function useWorkspaceCanvasApplyNodeChanges({
         nodeDragSession.beginNodeDragSession(currentNodes)
       }
 
-      if (wasDragging && !isDraggingThisFrame) {
+      if (isRelease) {
         nextNodes = nodeDragSession.applyPendingReleaseProjection(nextNodes)
         nodeDragSession.endNodeDragSession()
       }
@@ -303,7 +311,6 @@ export function useWorkspaceCanvasApplyNodeChanges({
         return true
       })
 
-      nodesRef.current = nextNodes
       if (filteredChanges.some(change => change.type === 'select' || change.type === 'remove')) {
         // Publish selection in the same transaction as the node change. Mirroring
         // React Flow's later SelectionListener effect can replay an older selection
@@ -317,9 +324,14 @@ export function useWorkspaceCanvasApplyNodeChanges({
       )
       if (changesHeldNode && onNodesCommit && !isDraggingThisFrame) {
         onNodesCommit(nextNodes)
+        if (isRelease) {
+          // The document first, the overlay after it, in this one block: a render between the two
+          // shows the overlay over the released nodes, never the nodes before the drag.
+          endLiveNodes()
+        }
       } else if (changesHeldNode) {
         onNodesChange(nextNodes)
-      } else if (wasDragging && !isDraggingThisFrame) {
+      } else if (isRelease) {
         // A release of windows that are all gone from here still ends the gesture.
         endLiveNodes()
       }
@@ -341,12 +353,13 @@ export function useWorkspaceCanvasApplyNodeChanges({
       exclusiveNodeDragAnchorIdRef,
       isNodeDraggingRef,
       nodeDragSession,
-      nodesRef,
       normalizePosition,
       onNodesCommit,
       onNodesChange,
       onSelectedNodeIdsChange,
+      readDocument,
       readInteraction,
+      decorateCommittedNodes,
       endLiveNodes,
     ],
   )

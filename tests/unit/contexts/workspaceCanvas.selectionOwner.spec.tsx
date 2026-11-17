@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import React, { useRef, type ReactNode } from 'react'
 import { act, renderHook } from '@testing-library/react'
 import { ReactFlowProvider, type Edge, type Node, type ReactFlowInstance } from '@xyflow/react'
 import { describe, expect, it, vi } from 'vitest'
@@ -8,6 +8,7 @@ import { useWorkspaceCanvasApplyNodeChanges } from '@contexts/workspace/presenta
 import { useWorkspaceCanvasSpaceOwnership } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceOwnership'
 import type { WorkspaceCanvasNodeDragSession } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodeDragSession'
 import {
+  useCanvasInteraction,
   useCanvasSelectionCommands,
   useReadCanvasSelection,
 } from '@contexts/workspace/presentation/renderer/store/canvasStoreContext'
@@ -16,8 +17,21 @@ import type {
   TerminalNodeData,
   WorkspaceSpaceState,
 } from '@contexts/workspace/presentation/renderer/types'
-import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
+import {
+  CANVAS_STORE_TEST_WORKSPACE_ID,
+  CanvasStoreTestProvider,
+} from '../../support/canvasStoreTestHarness'
+import { useCanvasNodeWriter } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodeWriter'
+import { useWorkspaceCanvasNodePublishers } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodePublishers'
+import { applyLiveNodes } from '@contexts/workspace/presentation/renderer/utils/canvasLiveNodes'
+import type { CanvasInteractionState } from '@contexts/workspace/presentation/renderer/store/canvasStore.interaction'
+import {
+  seedWorkspaceCanvasStore,
+  useWorkspaceCanvasStoreNodes,
+} from '../../support/workspaceCanvasStoreHarness'
 import { pixelNode } from './workspacePixelLayer.fixtures'
+
+const selectLiveNodes = (interaction: CanvasInteractionState) => interaction.liveNodes
 
 function SelectionOwnerWrapper({ children }: { children: ReactNode }) {
   return (
@@ -63,30 +77,39 @@ function renderSelectionOwner() {
       nextSpaceFramePreview: null,
     }),
   }
+  // The document is the app store's: the canvas state derives its view from it, and the change
+  // path reads it when a batch runs.
+  seedWorkspaceCanvasStore({
+    workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID,
+    nodes: initialNodes,
+    spaces,
+  })
   const hook = renderHook(
     () => {
-      // Stands for the document: the canvas state derives its view from the nodes it is given.
-      const [documentNodes, setNodes] = useState(initialNodes)
+      const documentNodes = useWorkspaceCanvasStoreNodes(CANVAS_STORE_TEST_WORKSPACE_ID)
+      const { updateNodes: setNodes } = useCanvasNodeWriter()
+      const publishers = useWorkspaceCanvasNodePublishers({
+        workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID,
+      })
       const canvas = useWorkspaceCanvasState({
         nodes: documentNodes,
         spaces,
         viewport: { x: 0, y: 0, zoom: 0.28 },
       })
-      const nodesRef = useRef(canvas.flowNodes)
+      // What the flow host shows: the committed view with the live nodes of a gesture applied.
+      const liveNodes = useCanvasInteraction(selectLiveNodes)
+      const shown = applyLiveNodes(canvas.flowNodes, liveNodes)
       const isNodeDraggingRef = useRef(false)
-      useLayoutEffect(() => {
-        nodesRef.current = canvas.flowNodes
-      }, [canvas.flowNodes])
       const apply = useWorkspaceCanvasApplyNodeChanges({
-        nodesRef,
         onSelectedNodeIdsChange: ids => {
           order.push(`select:${ids.join(',')}`)
           canvas.syncSelectedNodeIds(ids)
         },
         onNodesChange: nodes => {
           order.push('publish')
-          setNodes(nodes)
+          publishers.publishLiveNodesChange(nodes)
         },
+        onNodesCommit: publishers.commitNodesChange,
         clearAgentLaunchToken: vi.fn(),
         normalizePosition: (_id, point) => point,
         applyPendingScrollbacks: nodes => nodes,
@@ -115,6 +138,7 @@ function renderSelectionOwner() {
       })
       return {
         canvas,
+        shown,
         setNodes,
         apply,
         select,
@@ -180,7 +204,7 @@ describe('canvas selection owner', () => {
       result.current.canvas.flowNodes.filter(node => node.selected).map(node => node.id),
     ).toEqual(['compact'])
     expectFlagsToMatchStore(result)
-    const projected = projectCollapsedNodes(result.current.canvas.flowNodes, [], {
+    const projected = projectCollapsedNodes(result.current.shown, [], {
       collapsedNodeIds: { compact: true },
       collapsedSpaceIds: {},
     })

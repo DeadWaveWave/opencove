@@ -187,8 +187,6 @@ export function renderCanvasNodeStore<Extra extends object = Record<never, never
         workspaceId: harness.workspaceId,
         workspacePath,
         nodes: canvasState.flowNodes,
-        onNodesCommitted: publishers.publishCommittedNodes,
-        isLiveGestureActive: publishers.isLiveGestureActive,
         standardWindowSizeBucket: 'regular',
         browserDefaultMode: 'iframe',
         ...nodeStoreOptions,

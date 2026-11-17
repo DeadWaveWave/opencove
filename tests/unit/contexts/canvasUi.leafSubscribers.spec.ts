@@ -289,6 +289,7 @@ describe('canvas interaction subscriptions', () => {
         'useCanvasSelectionCommands',
         'useCanvasUi',
         'useCanvasUiCommands',
+        'useCanvasWorkspaceId',
         'useReadCanvasDocument',
         'useReadCanvasInteraction',
         'useReadCanvasSelection',

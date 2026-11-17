@@ -168,6 +168,14 @@ export function useCanvasInteractionCommands(): CanvasInteractionCommands {
 }
 
 /**
+ * The workspace this canvas's provider was rendered for. A callback made in a render keeps the id
+ * of that render: after a switch it still names the workspace it was made for.
+ */
+export function useCanvasWorkspaceId(): string {
+  return useCanvasStoreEntry().workspaceId
+}
+
+/**
  * A stable reader of this canvas's committed document, as the app store holds it when it is
  * called. It does not subscribe, so callers do not re-render. It is bound to the workspace of the
  * render that created it: a callback made while workspace A was shown keeps reading A after a

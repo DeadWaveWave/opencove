@@ -1,96 +1,32 @@
 import { act } from '@testing-library/react'
 import type { Node } from '@xyflow/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { useWorkspaceCanvasApplyNodeChanges } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useApplyNodeChanges'
-import { useWorkspaceCanvasNodeDragSession } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodeDragSession'
-import type { CanvasInteractionState } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStore.interaction'
-import {
-  useCanvasInteraction,
-  useReadCanvasInteraction,
-} from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
 import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
-import { applyLiveNodes } from '../../../src/contexts/workspace/presentation/renderer/utils/canvasLiveNodes'
-import {
-  createCanvasDocumentHarness,
-  renderCanvasNodeStore,
-  type CanvasNodeStoreContext,
-} from '../../support/canvasDocumentHarness'
 import {
   documentOf,
   renderInTwoWorkspaces,
   WORKSPACE_A as A,
   WORKSPACE_B as B,
-  type RuntimeCanvasContext,
 } from '../../support/agentRuntimeHarness'
 import { createRowNodes } from '../../support/canvasSelectionFixtures'
+import {
+  drag,
+  drop,
+  ROW,
+  setupNodeDrag as setup,
+  sizedNode as sized,
+  stubFrames,
+  useDragUnderTest,
+} from '../../support/nodeDragHarness'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import { replaceWorkspaceNodes } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 
 // The node drag overlay (#738, PR 3), below the canvas: what a drag frame, a release and a write
 // during a gesture do to the canvas store and to the document, with the hooks the canvas wires.
 
-const selectLiveNodes = (interaction: CanvasInteractionState) => interaction.liveNodes
-
 afterEach(() => {
   vi.restoreAllMocks()
 })
-
-function stubFrames() {
-  const frames: Array<() => void> = []
-  vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
-    frames.push(() => callback(0))
-    return frames.length
-  })
-  return () => act(() => frames.splice(0).forEach(frame => frame()))
-}
-
-function sized(node: Node<TerminalNodeData>): Node<TerminalNodeData> {
-  return { ...node, initialWidth: node.data.width, initialHeight: node.data.height }
-}
-
-/** The nodes a, b and c of a row; the store holds them sized, as the canvas does. */
-const ROW = () => createRowNodes(['a', 'b', 'c']).map(sized)
-
-function useDragUnderTest({ workspaceId, canvasState, nodeStore, publishers }: DragContext) {
-  const nodeDragSession = useWorkspaceCanvasNodeDragSession({ workspaceId })
-  const apply = useWorkspaceCanvasApplyNodeChanges({
-    nodesRef: nodeStore.nodesRef,
-    onNodesChange: publishers.publishLiveNodesChange,
-    onNodesCommit: publishers.commitNodesChange,
-    onSelectedNodeIdsChange: canvasState.syncSelectedNodeIds,
-    clearAgentLaunchToken: nodeStore.clearAgentLaunchToken,
-    normalizePosition: nodeStore.normalizePosition,
-    applyPendingScrollbacks: nodeStore.applyPendingScrollbacks,
-    isNodeDraggingRef: nodeStore.isNodeDraggingRef,
-    nodeDragSession,
-  })
-  // What the flow host renders: the committed view with the overlay applied.
-  const liveNodes = useCanvasInteraction(selectLiveNodes)
-  const shown = applyLiveNodes(canvasState.flowNodes, liveNodes)
-  return { apply, readInteraction: useReadCanvasInteraction(), shown }
-}
-
-type DragContext = CanvasNodeStoreContext | RuntimeCanvasContext
-
-const drag = (id: string, x: number, y: number) =>
-  [{ type: 'position', id, position: { x, y }, dragging: true }] as never
-const drop = (id: string, x: number, y: number) =>
-  [{ type: 'position', id, position: { x, y }, dragging: false }] as never
-
-function setup() {
-  const harness = createCanvasDocumentHarness({ nodes: ROW() })
-  const view = renderCanvasNodeStore(harness, { extend: useDragUnderTest })
-  const runFrames = stubFrames()
-  /** The y of node `id` as the host shows it, as the document holds it, and in the overlay. */
-  const yOf = {
-    shown: (id: string) => view.result.current.shown.find(node => node.id === id)?.position.y,
-    stored: (id: string) =>
-      harness.readStoreDocument().nodes.find(node => node.id === id)?.position.y,
-    live: (id: string) =>
-      view.result.current.readInteraction().liveNodes?.find(node => node.id === id)?.position.y,
-  }
-  return { harness, view, runFrames, yOf }
-}
 
 describe('a node drag frame', () => {
   it('writes the overlay and leaves the document and the committed view alone', () => {
@@ -178,52 +114,82 @@ describe('a release', () => {
   })
 })
 
-// Today's semantics, pinned so that the change that retires `nodesRef` flips it on purpose (S6,
-// PR 4): a canvas write during a gesture commits the live positions, ends the overlay, and the
-// host shows no jump.
+// A canvas write during a gesture computes from the committed view (S6, PR 4): it commits the
+// committed positions, leaves the overlay alone, and the host goes on showing the live position.
+// The dragged windows reach the document at the release. Until PR 4 it committed their live
+// positions and ended the overlay.
 describe('a canvas write in the middle of a gesture', () => {
-  it('commits the live positions, ends the overlay and shows no jump', () => {
+  const retitleB = (nodes: Node<TerminalNodeData>[]) =>
+    nodes.map(node =>
+      node.id === 'b' ? { ...node, data: { ...node.data, title: 'renamed' } } : node,
+    )
+
+  it('commits the committed positions, leaves the overlay and shows the live position', () => {
     const { harness, view, runFrames, yOf } = setup()
     const shown: Array<number | undefined> = []
     act(() => view.result.current.apply(drag('a', 0, 30)))
     runFrames()
     shown.push(yOf.shown('a'))
     expect(yOf.stored('a')).toBe(0)
+    const overlay = view.result.current.readInteraction().liveNodes
 
     act(() => {
-      view.result.current.nodeStore.setNodes(nodes =>
-        nodes.map(node =>
-          node.id === 'b' ? { ...node, data: { ...node.data, title: 'renamed' } } : node,
-        ),
-      )
+      view.result.current.nodeStore.setNodes(retitleB)
     })
     shown.push(yOf.shown('a'))
 
     expect(harness.readStoreDocument().nodes.find(node => node.id === 'b')?.data.title).toBe(
       'renamed',
     )
-    expect(yOf.stored('a')).toBe(30)
-    expect(view.result.current.readInteraction().liveNodes).toBeNull()
+    expect(yOf.stored('a')).toBe(0)
+    expect(view.result.current.readInteraction().liveNodes).toBe(overlay)
+    expect(yOf.live('a')).toBe(30)
     expect(shown).toEqual([30, 30])
+    expect(view.result.current.shown.find(node => node.id === 'b')?.data.title).toBe('renamed')
 
-    // The gesture goes on from the committed live position, and its release lands.
+    // The gesture goes on, and its release lands.
     act(() => view.result.current.apply(drag('a', 0, 50)))
     runFrames()
     expect(yOf.shown('a')).toBe(50)
+    expect(yOf.stored('a')).toBe(0)
     act(() => view.result.current.apply(drop('a', 0, 50)))
     expect(yOf.stored('a')).toBe(50)
     expect(view.result.current.readInteraction().liveNodes).toBeNull()
   })
 
-  it('does not flush the live positions unless the write asks for it', () => {
+  it('does not flush unless the write asks for it, and then flushes the committed positions', () => {
     const { harness, view, runFrames } = setup()
+    const positionsAtFlush: Array<number | undefined> = []
+    harness.flush.mockImplementation(() => {
+      positionsAtFlush.push(
+        harness.readStoreDocument().nodes.find(node => node.id === 'a')?.position.y,
+      )
+    })
     act(() => view.result.current.apply(drag('a', 0, 30)))
     runFrames()
     harness.flush.mockClear()
 
     act(() => view.result.current.nodeStore.setNodes(nodes => nodes.map(node => ({ ...node }))))
-
     expect(harness.flush).not.toHaveBeenCalled()
+
+    act(() => view.result.current.nodeStore.setNodes(retitleB, { flush: true }))
+    expect(positionsAtFlush).toEqual([0])
+  })
+
+  it('hands a recipe the committed positions of the dragged windows, never the live ones', () => {
+    const { view, runFrames } = setup()
+    act(() => view.result.current.apply(drag('a', 0, 30)))
+    runFrames()
+    const seen: Array<number | undefined> = []
+
+    act(() => {
+      view.result.current.nodeStore.updateCanvasDocument(({ nodes, spaces }) => {
+        seen.push(nodes.find(node => node.id === 'a')?.position.y)
+        return { nodes, spaces }
+      })
+    })
+
+    expect(seen).toEqual([0])
   })
 })
 
@@ -309,14 +275,76 @@ describe('a write from elsewhere in the middle of a gesture', () => {
   })
 })
 
-// Today's rule until PR 4: a canvas write during a gesture commits the live positions and nothing
-// jumps, also when a write from elsewhere landed since the last frame (the node store's mirror
-// then holds the committed view, and the live positions are only in the overlay).
+// A canvas writer that moves a window the gesture did not move (a push-away, an arrange, a
+// collapse plan) meets the rule of PR 3: the overlay holds every window as of the last frame, so
+// the move is committed, masked on screen, and overwritten at the release. The same end state as
+// before PR 4, where the write ended the overlay and the next frame reset the window to its
+// baseline; only the instant after the write differs (it showed the move for one frame). PR 5
+// narrows the overlay to the gesture's windows and flips this case.
+describe('a canvas write that moves a window the gesture did not move', () => {
+  const moveC = (nodes: Node<TerminalNodeData>[]) =>
+    nodes.map(node => (node.id === 'c' ? { ...node, position: { x: 2500, y: 0 } } : node))
+  const xOf = (view: ReturnType<typeof setup>['view'], id: string) =>
+    view.result.current.shown.find(node => node.id === id)?.position.x
+
+  it("is masked on screen and overwritten at the release (today's rule)", () => {
+    const { harness, view, runFrames } = setup()
+    const storedX = () =>
+      harness.readStoreDocument().nodes.find(node => node.id === 'c')?.position.x
+    act(() => view.result.current.apply(drag('a', 0, 30)))
+    runFrames()
+
+    act(() => view.result.current.nodeStore.setNodes(moveC))
+    expect(storedX()).toBe(2500)
+    expect(xOf(view, 'c')).toBe(800)
+
+    act(() => view.result.current.apply(drag('a', 0, 60)))
+    runFrames()
+    expect(xOf(view, 'c')).toBe(800)
+
+    act(() => view.result.current.apply(drop('a', 0, 60)))
+    expect(storedX()).toBe(800)
+  })
+})
+
+// A window that the drag did not hold at its start has no baseline, so the drag's projection
+// keeps whatever position its base gives it. Before PR 4 a canvas write ended the overlay, so the
+// next frame computed from the store and a canvas writer's move of such a window survived the
+// release. From PR 4 the overlay stays and masks it. PR 5 narrows the overlay and flips this.
+describe('a window created during the drag, then moved by a canvas writer', () => {
+  const addD = (nodes: Node<TerminalNodeData>[]) => [
+    ...nodes,
+    { ...nodes[2], id: 'd', position: { x: 3000, y: 0 } },
+  ]
+  const moveD = (nodes: Node<TerminalNodeData>[]) =>
+    nodes.map(node => (node.id === 'd' ? { ...node, position: { x: 5000, y: 0 } } : node))
+
+  it('is masked and overwritten at the release (lost from PR 4; kept before it)', () => {
+    const { harness, view, runFrames } = setup()
+    const xOf = () => harness.readStoreDocument().nodes.find(node => node.id === 'd')?.position.x
+    act(() => view.result.current.apply(drag('a', 0, 30)))
+    runFrames()
+    act(() => view.result.current.nodeStore.setNodes(addD))
+    act(() => view.result.current.apply(drag('a', 0, 40)))
+    runFrames()
+
+    act(() => view.result.current.nodeStore.setNodes(moveD))
+    expect(xOf()).toBe(5000)
+    expect(view.result.current.shown.find(node => node.id === 'd')?.position.x).toBe(3000)
+
+    act(() => view.result.current.apply(drop('a', 0, 40)))
+    expect(xOf()).toBe(3000)
+  })
+})
+
+// After a write from elsewhere the canvas write still computes from the committed view, and the
+// overlay still stays (S6, PR 4). A select batch while a drag is live is a release (the gesture
+// ends with it), so it computes from the live view as before.
 describe('a canvas write after a write from elsewhere, before the next frame', () => {
   const retitle = (id: string, title: string) => (nodes: Node<TerminalNodeData>[]) =>
     nodes.map(node => (node.id === id ? { ...node, data: { ...node.data, title } } : node))
 
-  it('commits the live positions and shows no jump', () => {
+  it('commits the committed positions, leaves the overlay and shows no jump', () => {
     const { harness, view, runFrames, yOf } = setup()
     act(() => view.result.current.apply(drag('a', 0, 30)))
     runFrames()
@@ -330,10 +358,14 @@ describe('a canvas write after a write from elsewhere, before the next frame', (
 
     act(() => view.result.current.nodeStore.setNodes(retitle('c', 'renamed')))
 
-    expect(yOf.stored('a')).toBe(30)
+    expect(yOf.stored('a')).toBe(0)
+    expect(yOf.live('a')).toBe(30)
     expect(yOf.shown('a')).toBe(30)
     expect(harness.readStoreDocument().nodes.find(node => node.id === 'b')?.data.title).toBe(
       'from elsewhere',
+    )
+    expect(harness.readStoreDocument().nodes.find(node => node.id === 'c')?.data.title).toBe(
+      'renamed',
     )
   })
 
@@ -356,7 +388,7 @@ describe('a canvas write after a write from elsewhere, before the next frame', (
 })
 
 // Outside a gesture a canvas write computes from the store, so a position written since the last
-// render is kept (`isLiveGestureActive` must be false then).
+// render is kept.
 describe('a canvas write with no gesture live', () => {
   it('keeps a position the store received since the last render', () => {
     const { harness, view, yOf } = setup()
@@ -431,6 +463,39 @@ describe('a gesture across a workspace switch', () => {
     expect(next.snapGuides).toBeNull()
     expect(next.nodeDragFramePreview).toBeNull()
     expect(interactionOfA().liveNodes).not.toBeNull()
+  })
+
+  // The change path reads the document of the render that made it: a batch applied by the
+  // callback of A after the switch (Inner is not keyed by workspace) is A's.
+  it('writes the workspace it was made for when a batch is applied after the switch', () => {
+    const { view, showB } = renderTwoWorkspaces()
+    const applyOfA = view.result.current.apply
+    const nodesOfB = documentOf(B).nodes
+    showB()
+
+    act(() => applyOfA([{ type: 'select', id: 'a', selected: true }] as never))
+
+    expect(documentOf(A).nodes.find(node => node.id === 'a')?.selected).toBe(true)
+    expect(documentOf(B).nodes).toBe(nodesOfB)
+  })
+
+  // A release that reaches the callback of A after the switch lands the drag in A, where it
+  // began: the dragged window is stored at the release position, A's overlay ends, B is untouched.
+  it('lands a release delivered to the callback of A after the switch in A', () => {
+    const { view, showB } = renderTwoWorkspaces()
+    const runFrames = stubFrames()
+    const applyOfA = view.result.current.apply
+    const interactionOfA = view.result.current.readInteraction
+    act(() => applyOfA(drag('a', 0, 30)))
+    runFrames()
+    const nodesOfB = documentOf(B).nodes
+    showB()
+
+    act(() => applyOfA(drop('a', 0, 40)))
+
+    expect(documentOf(A).nodes.find(node => node.id === 'a')?.position.y).toBe(40)
+    expect(interactionOfA().liveNodes).toBeNull()
+    expect(documentOf(B).nodes).toBe(nodesOfB)
   })
 
   it('writes neither document when the release arrives after the switch', () => {

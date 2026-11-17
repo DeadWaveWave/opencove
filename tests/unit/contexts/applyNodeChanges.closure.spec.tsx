@@ -1,9 +1,19 @@
+import React from 'react'
 import { act, cleanup, renderHook } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useWorkspaceCanvasApplyNodeChanges } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useApplyNodeChanges'
 import { subscribeWorkspaceNodesClosed } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeClosureEvents'
 import type { WorkspaceCanvasNodeDragSession } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodeDragSession'
-import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
+import { ReactFlowProvider } from '@xyflow/react'
+import {
+  CANVAS_STORE_TEST_WORKSPACE_ID,
+  CanvasStoreTestProvider,
+} from '../../support/canvasStoreTestHarness'
+import {
+  readWorkspaceDocument,
+  replaceWorkspaceNodes,
+} from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+import { seedWorkspaceCanvasStore } from '../../support/workspaceCanvasStoreHarness'
 import { pixelNode } from './workspacePixelLayer.fixtures'
 
 vi.mock('../../../src/contexts/workspace/presentation/renderer/utils/nodeRuntimeCleanup', () => ({
@@ -44,16 +54,18 @@ describe('ReactFlow removal closure notifications', () => {
         return new Promise<void>(() => undefined)
       })
       Object.defineProperty(window, 'opencoveApi', { configurable: true, value: { pty: { kill } } })
-      const nodesRef = {
-        current: [pixelNode(), { ...pixelNode({ kind: 'note', sessionId: '' }), id: 'note-2' }],
-      }
-      const publish = vi.fn(() => {
+      // The change path reads the document of its provider's workspace when a batch runs.
+      seedWorkspaceCanvasStore({
+        workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID,
+        nodes: [pixelNode(), { ...pixelNode({ kind: 'note', sessionId: '' }), id: 'note-2' }],
+      })
+      const publish = vi.fn((nodes: Parameters<typeof replaceWorkspaceNodes>[1]) => {
         order.push('commit')
+        replaceWorkspaceNodes(CANVAS_STORE_TEST_WORKSPACE_ID, nodes)
       })
       const view = renderHook(
         () =>
           useWorkspaceCanvasApplyNodeChanges({
-            nodesRef,
             onNodesChange: publish,
             onNodesCommit: route === 'commit' ? publish : undefined,
             clearAgentLaunchToken: vi.fn(),
@@ -62,11 +74,17 @@ describe('ReactFlow removal closure notifications', () => {
             isNodeDraggingRef: { current: false },
             nodeDragSession: dragSession(),
           }),
-        { wrapper: CanvasStoreTestProvider },
+        {
+          wrapper: ({ children }) => (
+            <CanvasStoreTestProvider>
+              <ReactFlowProvider>{children}</ReactFlowProvider>
+            </CanvasStoreTestProvider>
+          ),
+        },
       )
       const closed = vi.fn((ids: string[]) => {
         expect(ids).toEqual(['terminal-1', 'note-2'])
-        expect(nodesRef.current).toEqual([])
+        expect(readWorkspaceDocument(CANVAS_STORE_TEST_WORKSPACE_ID)?.nodes).toEqual([])
         order.push('closed')
       })
       unsubscribe = subscribeWorkspaceNodesClosed(closed)
