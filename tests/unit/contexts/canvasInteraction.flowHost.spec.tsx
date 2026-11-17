@@ -21,7 +21,16 @@ const canvasStateCalls = vi.hoisted(() => ({ count: 0 }))
 const flow = vi.hoisted(() => ({
   onNodesChange: null as null | ((changes: unknown[]) => void),
   // One entry per render of React Flow: the nodes it was given.
-  renders: [] as Array<Array<{ id: string; x: number; y: number; title: string }>>,
+  renders: [] as Array<
+    Array<{
+      id: string
+      x: number
+      y: number
+      title: string
+      selected: boolean
+      dragHandle?: string
+    }>
+  >,
 }))
 
 vi.mock(
@@ -61,9 +70,14 @@ vi.mock('@xyflow/react', () => {
       subscribe: vi.fn(() => () => undefined),
     }),
     ViewportPortal: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-    // The position changes of a drag, applied as React Flow does.
+    // The position and select changes, applied as React Flow does.
     applyNodeChanges: (
-      changes: Array<{ type: string; id: string; position?: { x: number; y: number } }>,
+      changes: Array<{
+        type: string
+        id: string
+        position?: { x: number; y: number }
+        selected?: boolean
+      }>,
       nodes: Array<{ id: string; position: { x: number; y: number } }>,
     ) =>
       changes.reduce(
@@ -72,7 +86,11 @@ vi.mock('@xyflow/react', () => {
             ? result.map(node =>
                 node.id === change.id ? { ...node, position: change.position! } : node,
               )
-            : result,
+            : change.type === 'select'
+              ? result.map(node =>
+                  node.id === change.id ? { ...node, selected: change.selected } : node,
+                )
+              : result,
         [...nodes],
       ),
     ReactFlow: ({
@@ -84,6 +102,8 @@ vi.mock('@xyflow/react', () => {
         id: string
         position: { x: number; y: number }
         data: { title?: string }
+        selected?: boolean
+        dragHandle?: string
       }>
       onNodesChange?: (changes: unknown[]) => void
       children?: React.ReactNode
@@ -96,6 +116,8 @@ vi.mock('@xyflow/react', () => {
           x: node.position.x,
           y: node.position.y,
           title: node.data.title ?? '',
+          selected: node.selected === true,
+          dragHandle: node.dragHandle,
         })),
       )
       return <div>{children}</div>
@@ -221,6 +243,23 @@ async function mountCanvas() {
   const lastY = (id: string) => flow.renders.at(-1)?.find(node => node.id === id)?.y
   return { dragTo, release, send, runFrames, lastY }
 }
+
+describe('the committed view in the mounted canvas', () => {
+  // `flowNodes` is the store's nodes with the selection applied; the host starts from it.
+  it('hands React Flow the nodes with their drag handle and the selection of the store', async () => {
+    const { send } = await mountCanvas()
+    const last = () => flow.renders.at(-1)!
+    expect(last().map(node => node.dragHandle)).toEqual([
+      expect.stringContaining('data-node-drag-handle'),
+      expect.stringContaining('data-node-drag-handle'),
+    ])
+    expect(last().map(node => node.selected)).toEqual([false, false])
+
+    await send([{ type: 'select', id: 'a', selected: true }])
+
+    expect(last().map(node => node.selected)).toEqual([true, false])
+  })
+})
 
 describe('a node drag in the mounted canvas', () => {
   it('renders the flow host and not WorkspaceCanvasInner for each frame', async () => {

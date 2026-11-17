@@ -23,6 +23,7 @@ import {
   type RuntimeCanvasContext,
 } from '../../support/agentRuntimeHarness'
 import { createRowNodes } from '../../support/canvasSelectionFixtures'
+import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import { replaceWorkspaceNodes } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 
 // The node drag overlay (#738, PR 3), below the canvas: what a drag frame, a release and a write
@@ -138,6 +139,26 @@ describe('a release', () => {
     expect(harness.notifications).toHaveBeenCalledTimes(1)
   })
 
+  // The two writes are one synchronous block, and React renders them in one batch in a browser.
+  // The order still matters for any render in between: the document first, so that a render sees
+  // the overlay over the released nodes, never the nodes before the drag.
+  it('writes the document before it clears the overlay', () => {
+    const { harness, view, runFrames } = setup()
+    act(() => view.result.current.apply(drag('a', 0, 30)))
+    runFrames()
+    const overlayWhenTheDocumentIsWritten: boolean[] = []
+    const unsubscribe = useAppStore.subscribe(() => {
+      overlayWhenTheDocumentIsWritten.push(view.result.current.readInteraction().liveNodes !== null)
+    })
+
+    act(() => view.result.current.apply(drop('a', 0, 40)))
+    unsubscribe()
+
+    expect(harness.readStoreDocument().nodes.find(node => node.id === 'a')?.position.y).toBe(40)
+    expect(overlayWhenTheDocumentIsWritten).toEqual([true])
+    expect(view.result.current.readInteraction().liveNodes).toBeNull()
+  })
+
   it('shows no position before the drag, at any render from the first live frame on', () => {
     const { view, runFrames } = setup()
     const log: Array<number | undefined> = []
@@ -235,6 +256,35 @@ describe('a write from elsewhere in the middle of a gesture', () => {
 
     expect(yOf.stored('a')).toBe(60)
     expect(yOf.stored('c')).toBe(0)
+  })
+
+  // The rule is "the live position wins wherever it differs", not "wherever the gesture moved
+  // the window": a window added from elsewhere during the gesture joins the live array at its
+  // position of that frame, and a later move of it from elsewhere is masked the same way.
+  it("keeps the live position of a window added from elsewhere and moved from elsewhere after (today's rule)", () => {
+    const { harness, view, runFrames, yOf } = setup()
+    const nodesWith = (change: (nodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[]) =>
+      act(() => {
+        replaceWorkspaceNodes(harness.workspaceId, change(harness.readStoreDocument().nodes))
+      })
+    act(() => view.result.current.apply(drag('a', 0, 30)))
+    runFrames()
+    const added = sized({ ...createRowNodes(['d'])[0], position: { x: 1200, y: 0 } })
+    nodesWith(nodes => [...nodes, added])
+    act(() => view.result.current.apply(drag('a', 0, 60)))
+    runFrames()
+    expect(yOf.live('d')).toBe(0)
+
+    nodesWith(nodes =>
+      nodes.map(node => (node.id === 'd' ? { ...node, position: { x: 1200, y: 500 } } : node)),
+    )
+    act(() => view.result.current.apply(drag('a', 0, 90)))
+    runFrames()
+
+    expect(yOf.live('d')).toBe(0)
+    expect(yOf.shown('d')).toBe(0)
+    act(() => view.result.current.apply(drop('a', 0, 90)))
+    expect(yOf.stored('d')).toBe(0)
   })
 
   it('shows a title changed from elsewhere with the live position', () => {
