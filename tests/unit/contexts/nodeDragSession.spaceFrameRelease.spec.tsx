@@ -19,7 +19,6 @@ function useDragSessionUnderTest({ workspaceId }: CanvasNodeStoreContext) {
   return {
     session: useWorkspaceCanvasNodeDragSession({
       workspaceId,
-      magneticSnappingEnabledRef: { current: false },
       setSnapGuides,
     }),
     selection: useCanvasSelectionCommands(),

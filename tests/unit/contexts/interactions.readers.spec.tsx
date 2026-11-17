@@ -209,7 +209,6 @@ describe('the node creation callbacks of the interactions', () => {
     websiteWindowPasteEnabled: true,
     isShiftPressedRef: { current: false },
     selectionDraftRef: { current: null },
-    setSelectionDraftUi: vi.fn(),
     reactFlow,
     setNodes,
     updateCanvasDocument,
@@ -404,7 +403,6 @@ describe('the selection hooks', () => {
     getNodes: () => marqueeNodes.nodes as Node<TerminalNodeData>[],
   } as unknown as ReactFlowInstance<Node<TerminalNodeData>>
   const marqueeShift = { current: false }
-  const marqueeUi = vi.fn()
   function useMarquee(draftRef: { current: SelectionDraftState | null }) {
     return {
       draft: useWorkspaceCanvasSelectionDraft({
@@ -412,7 +410,6 @@ describe('the selection hooks', () => {
         isTrackpadCanvasMode: true,
         isShiftPressedRef: marqueeShift,
         selectionDraftRef: draftRef,
-        setSelectionDraftUi: marqueeUi,
         reactFlow: marqueeFlow,
         setNodes: marqueeNodes.setNodes,
       }),

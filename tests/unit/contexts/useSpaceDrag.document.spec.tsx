@@ -7,7 +7,10 @@ import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import { TERMINAL_LAYOUT_SYNC_EVENT } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/constants'
 import { useWorkspaceCanvasSpaceDrag } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceDrag'
 import type { UseWorkspaceCanvasNodesStoreResult } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore.types'
-import { useCanvasSelectionCommands } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
+import {
+  useCanvasInteractionCommands,
+  useCanvasSelectionCommands,
+} from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
 import { useCanvasCollapseStore } from '../../../src/contexts/workspace/presentation/renderer/store/useCanvasCollapseStore'
 import {
   commitCanvasDocument,
@@ -31,12 +34,10 @@ type SetNodes = UseWorkspaceCanvasNodesStoreResult['setNodes']
 type UpdateCanvasDocument = UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
 
 const setSnapGuides = vi.fn()
-const magneticSnappingEnabledRef = { current: false }
 
 beforeEach(() => {
   vi.useFakeTimers()
   setSnapGuides.mockClear()
-  magneticSnappingEnabledRef.current = false
 })
 
 afterEach(() => {
@@ -67,17 +68,17 @@ function useDragUnderTest({ workspaceId, nodeStore }: CanvasNodeStoreContext) {
       reactFlow: { ...flow, screenToFlowPosition: point => point, getZoom: () => 1 },
       setNodes: nodeStore.setNodes,
       updateCanvasDocument: nodeStore.updateCanvasDocument,
-      magneticSnappingEnabledRef,
       setSnapGuides,
     }),
     selection: useCanvasSelectionCommands(),
+    interaction: useCanvasInteractionCommands(),
   }
 }
 
 type DragView = { result: { current: { drag: ReturnType<typeof useWorkspaceCanvasSpaceDrag> } } }
 
-function renderDrag(harness: CanvasDocumentHarness) {
-  return renderCanvasNodeStore(harness, { extend: useDragUnderTest })
+function renderDrag(harness: CanvasDocumentHarness, options: { magneticSnapping?: boolean } = {}) {
+  return renderCanvasNodeStore(harness, { extend: useDragUnderTest, ...options })
 }
 
 function press(view: DragView, spaceId: string, point: { x: number; y: number }, shiftKey = false) {
@@ -309,12 +310,11 @@ describe('useWorkspaceCanvasSpaceDrag reads the committed document', () => {
     })
 
     it('snaps against a Space that a write added since the pointer went down', () => {
-      magneticSnappingEnabledRef.current = true
       const harness = createCanvasDocumentHarness({
         nodes: [nodeAt('n1', 50, 60)],
         spaces: [spaceA()],
       })
-      const view = renderDrag(harness)
+      const view = renderDrag(harness, { magneticSnapping: true })
       press(view, 'space-a', INSIDE_A)
 
       act(() => {
@@ -328,6 +328,29 @@ describe('useWorkspaceCanvasSpaceDrag reads the committed document', () => {
 
       // Without the late Space the Space would stop at x = 100; snapping pulls its left edge to 104 (the grid alone would give 96).
       expect(harness.readStoreDocument().spaces[0].rect?.x).toBe(104)
+    })
+
+    // The toggle is read when a frame runs: the hook does not subscribe to it, so a copy taken at
+    // render would be a stale one after the menu flips it.
+    it.each([
+      { before: false, expectedX: 104, name: 'turned on' },
+      { before: true, expectedX: 100, name: 'turned off' },
+    ])('uses the snapping toggle $name after the pointer went down', ({ before, expectedX }) => {
+      const harness = createCanvasDocumentHarness({
+        nodes: [nodeAt('n1', 50, 60)],
+        spaces: [
+          spaceA(),
+          createSpace('space-snap', { x: 104, y: 500, width: 400, height: 400 }, []),
+        ],
+      })
+      const view = renderDrag(harness, { magneticSnapping: before })
+      press(view, 'space-a', INSIDE_A)
+
+      act(() => view.result.current.interaction.toggleMagneticSnapping())
+      dragTo({ x: INSIDE_A.x + 100, y: INSIDE_A.y })
+      release({ x: INSIDE_A.x + 100, y: INSIDE_A.y })
+
+      expect(harness.readStoreDocument().spaces[0].rect?.x).toBe(expectedX)
     })
 
     it('finalizes from the Spaces the store holds, not the ones read at pointer down', () => {
@@ -456,12 +479,12 @@ describe('useWorkspaceCanvasSpaceDrag reads the committed document', () => {
             [flow],
           )
           return {
+            interaction: useCanvasInteractionCommands(),
             drag: useWorkspaceCanvasSpaceDrag({
               workspaceId: shown,
               reactFlow,
               setNodes,
               updateCanvasDocument,
-              magneticSnappingEnabledRef,
               setSnapGuides,
             }),
           }
@@ -515,7 +538,8 @@ describe('useWorkspaceCanvasSpaceDrag reads the committed document', () => {
             : workspace,
         ),
       }))
-      magneticSnappingEnabledRef.current = true
+      // Turned on while workspace A is shown: the toggle follows the user to workspace B.
+      act(() => view.result.current.interaction.toggleMagneticSnapping())
       switchTo('workspace-b')
 
       press(view, 'space-b', INSIDE_A)

@@ -46,7 +46,6 @@ export function renderSpaceOwnershipInDocument(
 ) {
   const exclusiveNodeDragAnchorIdRef = { current: null as string | null }
   const setSnapGuides = vi.fn()
-  const magneticSnappingEnabledRef = { current: options.magneticSnapping === true }
 
   function useOwnershipUnderTest(context: CanvasNodeStoreContext) {
     const { workspaceId, nodeStore } = context
@@ -64,7 +63,6 @@ export function renderSpaceOwnershipInDocument(
     }, [])
     const nodeDragSession = useWorkspaceCanvasNodeDragSession({
       workspaceId,
-      magneticSnappingEnabledRef,
       setSnapGuides,
     })
     const ownership = useWorkspaceCanvasSpaceOwnership({
@@ -89,6 +87,7 @@ export function renderSpaceOwnershipInDocument(
 
   const view = renderCanvasNodeStore(harness, {
     extend: useOwnershipUnderTest,
+    magneticSnapping: options.magneticSnapping === true,
     workspacePath: options.workspacePath ?? '/tmp/repo',
   })
   const seededNodeIds = options.selectedNodeIds ?? []

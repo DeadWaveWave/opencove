@@ -100,11 +100,9 @@ describe('useWorkspaceCanvasApplyNodeChanges live and commit publishing', () => 
       const nodesRef = useRef(nodes)
       nodesRef.current = nodes
       const [, setSnapGuides] = useState(null)
-      const magneticSnappingEnabledRef = useRef(false)
       const isNodeDraggingRef = useRef(false)
       const nodeDragSession = useWorkspaceCanvasNodeDragSession({
         workspaceId: 'workspace-live-commit',
-        magneticSnappingEnabledRef,
         setSnapGuides,
       })
 
@@ -243,11 +241,9 @@ describe('useWorkspaceCanvasApplyNodeChanges live and commit publishing', () => 
     })
 
     function Harness() {
-      const magneticSnappingEnabledRef = useRef(false)
       const [, setSnapGuides] = useState(null)
       const session = useWorkspaceCanvasNodeDragSession({
         workspaceId: 'workspace-space-preview-retention',
-        magneticSnappingEnabledRef,
         setSnapGuides,
       })
       const project = () =>

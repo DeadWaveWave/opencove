@@ -15,6 +15,7 @@ type MenusProps = React.ComponentProps<typeof WorkspaceCanvasMenus>
 
 function menusProps(): MenusProps {
   const noop = () => undefined
+  const asyncNoop = async () => undefined
   return {
     nodes: [],
     workspacePath: '/tmp/repo',
@@ -30,15 +31,15 @@ function menusProps(): MenusProps {
     runProjectRoleFromContextMenu: noop,
     openRoleEditor: noop,
     deleteProjectRole: noop,
-    runQuickCommand: noop,
-    insertQuickPhrase: noop,
+    runQuickCommand: asyncNoop,
+    insertQuickPhrase: asyncNoop,
     openQuickMenuSettings: noop,
     spaces: [],
     arrangeAll: noop,
     arrangeCanvas: noop,
     arrangeInSpace: noop,
     createSpaceFromSelectedNodes: noop,
-    createChildSpaceInParent: noop,
+    createChildSpaceInParent: () => null,
     createEmptySpaceAtPoint: noop,
     clearNodeSelection: noop,
     canConvertSelectedNoteToTask: false,
@@ -52,7 +53,7 @@ function menusProps(): MenusProps {
     openSpacePath: noop,
     agentSettings: DEFAULT_AGENT_SETTINGS,
     onChangePreserveWindowSizesOnArrange: noop,
-  } as MenusProps
+  }
 }
 
 interface DragHolder {

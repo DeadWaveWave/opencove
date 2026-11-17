@@ -17,11 +17,6 @@ import {
 
 const EMPTY_ID_SET: ReadonlySet<string> = new Set()
 
-type SelectionDraftUiState = Pick<
-  SelectionDraftState,
-  'startX' | 'startY' | 'currentX' | 'currentY' | 'phase'
->
-
 function mergeExternalNodesIntoTransientCanvas(
   currentNodes: Node<TerminalNodeData>[],
   externalNodes: Node<TerminalNodeData>[],
@@ -76,16 +71,11 @@ export function useWorkspaceCanvasState({
   setDetectedCanvasInputMode: React.Dispatch<React.SetStateAction<DetectedCanvasInputMode>>
   isShiftPressed: boolean
   setIsShiftPressed: React.Dispatch<React.SetStateAction<boolean>>
-  magneticSnappingEnabled: boolean
-  setMagneticSnappingEnabled: React.Dispatch<React.SetStateAction<boolean>>
-  magneticSnappingEnabledRef: React.MutableRefObject<boolean>
   snapGuides: WorkspaceSnapGuide[] | null
   setSnapGuides: React.Dispatch<React.SetStateAction<WorkspaceSnapGuide[] | null>>
   canvasRef: React.RefObject<HTMLDivElement | null>
   restoredViewportWorkspaceIdRef: React.MutableRefObject<string | null>
   selectionDraftRef: React.MutableRefObject<SelectionDraftState | null>
-  selectionDraftUi: SelectionDraftUiState | null
-  setSelectionDraftUi: React.Dispatch<React.SetStateAction<SelectionDraftUiState | null>>
   inputModalityStateRef: React.MutableRefObject<ReturnType<typeof createCanvasInputModalityState>>
   isShiftPressedRef: React.MutableRefObject<boolean>
   trackpadGestureLockRef: React.MutableRefObject<CanvasWheelGestureSessionState | null>
@@ -102,12 +92,10 @@ export function useWorkspaceCanvasState({
   const selectionCommands = useCanvasSelectionCommands()
   const [canvasNodes, setCanvasNodes] = useState(nodes)
   const selectedNodeIds = useCanvasSelection(selection => selection.nodeIds)
-  const [selectionDraftUi, setSelectionDraftUi] = useState<SelectionDraftUiState | null>(null)
   const [detectedCanvasInputMode, setDetectedCanvasInputMode] =
     useState<DetectedCanvasInputMode>('mouse')
   const [isShiftPressed, setIsShiftPressed] = useState(false)
   const [isCanvasWheelGestureCaptureActive, setIsCanvasWheelGestureCaptureActive] = useState(false)
-  const [magneticSnappingEnabled, setMagneticSnappingEnabled] = useState(true)
   const [snapGuides, setSnapGuides] = useState<WorkspaceSnapGuide[] | null>(null)
 
   const canvasRef = useRef<HTMLDivElement>(null)
@@ -117,7 +105,6 @@ export function useWorkspaceCanvasState({
   const selectionDraftRef = useRef<SelectionDraftState | null>(null)
   const inputModalityStateRef = useRef(createCanvasInputModalityState('mouse'))
   const isShiftPressedRef = useRef(false)
-  const magneticSnappingEnabledRef = useRef(true)
   const trackpadGestureLockRef = useRef<CanvasWheelGestureSessionState | null>(null)
   const viewportRef = useRef<Viewport>(viewport)
   const spaceNavigationAnchorIdRef = useRef<string | null>(null)
@@ -188,10 +175,6 @@ export function useWorkspaceCanvasState({
     [canvasNodes, isDragSurfaceSelectionMode, selectedNodeIdSet],
   )
 
-  useLayoutEffect(() => {
-    magneticSnappingEnabledRef.current = magneticSnappingEnabled
-  }, [magneticSnappingEnabled])
-
   return {
     selectedNodeIds,
     syncSelectedNodeIds,
@@ -199,16 +182,11 @@ export function useWorkspaceCanvasState({
     setDetectedCanvasInputMode,
     isShiftPressed,
     setIsShiftPressed,
-    magneticSnappingEnabled,
-    setMagneticSnappingEnabled,
-    magneticSnappingEnabledRef,
     snapGuides,
     setSnapGuides,
     canvasRef,
     restoredViewportWorkspaceIdRef,
     selectionDraftRef,
-    selectionDraftUi,
-    setSelectionDraftUi,
     inputModalityStateRef,
     isShiftPressedRef,
     trackpadGestureLockRef,
