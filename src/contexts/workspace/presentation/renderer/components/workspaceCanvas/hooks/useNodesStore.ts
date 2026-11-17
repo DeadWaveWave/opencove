@@ -187,8 +187,8 @@ export function useWorkspaceCanvasNodesStore({
     [clearAgentLaunchToken, readDocument, requestPersistFlush, setNodes],
   )
 
-  // The committed nodes as the document holds them now, never a gesture's live positions: the
-  // callers are settled moves, when the two agree, and creators placing a new node.
+  // The committed nodes as the document holds them now, never a gesture's live positions: its
+  // one caller is the change path's settled move without a drag, when the two agree.
   const normalizePosition = useCallback(
     (nodeId: string, desired: Point, size: Size): Point => {
       return findNearestFreePosition(desired, size, readDocument().nodes, nodeId)

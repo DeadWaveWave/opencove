@@ -435,9 +435,9 @@ function startLiveDrag(view: View, live: Node<TerminalNodeData>[]) {
   })
 }
 
-// The nearest free position reads the committed nodes of the document (S6, PR 4). Its callers are
-// settled moves, when the committed and the live positions agree, and the creators placing a new
-// node; a gesture's live positions are never an obstacle.
+// The nearest free position reads the committed nodes of the document (S6, PR 4). Its one caller is
+// the change path's settled move without a drag, when the committed and the live positions agree;
+// a gesture's live positions are never an obstacle.
 describe('placement during a node drag', () => {
   it('avoids the dragged node at the position the store holds, not its live position', async () => {
     const dragged = blockerNode('dragged', { width: 400, height: 300 })
