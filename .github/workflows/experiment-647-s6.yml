@@ -4,7 +4,8 @@ name: Experiment 647 S6 (drag budget, measurement runs of #738)
 # Trigger: a push to the spike branch. The baseline branch starts nothing.
 on:
   push:
-    branches: [claude/experiment-647-s6-spike]
+    # One branch pair per measurement run: claude/experiment-647-s6-<run>-spike and -baseline.
+    branches: ['claude/experiment-647-s6-*-spike']
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -15,7 +16,6 @@ permissions:
 
 env:
   PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
-  BASELINE_REF: origin/claude/experiment-647-s6-baseline
 
 jobs:
   measure-ubuntu:
@@ -64,6 +64,10 @@ jobs:
         env:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: ''
         run: pnpm exec playwright install --with-deps chromium
+
+      - name: Name the baseline of this run
+        shell: bash
+        run: echo "BASELINE_REF=origin/${GITHUB_REF_NAME%-spike}-baseline" >> "$GITHUB_ENV"
 
       - name: Check the pair
         run: bash experiments/647-a/check-pair.sh artifacts/experiment-647a/ubuntu-${{ matrix.replica }}
@@ -131,11 +135,19 @@ jobs:
 
       # No Chromium install: the Electron files need none (the macos-platform job of ci.yml).
 
+      - name: Name the baseline of this run
+        shell: bash
+        run: echo "BASELINE_REF=origin/${GITHUB_REF_NAME%-spike}-baseline" >> "$GITHUB_ENV"
+
       - name: Check the pair
         run: bash experiments/647-a/check-pair.sh artifacts/experiment-647a/macos-1
 
       - name: Build baseline and spike
         run: bash experiments/647-a/build-pair.sh artifacts/experiment-647a/macos-1/pair.json
+
+      - name: Rounds of this run on macOS
+        shell: bash
+        run: echo "ROUNDS=$(cat experiments/647-a/macos-rounds 2>/dev/null || echo 3)" >> "$GITHUB_ENV"
 
       - name: Measure (interleaved)
         timeout-minutes: 120

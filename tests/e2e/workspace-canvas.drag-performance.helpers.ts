@@ -113,8 +113,16 @@ export async function sampleContinuousDrag(page: Page, frameCount = 240) {
         )!
         const beforeTransform = dragged.style.transform
         let positionChanges = 0
+        // Run 3 of #738: the time from each mousemove's dispatch to the dragged window's next style
+        // mutation (the frame that shows it), so the input latency of the two arms is visible.
+        let pendingDispatchAt: number | null = null
+        const inputToCommit: number[] = []
         const positions = new MutationObserver(records => {
           positionChanges += records.length
+          if (pendingDispatchAt !== null) {
+            inputToCommit.push(performance.now() - pendingDispatchAt)
+            pendingDispatchAt = null
+          }
         })
         positions.observe(dragged, { attributes: true, attributeFilter: ['style'] })
         const mutations = new MutationObserver(records => {
@@ -145,6 +153,9 @@ export async function sampleContinuousDrag(page: Page, frameCount = 240) {
                 intervals.push(now - previous)
                 previous = now
                 const before = performance.now()
+                if (pendingDispatchAt === null) {
+                  pendingDispatchAt = before
+                }
                 window.dispatchEvent(
                   new MouseEvent('mousemove', {
                     view: window,
@@ -193,6 +204,10 @@ export async function sampleContinuousDrag(page: Page, frameCount = 240) {
           longFrames: longFrames.length,
           longFrameMs: longFrames.reduce((sum, ms) => sum + ms, 0),
           moveMs: moves.reduce((sum, ms) => sum + ms, 0),
+          inputToCommitMs: [...inputToCommit].sort((a, b) => a - b)[
+            Math.floor(inputToCommit.length / 2)
+          ],
+          inputToCommitSamples: inputToCommit.length,
           wallFrames: wall.getFrameCount() - wallBefore,
           windowCommits: api.getWindowCommitCounts(),
           windowCommitsByNode: api.getWindowCommitCountsByNode?.(),
