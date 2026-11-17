@@ -1,10 +1,7 @@
 import { act } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
-import {
-  replaceWorkspaceNodes,
-  replaceWorkspaceSpaces,
-} from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+import { replaceWorkspaceNodes } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import {
   agentNode,
   documentOf,
@@ -27,6 +24,7 @@ import {
   spaceOf,
   taskNodeWith,
 } from '../../support/taskRoleHarness'
+import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
 
 // The task run, the task resume, the role run, the task editor, the task node creation, the role
 // node creation and the delete confirmation read the committed document of the workspace whose
@@ -449,7 +447,7 @@ describe('the role run', () => {
       const { view, createRoleNode, showB } = renderRoleActions()
 
       act(() => {
-        replaceWorkspaceSpaces(A, [spaceOf('space-a', [])])
+        replaceSpacesInStore(A, [spaceOf('space-a', [])])
         view.result.current.ui.openContextMenu(MENU)
         view.result.current.roles.runProjectRoleFromContextMenu('role-1')
       })
@@ -587,7 +585,7 @@ describe('the task node creation', () => {
     const { view, createTaskNode, showB } = renderCreation()
 
     act(() => {
-      replaceWorkspaceSpaces(A, [spaceOf('space-a', [])])
+      replaceSpacesInStore(A, [spaceOf('space-a', [])])
       view.result.current.createTaskAtPoint(ANCHOR)
     })
     expect(createTaskNode).toHaveBeenLastCalledWith(
@@ -649,7 +647,7 @@ describe('the delete confirmation', () => {
 
     act(() => {
       replaceWorkspaceNodes(A, [taskNodeWith('task-a', { title: 'Task A' })])
-      replaceWorkspaceSpaces(A, [spaceOf('space-a', ['task-a'])])
+      replaceSpacesInStore(A, [spaceOf('space-a', ['task-a'])])
       requestNodeDelete.ref.current(['task-a'])
     })
     expect(view.result.current.readUi().nodeDeleteConfirmation).toEqual({

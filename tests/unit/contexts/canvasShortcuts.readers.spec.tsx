@@ -9,10 +9,7 @@ import { useWorkspaceCanvasShortcutActions } from '../../../src/contexts/workspa
 import { useWorkspaceCanvasShortcuts } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useShortcuts'
 import { useWorkspaceCanvasCreationActivation } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCreationActivation'
 import { useCanvasSelectionCommands } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
-import {
-  replaceWorkspaceNodes,
-  replaceWorkspaceSpaces,
-} from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+import { replaceWorkspaceNodes } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import type {
   TerminalNodeData,
   WorkspaceSpaceState,
@@ -23,6 +20,7 @@ import {
 } from '../../support/canvasDocumentHarness'
 import { createRowNodes, createSpace } from '../../support/canvasSelectionFixtures'
 import { pixelNode } from './workspacePixelLayer.fixtures'
+import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
 
 // The shortcuts, the close-selected-node shortcut and the creation activation read the committed
 // nodes and Spaces of the workspace whose render made them, from the store, when they run (#702,
@@ -142,10 +140,7 @@ describe('the shortcut actions', () => {
     disableAppShortcutsWhenTerminalFocused: false,
     keybindings: {},
   }
-  function mount({
-    spaces = [],
-    activeSpaceId = null,
-  }: { spaces?: WorkspaceSpaceState[]; activeSpaceId?: string | null } = {}) {
+  function mount({ activeSpaceId = null }: { activeSpaceId?: string | null } = {}) {
     const canvas = document.createElement('div')
     document.body.append(canvas)
     const calls = {
@@ -159,7 +154,6 @@ describe('the shortcut actions', () => {
       enabled: true,
       workspaceId: 'workspace',
       activeSpaceId,
-      spaces,
       agentSettings,
       workspacePath: '/tmp/repo',
       canvasRef: { current: canvas },
@@ -220,7 +214,7 @@ describe('the shortcut actions', () => {
 
       act(() => {
         replaceWorkspaceNodes(WORKSPACE_A, [noteAt('node')])
-        replaceWorkspaceSpaces(WORKSPACE_A, [createSpace('space', RIGHT_OF_CENTER, ['node'])])
+        replaceSpacesInStore(WORKSPACE_A, [createSpace('space', RIGHT_OF_CENTER, ['node'])])
       })
       navigateNodeRight()
 
@@ -270,7 +264,7 @@ describe('the shortcut actions', () => {
       const { navigateSpaceRight, activateSpace, clearNodeSelection } = mount()
 
       act(() => {
-        replaceWorkspaceSpaces(WORKSPACE_A, [createSpace('stored', RIGHT_OF_CENTER)])
+        replaceSpacesInStore(WORKSPACE_A, [createSpace('stored', RIGHT_OF_CENTER)])
       })
       navigateSpaceRight()
 
@@ -326,16 +320,16 @@ describe('the shortcut actions', () => {
   })
 
   describe('cycling the idle Spaces', () => {
-    // The Spaces come from the `spaces` prop; whether an agent in them is working comes from the
-    // store. With s1 busy the first idle Space is s2, otherwise s1.
-    const spaces = [
+    // The Spaces and whether an agent in them is working both come from the store. With s1 busy
+    // the first idle Space is s2, otherwise s1.
+    const spaces = () => [
       createSpace('s1', RIGHT_OF_CENTER, ['agent']),
       createSpace('s2', RIGHT_OF_CENTER),
     ]
 
     it('sees an agent that started working in the same call', () => {
-      seedTwoWorkspaces({ nodes: [agentNode('agent', 'standby')] }, {})
-      const { cycleIdleForward, activateSpace } = mount({ spaces })
+      seedTwoWorkspaces({ nodes: [agentNode('agent', 'standby')], spaces: spaces() }, {})
+      const { cycleIdleForward, activateSpace } = mount()
 
       act(() => {
         replaceWorkspaceNodes(WORKSPACE_A, [agentNode('agent', 'running')])
@@ -347,10 +341,10 @@ describe('the shortcut actions', () => {
 
     it('reads the agents of the workspace of the render and not the one shown', () => {
       seedTwoWorkspaces(
-        { nodes: [agentNode('agent', 'running')] },
-        { nodes: [agentNode('agent', 'standby')] },
+        { nodes: [agentNode('agent', 'running')], spaces: spaces() },
+        { nodes: [agentNode('agent', 'standby')], spaces: spaces() },
       )
-      const { cycleIdleForward, activateSpace } = mount({ spaces })
+      const { cycleIdleForward, activateSpace } = mount()
 
       act(() => useAppStore.setState({ activeWorkspaceId: WORKSPACE_B }))
       cycleIdleForward()
@@ -360,10 +354,10 @@ describe('the shortcut actions', () => {
 
     it('follows a switch of workspace', () => {
       seedTwoWorkspaces(
-        { nodes: [agentNode('agent', 'standby')] },
-        { nodes: [agentNode('agent', 'running')] },
+        { nodes: [agentNode('agent', 'standby')], spaces: spaces() },
+        { nodes: [agentNode('agent', 'running')], spaces: spaces() },
       )
-      const { cycleIdleForward, activateSpace, show } = mount({ spaces })
+      const { cycleIdleForward, activateSpace, show } = mount()
 
       show(WORKSPACE_B)
       cycleIdleForward()
@@ -414,7 +408,10 @@ describe('the shortcut actions', () => {
 describe('the shortcuts hook on its own', () => {
   // Its callbacks are stable here, so only its own reader can make the key handler follow a switch
   // (inside the shortcut actions the navigation callbacks change with the workspace as well).
-  const spaces = [createSpace('s1', RIGHT_OF_CENTER, ['agent']), createSpace('s2', RIGHT_OF_CENTER)]
+  const spaces = () => [
+    createSpace('s1', RIGHT_OF_CENTER, ['agent']),
+    createSpace('s2', RIGHT_OF_CENTER),
+  ]
   const callbacks = {
     createSpaceFromSelectedNodes: vi.fn(),
     createNoteAtViewportCenter: vi.fn(),
@@ -429,8 +426,8 @@ describe('the shortcuts hook on its own', () => {
 
   it('cycles the idle Spaces of the workspace shown after a switch', () => {
     seedTwoWorkspaces(
-      { nodes: [agentNode('agent', 'standby')] },
-      { nodes: [agentNode('agent', 'running')] },
+      { nodes: [agentNode('agent', 'standby')], spaces: spaces() },
+      { nodes: [agentNode('agent', 'running')], spaces: spaces() },
     )
     callbacks.activateSpace.mockClear()
     const view = renderInCanvasDocument(
@@ -441,7 +438,6 @@ describe('the shortcuts hook on its own', () => {
           keybindings,
           disableWhenTerminalFocused: false,
           activeSpaceId: null,
-          spaces,
           canvasRef,
           ...callbacks,
         }),

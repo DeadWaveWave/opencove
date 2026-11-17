@@ -310,13 +310,6 @@ export function replaceWorkspaceNodes(
   return commitCanvasDocument(workspaceId, document => ({ ...document, nodes }))
 }
 
-export function replaceWorkspaceSpaces(
-  workspaceId: string,
-  spaces: WorkspaceSpaceState[],
-): WorkspaceDocumentCommandResult {
-  return commitCanvasDocument(workspaceId, document => ({ ...document, spaces }))
-}
-
 export function setWorkspaceViewport(
   workspaceId: string,
   viewport: WorkspaceViewport,

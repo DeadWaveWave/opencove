@@ -1,4 +1,3 @@
-import { useCallback } from 'react'
 import { useReactFlow, type Edge, type Node } from '@xyflow/react'
 import * as workspaceCanvasHooks from './workspaceCanvas/hooks'
 import { TerminalDisplayAlignedWorkspaceCanvasView } from './workspaceCanvas/TerminalDisplayAlignedWorkspaceCanvasView'
@@ -8,7 +7,6 @@ import { useCanvasCollapse } from './workspaceCanvas/collapse/useCanvasCollapse'
 import { WorkspaceCanvasProviders } from './workspaceCanvas/WorkspaceCanvasProviders'
 import { useCanvasSpaceExplorer } from './workspaceCanvas/hooks/useCanvasSpaceExplorer'
 import { useWorkspaceCanvasActionBar } from './workspaceCanvas/hooks/useCanvasActionBarActions'
-import { replaceWorkspaceSpaces } from '../store/workspaceDocumentCommands'
 export function WorkspaceCanvasInner({
   workspaceId,
   onShowMessage,
@@ -16,7 +14,6 @@ export function WorkspaceCanvasInner({
   environmentVariables,
   worktreesRoot,
   nodes,
-  onRequestPersistFlush,
   spaces,
   activeSpaceId,
   onActiveSpaceChange,
@@ -48,12 +45,6 @@ export function WorkspaceCanvasInner({
     ...canvasState,
     workspaceId,
   })
-  const onSpacesChange = useCallback(
-    (nextSpaces: typeof spaces) => {
-      replaceWorkspaceSpaces(workspaceId, nextSpaces)
-    },
-    [workspaceId],
-  )
   // prettier-ignore
   const exclusiveNodeDragAnchorIdRef = workspaceCanvasHooks.useWorkspaceCanvasWorkspaceReset(workspaceId, canvasState.selectedNodeIds.length)
   const actionRefs = workspaceCanvasHooks.useWorkspaceCanvasActionRefs()
@@ -73,7 +64,7 @@ export function WorkspaceCanvasInner({
     setSnapGuides: canvasState.setSnapGuides,
   })
   // prettier-ignore
-  const { updateSpaceDirectory, getSpaceBlockingNodes, closeNodesById } = workspaceCanvasHooks.useWorkspaceCanvasSpaceDirectoryOps({ workspacePath, spacesRef: canvasState.spacesRef, nodesRef: nodeStore.nodesRef, setNodes: nodeStore.setNodes, onSpacesChange, onRequestPersistFlush, closeNode: nodeStore.closeNode })
+  const { updateSpaceDirectory, getSpaceBlockingNodes, closeNodesById } = workspaceCanvasHooks.useWorkspaceCanvasSpaceDirectoryOps({ workspacePath, updateCanvasDocument: nodeStore.updateCanvasDocument, closeNode: nodeStore.closeNode })
   const spacesApi = workspaceCanvasHooks.useWorkspaceCanvasSpaces({
     workspaceId,
     activeSpaceId,
@@ -162,7 +153,6 @@ export function WorkspaceCanvasInner({
   const { nodeTypes, nodeTypesParameters } =
     workspaceCanvasHooks.useWorkspaceCanvasComposedNodeTypes({
       nodeStore,
-      canvasState,
       workspacePath,
       onShowMessage,
       agentSettings,
@@ -239,7 +229,6 @@ export function WorkspaceCanvasInner({
     enabled: shortcutsEnabled,
     workspaceId,
     activeSpaceId,
-    spaces,
     agentSettings,
     workspacePath,
     environmentVariables,

@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { MountDto } from '@shared/contracts/dto'
 import { createTerminalNodeAtFlowPosition } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useInteractions.paneNodeCreation'
 import { resolveSpaceMountLaunchContext } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/spaceMountLaunchContext'
-import { replaceWorkspaceSpaces } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import type { WorkspaceSpaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
 import {
   createCanvasDocumentHarness,
@@ -12,6 +11,7 @@ import {
   renderCanvasNodeStore,
   type CanvasDocumentHarness,
 } from '../../support/canvasDocumentHarness'
+import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
 
 // A launch repairs the mount of its target Space after `mount.list` answers. The repair is written
 // as a recipe over the Spaces the store holds when it runs, so a Space that changed during the
@@ -88,7 +88,7 @@ describe('resolveSpaceMountLaunchContext', () => {
       commitSpaceRepair,
     })
     act(() => {
-      replaceWorkspaceSpaces(WORKSPACE_ID, [
+      replaceSpacesInStore(WORKSPACE_ID, [
         { ...target, name: 'Renamed target' },
         { ...other, name: 'Renamed other' },
       ])
@@ -166,7 +166,7 @@ describe('resolveSpaceMountLaunchContext', () => {
       commitSpaceRepair,
     })
     act(() => {
-      replaceWorkspaceSpaces(WORKSPACE_ID, [other])
+      replaceSpacesInStore(WORKSPACE_ID, [other])
     })
     harness.notifications.mockClear()
     resolveMounts()
@@ -294,7 +294,7 @@ describe('the mount repair of a terminal created from the pane', () => {
       ),
     )
     act(() => {
-      replaceWorkspaceSpaces(WORKSPACE_ID, [target, { ...other, name: 'Renamed other' }])
+      replaceSpacesInStore(WORKSPACE_ID, [target, { ...other, name: 'Renamed other' }])
     })
     harness.notifications.mockClear()
     resolveMounts()
@@ -333,7 +333,7 @@ describe('the mount repair of a terminal created from the pane', () => {
       ),
     )
     act(() => {
-      replaceWorkspaceSpaces(WORKSPACE_ID, [other])
+      replaceSpacesInStore(WORKSPACE_ID, [other])
     })
     resolveMounts()
     await launched

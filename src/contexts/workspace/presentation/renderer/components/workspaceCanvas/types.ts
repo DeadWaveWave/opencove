@@ -35,7 +35,6 @@ export interface WorkspaceCanvasProps {
   environmentVariables?: Record<string, string>
   worktreesRoot: string
   nodes: Node<TerminalNodeData>[]
-  onRequestPersistFlush?: () => void
   spaces: WorkspaceSpaceState[]
   activeSpaceId: string | null
   onActiveSpaceChange: (spaceId: string | null) => void

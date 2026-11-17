@@ -17,7 +17,6 @@ import {
   useReadCanvasSelection,
   useReadCanvasUi,
 } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
-import { replaceWorkspaceSpaces } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import type {
   TerminalNodeData,
   WorkspaceSpaceState,
@@ -33,6 +32,7 @@ import {
   createSpace,
 } from '../../support/canvasSelectionFixtures'
 import { CREATED, lastCall } from '../../support/pushAwayCallerHarness'
+import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
 
 // Every callback that creates a node from the pane reads the Spaces of the workspace whose render
 // made it, from the store, when it runs (#702, PR 7). Each case writes the Spaces of the shown
@@ -151,7 +151,7 @@ async function observeInBothWorkspaces<Result, Found>({
     }
     assignMock.mockClear()
     await act(async () => {
-      replaceWorkspaceSpaces(workspaceId, [space])
+      replaceSpacesInStore(workspaceId, [space])
       found.push(await invoke(view.result.current))
     })
   }

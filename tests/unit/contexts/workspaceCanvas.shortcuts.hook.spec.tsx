@@ -1,5 +1,5 @@
 import React from 'react'
-import { render } from '@testing-library/react'
+import { act, render } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Node } from '@xyflow/react'
 import type {
@@ -10,7 +10,10 @@ import {
   CANVAS_STORE_TEST_WORKSPACE_ID,
   CanvasStoreTestProvider,
 } from '../../support/canvasStoreTestHarness'
-import { seedWorkspaceCanvasStore } from '../../support/workspaceCanvasStoreHarness'
+import {
+  replaceSpacesInStore,
+  seedWorkspaceCanvasStore,
+} from '../../support/workspaceCanvasStoreHarness'
 import { useWorkspaceCanvasShortcuts } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useShortcuts'
 
 function createNode(
@@ -113,6 +116,7 @@ describe('useWorkspaceCanvasShortcuts', () => {
         createNode('agent-1', 'agent', 'running'),
         createNode('agent-2', 'agent', 'standby'),
       ],
+      spaces,
     })
 
     const activateSpace = vi.fn()
@@ -124,7 +128,6 @@ describe('useWorkspaceCanvasShortcuts', () => {
         keybindings={{}}
         disableWhenTerminalFocused={false}
         activeSpaceId={null}
-        spaces={spaces}
         createSpaceFromSelectedNodes={() => undefined}
         createNoteAtViewportCenter={() => undefined}
         createTerminalAtViewportCenter={async () => undefined}
@@ -155,7 +158,6 @@ describe('useWorkspaceCanvasShortcuts', () => {
         keybindings={{}}
         disableWhenTerminalFocused={false}
         activeSpaceId="space-idle-a"
-        spaces={spaces}
         createSpaceFromSelectedNodes={() => undefined}
         createNoteAtViewportCenter={() => undefined}
         createTerminalAtViewportCenter={async () => undefined}
@@ -190,7 +192,6 @@ describe('useWorkspaceCanvasShortcuts', () => {
         keybindings={{}}
         disableWhenTerminalFocused
         activeSpaceId={null}
-        spaces={[]}
         createSpaceFromSelectedNodes={() => undefined}
         createNoteAtViewportCenter={() => undefined}
         createTerminalAtViewportCenter={async () => undefined}
@@ -220,5 +221,146 @@ describe('useWorkspaceCanvasShortcuts', () => {
     )
 
     expect(navigateNode).toHaveBeenCalledWith('right')
+  })
+
+  describe('cycling the Spaces', () => {
+    const space = (id: string, extra: Partial<WorkspaceSpaceState> = {}): WorkspaceSpaceState => ({
+      id,
+      name: id,
+      directoryPath: `/tmp/${id}`,
+      targetMountId: null,
+      labelColor: null,
+      nodeIds: [],
+      rect: null,
+      ...extra,
+    })
+    const pressBracket = (code: 'BracketLeft' | 'BracketRight', shiftKey = false) =>
+      act(() => {
+        document.dispatchEvent(
+          new KeyboardEvent('keydown', {
+            key: code === 'BracketRight' ? (shiftKey ? '}' : ']') : shiftKey ? '{' : '[',
+            code,
+            metaKey: true,
+            shiftKey,
+            bubbles: true,
+            cancelable: true,
+          }),
+        )
+      })
+    function mountShortcuts(activeSpaceId: string | null) {
+      const activateSpace = vi.fn()
+      const props = {
+        enabled: true,
+        platform: 'darwin',
+        keybindings: {},
+        disableWhenTerminalFocused: false,
+        createSpaceFromSelectedNodes: () => undefined,
+        createNoteAtViewportCenter: () => undefined,
+        createTerminalAtViewportCenter: async () => undefined,
+        createAgentAtViewportCenter: async () => undefined,
+        canvasRef: { current: null },
+        activateSpace,
+        navigateNode: () => undefined,
+        navigateSpace: () => undefined,
+      }
+      const view = render(<ShortcutHarness {...props} activeSpaceId={activeSpaceId} />)
+      return {
+        activateSpace,
+        view: (active: string | null) =>
+          view.rerender(<ShortcutHarness {...props} activeSpaceId={active} />),
+      }
+    }
+
+    it('activates a Space that a store write added in the same call as the key', () => {
+      seedWorkspaceCanvasStore({ workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID, spaces: [] })
+      const { activateSpace } = mountShortcuts(null)
+
+      act(() => {
+        replaceSpacesInStore(CANVAS_STORE_TEST_WORKSPACE_ID, [space('late')])
+        document.dispatchEvent(
+          new KeyboardEvent('keydown', {
+            key: ']',
+            code: 'BracketRight',
+            metaKey: true,
+            bubbles: true,
+            cancelable: true,
+          }),
+        )
+      })
+
+      expect(activateSpace).toHaveBeenCalledExactlyOnceWith('late')
+    })
+
+    it('does not activate a Space that a store write removed in the same call as the key', () => {
+      seedWorkspaceCanvasStore({
+        workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID,
+        spaces: [space('gone')],
+      })
+      const { activateSpace } = mountShortcuts(null)
+
+      act(() => {
+        replaceSpacesInStore(CANVAS_STORE_TEST_WORKSPACE_ID, [])
+        document.dispatchEvent(
+          new KeyboardEvent('keydown', {
+            key: ']',
+            code: 'BracketRight',
+            metaKey: true,
+            bubbles: true,
+            cancelable: true,
+          }),
+        )
+      })
+
+      expect(activateSpace).not.toHaveBeenCalled()
+    })
+
+    it('keeps the order of the cycle on a fixed list: store order, top-level Spaces only', () => {
+      seedWorkspaceCanvasStore({
+        workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID,
+        spaces: [
+          space('s1'),
+          space('child', { parentSpaceId: 's1' } as Partial<WorkspaceSpaceState>),
+          space('s2'),
+          space('s3'),
+        ],
+      })
+      const { activateSpace, view } = mountShortcuts(null)
+
+      pressBracket('BracketRight')
+      expect(activateSpace).toHaveBeenLastCalledWith('s1')
+      view('s1')
+      pressBracket('BracketRight')
+      expect(activateSpace).toHaveBeenLastCalledWith('s2')
+      view('s3')
+      pressBracket('BracketRight')
+      expect(activateSpace).toHaveBeenLastCalledWith('s1')
+      view('s1')
+      pressBracket('BracketLeft')
+      expect(activateSpace).toHaveBeenLastCalledWith('s3')
+      view(null)
+      pressBracket('BracketLeft')
+      expect(activateSpace).toHaveBeenLastCalledWith('s3')
+      expect(activateSpace).toHaveBeenCalledTimes(5)
+    })
+
+    it('does not subscribe the key listener again when the Spaces change', () => {
+      seedWorkspaceCanvasStore({
+        workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID,
+        spaces: [space('s1')],
+      })
+      const add = vi.spyOn(document, 'addEventListener')
+      const { view } = mountShortcuts(null)
+      const keydownSubscriptions = () =>
+        add.mock.calls.filter(([type]) => type === 'keydown').length
+      const before = keydownSubscriptions()
+      expect(before).toBeGreaterThan(0)
+
+      act(() => {
+        replaceSpacesInStore(CANVAS_STORE_TEST_WORKSPACE_ID, [space('s1'), space('s2')])
+      })
+      view(null)
+
+      expect(keydownSubscriptions()).toBe(before)
+    })
   })
 })

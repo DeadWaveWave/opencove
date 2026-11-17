@@ -2,7 +2,8 @@ import type { MutableRefObject, ReactElement } from 'react'
 import { useStore, type Node } from '@xyflow/react'
 import { TaskNode } from '../TaskNode'
 import { resolveTaskExecutionContext } from '@contexts/session/application/resolveTaskExecutionContext'
-import type { NodeFrame, TerminalNodeData, WorkspaceSpaceState } from '../../types'
+import type { NodeFrame, TerminalNodeData } from '../../types'
+import { useReadCanvasDocument } from '../../store/canvasStoreContext'
 import type { LabelColor } from '@shared/types/labelColor'
 import type { QuickUpdateTaskRequirement, QuickUpdateTaskTitle, UpdateTaskStatus } from './types'
 import { resolveAgentDisplayTitle } from '../../utils/agentTitle'
@@ -11,7 +12,6 @@ export function WorkspaceCanvasTaskNodeType({
   data,
   id,
   nodePosition,
-  spacesRef,
   workspacePath,
   selectNode,
   resizeNodeRef,
@@ -28,7 +28,6 @@ export function WorkspaceCanvasTaskNodeType({
   data: TerminalNodeData
   id: string
   nodePosition: { x: number; y: number }
-  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   workspacePath: string
   selectNode: (nodeId: string, options?: { toggle?: boolean }) => void
   resizeNodeRef: MutableRefObject<(nodeId: string, desiredFrame: NodeFrame) => void>
@@ -44,6 +43,7 @@ export function WorkspaceCanvasTaskNodeType({
   removeTaskAgentSessionRecordRef: MutableRefObject<(taskNodeId: string, recordId: string) => void>
   updateTaskStatusRef: MutableRefObject<UpdateTaskStatus>
 }): ReactElement | null {
+  const readDocument = useReadCanvasDocument()
   const linkedAgentNodeId = data.task?.linkedAgentNodeId ?? null
   const labelColor =
     (data as TerminalNodeData & { effectiveLabelColor?: LabelColor | null }).effectiveLabelColor ??
@@ -73,7 +73,8 @@ export function WorkspaceCanvasTaskNodeType({
   }
 
   const taskExecutionContext = resolveTaskExecutionContext({
-    spaces: spacesRef.current,
+    // Read when this renders, not subscribed: the Spaces of the store as they are now.
+    spaces: readDocument().spaces,
     taskNodeId: id,
     workspacePath,
   })

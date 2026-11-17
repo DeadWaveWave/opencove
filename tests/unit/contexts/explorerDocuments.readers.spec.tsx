@@ -1,9 +1,6 @@
 import { act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import {
-  replaceWorkspaceNodes,
-  replaceWorkspaceSpaces,
-} from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+import { replaceWorkspaceNodes } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import {
   documentOf,
   stubOpencoveApi,
@@ -22,6 +19,7 @@ import {
   spaceAt,
   terminalNodeAt,
 } from '../../support/explorerDocumentsHarness'
+import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
 
 // The document opening, the document navigation, the explorer and the filesystem nodes read the
 // committed nodes and Spaces of the workspace whose render made them, from the store, when they
@@ -160,7 +158,7 @@ describe('the document opening', () => {
 
     let opened: { id: string } | null = null
     await act(async () => {
-      replaceWorkspaceSpaces(A, [spaceAt('space-now')])
+      replaceSpacesInStore(A, [spaceAt('space-now')])
       opened = await view.result.current(request({ spaceId: 'space-now' }))
     })
 
@@ -176,7 +174,7 @@ describe('the document opening', () => {
     let opened: unknown = 'unset'
     await act(async () => {
       const pending = view.result.current(request({ spaceId: 'space-a' }))
-      replaceWorkspaceSpaces(A, [])
+      replaceSpacesInStore(A, [])
       finish(LOCAL)
       opened = await pending
     })
@@ -266,7 +264,7 @@ describe('the document navigation', () => {
     let opened = false
     await act(async () => {
       replaceWorkspaceNodes(A, [source(), documentNodeAt('written-now', URI)])
-      replaceWorkspaceSpaces(A, [spaceAt('space-a', ['terminal', 'written-now'])])
+      replaceSpacesInStore(A, [spaceAt('space-a', ['terminal', 'written-now'])])
       opened = await view.result.current.openFileLink('terminal', link)
     })
 
@@ -406,7 +404,7 @@ describe('the explorer', () => {
     openExplorerOf(view)
 
     await act(async () => {
-      replaceWorkspaceSpaces(A, [spaceAt('space-a', [], { targetMountId: 'remote-mount' })])
+      replaceSpacesInStore(A, [spaceAt('space-a', [], { targetMountId: 'remote-mount' })])
       view.result.current.previewFileInSpace('space-a', URI)
     })
 
@@ -625,7 +623,7 @@ describe('the filesystem nodes', () => {
     const { view } = renderFilesystemNodes({ a: { nodes: [folder()] } })
 
     await act(async () => {
-      replaceWorkspaceSpaces(A, [spaceAt('space-now', ['folder'])])
+      replaceSpacesInStore(A, [spaceAt('space-now', ['folder'])])
       view.result.current.actions.openFile('folder', `${folderUri}/a.md`)
     })
 
@@ -720,7 +718,7 @@ describe('reads that only the store can answer', () => {
     let opened = false
     await act(async () => {
       replaceWorkspaceNodes(A, [source(), documentNodeAt('written-now', URI)])
-      replaceWorkspaceSpaces(A, [spaceAt('space-a', ['terminal', 'written-now'])])
+      replaceSpacesInStore(A, [spaceAt('space-a', ['terminal', 'written-now'])])
       opened = await view.result.current.openFileLink('terminal', {
         uri: URI,
         mountId: null,

@@ -352,7 +352,6 @@ export default function App(): React.JSX.Element {
             }
             onAddWorkspace={handleAddWorkspace}
             onShowMessage={handleShowMessage}
-            onRequestPersistFlush={requestPersistFlush}
             onAppendSpaceArchiveRecord={handleWorkspaceSpaceArchiveRecordAppend}
             onViewportChange={handleWorkspaceViewportChange}
             onMinimapVisibilityChange={handleWorkspaceMinimapVisibilityChange}

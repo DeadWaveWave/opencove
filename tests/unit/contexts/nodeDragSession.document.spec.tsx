@@ -4,10 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import { useWorkspaceCanvasNodeDragSession } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodeDragSession'
 import { useCanvasSelectionCommands } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
-import {
-  readWorkspaceDocument,
-  replaceWorkspaceSpaces,
-} from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+import { readWorkspaceDocument } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
 import {
   createCanvasDocumentHarness,
@@ -16,6 +13,7 @@ import {
   type CanvasNodeStoreContext,
 } from '../../support/canvasDocumentHarness'
 import { createRowNodes, createSpace } from '../../support/canvasSelectionFixtures'
+import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
 
 // The node drag session reads the committed Spaces when a frame, the start or the release runs, and
 // writes the Spaces of a released Space frame through `updateSpaces` (#702, PR 3).
@@ -83,7 +81,7 @@ describe('node drag session frames', () => {
     act(() => session.beginNodeDragSession([static1, drag]))
 
     act(() => {
-      replaceWorkspaceSpaces(harness.workspaceId, [
+      replaceSpacesInStore(harness.workspaceId, [
         createSpace('space', { x: 0, y: 0, width: 520, height: 360 }, ['static']),
       ])
       frameOf(session, [static1, drag], 'drag', { x: 24, y: 24 })
@@ -107,7 +105,7 @@ describe('node drag session frames', () => {
     act(() => session.beginNodeDragSession([n1]))
 
     act(() => {
-      replaceWorkspaceSpaces(harness.workspaceId, [
+      replaceSpacesInStore(harness.workspaceId, [
         ...harness.readStoreDocument().spaces,
         createSpace('space-late', { x: 700, y: 0, width: 300, height: 400 }, []),
       ])
@@ -128,7 +126,7 @@ describe('node drag session frames', () => {
     const { session } = view.result.current
 
     act(() => {
-      replaceWorkspaceSpaces(harness.workspaceId, [createSpace('space-1', A_RECT, ['n1'])])
+      replaceSpacesInStore(harness.workspaceId, [createSpace('space-1', A_RECT, ['n1'])])
       view.result.current.selection.setSpaceIds(['space-1'])
       session.captureDragStartSpaceSelection()
       session.beginNodeDragSession([n1])
@@ -324,7 +322,7 @@ describe('releasing a node drag', () => {
     })
 
     act(() => {
-      replaceWorkspaceSpaces(harness.workspaceId, [
+      replaceSpacesInStore(harness.workspaceId, [
         ...harness.readStoreDocument().spaces,
         createSpace('space-late', { x: 2000, y: 2000, width: 100, height: 100 }, []),
       ])

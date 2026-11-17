@@ -126,7 +126,12 @@ export function useWorkspaceCanvasCreateChildSpace({
     ): string | null => {
       const nodeIds = options?.nodeIds ?? []
       // One read plans the whole change; the write below runs in the same call, so nothing can
-      // land between them.
+      // land between them. The write's base is the store when it runs, which is this very document:
+      // the Spaces the recipe returns are `document.spaces` planned forward, and the id returned
+      // below names the Space they hold, so neither can differ from what the write commits. The node
+      // frames come from the same document too, so they differ from the base's nodes only while a
+      // gesture holds live positions on the shown workspace (Decision 5). A plan that crossed an
+      // await would have to be made again from the recipe's own arguments.
       const document = readDocument()
       const result = createChildSpace({
         spaces: document.spaces,

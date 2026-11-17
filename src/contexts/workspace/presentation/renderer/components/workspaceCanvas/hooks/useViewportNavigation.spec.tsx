@@ -1,4 +1,4 @@
-import React, { useRef } from 'react'
+import React, { useCallback, useRef } from 'react'
 import { act, render } from '@testing-library/react'
 import type { Edge, Node, ReactFlowInstance, Viewport } from '@xyflow/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -38,6 +38,11 @@ const NODE: Node<TerminalNodeData> = {
 
 const PERSISTED_VIEWPORT: Viewport = { x: -120, y: -80, zoom: 0.6 }
 
+// The hook's effect lists `expandNode` and `focusSpaceInViewport`: a new function on every render
+// would rerun it on every render and hide an input that is missing from that list, such as
+// `nodes` (the "retries a delayed node" case relies on `nodes` alone to rerun it).
+const NO_SPACE_FOCUS = (): boolean => false
+
 function ViewportNavigationHarness({
   reactFlow,
   workspaceId = 'workspace-1',
@@ -46,7 +51,7 @@ function ViewportNavigationHarness({
   focusSpaceId = null,
   focusSequence = 1,
   nodes = [NODE],
-  focusSpaceInViewport = () => false,
+  focusSpaceInViewport = NO_SPACE_FOCUS,
 }: {
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
   workspaceId?: string
@@ -61,6 +66,7 @@ function ViewportNavigationHarness({
   const canvasRef = useRef<HTMLDivElement>(null)
   const nodesRef = useRef(nodes)
   nodesRef.current = nodes
+  const expandNode = useCallback((id: string) => nodesRef.current.find(node => node.id === id), [])
 
   useWorkspaceCanvasViewportNavigation({
     canvasRef,
@@ -73,7 +79,7 @@ function ViewportNavigationHarness({
     focusSpaceId,
     focusSequence,
     nodes,
-    expandNode: id => nodesRef.current.find(node => node.id === id),
+    expandNode,
     focusSpaceInViewport,
     focusNodeTargetZoom: 1,
   })

@@ -12,6 +12,7 @@ import type {
   TerminalNodeData,
   WorkspaceSpaceState,
 } from '../../src/contexts/workspace/presentation/renderer/types'
+import { useReadCanvasDocument } from '../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
 import type { NodeWorkerBinding } from '../../src/shared/types/nodeWorkerBinding'
 import {
   documentOf,
@@ -254,6 +255,7 @@ export function renderExplorer(documents?: Documents, options: ExplorerRenderOpt
   const expandNode = stableExpandNode()
   const rendered = renderInTwoWorkspaces(context => {
     const workspaceId = shownId(context, options)
+    const readDocument = useReadCanvasDocument()
     // The creators change with the workspace; a case that pins a reader keeps them still.
     const createDocumentNode = useStable(
       options.createDocumentNode ?? context.nodeStore.createDocumentNode,
@@ -262,7 +264,8 @@ export function renderExplorer(documents?: Documents, options: ExplorerRenderOpt
     return useWorkspaceCanvasSpaceExplorer({
       workspaceId,
       canvasRef,
-      spaces: context.canvasState.spacesRef.current,
+      // The Spaces of the provider's workspace when this renders, as the canvas passes them.
+      spaces: readDocument().spaces,
       setNodes: context.stableSetNodes,
       updateCanvasDocument: context.stableUpdateCanvasDocument,
       reactFlow: reactFlow as never,

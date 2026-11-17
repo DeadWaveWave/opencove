@@ -1,13 +1,10 @@
-import React, { useRef, useState } from 'react'
+import React, { useState } from 'react'
 import { act, cleanup, fireEvent, render, renderHook, screen } from '@testing-library/react'
 import { ReactFlowProvider, useStoreApi, useViewport, type Node } from '@xyflow/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
 import { DEFAULT_AGENT_SETTINGS } from '@contexts/settings/domain/agentSettings'
-import type {
-  TerminalNodeData,
-  WorkspaceSpaceState,
-} from '@contexts/workspace/presentation/renderer/types'
+import type { TerminalNodeData } from '@contexts/workspace/presentation/renderer/types'
 import { useWorkspaceCanvasActionRefs } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useActionRefs'
 import { useWorkspaceCanvasComposedNodeTypes } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodeTypes'
 import { useWorkspaceCanvasNodeTypes } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeTypes'
@@ -119,13 +116,9 @@ function Canvas() {
   store = useStoreApi()
   const viewport = useViewport()
   const [tick, setTick] = useState(0)
-  const spacesRef = useRef<WorkspaceSpaceState[]>([])
   const actionRefs = useWorkspaceCanvasActionRefs()
   const composed = useWorkspaceCanvasComposedNodeTypes({
     nodeStore: { ...commands },
-    canvasState: {
-      spacesRef,
-    },
     actionRefs,
     workspacePath: '/tmp/canvas-memoization',
     agentSettings: { ...DEFAULT_AGENT_SETTINGS },

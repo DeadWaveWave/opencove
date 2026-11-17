@@ -5,7 +5,6 @@ import { useWorkspaceCanvasNodeTypes } from '../nodeTypes'
 
 export function useWorkspaceCanvasComposedNodeTypes({
   nodeStore,
-  canvasState,
   workspacePath,
   onShowMessage,
   agentSettings,
@@ -16,10 +15,6 @@ export function useWorkspaceCanvasComposedNodeTypes({
     import('./useNodesStore.types').UseWorkspaceCanvasNodesStoreResult,
     'setNodes' | 'setNodeLabelColorOverride'
   >
-  canvasState: Pick<
-    ReturnType<typeof import('./useCanvasState').useWorkspaceCanvasState>,
-    'spacesRef'
-  >
   workspacePath: string
   onShowMessage?: Parameters<typeof useWorkspaceCanvasNodeTypes>[0]['onShowMessage']
   agentSettings: AgentSettings
@@ -27,14 +22,12 @@ export function useWorkspaceCanvasComposedNodeTypes({
   convertNoteToTask: (nodeId: string) => boolean
 }) {
   const { setNodes, setNodeLabelColorOverride } = nodeStore
-  const { spacesRef } = canvasState
   const selectNode: (nodeId: string, options?: { toggle?: boolean }) => void =
     useWorkspaceCanvasSelectNode({
       setNodes,
     })
 
   return useWorkspaceCanvasNodeTypes({
-    spacesRef,
     workspacePath,
     onShowMessage,
     agentProviderOrder: agentSettings.agentProviderOrder,

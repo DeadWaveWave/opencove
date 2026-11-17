@@ -27,7 +27,6 @@ function HarnessBody({
     keybindings: overrides,
     disableWhenTerminalFocused: false,
     activeSpaceId: null,
-    spaces: [],
     canvasRef,
     createSpaceFromSelectedNodes: vi.fn(),
     createNoteAtViewportCenter: vi.fn(),

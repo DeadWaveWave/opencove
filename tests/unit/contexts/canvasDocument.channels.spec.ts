@@ -9,42 +9,27 @@ import { describe, expect, it } from 'vitest'
 // fails. `~/` stands for the workspaceCanvas component directory.
 const CANVAS_DIR = 'src/contexts/workspace/presentation/renderer/components/workspaceCanvas/'
 
+// The end of the slice (#702, PR 14). `nodesRef` stays in the six files of Decision 7, which the
+// node store owns until S6. `spacesRef` and `onSpacesChange` are gone. The `onRequestPersistFlush`
+// that remains is not the canvas's: the quit flush subscription of the preload bridge and its
+// browser stand-in, the shell's quit handler, and an unused prop of the task prompt menu.
 const ALLOWED_FILES: Record<string, readonly string[]> = {
   nodesRef: [
-    'src/contexts/workspace/presentation/renderer/components/WorkspaceCanvasInner.tsx',
     '~/hooks/useApplyNodeChanges.helpers.ts',
     '~/hooks/useApplyNodeChanges.ts',
-    '~/hooks/useCanvasNodePublishers.ts',
     '~/hooks/useCanvasRuntimeIntegrations.ts',
     '~/hooks/useNodesStore.ts',
     '~/hooks/useNodesStore.types.ts',
-    '~/hooks/useSpaceDirectoryOps.ts',
     '~/view/WorkspacePixelLayer.tsx',
   ],
-  spacesRef: [
-    'src/contexts/workspace/presentation/renderer/components/WorkspaceCanvasInner.tsx',
-    '~/hooks/useCanvasNodeTypes.ts',
-    '~/hooks/useCanvasState.ts',
-    '~/hooks/useSpaceDirectoryOps.ts',
-    '~/nodeTypes.context.ts',
-    '~/nodeTypes.task.tsx',
-    '~/nodeTypes.tsx',
-  ],
-  onSpacesChange: [
-    'src/contexts/workspace/presentation/renderer/components/WorkspaceCanvasInner.tsx',
-    '~/hooks/useSpaceDirectoryOps.ts',
-  ],
+  spacesRef: [],
+  onSpacesChange: [],
   onRequestPersistFlush: [
     'src/app/preload/api.d.ts',
     'src/app/preload/index.ts',
     'src/app/renderer/browser/browserOpenCoveApi.ts',
-    'src/app/renderer/shell/AppShell.tsx',
-    'src/app/renderer/shell/components/WorkspaceMain.tsx',
     'src/app/renderer/shell/hooks/useAppQuitPersistenceFlush.ts',
     'src/contexts/task/presentation/renderer/components/promptTemplates/TaskPromptTemplatesMenu.tsx',
-    'src/contexts/workspace/presentation/renderer/components/WorkspaceCanvasInner.tsx',
-    '~/hooks/useSpaceDirectoryOps.ts',
-    '~/types.ts',
   ],
 }
 
@@ -74,16 +59,6 @@ describe('canvas document channels', () => {
     expect(holders).toEqual(expand(ALLOWED_FILES[name]))
   })
 
-  // `spacesRef` is a getter over the store: a write to it throws at run time, so a direct write
-  // is a bug even where the type would allow it.
-  it('nothing assigns spacesRef.current', () => {
-    const offenders = files.filter(file =>
-      /\bspacesRef\s*\.\s*current\s*=(?!=)/.test(sources.get(file) ?? ''),
-    )
-
-    expect(offenders).toEqual([])
-  })
-
   // The reader lets a hook read the committed document when it runs, without subscribing. A file
   // that reads through it and also subscribes to the app store would render with every store
   // change, which the move from the refs must not bring. A render-time test cannot see it: the
@@ -101,6 +76,20 @@ describe('canvas document channels', () => {
     )
 
     expect(offenders).toEqual([])
+  })
+
+  // The node types read the Spaces when they render and must not subscribe to them: a
+  // subscription would render every task card on each node commit, because sanitizing makes a new
+  // Spaces array. They read through the reader themselves, so the check above covers them; this
+  // case fails if a rewrite takes the reader out of those files and with it the check.
+  it('the node type files that read Spaces are among the files checked for a subscription', () => {
+    const readers = files.filter(file =>
+      /\buseReadCanvasDocument\(\)/.test(sources.get(file) ?? ''),
+    )
+
+    expect(readers).toEqual(
+      expect.arrayContaining([`${CANVAS_DIR}nodeTypes.tsx`, `${CANVAS_DIR}nodeTypes.task.tsx`]),
+    )
   })
 
   // A hook that is handed a reader instead of calling `useReadCanvasDocument()` is outside the

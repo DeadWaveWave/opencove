@@ -1,10 +1,7 @@
 import { act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { FILESYSTEM_ENTRY_MIME } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/filesystemDrag'
-import {
-  replaceWorkspaceNodes,
-  replaceWorkspaceSpaces,
-} from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+import { replaceWorkspaceNodes } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import {
   documentOf,
   stubOpencoveApi,
@@ -23,6 +20,7 @@ import {
   spaceAt,
   terminalNodeAt,
 } from '../../support/explorerDocumentsHarness'
+import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
 
 // The document opening, the document navigation, the explorer and the filesystem nodes read the
 // committed nodes and Spaces of the workspace whose render made them, from the store, when they
@@ -270,7 +268,7 @@ describe('the navigation of a document link', () => {
     )
 
     await act(async () => {
-      replaceWorkspaceSpaces(A, [spaceAt('space-a', ['terminal'])])
+      replaceSpacesInStore(A, [spaceAt('space-a', ['terminal'])])
       await view.result.current.openFileLink('terminal', link)
     })
 
@@ -295,7 +293,7 @@ describe('the file opened from a folder node, after its awaits', () => {
     await act(async () => {
       view.result.current.actions.openFile('folder', `${folderUri}/a.md`)
       await vi.waitFor(() => expect(stat).toHaveBeenCalled())
-      replaceWorkspaceSpaces(A, [spaceAt('space-now', ['folder'])])
+      replaceSpacesInStore(A, [spaceAt('space-now', ['folder'])])
       finish({ kind: 'file' })
     })
 

@@ -41,6 +41,7 @@ vi.mock(
 
 import { usePersistedAppState } from '../../../src/app/renderer/shell/hooks/usePersistedAppState'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
+import { requestWorkspaceDocumentPersistFlush } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 
 describe('usePersistedAppState', () => {
   afterEach(() => {
@@ -172,5 +173,52 @@ describe('usePersistedAppState', () => {
     expect(useAppStore.getState().persistNotice?.kind).toBe('write')
     act(() => deliver({ ok: true, level: 'full', bytes: 1 }))
     expect(useAppStore.getState().persistNotice).toEqual(notice)
+  })
+
+  // Every canvas flush reaches the shell only through the registration of `requestPersistFlush`
+  // with the document module (#702, PR 14), since the canvas no longer takes a flush prop.
+  describe('the flush the canvas requests through the document module', () => {
+    function Harness({ agentSettings = DEFAULT_AGENT_SETTINGS }: { agentSettings?: unknown }) {
+      usePersistedAppState({
+        workspaces: [],
+        activeWorkspaceId: null,
+        agentSettings: agentSettings as typeof DEFAULT_AGENT_SETTINGS,
+        isHydrated: true,
+        producePersistedState: () => ({
+          formatVersion: 0,
+          activeWorkspaceId: null,
+          workspaces: [],
+          settings: DEFAULT_AGENT_SETTINGS,
+        }),
+      })
+      return null
+    }
+
+    it('schedules a write and flushes it once with the next app-state change', () => {
+      const rendered = render(<Harness />)
+      schedulePersistedStateWrite.mockClear()
+      flushScheduledPersistedStateWrite.mockClear()
+
+      act(() => requestWorkspaceDocumentPersistFlush())
+
+      expect(schedulePersistedStateWrite).toHaveBeenCalledTimes(1)
+      expect(flushScheduledPersistedStateWrite).not.toHaveBeenCalled()
+
+      rendered.rerender(<Harness agentSettings={{ ...DEFAULT_AGENT_SETTINGS }} />)
+
+      expect(flushScheduledPersistedStateWrite).toHaveBeenCalledTimes(1)
+    })
+
+    it('reaches nothing after the shell is gone', () => {
+      const rendered = render(<Harness />)
+      rendered.unmount()
+      schedulePersistedStateWrite.mockClear()
+      flushScheduledPersistedStateWrite.mockClear()
+
+      requestWorkspaceDocumentPersistFlush()
+
+      expect(schedulePersistedStateWrite).not.toHaveBeenCalled()
+      expect(flushScheduledPersistedStateWrite).not.toHaveBeenCalled()
+    })
   })
 })

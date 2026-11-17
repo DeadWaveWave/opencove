@@ -7,7 +7,6 @@ import { useWorkspaceCanvasMenuActions } from '../../../src/contexts/workspace/p
 import { useWorkspaceCanvasNodesStore } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore'
 import { useWorkspaceCanvasSpaceUi } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceUi'
 import { useCanvasCollapseStore } from '../../../src/contexts/workspace/presentation/renderer/store/useCanvasCollapseStore'
-import { replaceWorkspaceSpaces } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import type {
   TerminalNodeData,
   WorkspaceSpaceState,
@@ -17,6 +16,7 @@ import {
   renderInCanvasDocument,
 } from '../../support/canvasDocumentHarness'
 import { createRowNodes, createSpace } from '../../support/canvasSelectionFixtures'
+import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
 
 // `t` is stable, as it is in the app: a callback that lists it must not be rebuilt on every render,
 // or it could hide a writer or a reader that is missing from the same list.
@@ -316,14 +316,14 @@ describe('useSpaceUi in two workspaces', () => {
     )
 
     await act(async () => {
-      replaceWorkspaceSpaces(A, [space('/dir-a')])
+      replaceSpacesInStore(A, [space('/dir-a')])
       await view.result.current.copySpacePath('space-1')
     })
     expect(copyPath).toHaveBeenLastCalledWith({ path: '/dir-a' })
 
     showB()
     await act(async () => {
-      replaceWorkspaceSpaces(B, [space('/dir-b')])
+      replaceSpacesInStore(B, [space('/dir-b')])
       await view.result.current.copySpacePath('space-1')
     })
     expect(copyPath).toHaveBeenLastCalledWith({ path: '/dir-b' })

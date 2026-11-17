@@ -12,8 +12,8 @@ import {
   resolveWorkspaceAgentLaunchBinding,
 } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useWorkspaceAgentLaunch.shared'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
-import { replaceWorkspaceSpaces } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import { assignNodeToSpaceAndExpand } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useInteractions.spaceAssignment'
+import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
 
 vi.mock(
   '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useWorkspaceAgentLaunch.shared',
@@ -221,7 +221,7 @@ describe('shared Agent launcher entrypoints', () => {
     const params = fixture()
     const { result } = renderHookWithCanvasStore(() => useWorkspaceCanvasAgentLauncher(params))
     await act(async () => {
-      replaceWorkspaceSpaces(CANVAS_STORE_TEST_WORKSPACE_ID, [
+      replaceSpacesInStore(CANVAS_STORE_TEST_WORKSPACE_ID, [
         { ...SPACE, id: 'space-late', rect: { x: 2000, y: 2000, width: 500, height: 500 } },
       ])
       await result.current.launchAgentAtFlowPosition({ x: 2100, y: 2100 })

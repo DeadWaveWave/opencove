@@ -10,7 +10,6 @@ import {
   serializeKeyChord,
   toKeyChord,
 } from '@contexts/settings/domain/keybindings'
-import type { WorkspaceSpaceState } from '../../../types'
 import { useReadCanvasDocument } from '../../../store/canvasStoreContext'
 import type { SpatialNavigationDirection } from './spatialNavigation'
 import { resolveCycledSpaceId, resolveIdleSpaceIds } from './useShortcuts.helpers'
@@ -46,7 +45,6 @@ export function useWorkspaceCanvasShortcuts({
   keybindings,
   disableWhenTerminalFocused,
   activeSpaceId,
-  spaces,
   canvasRef,
   createSpaceFromSelectedNodes,
   createNoteAtViewportCenter,
@@ -61,7 +59,6 @@ export function useWorkspaceCanvasShortcuts({
   keybindings: KeybindingOverrides
   disableWhenTerminalFocused: boolean
   activeSpaceId: string | null
-  spaces: WorkspaceSpaceState[]
   canvasRef: React.RefObject<HTMLDivElement | null>
   createSpaceFromSelectedNodes: () => void
   createNoteAtViewportCenter: () => void
@@ -72,8 +69,6 @@ export function useWorkspaceCanvasShortcuts({
   navigateSpace: (direction: SpatialNavigationDirection) => void
 }): void {
   const readDocument = useReadCanvasDocument()
-  const topLevelSpaces = useMemo(() => spaces.filter(space => !space.parentSpaceId), [spaces])
-  const spaceIds = useMemo(() => topLevelSpaces.map(space => space.id), [topLevelSpaces])
   const chordToCommand = useMemo(
     () =>
       createChordToCommandMap({
@@ -173,6 +168,9 @@ export function useWorkspaceCanvasShortcuts({
         case 'workspaceCanvas.cycleSpacesBackward':
         case 'workspaceCanvas.cycleIdleSpacesForward':
         case 'workspaceCanvas.cycleIdleSpacesBackward': {
+          // The Spaces and the nodes as the store holds them when the key is pressed.
+          const canvasDocument = readDocument()
+          const topLevelSpaces = canvasDocument.spaces.filter(space => !space.parentSpaceId)
           const nextSpaceId = resolveCycledSpaceId({
             direction:
               commandId === 'workspaceCanvas.cycleSpacesForward' ||
@@ -183,8 +181,8 @@ export function useWorkspaceCanvasShortcuts({
             spaceIds:
               commandId === 'workspaceCanvas.cycleIdleSpacesForward' ||
               commandId === 'workspaceCanvas.cycleIdleSpacesBackward'
-                ? resolveIdleSpaceIds({ spaces: topLevelSpaces, nodes: readDocument().nodes })
-                : spaceIds,
+                ? resolveIdleSpaceIds({ spaces: topLevelSpaces, nodes: canvasDocument.nodes })
+                : topLevelSpaces.map(space => space.id),
           })
 
           if (!nextSpaceId) {
@@ -220,7 +218,5 @@ export function useWorkspaceCanvasShortcuts({
     navigateSpace,
     readDocument,
     chordToCommand,
-    spaceIds,
-    topLevelSpaces,
   ])
 }

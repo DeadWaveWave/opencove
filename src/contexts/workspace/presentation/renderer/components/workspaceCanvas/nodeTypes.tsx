@@ -13,6 +13,7 @@ import { WorkspaceCanvasTaskNodeType } from './nodeTypes.task'
 import { WorkspaceCanvasTerminalNodeType } from './nodeTypes.terminal'
 import { WorkspaceCanvasWebsiteNodeType } from './nodeTypes.website'
 import { WorkspaceCanvasPluginNodeType } from './nodeTypes.plugin'
+import { useReadCanvasDocument } from '../../store/canvasStoreContext'
 import { useNodePosition } from './nodePosition'
 import type { WorkspaceCanvasNodeTypeProps } from './nodeTypes.types'
 import { useTerminalDisplayAlignment } from './TerminalDisplayAlignmentContext'
@@ -29,7 +30,6 @@ function createNodeTypes(): Record<string, FunctionComponent<WorkspaceCanvasNode
         data={data}
         id={id}
         nodePosition={nodePosition}
-        spacesRef={parameters.spacesRef}
         workspacePath={parameters.workspacePath}
         selectNode={parameters.selectNode}
         resizeNodeRef={parameters.resizeNodeRef}
@@ -69,7 +69,9 @@ function createNodeTypes(): Record<string, FunctionComponent<WorkspaceCanvasNode
   const FilesystemNodeType = ({ data, id }: WorkspaceCanvasNodeTypeProps) => {
     const parameters = useWorkspaceCanvasNodeTypeParameters()
     const nodePosition = useNodePosition(id)
-    const targetMountId = resolveFilesystemNodeMountId(id, data, parameters.spacesRef.current)
+    const readDocument = useReadCanvasDocument()
+    // Read when this renders, not subscribed: the Spaces of the store as they are now.
+    const targetMountId = resolveFilesystemNodeMountId(id, data, readDocument().spaces)
     const Component =
       data.kind === 'folder' ? WorkspaceCanvasFolderNodeType : WorkspaceCanvasDocumentNodeType
     return (
@@ -232,7 +234,6 @@ function createNodeTypes(): Record<string, FunctionComponent<WorkspaceCanvasNode
 // Component types are lifetime identities. Context supplies current commands and preferences.
 const nodeTypes = createNodeTypes()
 export function useWorkspaceCanvasNodeTypes({
-  spacesRef,
   workspacePath,
   onShowMessage,
   agentProviderOrder,
@@ -277,7 +278,6 @@ export function useWorkspaceCanvasNodeTypes({
   // should notify node consumers. Component types remain stable independently of this cache.
   const nodeTypesParameters = useMemo<WorkspaceCanvasNodeTypesParams>(
     () => ({
-      spacesRef,
       workspacePath,
       onShowMessage,
       agentProviderOrder,
@@ -319,7 +319,6 @@ export function useWorkspaceCanvasNodeTypes({
       setWebsiteFullscreenRef,
     }),
     [
-      spacesRef,
       workspacePath,
       onShowMessage,
       agentProviderOrder,

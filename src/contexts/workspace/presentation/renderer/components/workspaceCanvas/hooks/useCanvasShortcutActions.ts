@@ -2,7 +2,7 @@ import { useCallback } from 'react'
 import type { Edge, Node, ReactFlowInstance } from '@xyflow/react'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
 import type { TerminalPtyGeometryDisplayMetrics } from '@contexts/workspace/domain/terminalPtyGeometry'
-import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
+import type { TerminalNodeData } from '../../../types'
 import type { CreateNodeInput } from '../types'
 import {
   createNoteNodeAtFlowPosition,
@@ -118,7 +118,6 @@ export function useWorkspaceCanvasShortcutActions({
   enabled,
   workspaceId,
   activeSpaceId,
-  spaces,
   agentSettings,
   workspacePath,
   environmentVariables,
@@ -140,7 +139,6 @@ export function useWorkspaceCanvasShortcutActions({
   enabled: boolean
   workspaceId: string
   activeSpaceId: string | null
-  spaces: WorkspaceSpaceState[]
   agentSettings: Pick<
     AgentSettings,
     | 'defaultTerminalProfileId'
@@ -377,7 +375,6 @@ export function useWorkspaceCanvasShortcutActions({
     disableWhenTerminalFocused: agentSettings.disableAppShortcutsWhenTerminalFocused,
     keybindings: agentSettings.keybindings,
     activeSpaceId,
-    spaces,
     createSpaceFromSelectedNodes,
     createNoteAtViewportCenter,
     createTerminalAtViewportCenter,
