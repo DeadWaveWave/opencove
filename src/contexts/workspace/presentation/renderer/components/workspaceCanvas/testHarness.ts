@@ -2,6 +2,8 @@ import type { Node } from '@xyflow/react'
 import type { TerminalNodeData } from '../../types'
 import type { WorkspaceArrangeStyle } from '../../utils/workspaceArrange'
 import {
+  readCanvasCommitCounts,
+  readCanvasCommitRecords,
   readWindowCommitCounts,
   readWindowCommitRecords,
   readWindowCommitCountsByNode,
@@ -33,6 +35,9 @@ type WorkspaceCanvasTestApi = {
   getWindowCommitCountsByNode: () => Record<string, number>
   getWindowPresentationCommitCounts: () => Record<string, number>
   resetWindowCommitCounts: () => void
+  /** Commits of canvas components (experiment 647-A) since the last reset. */
+  getCanvasCommitCounts: () => Record<string, number>
+  getCanvasCommitRecords: typeof readCanvasCommitRecords
 }
 
 declare global {
@@ -108,6 +113,8 @@ function getWorkspaceCanvasTestApi(): WorkspaceCanvasTestApi | undefined {
       getWindowCommitCountsByNode: () => readWindowCommitCountsByNode(),
       getWindowPresentationCommitCounts: () => readWindowPresentationCommitCounts(),
       resetWindowCommitCounts: () => resetWindowCommitCounts(),
+      getCanvasCommitCounts: () => readCanvasCommitCounts(),
+      getCanvasCommitRecords: readCanvasCommitRecords,
       setZoom: async zoom => {
         if (!setZoomHandler || !Number.isFinite(zoom) || zoom <= 0) {
           return false

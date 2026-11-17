@@ -4,6 +4,8 @@ import type { WindowKindFamily } from '../../utils/windowKindFamily'
 const counts: Partial<Record<WindowKindFamily, number>> = {}
 const countsByNode = new Map<string, number>()
 const presentationCounts = new Map<string, number>()
+const canvasCommitCounts = new Map<string, number>()
+const canvasCommitRecords: Array<{ component: string; at: number; changed: string[] }> = []
 type CommitInputs = Record<string, unknown>
 const records: Array<{
   kind: string
@@ -68,6 +70,41 @@ export function useWindowNodeCommitProbe(inputs: { id: string; data: { kind?: st
   })
 }
 
+/**
+ * Test builds only (experiment 647-A): counts commits of a canvas component. A passive effect with
+ * no dependency list runs once per commit and never for a render React bails out of, and it holds
+ * no state, so it cannot cause a commit. With `inputs`, each commit also records which inputs
+ * changed since the previous commit: none means the commit came from internal state.
+ */
+export function useCanvasCommitProbe(component: string, inputs?: CommitInputs) {
+  const previous = useRef<CommitInputs>({})
+  useEffect(() => {
+    if (window.opencoveApi?.meta?.isTest !== true) {
+      return
+    }
+    canvasCommitCounts.set(component, (canvasCommitCounts.get(component) ?? 0) + 1)
+    if (inputs) {
+      canvasCommitRecords.push({
+        component,
+        at: performance.now(),
+        changed: Object.keys(changedInputs(previous.current, inputs)),
+      })
+      previous.current = inputs
+      if (canvasCommitRecords.length > 500) {
+        canvasCommitRecords.shift()
+      }
+    }
+  })
+}
+
+export function readCanvasCommitCounts(): Record<string, number> {
+  return Object.fromEntries(canvasCommitCounts)
+}
+
+export function readCanvasCommitRecords() {
+  return [...canvasCommitRecords]
+}
+
 /** Includes the compact shell even when a memoized runtime/header does not render. */
 export function useWindowPresentationCommitProbe(nodeId: string): void {
   useEffect(() => {
@@ -129,6 +166,8 @@ export function resetWindowCommitCounts(): void {
   records.length = 0
   countsByNode.clear()
   presentationCounts.clear()
+  canvasCommitCounts.clear()
+  canvasCommitRecords.length = 0
   for (const kind of Object.keys(counts) as WindowKindFamily[]) {
     delete counts[kind]
   }

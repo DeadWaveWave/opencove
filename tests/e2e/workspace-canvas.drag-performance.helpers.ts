@@ -175,6 +175,14 @@ export async function sampleContinuousDrag(page: Page, frameCount = 240) {
         const persisted = JSON.parse(
           (await window.opencoveApi.persistence.readWorkspaceStateRaw()) ?? '{}',
         )
+        const canvasCommitCauses: Record<string, number> = {}
+        for (const record of api.getCanvasCommitRecords?.() ?? []) {
+          const causes = record.changed.length === 0 ? ['internal'] : record.changed
+          for (const cause of causes) {
+            const key = `${record.component}:${cause}`
+            canvasCommitCauses[key] = (canvasCommitCauses[key] ?? 0) + 1
+          }
+        }
         return {
           frames,
           fps: (1000 * frames) / intervals.reduce((sum, ms) => sum + ms, 0),
@@ -188,6 +196,8 @@ export async function sampleContinuousDrag(page: Page, frameCount = 240) {
           windowCommits: api.getWindowCommitCounts(),
           windowCommitsByNode: api.getWindowCommitCountsByNode?.(),
           presentationCommits: api.getWindowPresentationCommitCounts?.(),
+          canvasCommits: api.getCanvasCommitCounts?.(),
+          canvasCommitCauses,
           persistedPositionDuringDrag: persisted.workspaces?.[0]?.nodes?.find(
             (item: { id: string }) => item.id === nodeId,
           )?.position,

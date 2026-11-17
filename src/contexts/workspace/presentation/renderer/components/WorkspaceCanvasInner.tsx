@@ -7,6 +7,7 @@ import { useCanvasCollapse } from './workspaceCanvas/collapse/useCanvasCollapse'
 import { WorkspaceCanvasProviders } from './workspaceCanvas/WorkspaceCanvasProviders'
 import { useCanvasSpaceExplorer } from './workspaceCanvas/hooks/useCanvasSpaceExplorer'
 import { useWorkspaceCanvasActionBar } from './workspaceCanvas/hooks/useCanvasActionBarActions'
+import { useCanvasCommitProbe } from './shared/windowCommitProbe'
 export function WorkspaceCanvasInner({
   workspaceId,
   onShowMessage,
@@ -34,6 +35,8 @@ export function WorkspaceCanvasInner({
   focusSpaceId,
   focusSequence,
 }: WorkspaceCanvasInnerProps) {
+  // prettier-ignore
+  useCanvasCommitProbe('WorkspaceCanvasInner', { workspaceId, onShowMessage, workspacePath, environmentVariables, worktreesRoot, onActiveSpaceChange, onOpenSpaceContextMenu, shortcutsEnabled, onAppendSpaceArchiveRecord, onViewportChange, onMinimapVisibilityChange, terminalDisplayCalibration, onChangePreserveWindowSizesOnArrange, isFocusNodeTargetZoomPreviewing, focusNodeId, focusNodeInput, focusSpaceId, nodes, spaces, viewport, activeSpaceId, agentSettings, isMinimapVisible, focusSequence, terminalDisplayMetrics })
   const reactFlow = useReactFlow<Node<import('../types').TerminalNodeData>, Edge>()
   const canvasState = workspaceCanvasHooks.useWorkspaceCanvasState({
     workspaceId,
