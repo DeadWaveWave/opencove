@@ -229,7 +229,6 @@ export function WorkspaceCanvasInner({
     enabled: shortcutsEnabled,
     workspaceId,
     activeSpaceId,
-    spaces,
     agentSettings,
     workspacePath,
     environmentVariables,

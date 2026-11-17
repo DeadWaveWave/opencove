@@ -257,7 +257,6 @@ describe('spatial navigation in useWorkspaceCanvasShortcutActions', () => {
           enabled: true,
           workspaceId: 'readers',
           activeSpaceId: null,
-          spaces,
           agentSettings: {
             ...DEFAULT_AGENT_SETTINGS,
             disableAppShortcutsWhenTerminalFocused: false,
