@@ -21,8 +21,9 @@ export type LiveNodes = ReadonlyMap<string, LiveNode>
  * The entries of the nodes a gesture owns in `liveArray`: those marked as dragging by React Flow,
  * and those whose position differs from where the gesture's baseline put them and, when
  * `committedNodes` is given, from where the store holds them now. Every other node of the array is
- * left out. A node with no baseline entry, such as a window created during the gesture, is left
- * out unless it is dragging: the gesture never held it, so there is nothing to compare with.
+ * left out. A node with no baseline entry, such as a window created during the gesture, is compared
+ * with the store only: the gesture never held it, so a window the gesture pushes is its own and
+ * one it leaves where the store has it is not.
  *
  * Two comparisons, because a frame's array holds a window the gesture did not move in one of two
  * places. The gesture's projection sets every baselined window it does not move back to its
