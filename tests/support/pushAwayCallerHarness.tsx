@@ -1,7 +1,7 @@
 import { act, render } from '@testing-library/react'
 import { ReactFlowProvider, type Node } from '@xyflow/react'
 import React, { type ReactElement } from 'react'
-import { expect, vi, type Mock } from 'vitest'
+import { expect, type Mock } from 'vitest'
 import { useAppStore } from '../../src/app/renderer/shell/store/useAppStore'
 import { useWorkspaceCanvasNodesStore } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore'
 import { readWorkspaceDocument } from '../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
@@ -46,16 +46,12 @@ export function lastCall(mock: unknown): unknown[] {
 
 export type Updater = ReturnType<typeof useWorkspaceCanvasNodesStore>['updateCanvasDocument']
 
-const onNodesCommitted = vi.fn()
-
 export function useShownNodeStore(shown: string) {
   const nodes = useWorkspaceCanvasStoreNodes(shown)
   return useWorkspaceCanvasNodesStore({
     workspaceId: shown,
     workspacePath: `/tmp/${shown}`,
     nodes,
-    onNodesCommitted,
-    isLiveGestureActive: () => false,
     standardWindowSizeBucket: 'regular',
     browserDefaultMode: 'iframe',
   })

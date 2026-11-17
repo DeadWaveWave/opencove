@@ -1,7 +1,11 @@
-import React, { useMemo } from 'react'
+import React from 'react'
 import { act, cleanup, renderHook } from '@testing-library/react'
 import { ReactFlowProvider } from '@xyflow/react'
 import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
+import {
+  useCanvasInteractionCommands,
+  useCanvasSelectionCommands,
+} from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
 import { afterEach, describe, expect, it } from 'vitest'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import { useWorkspaceCanvasNodesStore } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore'
@@ -24,39 +28,28 @@ function workspace(id: string, title: string): WorkspaceState {
 }
 
 // Only this helper knows how the canvas node store is wired to the app store.
-function renderCanvasNodesStore(
-  initialWorkspaceId: string,
-  { decorateWorkspaceB = false }: { decorateWorkspaceB?: boolean } = {},
-) {
+function renderCanvasNodesStore(initialWorkspaceId: string) {
   // The provider follows the workspace the hook is rendered for, as the canvas's does.
   const provided = { workspaceId: initialWorkspaceId }
   const view = renderHook(
     ({ workspaceId }: { workspaceId: string }) => {
-      const storeNodes = useAppStore(
+      const nodes = useAppStore(
         state => state.workspaces.find(candidate => candidate.id === workspaceId)!.nodes,
       )
-      // The canvas view of B: selected, with a live drag position, as during a gesture in B.
-      const nodes = useMemo(
-        () =>
-          decorateWorkspaceB && workspaceId === 'workspace-b'
-            ? storeNodes.map(node => ({
-                ...node,
-                selected: true,
-                dragHandle: '.drag',
-                position: { x: 777, y: 777 },
-              }))
-            : storeNodes,
-        [storeNodes, workspaceId],
-      )
-      return useWorkspaceCanvasNodesStore({
+      const store = useWorkspaceCanvasNodesStore({
         workspaceId,
         workspacePath: `/tmp/${workspaceId}`,
         nodes,
-        onNodesCommitted: () => undefined,
-        isLiveGestureActive: () => decorateWorkspaceB,
         standardWindowSizeBucket: 'regular',
         browserDefaultMode: 'iframe',
       })
+      // The canvas store of the render: its selection and its live nodes are the canvas of that
+      // workspace, as during a gesture in it.
+      return {
+        ...store,
+        selection: useCanvasSelectionCommands(),
+        interaction: useCanvasInteractionCommands(),
+      }
     },
     {
       initialProps: { workspaceId: initialWorkspaceId },
@@ -95,8 +88,6 @@ describe('workspace document commands: a late canvas write lands in the workspac
     })
     view.rerender({ workspaceId: 'workspace-b' })
     const workspaceBBefore = useAppStore.getState().workspaces[1]
-    const nodesInB = view.result.current.nodesRef.current
-    expect(nodesInB).toBe(workspaceBBefore.nodes)
 
     act(() => {
       renameInA('terminal-1', 'Renamed late')
@@ -105,15 +96,17 @@ describe('workspace document commands: a late canvas write lands in the workspac
     const [workspaceA, workspaceB] = useAppStore.getState().workspaces
     expect(workspaceA.nodes[0].data.title).toBe('Renamed late')
     expect(workspaceB).toBe(workspaceBBefore)
-    expect(view.result.current.nodesRef.current).toBe(nodesInB)
   })
 
-  it('does not copy the canvas view of the shown workspace onto nodes of the writing workspace', () => {
+  // The canvas state of the workspace that is shown (a selection and live positions, as during a
+  // gesture in B) is B's: a write of A computes from the document of A and the canvas store of the
+  // render that made it.
+  it('does not copy the canvas state of the shown workspace onto nodes of the writing workspace', () => {
     useAppStore.setState({
       workspaces: [workspace('workspace-a', 'A title'), workspace('workspace-b', 'B title')],
       activeWorkspaceId: 'workspace-a',
     })
-    const view = renderCanvasNodesStore('workspace-a', { decorateWorkspaceB: true })
+    const view = renderCanvasNodesStore('workspace-a')
     const renameInA = view.result.current.renameTerminalTitle
     const nodeInABefore = useAppStore.getState().workspaces[0].nodes[0]
 
@@ -121,7 +114,14 @@ describe('workspace document commands: a late canvas write lands in the workspac
       useAppStore.setState({ activeWorkspaceId: 'workspace-b' })
     })
     view.rerender({ workspaceId: 'workspace-b' })
-    expect(view.result.current.nodesRef.current[0].selected).toBe(true)
+    act(() => {
+      view.result.current.selection.setNodeIds(['terminal-1'])
+      view.result.current.interaction.publishLiveNodes(
+        useAppStore
+          .getState()
+          .workspaces[1].nodes.map(node => ({ ...node, position: { x: 777, y: 777 } })),
+      )
+    })
 
     act(() => {
       renameInA('terminal-1', 'Renamed late')
@@ -129,8 +129,7 @@ describe('workspace document commands: a late canvas write lands in the workspac
 
     const nodeInA = useAppStore.getState().workspaces[0].nodes[0]
     expect(nodeInA.data.title).toBe('Renamed late')
-    expect(nodeInA.selected).toBeUndefined()
-    expect(nodeInA.dragHandle).toBeUndefined()
+    expect(nodeInA.selected).toBe(false)
     expect(nodeInA.position).toBe(nodeInABefore.position)
   })
 })

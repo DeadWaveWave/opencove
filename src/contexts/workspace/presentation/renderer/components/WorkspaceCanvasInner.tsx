@@ -51,8 +51,6 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
     workspaceId,
     workspacePath,
     nodes: canvasState.flowNodes,
-    onNodesCommitted: nodePublishers.publishCommittedNodes,
-    isLiveGestureActive: nodePublishers.isLiveGestureActive,
     onShowMessage,
     standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
     browserDefaultMode: agentSettings.browserDefaultMode,

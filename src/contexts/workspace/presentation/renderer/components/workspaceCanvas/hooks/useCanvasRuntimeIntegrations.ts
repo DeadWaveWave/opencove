@@ -67,7 +67,6 @@ export function useWorkspaceCanvasRuntimeIntegrations({
     onShowMessage,
   })
   const applyChanges = useWorkspaceCanvasApplyNodeChanges({
-    nodesRef: nodeStore.nodesRef,
     onNodesChange: nodePublishers.publishLiveNodesChange,
     onNodesCommit: nodePublishers.commitNodesChange,
     onSelectedNodeIdsChange: canvasState.syncSelectedNodeIds,

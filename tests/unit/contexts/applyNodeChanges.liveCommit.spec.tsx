@@ -19,6 +19,8 @@ import { createCanvasDocumentHarness } from '../../support/canvasDocumentHarness
 
 vi.mock('@xyflow/react', () => {
   return {
+    // The change path reads the drag surface mode of React Flow's store when a batch runs.
+    useStoreApi: () => ({ getState: () => ({}) }),
     applyNodeChanges: (
       changes: Array<Record<string, unknown>>,
       nodes: Array<Record<string, unknown>>,
@@ -100,17 +102,20 @@ describe('useWorkspaceCanvasApplyNodeChanges live and commit publishing', () => 
       },
     ]
 
+    // The change path reads the nodes of the document, as the store holds them when a batch runs.
+    createCanvasDocumentHarness({
+      workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID,
+      nodes: initialNodes,
+    })
+
     function Harness() {
       const [nodes, setNodes] = useState(initialNodes)
-      const nodesRef = useRef(nodes)
-      nodesRef.current = nodes
       const isNodeDraggingRef = useRef(false)
       const nodeDragSession = useWorkspaceCanvasNodeDragSession({
         workspaceId: 'workspace-live-commit',
       })
 
       const apply = useWorkspaceCanvasApplyNodeChanges({
-        nodesRef,
         onNodesChange: next => {
           liveNodesChange(next)
           setNodes(next)

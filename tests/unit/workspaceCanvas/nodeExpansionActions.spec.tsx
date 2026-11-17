@@ -186,13 +186,14 @@ describe('collapsed window expansion actions', () => {
 
   it('reveals into nearby free space and focuses the relocated target rather than its old position', () => {
     const actions = renderActions({ expandBehavior: 'find-space' })
-    // The write runs on the canvas's copy of each node; a peer that does not move keeps it.
-    const canvasPeer = actions.view.result.current.nodeStore.nodesRef.current[1]
+    // The write runs on the committed view of each node (the document's node with the selection of
+    // the canvas store); a peer that does not move keeps its value.
+    const canvasPeer = actions.view.result.current.canvasState.flowNodes[1]
     act(() => actions.collapse().revealNode('target'))
     const [target, peer] = actions.stored().nodes
     expect(target.position).not.toEqual(actions.originalNodes[0].position)
     expectUnmoved(peer, actions.originalNodes[1])
-    expect(peer).toBe(canvasPeer)
+    expect(peer).toEqual(canvasPeer)
     expect(target.data).toBe(actions.originalNodes[0].data)
     expect(setCenter).toHaveBeenCalledWith(
       target.position.x + target.data.width / 2,
@@ -232,12 +233,12 @@ describe('collapsed window expansion actions', () => {
     const actions = renderActions()
     behavior = 'find-space'
     actions.view.rerender()
-    const canvasPeer = actions.view.result.current.nodeStore.nodesRef.current[1]
+    const canvasPeer = actions.view.result.current.canvasState.flowNodes[1]
     act(() => actions.collapse().toggleNode('target'))
     const [target, peer] = actions.stored().nodes
     expect(target.position).not.toEqual(actions.originalNodes[0].position)
     expectUnmoved(peer, actions.originalNodes[1])
-    expect(peer).toBe(canvasPeer)
+    expect(peer).toEqual(canvasPeer)
     expect(setCenter).toHaveBeenCalledWith(
       target.position.x + target.data.width / 2,
       target.position.y + target.data.height / 2,
@@ -285,7 +286,7 @@ describe('collapsed window expansion actions', () => {
     const actions = renderActions()
     act(() => actions.view.result.current.selection.setNodeIds(['peer']))
     expect(actions.storedNode('peer').selected).toBeFalsy()
-    expect(actions.view.result.current.nodeStore.nodesRef.current[1].selected).toBe(true)
+    expect(actions.view.result.current.canvasState.flowNodes[1].selected).toBe(true)
     act(() => actions.collapse().expandNode('target'))
     const peer = actions.storedNode('peer')
     expect(peer.position).not.toEqual({ x: 200, y: 0 })
@@ -406,13 +407,13 @@ describe('collapse and arrange, and its undo', () => {
   it('keeps the canvas selection flag through the arrange and the undo', () => {
     const actions = arrangedSpace()
     act(() => actions.view.result.current.selection.setNodeIds(['target']))
-    expect(actions.view.result.current.nodeStore.nodesRef.current[0].selected).toBe(true)
+    expect(actions.view.result.current.canvasState.flowNodes[0].selected).toBe(true)
     act(() => actions.collapse().collapseAndArrange('space-1'))
     expect(actions.storedNode('target').selected).toBe(true)
 
     // The canvas selects the other window; the store still flags the first.
     act(() => actions.view.result.current.selection.setNodeIds(['peer']))
-    expect(actions.view.result.current.nodeStore.nodesRef.current[1].selected).toBe(true)
+    expect(actions.view.result.current.canvasState.flowNodes[1].selected).toBe(true)
     act(() => actions.collapse().undoArrange('space-1'))
 
     expect(actions.storedNode('target').selected).toBeFalsy()

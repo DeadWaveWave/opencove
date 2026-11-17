@@ -29,7 +29,6 @@ export type DragContext = CanvasNodeStoreContext | RuntimeCanvasContext
 export function useDragUnderTest({ workspaceId, canvasState, nodeStore, publishers }: DragContext) {
   const nodeDragSession = useWorkspaceCanvasNodeDragSession({ workspaceId })
   const apply = useWorkspaceCanvasApplyNodeChanges({
-    nodesRef: nodeStore.nodesRef,
     onNodesChange: publishers.publishLiveNodesChange,
     onNodesCommit: publishers.commitNodesChange,
     onSelectedNodeIdsChange: canvasState.syncSelectedNodeIds,

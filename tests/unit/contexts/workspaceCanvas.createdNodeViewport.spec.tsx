@@ -25,8 +25,6 @@ function renderNodesStore() {
       workspaceId: 'workspace-1',
       workspacePath: '',
       nodes: useWorkspaceCanvasStoreNodes(),
-      onNodesCommitted: vi.fn(),
-      isLiveGestureActive: () => false,
       standardWindowSizeBucket: DEFAULT_AGENT_SETTINGS.standardWindowSizeBucket,
       browserDefaultMode: DEFAULT_AGENT_SETTINGS.browserDefaultMode,
     })

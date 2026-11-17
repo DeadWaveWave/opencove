@@ -116,7 +116,7 @@ describe('note to task conversion as one store write', () => {
     const { harness, view, convert } = setup()
     act(() => view.result.current.selection.setNodeIds(['a']))
     expect(harness.readStoreDocument().nodes[0].selected).toBeFalsy()
-    expect(view.result.current.nodeStore.nodesRef.current[0].selected).toBe(true)
+    expect(view.result.current.canvasState.flowNodes[0].selected).toBe(true)
 
     act(() => {
       convert('a')

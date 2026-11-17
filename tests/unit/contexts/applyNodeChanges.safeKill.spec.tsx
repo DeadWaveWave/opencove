@@ -21,6 +21,8 @@ const selectSnapGuides = (interaction: CanvasInteractionState) => interaction.sn
 
 vi.mock('@xyflow/react', () => {
   return {
+    // The change path reads the drag surface mode of React Flow's store when a batch runs.
+    useStoreApi: () => ({ getState: () => ({}) }),
     applyNodeChanges: (
       changes: Array<Record<string, unknown>>,
       nodes: Array<Record<string, unknown>>,
@@ -101,16 +103,19 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
       },
     ]
 
+    // The change path reads the nodes of the document, as the store holds them when a batch runs.
+    createCanvasDocumentHarness({
+      workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID,
+      nodes: initialNodes,
+    })
+
     function Harness() {
       const [nodes, setNodes] = useState(initialNodes)
-      const nodesRef = useRef(nodes)
-      nodesRef.current = nodes
       const nodeDragSession = useWorkspaceCanvasNodeDragSession({
         workspaceId: 'workspace-remove',
       })
 
       const apply = useWorkspaceCanvasApplyNodeChanges({
-        nodesRef,
         onNodesChange: next => {
           setNodes(next)
         },
@@ -217,11 +222,11 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
     })
 
     function Harness() {
-      const [nodes, setNodes] = useState(initialNodes)
-      const nodesRef = useRef(nodes)
-      nodesRef.current = nodes
+      const [, setNodes] = useState(initialNodes)
       const selection = useCanvasSelectionCommands()
       useLayoutEffect(() => {
+        // The selection lives in the canvas store; the base of a batch is decorated from it.
+        selection.setNodeIds(['outside-node'])
         selection.setSpaceIds(['selected-space'])
       }, [selection])
       const nodeDragSession = useWorkspaceCanvasNodeDragSession({
@@ -229,7 +234,6 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
       })
 
       const apply = useWorkspaceCanvasApplyNodeChanges({
-        nodesRef,
         onNodesChange: next => {
           setNodes(next)
         },
@@ -348,10 +352,13 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
       },
     ]
 
+    createCanvasDocumentHarness({
+      workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID,
+      nodes: initialNodes,
+    })
+
     function Harness() {
       const [nodes, setNodes] = useState(initialNodes)
-      const nodesRef = useRef(nodes)
-      nodesRef.current = nodes
       const snapGuides = useCanvasInteraction(selectSnapGuides)
       const isNodeDraggingRef = useRef(false)
       const nodeDragSession = useWorkspaceCanvasNodeDragSession({
@@ -359,7 +366,6 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
       })
 
       const apply = useWorkspaceCanvasApplyNodeChanges({
-        nodesRef,
         onNodesChange: next => {
           setNodes(next)
         },

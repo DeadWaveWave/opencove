@@ -4,7 +4,6 @@ import type { TerminalNodeData, WorkspaceSpaceRect } from '../../../types'
 import type { WorkspaceCanvasNodeDragSession } from './useNodeDragSession'
 
 export interface UseApplyNodeChangesParams {
-  nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   onNodesChange: (nodes: Node<TerminalNodeData>[]) => void
   onNodesCommit?: (nodes: Node<TerminalNodeData>[]) => void
   onSelectedNodeIdsChange?: (nodeIds: string[]) => void

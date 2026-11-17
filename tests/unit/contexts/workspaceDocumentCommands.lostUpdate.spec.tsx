@@ -34,8 +34,6 @@ function renderCanvasNodesStore() {
         workspaceId: 'workspace-1',
         workspacePath: '/tmp/workspace-1',
         nodes,
-        onNodesCommitted: () => undefined,
-        isLiveGestureActive: () => false,
         standardWindowSizeBucket: 'regular',
         browserDefaultMode: 'iframe',
       })
