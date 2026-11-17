@@ -124,7 +124,7 @@ interface InteractionSnapshot<T> {
  * renders its subscribers (arm B of #738, "Render priority"). The value lives in React state that
  * the store's `subscribe` sets, so a write from an animation frame renders at default priority,
  * after the frame, as the canvas's own `setState` calls do; a write from a discrete event renders
- * in that event's batch. `useStore` (`useSyncExternalStore`) would render every write at sync
+ * in that event's batch. `useStore` would render every write at sync
  * priority instead, inside the frame, and is deliberately not used here. Every subscriber of the
  * slice goes through this hook, so guides, previews and nodes stay in one lane.
  *
