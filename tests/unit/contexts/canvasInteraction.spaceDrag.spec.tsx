@@ -79,6 +79,13 @@ describe('a frame of a Space drag', () => {
     expect(interaction.nodeDragFramePreview).toBeNull()
   })
 
+  // The type test of this is in `useCanvasState.spec.ts`, which `pnpm check` compiles.
+  it('returns only its pointer handler: the preview is in the slice, not in the hook', () => {
+    const { view } = renderOpenSpace()
+
+    expect(Object.keys(view.result.current.drag)).toEqual(['handleSpaceDragHandlePointerDown'])
+  })
+
   it('shows the Space under the pointer in the preview as soon as the pointer is down', () => {
     const { view } = renderOpenSpace()
 

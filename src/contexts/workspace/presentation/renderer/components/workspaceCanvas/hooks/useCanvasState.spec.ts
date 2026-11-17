@@ -1,7 +1,10 @@
+import type { ComponentProps } from 'react'
 import { describe, expect, it } from 'vitest'
 import type { WorkspaceCanvasProps } from '../types'
+import type { CanvasFlowHost } from '../CanvasFlowHost'
 import type { WorkspaceCanvasViewProps } from '../WorkspaceCanvasView.types'
 import type { useWorkspaceCanvasState } from './useCanvasState'
+import type { useWorkspaceCanvasSpaceDrag } from './useSpaceDrag'
 import type {
   UseWorkspaceCanvasNodesStoreParams,
   UseWorkspaceCanvasNodesStoreResult,
@@ -96,5 +99,18 @@ describe('the retired canvas channels', () => {
     expect(props.magneticSnappingEnabled).toBeUndefined()
     // @ts-expect-error -- onToggleMagneticSnapping is retired; the menus call the command (#738)
     expect(props.onToggleMagneticSnapping).toBeUndefined()
+  })
+
+  // #738 (S6 of #647), PR 6: the Space drag's frame preview is in the `interaction` slice, and the
+  // flow host reads it there. The hook returns its pointer handler only, and the host takes no
+  // preview from Inner.
+  it('do not keep the Space drag preview in the hook or in the host props', () => {
+    const drag = {} as ReturnType<typeof useWorkspaceCanvasSpaceDrag>
+    const hostProps = {} as ComponentProps<typeof CanvasFlowHost>
+
+    // @ts-expect-error -- spaceFramePreview is retired; the host reads spaceDragFramePreview from the slice (#738)
+    expect(drag.spaceFramePreview).toBeUndefined()
+    // @ts-expect-error -- spaceDragFramePreview is retired as a prop; the host reads it from the slice (#738)
+    expect(hostProps.spaceDragFramePreview).toBeUndefined()
   })
 })
