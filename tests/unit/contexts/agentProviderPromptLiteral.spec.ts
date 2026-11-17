@@ -1,3 +1,4 @@
+import { createTestAgentLaunchArtifactRoot } from '../../support/agentLaunchArtifactRoot'
 import { assertProviderInitialPrompt } from '../../../src/contexts/agent/domain/providerInitialPromptPolicy'
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
@@ -22,7 +23,10 @@ const prompts = [
   '--model=other',
   '--approve\nsecond line',
 ]
-for (const provider of createBuiltinAgentProviderContributions({ runtimePlatform: 'linux' })) {
+for (const provider of createBuiltinAgentProviderContributions({
+  artifactRoot: createTestAgentLaunchArtifactRoot(),
+  runtimePlatform: 'linux',
+})) {
   describe(`${provider.descriptor.id} initial prompt encoding`, () => {
     it.each(prompts)('encodes %j without changing the launch mode', async input => {
       const prompt = input.trim()
@@ -121,7 +125,7 @@ for (const provider of createBuiltinAgentProviderContributions({ runtimePlatform
 }
 it('covers every registered built-in provider', () => {
   expect(
-    createBuiltinAgentProviderContributions()
+    createBuiltinAgentProviderContributions({ artifactRoot: createTestAgentLaunchArtifactRoot() })
       .map(provider => provider.descriptor.id)
       .sort(),
   ).toEqual([...AGENT_PROVIDER_IDS].sort())
@@ -131,9 +135,9 @@ for (const id of ['opencode', 'gemini'] as const) {
   it.each(['--continue', '--approve', '--dangerously-skip-permissions', '-p'])(
     `${id} keeps the sibling model value %j literal`,
     async model => {
-      const provider = createBuiltinAgentProviderContributions().find(
-        entry => entry.descriptor.id === id,
-      )!
+      const provider = createBuiltinAgentProviderContributions({
+        artifactRoot: createTestAgentLaunchArtifactRoot(),
+      }).find(entry => entry.descriptor.id === id)!
       const managed = await createManagedAgentLaunchPlan(provider, {
         mode: 'new',
         prompt: 'Explain the change',

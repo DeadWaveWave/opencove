@@ -1,24 +1,25 @@
+import { createTestAgentLaunchArtifactRoot } from '../../support/agentLaunchArtifactRoot'
 import { parseArgs } from '../../fixtures/provider-argv/pi.mjs'
 // @vitest-environment node
 import { access } from 'node:fs/promises'
 import { afterEach, expect, it, vi } from 'vitest'
 import { PiAgentProviderContribution } from '../../../src/contexts/agent/infrastructure/providers/pi/PiAgentProviderContribution'
 import { createManagedAgentLaunchPlan } from '../../../src/contexts/agent/application/use-cases/createManagedAgentLaunchPlan'
-import type { TemporaryProviderConfig } from '../../../src/contexts/agent/infrastructure/providers/shared/TemporaryProviderConfig'
-const files = vi.hoisted(() => [] as TemporaryProviderConfig[])
+import type { AgentLaunchArtifactFile } from '../../../src/contexts/agent/infrastructure/providers/shared/AgentLaunchArtifactFile'
+const files = vi.hoisted(() => [] as AgentLaunchArtifactFile[])
 vi.mock(
-  '../../../src/contexts/agent/infrastructure/providers/shared/TemporaryProviderConfig',
+  '../../../src/contexts/agent/infrastructure/providers/shared/AgentLaunchArtifactFile',
   async importOriginal => {
     const actual =
       await importOriginal<
-        typeof import('../../../src/contexts/agent/infrastructure/providers/shared/TemporaryProviderConfig')
+        typeof import('../../../src/contexts/agent/infrastructure/providers/shared/AgentLaunchArtifactFile')
       >()
     return {
       ...actual,
-      createTemporaryProviderConfig: async (
-        ...args: Parameters<typeof actual.createTemporaryProviderConfig>
+      createAgentLaunchArtifactFile: async (
+        ...args: Parameters<typeof actual.createAgentLaunchArtifactFile>
       ) => {
-        const file = await actual.createTemporaryProviderConfig(...args)
+        const file = await actual.createAgentLaunchArtifactFile(...args)
         files.push(file)
         return file
       },
@@ -43,6 +44,7 @@ it.each(['Explain the change', 'Refactor'])(
     const dispose = vi.fn(async () => {})
     const commit = vi.fn()
     const provider = new PiAgentProviderContribution({
+      artifactRoot: createTestAgentLaunchArtifactRoot(),
       channel: {
         reserveSpawn: async () => ({
           usesHook: true,
@@ -73,7 +75,10 @@ it.each(['--continue', '--approve', 'config', 'update', '@file'])(
   'refuses %j before reserving hooks or creating files',
   async prompt => {
     const reserveSpawn = vi.fn()
-    const provider = new PiAgentProviderContribution({ channel: { reserveSpawn } as never })
+    const provider = new PiAgentProviderContribution({
+      artifactRoot: createTestAgentLaunchArtifactRoot(),
+      channel: { reserveSpawn } as never,
+    })
     await expect(
       createManagedAgentLaunchPlan(provider, { ...input, prompt }),
     ).rejects.toMatchObject({ details: { reason: 'initial_prompt_unsupported' } })

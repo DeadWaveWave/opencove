@@ -1,3 +1,4 @@
+import { createTestAgentLaunchArtifactRoot } from '../../support/agentLaunchArtifactRoot'
 import { spawn } from 'node:child_process'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
@@ -16,6 +17,7 @@ it.skipIf(process.platform !== 'win32')(
     channel.onState(event => events.push(event))
     try {
       const provider = new ClaudeCodeAgentProviderContribution({
+        artifactRoot: createTestAgentLaunchArtifactRoot(),
         channel,
         runtimeExecutable: resolve('node_modules/electron/dist/electron.exe'),
         runtimePlatform: 'win32',

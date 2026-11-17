@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { createTestAgentLaunchArtifactRoot } from '../../support/agentLaunchArtifactRoot'
 import { afterEach, expect, it, vi } from 'vitest'
 import { agentTestStubArgs } from '../../../src/shared/utils/agentTestStubArgs'
 import { prepareAgentLaunch } from '../../../src/app/main/controlSurface/handlers/prepareAgentLaunch'
@@ -16,7 +17,11 @@ it.each(['initial-prompt-argv', 'codex-prompt-strict', 'claude-prompt-strict'])(
     vi.stubEnv('OPENCOVE_TEST_AGENT_STUB_SCRIPT', '/fixture/stub.mjs')
     vi.stubEnv('OPENCOVE_TEST_USE_REAL_AGENTS', '0')
     const launched = await prepareAgentLaunch({
-      registry: new AgentProviderRegistry(createBuiltinAgentProviderContributions()),
+      registry: new AgentProviderRegistry(
+        createBuiltinAgentProviderContributions({
+          artifactRoot: createTestAgentLaunchArtifactRoot(),
+        }),
+      ),
       provider: 'codex',
       cwd: '/fixture',
       agentFullAccess: false,

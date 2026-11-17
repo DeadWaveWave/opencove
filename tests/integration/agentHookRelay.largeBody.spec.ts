@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { createTestAgentLaunchArtifactRoot } from '../support/agentLaunchArtifactRoot'
 import { spawn } from 'node:child_process'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -26,6 +27,7 @@ async function relay(input: string, provider: 'claude' | 'codex' = 'claude') {
       `import { writeFile } from 'node:fs/promises'; globalThis.fetch = async (_url, options) => { await writeFile(${JSON.stringify(capture)}, options.body); return new Response(null, {status:204}); };`,
     )
     const invocation = await createAgentHookRelay({
+      artifactRoot: createTestAgentLaunchArtifactRoot(),
       provider,
       runtimeExecutable: process.execPath,
       runtimePlatform: process.platform,

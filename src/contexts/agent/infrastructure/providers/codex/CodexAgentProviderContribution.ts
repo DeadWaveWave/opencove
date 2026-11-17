@@ -1,3 +1,4 @@
+import type { AgentLaunchArtifactRoot } from '../shared/AgentLaunchArtifactFile'
 import { AGENT_PROVIDER_DESCRIPTORS } from '../../../../../shared/contracts/agentProviderDescriptors'
 import { managedHookCoverage } from '../shared/ManagedHookCoverage'
 import { connect } from 'node:net'
@@ -32,6 +33,7 @@ const codexHookEvents = [
 ] as const
 
 export interface CodexAgentProviderContributionOptions {
+  readonly artifactRoot: AgentLaunchArtifactRoot
   readonly submitDelayMs?: number
   readonly channel?: AgentHookChannel
   readonly clientVersion?: string | null
@@ -83,6 +85,7 @@ export class CodexAgentProviderContribution implements AgentProviderContribution
     },
   }
 
+  private readonly artifactRoot: AgentLaunchArtifactRoot
   private readonly channel?: AgentHookChannel
   private readonly clientVersion: string
   private readonly hookTrustResolver: CodexHookTrustResolver
@@ -90,7 +93,8 @@ export class CodexAgentProviderContribution implements AgentProviderContribution
   private readonly runtimePlatform: NodeJS.Platform
   private readonly sessionDiscovery: CodexSessionFileDiscovery
 
-  constructor(options: CodexAgentProviderContributionOptions = {}) {
+  constructor(options: CodexAgentProviderContributionOptions) {
+    this.artifactRoot = options.artifactRoot
     this.prompting = { supported: true, submitDelayMs: options.submitDelayMs ?? 300 }
     this.channel = options.channel
     this.clientVersion = normalizeCodexClientVersion(options.clientVersion)
@@ -168,6 +172,7 @@ export class CodexAgentProviderContribution implements AgentProviderContribution
       }
     }
     const relay = await createAgentHookRelay({
+      artifactRoot: this.artifactRoot,
       provider: 'codex',
       runtimeExecutable: this.runtimeExecutable,
       runtimePlatform: this.runtimePlatform,

@@ -1,3 +1,4 @@
+import { createTestAgentLaunchArtifactRoot } from '../../support/agentLaunchArtifactRoot'
 import { admittedGrantInvocation } from './admittedGrantInvocation.testUtils'
 import { vi } from 'vitest'
 import { pathToFileURL } from 'node:url'
@@ -112,7 +113,10 @@ export async function createPromptWorker(options: {
     ptyStreamHub: hub,
     topology,
     agentProviderRegistry: new AgentProviderRegistry(
-      createBuiltinAgentProviderContributions({ runtimePlatform: 'linux' }),
+      createBuiltinAgentProviderContributions({
+        artifactRoot: createTestAgentLaunchArtifactRoot(),
+        runtimePlatform: 'linux',
+      }),
     ),
   }
   registerSessionHandlers(surface, deps)

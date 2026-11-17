@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { createTestAgentLaunchArtifactRoot } from '../../support/agentLaunchArtifactRoot'
 import { expect, it } from 'vitest'
 import { parseClaude } from '../../fixtures/provider-argv/claudeParser.mjs'
 import { parseArgs } from '../../fixtures/provider-argv/pi.mjs'
@@ -27,7 +28,10 @@ const prompts = [
   'Explain\n中文 "quoted"; $x `id`',
   '--help\r\n第二行',
 ]
-for (const provider of createBuiltinAgentProviderContributions({ runtimePlatform: 'linux' })) {
+for (const provider of createBuiltinAgentProviderContributions({
+  artifactRoot: createTestAgentLaunchArtifactRoot(),
+  runtimePlatform: 'linux',
+})) {
   const id = provider.descriptor.id
   for (const model of [null, 'chosen']) {
     it.each(prompts)(`${id}/${model} parses real generated argv for %j`, async prompt => {

@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { createTestAgentLaunchArtifactRoot } from '../../support/agentLaunchArtifactRoot'
 import { EventEmitter } from 'node:events'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { Readable } from 'node:stream'
@@ -70,8 +71,12 @@ async function fixture(
   hook.channel.setResidentContextEnabled!(async () => true)
   const contribution =
     provider === 'claude'
-      ? new ClaudeCodeAgentProviderContribution({ channel: hook.channel })
+      ? new ClaudeCodeAgentProviderContribution({
+          artifactRoot: createTestAgentLaunchArtifactRoot(),
+          channel: hook.channel,
+        })
       : new CodexAgentProviderContribution({
+          artifactRoot: createTestAgentLaunchArtifactRoot(),
           channel: hook.channel,
           runtimePlatform: 'linux',
           hookTrustResolver: async () => 'hooks.state={}',

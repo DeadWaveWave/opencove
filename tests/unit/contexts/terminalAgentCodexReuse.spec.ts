@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { createTestAgentLaunchArtifactRoot } from '../../support/agentLaunchArtifactRoot'
 import { EventEmitter } from 'node:events'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { connect } from 'node:net'
@@ -80,6 +81,7 @@ it.skipIf(process.platform === 'win32')(
     const metadata: TerminalSessionMetadataEvent[] = []
     registry.onMetadata(event => metadata.push(event))
     const provider = new CodexAgentProviderContribution({
+      artifactRoot: createTestAgentLaunchArtifactRoot(),
       channel: {
         async start() {},
         getInstallState: () => 'installed',

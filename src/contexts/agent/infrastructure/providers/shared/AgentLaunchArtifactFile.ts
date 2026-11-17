@@ -1,41 +1,48 @@
-import { chmod, mkdtemp, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { AgentRuntimeArtifact } from '../../../application/ports/AgentProviderContribution'
 import { createAgentLaunchCleanupError } from '../../../application/services/AgentLaunchCleanupError'
 
-export interface TemporaryProviderConfig extends AgentRuntimeArtifact {
+declare const agentLaunchArtifactRootBrand: unique symbol
+
+/** App-owned launch storage, constructed from userData only at composition boundaries. */
+export type AgentLaunchArtifactRoot = string & { readonly [agentLaunchArtifactRootBrand]: true }
+
+export interface AgentLaunchArtifactFile extends AgentRuntimeArtifact {
   readonly path: string
 }
 
-interface TemporaryProviderConfigFileSystem {
+interface AgentLaunchArtifactFileSystem {
   readonly chmod: typeof chmod
+  readonly mkdir: typeof mkdir
   readonly mkdtemp: typeof mkdtemp
   readonly rm: typeof rm
   readonly writeFile: typeof writeFile
 }
 
-const nodeFileSystem: TemporaryProviderConfigFileSystem = { chmod, mkdtemp, rm, writeFile }
+const nodeFileSystem: AgentLaunchArtifactFileSystem = { chmod, mkdir, mkdtemp, rm, writeFile }
 
-export async function createTemporaryProviderConfig(
+export async function createAgentLaunchArtifactFile(
+  root: AgentLaunchArtifactRoot,
   prefix: string,
   filename: string,
   contents: string,
-  fileSystem: TemporaryProviderConfigFileSystem = nodeFileSystem,
-): Promise<TemporaryProviderConfig> {
-  const directory = await fileSystem.mkdtemp(join(tmpdir(), prefix))
+  fileSystem: AgentLaunchArtifactFileSystem = nodeFileSystem,
+): Promise<AgentLaunchArtifactFile> {
+  await fileSystem.mkdir(root, { recursive: true, mode: 0o700 })
+  const directory = await fileSystem.mkdtemp(join(root, prefix))
   const path = join(directory, filename)
   try {
     await fileSystem.chmod(directory, 0o700)
     await fileSystem.writeFile(path, contents, { encoding: 'utf8', mode: 0o600 })
   } catch (setupError) {
     try {
-      await removeTemporaryProviderDirectory(directory, fileSystem)
+      await removeAgentLaunchArtifactDirectory(directory, fileSystem)
     } catch (cleanupError) {
       throw createAgentLaunchCleanupError(
         setupError,
         cleanupError,
-        'Temporary Agent Provider config setup and rollback both failed.',
+        'Agent launch artifact setup and rollback both failed.',
       )
     }
     throw setupError
@@ -53,7 +60,7 @@ export async function createTemporaryProviderConfig(
         return disposalPromise
       }
 
-      const disposal = removeTemporaryProviderDirectory(directory, fileSystem).then(() => {
+      const disposal = removeAgentLaunchArtifactDirectory(directory, fileSystem).then(() => {
         disposed = true
       })
       disposalPromise = disposal
@@ -68,9 +75,9 @@ export async function createTemporaryProviderConfig(
   }
 }
 
-function removeTemporaryProviderDirectory(
+function removeAgentLaunchArtifactDirectory(
   directory: string,
-  fileSystem: TemporaryProviderConfigFileSystem,
+  fileSystem: AgentLaunchArtifactFileSystem,
 ): Promise<void> {
   return fileSystem.rm(directory, { force: true, recursive: true })
 }

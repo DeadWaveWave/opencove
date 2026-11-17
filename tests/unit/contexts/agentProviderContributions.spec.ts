@@ -1,3 +1,4 @@
+import { createTestAgentLaunchArtifactRoot } from '../../support/agentLaunchArtifactRoot'
 import { chmod, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -76,6 +77,7 @@ describe('ClaudeCodeAgentProviderContribution', () => {
     const hook = channel('claude')
     const artifacts = new AgentLaunchArtifactScope()
     const provider = new ClaudeCodeAgentProviderContribution({
+      artifactRoot: createTestAgentLaunchArtifactRoot(),
       channel: hook.channel,
       detector,
       runtimeExecutable: '/runtime/node',
@@ -170,6 +172,7 @@ describe('CodexAgentProviderContribution', () => {
       const hook = channel('codex')
       const artifacts = new AgentLaunchArtifactScope()
       const provider = new CodexAgentProviderContribution({
+        artifactRoot: createTestAgentLaunchArtifactRoot(),
         channel: hook.channel,
         clientVersion: '0.3.0',
         runtimeExecutable: '/runtime/node',
@@ -215,6 +218,7 @@ describe('CodexAgentProviderContribution', () => {
     const artifacts = new AgentLaunchArtifactScope()
     const resolveTrust = vi.fn(async () => "hooks.state={'hook'={trusted_hash='sha256:abc'}}")
     const provider = new CodexAgentProviderContribution({
+      artifactRoot: createTestAgentLaunchArtifactRoot(),
       channel: hook.channel,
       detector,
       hookTrustResolver: resolveTrust,
@@ -252,6 +256,7 @@ describe('CodexAgentProviderContribution', () => {
     const hook = channel('codex')
     const artifacts = new AgentLaunchArtifactScope()
     const provider = new CodexAgentProviderContribution({
+      artifactRoot: createTestAgentLaunchArtifactRoot(),
       channel: hook.channel,
       detector,
       hookTrustResolver: vi.fn(async () => await Promise.reject(new Error('old Codex'))),
@@ -274,6 +279,7 @@ describe('CodexAgentProviderContribution', () => {
     const artifacts = new AgentLaunchArtifactScope()
     try {
       const provider = new CodexAgentProviderContribution({
+        artifactRoot: createTestAgentLaunchArtifactRoot(),
         submitDelayMs: 17,
         runtimePlatform: 'linux',
       })

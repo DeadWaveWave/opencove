@@ -1,10 +1,13 @@
+import { createTestAgentLaunchArtifactRoot } from '../../support/agentLaunchArtifactRoot'
 import { describe, expect, it } from 'vitest'
 import { AgentLaunchArtifactScope } from '../../../src/contexts/agent/application/services/AgentLaunchArtifactScope'
 import { ClaudeCodeAgentProviderContribution } from '../../../src/contexts/agent/infrastructure/providers/claude-code/ClaudeCodeAgentProviderContribution'
 
 describe('managed Claude launch identity', () => {
   it('assigns different explicit UUIDs to concurrent new launches in the same directory', async () => {
-    const provider = new ClaudeCodeAgentProviderContribution()
+    const provider = new ClaudeCodeAgentProviderContribution({
+      artifactRoot: createTestAgentLaunchArtifactRoot(),
+    })
     const artifacts = new AgentLaunchArtifactScope()
     try {
       const command = {
@@ -44,7 +47,9 @@ describe('managed Claude launch identity', () => {
   })
 
   it('retains the explicit session ID when resuming', async () => {
-    const provider = new ClaudeCodeAgentProviderContribution()
+    const provider = new ClaudeCodeAgentProviderContribution({
+      artifactRoot: createTestAgentLaunchArtifactRoot(),
+    })
     const artifacts = new AgentLaunchArtifactScope()
     const resumeSessionId = '22222222-2222-4222-8222-222222222222'
     try {

@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { createTestAgentLaunchArtifactRoot } from '../support/agentLaunchArtifactRoot'
 import { spawn } from 'node:child_process'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -20,6 +21,7 @@ process.stdin[Symbol.asyncIterator] = function () { clock = 2000; process.stdout
 globalThis.fetch = async (_url, options) => { process.stdout.write(JSON.stringify({ headers: options.headers, body: options.body, sentAt: Date.now() })+'\\n'); return { ok: true } };`,
   )
   const relay = await createAgentHookRelay({
+    artifactRoot: createTestAgentLaunchArtifactRoot(),
     provider: 'claude',
     runtimeExecutable: process.execPath,
     runtimePlatform: process.platform,

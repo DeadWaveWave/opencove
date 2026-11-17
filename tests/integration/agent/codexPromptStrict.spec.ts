@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { createTestAgentLaunchArtifactRoot } from '../../support/agentLaunchArtifactRoot'
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -66,6 +67,7 @@ it.skipIf(process.platform === 'win32')(
         OPENCOVE_TEST_PROMPT_DIALOG: dialog,
       }
       const provider = new CodexAgentProviderContribution({
+        artifactRoot: createTestAgentLaunchArtifactRoot(),
         runtimePlatform: 'linux',
         runtimeExecutable: process.execPath,
         hookTrustResolver: async () => "hooks.state={'fixture'={trusted_hash='sha256:fixture'}}",

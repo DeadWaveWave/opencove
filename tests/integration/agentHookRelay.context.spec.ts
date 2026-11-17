@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { createTestAgentLaunchArtifactRoot } from '../support/agentLaunchArtifactRoot'
 import { spawn } from 'node:child_process'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -53,6 +54,7 @@ it.each(
     const root = await mkdtemp(join(tmpdir(), 'opencove-relay-context-'))
     const artifacts = new AgentLaunchArtifactScope()
     const relay = await createAgentHookRelay({
+      artifactRoot: createTestAgentLaunchArtifactRoot(),
       provider,
       runtimeExecutable: process.execPath,
       runtimePlatform: process.platform,

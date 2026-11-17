@@ -1,3 +1,4 @@
+import { createTestAgentLaunchArtifactRoot } from '../../support/agentLaunchArtifactRoot'
 import { AgentLaunchArtifactScope } from '../../../src/contexts/agent/application/services/AgentLaunchArtifactScope'
 // @vitest-environment node
 import fs from 'node:fs/promises'
@@ -106,6 +107,7 @@ it('the Claude provider passes a per-launch environment into the hook reservatio
     dispose: async () => {},
   }))
   const provider = new ClaudeCodeAgentProviderContribution({
+    artifactRoot: createTestAgentLaunchArtifactRoot(),
     channel: {
       reserveSpawn,
       start: async () => {},

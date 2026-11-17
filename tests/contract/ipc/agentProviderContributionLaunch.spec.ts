@@ -37,7 +37,7 @@ describe('local IPC agent provider contribution launch', () => {
       }),
       removeHandler: vi.fn(),
     }
-    vi.doMock('electron', () => ({ ipcMain }))
+    vi.doMock('electron', () => ({ app: { getPath: () => process.cwd() }, ipcMain }))
     vi.doMock('../../../src/contexts/agent/infrastructure/cli/AgentLaunchSpawnResolver', () => ({
       resolveAgentLaunchSpawn: vi.fn(async ({ cwd, command, args, env }) => ({
         command,
