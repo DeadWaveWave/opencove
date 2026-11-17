@@ -1,5 +1,5 @@
 import { act } from '@testing-library/react'
-import type { Node } from '@xyflow/react'
+import { useStoreApi, type Node } from '@xyflow/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import { useCanvasNodeWriter } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodeWriter'
@@ -22,6 +22,7 @@ import {
 } from '../../support/agentRuntimeHarness'
 import { createRowNodes } from '../../support/canvasSelectionFixtures'
 import { sizedNode } from '../../support/nodeDragHarness'
+import { NODE_DRAG_HANDLE_SELECTOR } from '../../../src/contexts/workspace/presentation/renderer/utils/nodeFrameResize'
 
 // The canvas's node writer (#738, PR 4): what it writes, from what, and for which workspace. It
 // is called here from a hook below the providers, with nothing of `WorkspaceCanvasInner`.
@@ -38,6 +39,7 @@ function useWriterWithStore() {
     writer: useCanvasNodeWriter(),
     selection: useCanvasSelectionCommands(),
     interaction: useCanvasInteractionCommands(),
+    reactFlow: useStoreApi(),
   }
 }
 
@@ -202,6 +204,38 @@ describe('the base of a recipe', () => {
     act(() => view.result.current.writer.updateNodes(nodes => nodes, { flush: true }))
 
     expect(harness.flush).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('the node writer: what it writes besides the recipe', () => {
+  // `ensureNodesHaveInitialDimensions` runs for every workspace, as before PR 4.
+  it('gives initial dimensions to the nodes it writes to a workspace that is not shown', () => {
+    const { view } = renderWriter({ active: B })
+    const unsized = { ...createRowNodes(['n'])[0], position: { x: 0, y: 900 } }
+
+    act(() => view.result.current.writer.updateNodes(nodes => [...nodes, unsized]))
+
+    expect(nodeOf(A, 'n').initialWidth).toBe(unsized.data.width)
+    expect(nodeOf(A, 'n').initialHeight).toBe(unsized.data.height)
+  })
+
+  // The committed view's `dragHandle` follows React Flow's drag-surface mode, as `flowNodes` does.
+  it('hands a recipe the drag handle of the drag-surface mode', () => {
+    const { view } = renderWriter()
+    const seen: Array<string | undefined> = []
+    act(() => {
+      view.result.current.selection.setNodeIds(['b'])
+      view.result.current.reactFlow.setState({ coveDragSurfaceSelectionMode: true } as never)
+    })
+
+    act(() =>
+      view.result.current.writer.updateNodes(nodes => {
+        seen.push(...nodes.map(node => node.dragHandle))
+        return nodes
+      }),
+    )
+
+    expect(seen).toEqual([NODE_DRAG_HANDLE_SELECTOR, undefined, NODE_DRAG_HANDLE_SELECTOR])
   })
 })
 

@@ -307,6 +307,36 @@ describe('a canvas write that moves a window the gesture did not move', () => {
   })
 })
 
+// A window that the drag did not hold at its start has no baseline, so the drag's projection
+// keeps whatever position its base gives it. Before PR 4 a canvas write ended the overlay, so the
+// next frame computed from the store and a canvas writer's move of such a window survived the
+// release. From PR 4 the overlay stays and masks it. PR 5 narrows the overlay and flips this.
+describe('a window created during the drag, then moved by a canvas writer', () => {
+  const addD = (nodes: Node<TerminalNodeData>[]) => [
+    ...nodes,
+    { ...nodes[2], id: 'd', position: { x: 3000, y: 0 } },
+  ]
+  const moveD = (nodes: Node<TerminalNodeData>[]) =>
+    nodes.map(node => (node.id === 'd' ? { ...node, position: { x: 5000, y: 0 } } : node))
+
+  it('is masked and overwritten at the release (lost from PR 4; kept before it)', () => {
+    const { harness, view, runFrames } = setup()
+    const xOf = () => harness.readStoreDocument().nodes.find(node => node.id === 'd')?.position.x
+    act(() => view.result.current.apply(drag('a', 0, 30)))
+    runFrames()
+    act(() => view.result.current.nodeStore.setNodes(addD))
+    act(() => view.result.current.apply(drag('a', 0, 40)))
+    runFrames()
+
+    act(() => view.result.current.nodeStore.setNodes(moveD))
+    expect(xOf()).toBe(5000)
+    expect(view.result.current.shown.find(node => node.id === 'd')?.position.x).toBe(3000)
+
+    act(() => view.result.current.apply(drop('a', 0, 40)))
+    expect(xOf()).toBe(3000)
+  })
+})
+
 // After a write from elsewhere the canvas write still computes from the committed view, and the
 // overlay still stays (S6, PR 4). A select batch while a drag is live is a release (the gesture
 // ends with it), so it computes from the live view as before.
@@ -446,6 +476,25 @@ describe('a gesture across a workspace switch', () => {
     act(() => applyOfA([{ type: 'select', id: 'a', selected: true }] as never))
 
     expect(documentOf(A).nodes.find(node => node.id === 'a')?.selected).toBe(true)
+    expect(documentOf(B).nodes).toBe(nodesOfB)
+  })
+
+  // A release that reaches the callback of A after the switch lands the drag in A, where it
+  // began: the dragged window is stored at the release position, A's overlay ends, B is untouched.
+  it('lands a release delivered to the callback of A after the switch in A', () => {
+    const { view, showB } = renderTwoWorkspaces()
+    const runFrames = stubFrames()
+    const applyOfA = view.result.current.apply
+    const interactionOfA = view.result.current.readInteraction
+    act(() => applyOfA(drag('a', 0, 30)))
+    runFrames()
+    const nodesOfB = documentOf(B).nodes
+    showB()
+
+    act(() => applyOfA(drop('a', 0, 40)))
+
+    expect(documentOf(A).nodes.find(node => node.id === 'a')?.position.y).toBe(40)
+    expect(interactionOfA().liveNodes).toBeNull()
     expect(documentOf(B).nodes).toBe(nodesOfB)
   })
 

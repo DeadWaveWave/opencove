@@ -3,7 +3,7 @@ import type { Node } from '@xyflow/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { replaceWorkspaceNodes } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
-import { drag, drop, setupNodeDrag as setup } from '../../support/nodeDragHarness'
+import { drag, drop, ROW, setupNodeDrag as setup } from '../../support/nodeDragHarness'
 
 // The change path of React Flow (#738, PR 4) reads the stores when a batch runs, never a copy made
 // at the last render: a drag frame and a release read the live view, every other batch the
@@ -196,5 +196,24 @@ describe('normalizePosition', () => {
     })
 
     expect(yOf.stored('a')).not.toBe(SPOT.y)
+  })
+})
+
+// The base is decorated from the selection slice, not from the `selected` mirror of the document
+// nodes. The two differ, for example, after a switch back to a workspace: its new canvas store
+// starts with no selection while its document nodes still say `selected: true`.
+describe('the change path reads the selection slice, not the document mirror', () => {
+  it('a select batch selects only what the slice and the batch say', () => {
+    const stale = ROW().map(node => (node.id === 'a' ? { ...node, selected: true } : node))
+    const { harness, view } = setup(stale)
+
+    act(() => view.result.current.apply([{ type: 'select', id: 'c', selected: true }] as never))
+
+    expect(
+      harness
+        .readStoreDocument()
+        .nodes.filter(node => node.selected)
+        .map(node => node.id),
+    ).toEqual(['c'])
   })
 })
