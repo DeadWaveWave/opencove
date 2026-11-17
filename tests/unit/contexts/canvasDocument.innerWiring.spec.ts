@@ -97,6 +97,30 @@ describe('Inner hands the document writer of its node store to the hooks that ne
     )
   })
 
+  // The directory ops write nodes and Spaces in one update through the node store's writer, read
+  // the document themselves and flush on their write (#702, PR 14); the node types read through
+  // the reader of the canvas store provider, and the shortcut actions take no Spaces.
+  it('passes the directory ops the writer and none of the retired channels', () => {
+    const call = callOf('useWorkspaceCanvasSpaceDirectoryOps')
+    expect(call).toMatch(/\bupdateCanvasDocument:\s*nodeStore\.updateCanvasDocument\b/)
+    expect(call).not.toMatch(
+      /\b(nodesRef|spacesRef|setNodes|onSpacesChange|onRequestPersistFlush)\b/,
+    )
+  })
+
+  it('does not hand the node types the canvas state', () => {
+    expect(callOf('useWorkspaceCanvasComposedNodeTypes')).not.toMatch(/\bcanvasState\b/)
+  })
+
+  it('hands the shortcut actions no Spaces', () => {
+    expect(callOf('useWorkspaceCanvasShortcutActions')).not.toMatch(/\bspaces\b/)
+  })
+
+  it('names none of the retired channels anywhere, and takes no flush prop', () => {
+    expect(source).not.toMatch(/\b(spacesRef|onSpacesChange|onRequestPersistFlush)\b/)
+    expect(source).not.toMatch(/\breplaceWorkspaceSpaces\b/)
+  })
+
   it('passes none of the retired channels to the Providers', () => {
     expect(propsOf('WorkspaceCanvasProviders')).not.toMatch(
       /\b(nodesRef|spacesRef|onSpacesChange|onRequestPersistFlush)\b/,

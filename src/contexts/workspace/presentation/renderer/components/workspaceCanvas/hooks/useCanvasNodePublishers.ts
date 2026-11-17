@@ -34,7 +34,8 @@ export function useWorkspaceCanvasNodePublishers({
     [hasTransientNodePositionsRef, setCanvasNodes],
   )
 
-  // React Flow's change path computes from nodesRef and commits the whole array.
+  // React Flow's change path computes from the node store's mirror of the canvas view and commits the
+  // whole array.
   const commitNodesChange = useCallback(
     (nextNodes: Node<TerminalNodeData>[]) => {
       publishCommittedNodes(nextNodes)
