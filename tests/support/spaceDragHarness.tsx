@@ -137,6 +137,7 @@ export function renderSwitchingSpaceDrag() {
     ],
   }))
   let shown = 'workspace-a'
+  // Stable writers: only the reader (and the workspace id) can change when the user switches.
   const setNodes: SetNodes = (updater, options) => {
     commitCanvasDocument(
       shown,
@@ -150,6 +151,7 @@ export function renderSwitchingSpaceDrag() {
   const view = renderInCanvasDocument(
     () => {
       const flow = useReactFlow<Node<TerminalNodeData>>()
+      // Stable, as in the app: a changed instance would hide a dependency lost by a callback.
       const reactFlow = useMemo(
         () => ({ ...flow, screenToFlowPosition: (point: Point) => point, getZoom: () => 1 }),
         [flow],

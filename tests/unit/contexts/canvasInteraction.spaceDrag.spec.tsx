@@ -305,12 +305,11 @@ describe('the release of a Space drag', () => {
     expect(harness.readStoreDocument().spaces).toEqual(spacesBefore)
   })
 
-  // What the unchanged finalize recipe does with a window that a write from elsewhere moved during
-  // the drag and that the drag does not carry: it plans the layout from the positions the drag
-  // began with, so it puts the window back. The window is shown at the new place during the drag
-  // (the test above) and returns at the release; the end state is the one `main` has. A known
-  // limit, with the pushes that start from the drag-start positions (see DEVELOPMENT.md).
-  it('puts a window moved from elsewhere that it does not carry back to its drag-start place', () => {
+  // This test pinned the opposite (the release put the window back at its drag-start place, as
+  // `main` does at the next frame). The finalize now keeps the store's position of a window the
+  // drag did not move, so a move from elsewhere stands, as the frames showed it. The fuller cases
+  // are in `canvasInteraction.spaceDrag.moved.spec`.
+  it('keeps a window moved from elsewhere that it does not carry where the move put it', () => {
     const { harness, view } = renderOpenSpace()
     press(view, 'space-a', INSIDE_A)
     dragTo({ x: INSIDE_A.x + 40, y: INSIDE_A.y })
@@ -328,7 +327,7 @@ describe('the release of a Space drag', () => {
     release({ x: INSIDE_A.x + 40, y: INSIDE_A.y })
 
     expect(harness.readStoreDocument().nodes.find(node => node.id === 'n-far')?.position.x).toBe(
-      FAR_AWAY_X,
+      FAR_AWAY_X + 300,
     )
   })
 })

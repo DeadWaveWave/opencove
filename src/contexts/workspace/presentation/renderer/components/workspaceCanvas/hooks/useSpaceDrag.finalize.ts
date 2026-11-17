@@ -237,6 +237,13 @@ export function finalizeWorkspaceSpaceDrag({
           return node
         }
 
+        // A window the drag did not move is planned at its drag-start place: it keeps the store's
+        // position, so a move of it from elsewhere during the drag stands, as the overlay showed it.
+        const start = dragState.allNodePositions.get(node.id)
+        if (start && start.x === nextPosition.x && start.y === nextPosition.y) {
+          return node
+        }
+
         if (node.position.x === nextPosition.x && node.position.y === nextPosition.y) {
           return node
         }
