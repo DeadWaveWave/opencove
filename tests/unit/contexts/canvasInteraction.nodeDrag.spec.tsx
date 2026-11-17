@@ -275,6 +275,38 @@ describe('a write from elsewhere in the middle of a gesture', () => {
   })
 })
 
+// A canvas writer that moves a window the gesture did not move (a push-away, an arrange, a
+// collapse plan) meets the rule of PR 3: the overlay holds every window as of the last frame, so
+// the move is committed, masked on screen, and overwritten at the release. The same end state as
+// before PR 4, where the write ended the overlay and the next frame reset the window to its
+// baseline; only the instant after the write differs (it showed the move for one frame). PR 5
+// narrows the overlay to the gesture's windows and flips this case.
+describe('a canvas write that moves a window the gesture did not move', () => {
+  const moveC = (nodes: Node<TerminalNodeData>[]) =>
+    nodes.map(node => (node.id === 'c' ? { ...node, position: { x: 2500, y: 0 } } : node))
+  const xOf = (view: ReturnType<typeof setup>['view'], id: string) =>
+    view.result.current.shown.find(node => node.id === id)?.position.x
+
+  it("is masked on screen and overwritten at the release (today's rule)", () => {
+    const { harness, view, runFrames } = setup()
+    const storedX = () =>
+      harness.readStoreDocument().nodes.find(node => node.id === 'c')?.position.x
+    act(() => view.result.current.apply(drag('a', 0, 30)))
+    runFrames()
+
+    act(() => view.result.current.nodeStore.setNodes(moveC))
+    expect(storedX()).toBe(2500)
+    expect(xOf(view, 'c')).toBe(800)
+
+    act(() => view.result.current.apply(drag('a', 0, 60)))
+    runFrames()
+    expect(xOf(view, 'c')).toBe(800)
+
+    act(() => view.result.current.apply(drop('a', 0, 60)))
+    expect(storedX()).toBe(800)
+  })
+})
+
 // After a write from elsewhere the canvas write still computes from the committed view, and the
 // overlay still stays (S6, PR 4). A select batch while a drag is live is a release (the gesture
 // ends with it), so it computes from the live view as before.
@@ -401,6 +433,20 @@ describe('a gesture across a workspace switch', () => {
     expect(next.snapGuides).toBeNull()
     expect(next.nodeDragFramePreview).toBeNull()
     expect(interactionOfA().liveNodes).not.toBeNull()
+  })
+
+  // The change path reads the document of the render that made it: a batch applied by the
+  // callback of A after the switch (Inner is not keyed by workspace) is A's.
+  it('writes the workspace it was made for when a batch is applied after the switch', () => {
+    const { view, showB } = renderTwoWorkspaces()
+    const applyOfA = view.result.current.apply
+    const nodesOfB = documentOf(B).nodes
+    showB()
+
+    act(() => applyOfA([{ type: 'select', id: 'a', selected: true }] as never))
+
+    expect(documentOf(A).nodes.find(node => node.id === 'a')?.selected).toBe(true)
+    expect(documentOf(B).nodes).toBe(nodesOfB)
   })
 
   it('writes neither document when the release arrives after the switch', () => {

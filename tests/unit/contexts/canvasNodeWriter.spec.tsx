@@ -14,6 +14,7 @@ import {
   renderInCanvasDocument,
 } from '../../support/canvasDocumentHarness'
 import {
+  agentNode,
   documentOf,
   nodeOf,
   WORKSPACE_A as A,
@@ -44,8 +45,9 @@ function useWriterWithStore() {
 function renderWriter({
   shown = () => A,
   active = A,
-}: { shown?: () => string; active?: string } = {}) {
-  const harness = createCanvasDocumentHarness({ workspaceId: A, nodes: ROW() })
+  extraNodes = [],
+}: { shown?: () => string; active?: string; extraNodes?: Node<TerminalNodeData>[] } = {}) {
+  const harness = createCanvasDocumentHarness({ workspaceId: A, nodes: [...ROW(), ...extraNodes] })
   useAppStore.setState(state => ({
     workspaces: [...state.workspaces, { ...state.workspaces[0], id: B, nodes: ROW(), spaces: [] }],
     activeWorkspaceId: active,
@@ -254,31 +256,36 @@ describe('what follows a write: the layout-sync event and the test state', () =>
     expect(events.count()).toBe(0)
   })
 
+  // The test state lists the agent sessions of the written nodes; it follows the writes of the
+  // workspace that is shown and ignores a late write of the one that is not.
   it('syncs the test state with the written nodes only for the shown workspace', () => {
-    const syncCounts: number[] = []
     let shown = A
     Object.defineProperty(window, 'opencoveApi', {
       configurable: true,
       writable: true,
       value: { meta: { isTest: true } },
     })
-    const { view } = renderWriter({ shown: () => shown })
-    const syncCount = () => window.__opencoveWorkspaceCanvasTestApi?.getSyncCount?.() ?? 0
+    const { view } = renderWriter({ shown: () => shown, extraNodes: [agentNode('agent-1')] })
     const writerOfA = view.result.current.writer
+    const statusOfAgent = () =>
+      window.__opencoveWorkspaceCanvasTestApi?.getAgentStatusByPtySessionId('agent-1-runtime')
+    const setStatus = (status: 'running' | 'failed') => (nodes: Node<TerminalNodeData>[]) =>
+      nodes.map(node =>
+        node.id === 'agent-1' ? { ...node, data: { ...node.data, status } } : node,
+      )
 
-    const before = syncCount()
-    act(() => writerOfA.updateNodes(retitle('b', 'renamed')))
-    syncCounts.push(syncCount() - before)
+    act(() => writerOfA.updateNodes(setStatus('running')))
+    expect(statusOfAgent()).toBe('running')
+
     act(() => {
       shown = B
       useAppStore.setState({ activeWorkspaceId: B })
       view.rerender()
     })
-    const afterSwitch = syncCount()
-    act(() => writerOfA.updateNodes(retitle('c', 'late')))
-    syncCounts.push(syncCount() - afterSwitch)
+    act(() => writerOfA.updateNodes(setStatus('failed')))
 
-    expect(syncCounts).toEqual([1, 0])
+    expect(nodeOf(A, 'agent-1').data.status).toBe('failed')
+    expect(statusOfAgent()).toBe('running')
     Reflect.deleteProperty(window, 'opencoveApi')
   })
 })
