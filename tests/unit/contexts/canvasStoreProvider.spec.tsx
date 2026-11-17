@@ -1,22 +1,57 @@
-import React from 'react'
+import React, { useLayoutEffect } from 'react'
 import { act, render } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { CanvasUiCommands } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStore.ui'
+import type {
+  CanvasInteractionCommands,
+  CanvasInteractionState,
+} from '../../../src/contexts/workspace/presentation/renderer/store/canvasStore.interaction'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import {
   CanvasStoreProvider,
   useCanvasDocumentCommands,
+  useCanvasInteraction,
+  useCanvasInteractionCommands,
   useCanvasSelection,
   useCanvasSelectionCommands,
   useCanvasUi,
   useCanvasUiCommands,
   useReadCanvasDocument,
+  useReadCanvasInteraction,
   useReadCanvasUi,
 } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
 import type { WorkspaceSpaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { createCanvasDocumentHarness } from '../../support/canvasDocumentHarness'
 import { createSpace } from '../../support/canvasSelectionFixtures'
 import { pixelNode } from './workspacePixelLayer.fixtures'
+
+// Counts the listeners that are subscribed to a canvas store right now.
+const subscriptions = vi.hoisted(() => ({ active: 0 }))
+
+vi.mock('zustand/vanilla', async importOriginal => {
+  const actual = await importOriginal<typeof import('zustand/vanilla')>()
+  const count = <S extends { subscribe: (listener: never) => () => void }>(store: S): S => {
+    const subscribe = store.subscribe
+    store.subscribe = (listener: never) => {
+      subscriptions.active += 1
+      const unsubscribe = subscribe(listener)
+      let released = false
+      return () => {
+        if (!released) {
+          released = true
+          subscriptions.active -= 1
+        }
+        unsubscribe()
+      }
+    }
+    return store
+  }
+  const createStore = ((initializer?: never) =>
+    initializer === undefined
+      ? (next: never) => count(actual.createStore(next))
+      : count(actual.createStore(initializer))) as unknown as typeof actual.createStore
+  return { ...actual, createStore }
+})
 
 interface Recorder {
   menus: unknown[]
@@ -305,5 +340,191 @@ describe('CanvasStoreProvider document reader and commands', () => {
     ;(seen.at(-1) as DocumentProbe).commands.requestPersistFlush()
 
     expect(harness.flush).toHaveBeenCalledTimes(1)
+  })
+})
+
+const selectMagneticSnappingEnabled = (interaction: CanvasInteractionState) =>
+  interaction.magneticSnappingEnabled
+const selectSelectionDraft = (interaction: CanvasInteractionState) => interaction.selectionDraft
+
+const DRAFT = { startX: 1, startY: 2, currentX: 3, currentY: 4, phase: 'active' } as const
+
+describe('CanvasStoreProvider interaction slice', () => {
+  function renderToggleProbe(workspaceId: string) {
+    const toggles: boolean[] = []
+    const drafts: unknown[] = []
+    let commands: CanvasInteractionCommands | null = null
+    let read: (() => CanvasInteractionState) | null = null
+    function Probe(): null {
+      toggles.push(useCanvasInteraction(selectMagneticSnappingEnabled))
+      drafts.push(useCanvasInteraction(selectSelectionDraft))
+      commands = useCanvasInteractionCommands()
+      read = useReadCanvasInteraction()
+      return null
+    }
+    const tree = (id: string) => (
+      <CanvasStoreProvider workspaceId={id}>
+        <Probe />
+      </CanvasStoreProvider>
+    )
+    const view = render(tree(workspaceId))
+    return {
+      toggles,
+      drafts,
+      commands: () => commands as unknown as CanvasInteractionCommands,
+      read: () => (read as unknown as () => CanvasInteractionState)(),
+      rerender: (id: string) => view.rerender(tree(id)),
+      unmount: () => view.unmount(),
+    }
+  }
+
+  it('starts a new workspace id with no marquee in the first render and carries the toggle', () => {
+    const probe = renderToggleProbe('workspace-a')
+    act(() => {
+      probe.commands().setSelectionDraft(DRAFT)
+      probe.commands().toggleMagneticSnapping()
+    })
+    expect(probe.toggles.at(-1)).toBe(false)
+    expect(probe.drafts.at(-1)).toEqual(DRAFT)
+
+    const rendersBeforeSwitch = probe.toggles.length
+    probe.rerender('workspace-b')
+
+    expect(probe.toggles.length).toBeGreaterThan(rendersBeforeSwitch)
+    // No render under the new id saw the old store's marquee or lost the toggle.
+    expect(probe.drafts.slice(rendersBeforeSwitch).every(draft => draft === null)).toBe(true)
+    expect(probe.toggles.slice(rendersBeforeSwitch).every(enabled => !enabled)).toBe(true)
+    expect(probe.read()).toEqual({ selectionDraft: null, magneticSnappingEnabled: false })
+  })
+
+  it('carries a toggle that is on as well as one that is off, through every switch', () => {
+    const probe = renderToggleProbe('workspace-a')
+    probe.rerender('workspace-b')
+    expect(probe.read().magneticSnappingEnabled).toBe(true)
+
+    act(() => probe.commands().toggleMagneticSnapping())
+    probe.rerender('workspace-c')
+    probe.rerender('workspace-a')
+
+    // A switch back to an earlier id is a new store too, and it still carries the last value.
+    expect(probe.read().magneticSnappingEnabled).toBe(false)
+    expect(probe.read().selectionDraft).toBeNull()
+  })
+
+  it('keeps the toggle across rerenders with the same workspace id', () => {
+    const probe = renderToggleProbe('workspace-a')
+    act(() => probe.commands().toggleMagneticSnapping())
+
+    probe.rerender('workspace-a')
+
+    expect(probe.read().magneticSnappingEnabled).toBe(false)
+  })
+
+  describe('useCanvasInteraction', () => {
+    it('returns the current value and updates on a write', () => {
+      const probe = renderToggleProbe('workspace-a')
+      expect(probe.toggles.at(-1)).toBe(true)
+      expect(probe.drafts.at(-1)).toBeNull()
+
+      act(() => probe.commands().toggleMagneticSnapping())
+      expect(probe.toggles.at(-1)).toBe(false)
+
+      act(() => probe.commands().setSelectionDraft(DRAFT))
+      expect(probe.drafts.at(-1)).toEqual(DRAFT)
+    })
+
+    it('does not render when the store notifies a write that leaves the selected value as it was', () => {
+      const toggles: boolean[] = []
+      let commands: CanvasInteractionCommands | null = null
+      function ToggleOnly(): null {
+        toggles.push(useCanvasInteraction(selectMagneticSnappingEnabled))
+        commands = useCanvasInteractionCommands()
+        return null
+      }
+      render(
+        <CanvasStoreProvider workspaceId="workspace-a">
+          <ToggleOnly />
+        </CanvasStoreProvider>,
+      )
+      const rendersBefore = toggles.length
+
+      // The marquee changes, so the store notifies; the toggle this subscriber selects does not.
+      act(() => (commands as unknown as CanvasInteractionCommands).setSelectionDraft(DRAFT))
+
+      expect(toggles).toHaveLength(rendersBefore)
+    })
+
+    it('returns the new store value in the render that receives a new workspace id', () => {
+      const probe = renderToggleProbe('workspace-a')
+      act(() => probe.commands().setSelectionDraft(DRAFT))
+      const rendersBeforeSwitch = probe.drafts.length
+
+      probe.rerender('workspace-b')
+
+      // The first render under the new id already shows the new store's empty marquee.
+      expect(probe.drafts[rendersBeforeSwitch]).toBeNull()
+      expect(probe.drafts.at(-1)).toBeNull()
+      act(() => probe.commands().setSelectionDraft({ ...DRAFT, currentX: 9 }))
+      expect(probe.drafts.at(-1)).toEqual({ ...DRAFT, currentX: 9 })
+    })
+
+    it('stops listening to the store of the old workspace after a switch', () => {
+      const probe = renderToggleProbe('workspace-a')
+      const commandsOfA = probe.commands()
+      probe.rerender('workspace-b')
+      const rendersAfterSwitch = probe.drafts.length
+
+      act(() => commandsOfA.setSelectionDraft(DRAFT))
+
+      expect(probe.drafts).toHaveLength(rendersAfterSwitch)
+      expect(probe.drafts.at(-1)).toBeNull()
+    })
+
+    it('reads a write made between its render and its subscription', () => {
+      const seen: unknown[] = []
+      function Writer(): null {
+        const commands = useCanvasInteractionCommands()
+        // This effect runs before the subscriber's, which has not subscribed yet.
+        useLayoutEffect(() => commands.setSelectionDraft(DRAFT), [commands])
+        return null
+      }
+      function Subscriber(): null {
+        seen.push(useCanvasInteraction(selectSelectionDraft))
+        return null
+      }
+
+      render(
+        <CanvasStoreProvider workspaceId="workspace-a">
+          <Writer />
+          <Subscriber />
+        </CanvasStoreProvider>,
+      )
+
+      expect(seen.at(-1)).toEqual(DRAFT)
+    })
+
+    it('subscribes once and unsubscribes on unmount', () => {
+      const before = subscriptions.active
+      const probe = renderToggleProbe('workspace-a')
+      // Two selectors, so two subscriptions of the probe; none of them is renewed by a rerender.
+      expect(subscriptions.active).toBe(before + 2)
+      probe.rerender('workspace-a')
+      act(() => probe.commands().toggleMagneticSnapping())
+      expect(subscriptions.active).toBe(before + 2)
+
+      probe.unmount()
+
+      expect(subscriptions.active).toBe(before)
+    })
+
+    it('replaces its subscription with the new store when the workspace changes', () => {
+      const before = subscriptions.active
+      const probe = renderToggleProbe('workspace-a')
+      probe.rerender('workspace-b')
+
+      expect(subscriptions.active).toBe(before + 2)
+      probe.unmount()
+      expect(subscriptions.active).toBe(before)
+    })
   })
 })

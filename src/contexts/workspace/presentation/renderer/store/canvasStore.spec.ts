@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type {
   ContextMenuState,
+  SelectionDraftUiState,
   NodeDeleteConfirmationState,
   RoleCreatorState,
   SpaceActionMenuState,
@@ -529,6 +530,145 @@ describe('canvas store', () => {
         selection.nodeIds.push('x')
       }
       expect(mutate).toBeTypeOf('function')
+    })
+  })
+
+  describe('interaction', () => {
+    const draft: SelectionDraftUiState = {
+      startX: 10,
+      startY: 20,
+      currentX: 30,
+      currentY: 40,
+      phase: 'active',
+    }
+
+    it('starts with no marquee and magnetic snapping on, in the state and in the initial state', () => {
+      const expected = { selectionDraft: null, magneticSnappingEnabled: true }
+      const { api } = createCanvasStore()
+
+      expect(api.getState().interaction).toEqual(expected)
+      expect(api.getInitialState().interaction).toEqual(expected)
+    })
+
+    it('starts with the toggle it is given, and with no marquee', () => {
+      const { api } = createCanvasStore({ magneticSnappingEnabled: false })
+
+      expect(api.getState().interaction).toEqual({
+        selectionDraft: null,
+        magneticSnappingEnabled: false,
+      })
+      expect(createCanvasStore({}).api.getState().interaction.magneticSnappingEnabled).toBe(true)
+    })
+
+    it('notifies once per changing marquee write and keeps the stored draft for an equal one', () => {
+      const { api, commands } = createCanvasStore()
+      const listener = vi.fn()
+      api.subscribe(listener)
+
+      commands.interaction.setSelectionDraft(draft)
+      expect(listener).toHaveBeenCalledTimes(1)
+      const stored = api.getState().interaction.selectionDraft
+      expect(stored).toEqual(draft)
+
+      // Another object with the same five fields: nobody is told, and the first stays stored.
+      commands.interaction.setSelectionDraft({ ...draft })
+      expect(listener).toHaveBeenCalledTimes(1)
+      expect(api.getState().interaction.selectionDraft).toBe(stored)
+
+      commands.interaction.setSelectionDraft({ ...draft, currentX: 31 })
+      expect(listener).toHaveBeenCalledTimes(2)
+      commands.interaction.setSelectionDraft({ ...draft, currentX: 31, phase: 'settling' })
+      expect(listener).toHaveBeenCalledTimes(3)
+    })
+
+    it('compares every field of the draft', () => {
+      const { api, commands } = createCanvasStore()
+      commands.interaction.setSelectionDraft(draft)
+      const listener = vi.fn()
+      api.subscribe(listener)
+
+      for (const changed of [
+        { startX: 11 },
+        { startY: 21 },
+        { currentX: 31 },
+        { currentY: 41 },
+        { phase: 'settling' as const },
+      ]) {
+        commands.interaction.setSelectionDraft({ ...draft, ...changed })
+        commands.interaction.setSelectionDraft(draft)
+      }
+
+      expect(listener).toHaveBeenCalledTimes(10)
+    })
+
+    it('clears the marquee once, and a clear with no marquee notifies nobody', () => {
+      const { api, commands } = createCanvasStore()
+      const listener = vi.fn()
+      api.subscribe(listener)
+
+      commands.interaction.setSelectionDraft(null)
+      expect(listener).not.toHaveBeenCalled()
+
+      commands.interaction.setSelectionDraft(draft)
+      commands.interaction.setSelectionDraft(null)
+      commands.interaction.setSelectionDraft(null)
+      expect(listener).toHaveBeenCalledTimes(2)
+      expect(api.getState().interaction.selectionDraft).toBeNull()
+    })
+
+    it('flips the toggle once per call and leaves the marquee alone', () => {
+      const { api, commands } = createCanvasStore()
+      commands.interaction.setSelectionDraft(draft)
+      const stored = api.getState().interaction.selectionDraft
+      const listener = vi.fn()
+      api.subscribe(listener)
+
+      commands.interaction.toggleMagneticSnapping()
+      expect(api.getState().interaction.magneticSnappingEnabled).toBe(false)
+      commands.interaction.toggleMagneticSnapping()
+      expect(api.getState().interaction.magneticSnappingEnabled).toBe(true)
+
+      expect(listener).toHaveBeenCalledTimes(2)
+      expect(api.getState().interaction.selectionDraft).toBe(stored)
+    })
+
+    it('does not write the other slices, and their commands do not write it', () => {
+      const { api, commands } = createCanvasStore()
+      commands.interaction.setSelectionDraft(draft)
+      const { ui, selection, interaction } = api.getState()
+
+      commands.interaction.toggleMagneticSnapping()
+      expect(api.getState().ui).toBe(ui)
+      expect(api.getState().selection).toBe(selection)
+
+      commands.ui.openContextMenu(paneMenu)
+      commands.selection.select({ nodeIds: ['n1'], spaceIds: [] })
+      expect(api.getState().interaction.selectionDraft).toBe(interaction.selectionDraft)
+      expect(api.getState().interaction.magneticSnappingEnabled).toBe(false)
+    })
+
+    it('keeps the interaction commands stable across state changes', () => {
+      const store = createCanvasStore()
+      const { setSelectionDraft, toggleMagneticSnapping } = store.commands.interaction
+
+      store.commands.interaction.setSelectionDraft(draft)
+      store.commands.interaction.toggleMagneticSnapping()
+
+      expect(store.commands.interaction.setSelectionDraft).toBe(setSelectionDraft)
+      expect(store.commands.interaction.toggleMagneticSnapping).toBe(toggleMagneticSnapping)
+    })
+
+    it('gives each store its own interaction state', () => {
+      const first = createCanvasStore()
+      const second = createCanvasStore()
+
+      first.commands.interaction.setSelectionDraft(draft)
+      first.commands.interaction.toggleMagneticSnapping()
+
+      expect(second.api.getState().interaction).toEqual({
+        selectionDraft: null,
+        magneticSnappingEnabled: true,
+      })
     })
   })
 })

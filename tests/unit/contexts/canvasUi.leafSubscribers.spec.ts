@@ -13,6 +13,10 @@ const REMOVED_NAMES = [
   'selectedNodeIdsRef',
   'setSelectedNodeIds',
 ]
+const DRAFT_OVERLAY = 'view/WorkspaceSelectionDraftOverlay.tsx'
+const CANVAS_MENUS = 'view/WorkspaceCanvasMenus.tsx'
+const STORE_DIR = 'src/contexts/workspace/presentation/renderer/store/'
+const STORE_CONTEXT = `${STORE_DIR}canvasStoreContext.tsx`
 const HOOKS_DIR = 'src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/'
 
 // Decision 7 of #685: only leaf components subscribe to the canvas `ui` slice. Hooks called by
@@ -70,5 +74,50 @@ describe('canvas UI subscriptions', () => {
     const offenders = files.filter(file => names.test(readFileSync(file, 'utf8')))
 
     expect(offenders).toEqual([])
+  })
+})
+
+function trackedSourceFiles(): string[] {
+  const files = execFileSync('git', ['ls-files', 'src'], { encoding: 'utf8' })
+    .split('\n')
+    .filter(file => /\.tsx?$/.test(file) && !/\.(spec|test)\./.test(file))
+  expect(files.length).toBeGreaterThan(1000)
+  return files
+}
+
+// Decision 2 of #738: the subscribers of the `interaction` slice are leaves. So far they are the
+// marquee rectangle and the context menu's snapping toggle; the host and the guides join them in
+// later pull requests of S6. Hooks read the slice at call time (`useReadCanvasInteraction`).
+describe('canvas interaction subscriptions', () => {
+  it('useCanvasInteraction is called only by the draft overlay and the canvas menus', () => {
+    const callers = trackedSourceFiles().filter(file =>
+      /\buseCanvasInteraction\(/.test(readFileSync(file, 'utf8')),
+    )
+
+    expect(callers.map(file => file.slice(CANVAS_DIR.length)).sort()).toEqual(
+      [DRAFT_OVERLAY, CANVAS_MENUS].sort(),
+    )
+  })
+
+  // One hook decides the render priority of every subscriber (arm B of #738). A file that reached
+  // the store another way would render its part of a frame in another lane than the nodes.
+  it('no file outside the store context reaches the canvas store to subscribe to it', () => {
+    const reachers = trackedSourceFiles().filter(file =>
+      /\bcreateCanvasStore\b|\bCanvasStoreReadApi\b|^import\s+\{[^}]*\}\s+from\s+'[^']*\/canvasStore'/m.test(
+        readFileSync(file, 'utf8'),
+      ),
+    )
+
+    expect(reachers.sort()).toEqual([`${STORE_DIR}canvasStore.ts`, STORE_CONTEXT].sort())
+  })
+
+  it('the store context subscribes to the interaction slice only through useCanvasInteraction', () => {
+    const source = readFileSync(STORE_CONTEXT, 'utf8')
+
+    // `useStore` is `useSyncExternalStore`: sync priority, a frame earlier than arm B renders.
+    const plainSubscriptions = [...source.matchAll(/\buseStore\(([^)]*\)?[^)]*)\)/g)]
+    expect(plainSubscriptions.length).toBeGreaterThan(0)
+    expect(plainSubscriptions.filter(call => /interaction/.test(call[0]))).toEqual([])
+    expect(source.match(/export function useCanvasInteraction</g)).toHaveLength(1)
   })
 })

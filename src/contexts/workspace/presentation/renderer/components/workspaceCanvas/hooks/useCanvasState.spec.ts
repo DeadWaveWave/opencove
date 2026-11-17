@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { WorkspaceCanvasProps } from '../types'
+import type { WorkspaceCanvasViewProps } from '../WorkspaceCanvasView.types'
 import type { useWorkspaceCanvasState } from './useCanvasState'
 import type { UseWorkspaceCanvasNodesStoreParams } from './useNodesStore.types'
 
@@ -28,5 +29,33 @@ describe('the retired canvas channels', () => {
 
     // @ts-expect-error -- onRequestPersistFlush is retired; the canvas flushes through the document commands (#647 S5)
     expect(props.onRequestPersistFlush).toBeUndefined()
+  })
+
+  // #738 (S6 of #647), the `interaction` slice: the marquee rectangle and the snapping toggle live
+  // in the canvas store, not in the canvas state, and the view props no longer carry them.
+  it('do not keep the marquee rectangle or the snapping toggle in the canvas state', () => {
+    const canvasState = {} as ReturnType<typeof useWorkspaceCanvasState>
+
+    // @ts-expect-error -- selectionDraftUi is retired; subscribe with useCanvasInteraction (#738)
+    expect(canvasState.selectionDraftUi).toBeUndefined()
+    // @ts-expect-error -- setSelectionDraftUi is retired; write with setSelectionDraft (#738)
+    expect(canvasState.setSelectionDraftUi).toBeUndefined()
+    // @ts-expect-error -- magneticSnappingEnabledRef is retired; read useReadCanvasInteraction (#738)
+    expect(canvasState.magneticSnappingEnabledRef).toBeUndefined()
+    // @ts-expect-error -- magneticSnappingEnabled is retired; subscribe with useCanvasInteraction (#738)
+    expect(canvasState.magneticSnappingEnabled).toBeUndefined()
+    // @ts-expect-error -- setMagneticSnappingEnabled is retired; use toggleMagneticSnapping (#738)
+    expect(canvasState.setMagneticSnappingEnabled).toBeUndefined()
+  })
+
+  it('are not part of the canvas view props', () => {
+    const props = {} as WorkspaceCanvasViewProps
+
+    // @ts-expect-error -- selectionDraft is retired; the draft overlay subscribes itself (#738)
+    expect(props.selectionDraft).toBeUndefined()
+    // @ts-expect-error -- magneticSnappingEnabled is retired; the menus subscribe themselves (#738)
+    expect(props.magneticSnappingEnabled).toBeUndefined()
+    // @ts-expect-error -- onToggleMagneticSnapping is retired; the menus call the command (#738)
+    expect(props.onToggleMagneticSnapping).toBeUndefined()
   })
 })
