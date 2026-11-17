@@ -153,7 +153,6 @@ export function WorkspaceCanvasInner({
   const { nodeTypes, nodeTypesParameters } =
     workspaceCanvasHooks.useWorkspaceCanvasComposedNodeTypes({
       nodeStore,
-      canvasState,
       workspacePath,
       onShowMessage,
       agentSettings,

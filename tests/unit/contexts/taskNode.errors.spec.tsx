@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react'
+import React, { useState } from 'react'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import type { Node } from '@xyflow/react'
@@ -7,6 +7,7 @@ import { runTaskAgentAction } from '../../../src/contexts/workspace/presentation
 import type { TaskActionContext } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useTaskActions.agentSession.shared'
 import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
+import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
 import { createStoreBackedChannels } from '../../support/workspaceCanvasStoreHarness'
 
 const flow = vi.hoisted(() => ({ nodes: [] as Node<TerminalNodeData>[] }))
@@ -94,7 +95,6 @@ it('shows a refused Pi config run in the actual canvas task card while preservin
     const [nodes, setNodes] = useState(channels.nodesRef.current)
     flow.nodes = nodes
     observed.current = nodes
-    const spacesRef = useRef([])
     const context = {
       readDocument: channels.readDocument,
       workspaceId: 'workspace',
@@ -114,7 +114,6 @@ it('shows a refused Pi config run in the actual canvas task card while preservin
         id="task"
         data={nodes[0].data}
         nodePosition={nodes[0].position}
-        spacesRef={spacesRef}
         workspacePath="/repo"
         selectNode={() => {}}
         resizeNodeRef={{ current: () => {} }}
@@ -130,7 +129,11 @@ it('shows a refused Pi config run in the actual canvas task card while preservin
       />
     )
   }
-  render(<Harness />)
+  render(
+    <CanvasStoreTestProvider workspaceId="workspace">
+      <Harness />
+    </CanvasStoreTestProvider>,
+  )
   expect(screen.queryByRole('alert')).toBeNull()
   await act(async () => {
     fireEvent.click(screen.getByTestId('task-node-run-agent'))

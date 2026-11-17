@@ -4,7 +4,7 @@ import type { BrowserMode, WebsiteWindowSessionMode } from '@shared/contracts/dt
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { BrowserSearchEngineId } from '@contexts/settings/domain/browserSettings'
 import type { NodeLabelColorOverride } from '@shared/types/labelColor'
-import type { NodeFrame, WorkspaceSpaceState } from '../../types'
+import type { NodeFrame } from '../../types'
 import type {
   QuickUpdateTaskRequirement,
   QuickUpdateTaskTitle,
@@ -13,7 +13,6 @@ import type {
   UpdateTaskStatus,
 } from './types'
 export interface WorkspaceCanvasNodeTypesParams {
-  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   workspacePath: string
   onShowMessage?: ShowWorkspaceCanvasMessage
   agentProviderOrder: AgentProvider[]

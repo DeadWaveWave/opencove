@@ -19,13 +19,7 @@ const ALLOWED_FILES: Record<string, readonly string[]> = {
     '~/hooks/useNodesStore.types.ts',
     '~/view/WorkspacePixelLayer.tsx',
   ],
-  spacesRef: [
-    '~/hooks/useCanvasNodeTypes.ts',
-    '~/hooks/useCanvasState.ts',
-    '~/nodeTypes.context.ts',
-    '~/nodeTypes.task.tsx',
-    '~/nodeTypes.tsx',
-  ],
+  spacesRef: [],
   onSpacesChange: [],
   onRequestPersistFlush: [
     'src/app/preload/api.d.ts',
