@@ -172,6 +172,8 @@ function WorkspacePixelLayerComponent({
       assemblyCanvas.dataset.covePixelNodeIds = visibleFrames.map(frame => frame.id).join(',')
       assemblyCanvas.dataset.covePixelBurst = burstFrames.length ? 'bursting' : 'idle'
       assemblyCanvas.dataset.covePixelBurstNodeIds = burstFrames.map(frame => frame.id).join(',')
+      // Use the painted sample's clock: expiry during drawing still needs a clearing frame.
+      return assembly.hasPending(now) || burst.hasPending(now)
     }
     const scheduler = createPixelFrameScheduler({
       requestFrame: callback => window.requestAnimationFrame(callback),
@@ -210,15 +212,11 @@ function WorkspacePixelLayerComponent({
         canvas.hidden = !effects.background && workingWindows.length === 0 && sparks.length === 0
         canvas.dataset.covePixelWorkingNodeIds = workingNodes.map(node => node.id).join(',')
         canvas.dataset.covePixelActivity = active ? 'output' : 'idle'
-        drawAssembly()
+        const foregroundPending = drawAssembly()
         return (
           !reducedMotion &&
           // The background is the pixel wall's; this layer animates only while it has pixels.
-          (active ||
-            dotWaves.length > 0 ||
-            workingNodes.length > 0 ||
-            assembly.hasPending(performance.now()) ||
-            burst.hasPending(performance.now()))
+          (active || dotWaves.length > 0 || workingNodes.length > 0 || foregroundPending)
         )
       },
     })
