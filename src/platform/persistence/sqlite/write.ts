@@ -235,7 +235,7 @@ export function writeNormalizedAppState(
 
     retireDeletedManagedNodes(db, nextRevision)
     return { revision: nextRevision, corrected, effectiveState: state }
-  })
+  }).immediate
 
   return writeTx()
 }
@@ -282,7 +282,7 @@ export function writeNormalizedScrollbacks(
         insertScrollback.run(node.id, scrollback, now)
       }
     }
-  })
+  }).immediate
 
   writeTx()
 }

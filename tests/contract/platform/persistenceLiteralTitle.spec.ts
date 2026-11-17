@@ -28,16 +28,21 @@ async function database() {
       const rows = sql.prepare(`PRAGMA ${query}`).all()
       return Object.values(rows[0] ?? {})[0]
     },
-    transaction: (callback: () => unknown) => () => {
-      sql.exec('BEGIN')
-      try {
-        const result = callback()
-        sql.exec('COMMIT')
-        return result
-      } catch (error) {
-        sql.exec('ROLLBACK')
-        throw error
+    transaction: (callback: () => unknown) => {
+      const execute = (begin: string) => {
+        sql.exec(begin)
+        try {
+          const result = callback()
+          sql.exec('COMMIT')
+          return result
+        } catch (error) {
+          sql.exec('ROLLBACK')
+          throw error
+        }
       }
+      return Object.assign(() => execute('BEGIN'), {
+        immediate: () => execute('BEGIN IMMEDIATE'),
+      })
     },
   } as unknown as Database.Database
   // The synchronous read port selects Drizzle schema columns; all data comes from SQLite.

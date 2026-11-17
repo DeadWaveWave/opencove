@@ -243,12 +243,14 @@ export async function createPersistenceStore(storeOptions: {
     }
 
     try {
-      const { result, event } = sqlite.transaction(() => {
-        const before = commits.capture()
-        const written = writeNormalizedAppState(sqlite, normalized)
-        writeNormalizedScrollbacks(sqlite, written.effectiveState)
-        return { result: written, event: commits.describe(before, written.revision) }
-      })()
+      const { result, event } = sqlite
+        .transaction(() => {
+          const before = commits.capture()
+          const written = writeNormalizedAppState(sqlite, normalized)
+          writeNormalizedScrollbacks(sqlite, written.effectiveState)
+          return { result: written, event: commits.describe(before, written.revision) }
+        })
+        .immediate()
       commits.publish(event)
       return { ok: true, level: 'full', bytes: rawBytes, ...result }
     } catch (error) {
@@ -291,19 +293,23 @@ export async function createPersistenceStore(storeOptions: {
     }
 
     try {
-      const { result, event } = sqlite.transaction(() => {
-        const before = commits.capture()
-        const written = writeNormalizedAppState(sqlite, normalized, options?.expectedRevision)
-        if (lineage) {
-          if (
-            !written.effectiveState.workspaces.some(w => w.nodes.some(n => n.id === lineage.nodeId))
-          ) {
-            throw createAppError('persistence.invalid_state')
+      const { result, event } = sqlite
+        .transaction(() => {
+          const before = commits.capture()
+          const written = writeNormalizedAppState(sqlite, normalized, options?.expectedRevision)
+          if (lineage) {
+            if (
+              !written.effectiveState.workspaces.some(w =>
+                w.nodes.some(n => n.id === lineage.nodeId),
+              )
+            ) {
+              throw createAppError('persistence.invalid_state')
+            }
+            insertNodeLineage(sqlite, lineage)
           }
-          insertNodeLineage(sqlite, lineage)
-        }
-        return { result: written, event: commits.describe(before, written.revision) }
-      })()
+          return { result: written, event: commits.describe(before, written.revision) }
+        })
+        .immediate()
       commits.publish(event)
       const bytes = utf8ByteLength(safeJsonStringify(result.effectiveState))
       return { ok: true, level: 'full', bytes, ...result }

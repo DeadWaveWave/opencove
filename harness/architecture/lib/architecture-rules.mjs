@@ -1,3 +1,5 @@
+import { assertArchitectureChecksConfig } from './architecture-config-validation.mjs'
+import { sqliteTransactionViolations } from './sqlite-transaction-rules.mjs'
 import { rendererBridgeViolations } from './renderer-bridge-rules.mjs'
 import {
   assertContextConfig,
@@ -281,52 +283,11 @@ function findTextViolations(sourceByFile, relativeByAbsolute, config) {
   return violations
 }
 
-function assertAllowedEdgeReasons(config) {
-  const edges = config.checks?.layerDependencies?.allowedEdges ?? []
-  edges.forEach((edge, index) => {
-    if (typeof edge.reason !== 'string' || edge.reason.trim() === '') {
-      throw new Error(
-        `checks.layerDependencies.allowedEdges[${index}] (${(edge.fromPatterns ?? []).join(', ')}) must have a non-empty "reason".`,
-      )
-    }
-  })
-}
-
-function assertSeverities(config) {
-  const checks = config.checks ?? {}
-  const configured = [
-    ['checks.layerDependencies', checks.layerDependencies, true],
-    ['checks.fileRuntimeCycles', checks.fileRuntimeCycles, false],
-    ['checks.rendererBridge', checks.rendererBridge, true],
-    ...(checks.forbiddenImportSpecifiers ?? []).map((rule, index) => [
-      `checks.forbiddenImportSpecifiers[${index}] (${rule.id})`,
-      rule,
-      true,
-    ]),
-    ...(checks.forbiddenText ?? []).map((rule, index) => [
-      `checks.forbiddenText[${index}] (${rule.id})`,
-      rule,
-      true,
-    ]),
-  ]
-  for (const [name, rule, required] of configured) {
-    if (!rule || (rule.severity === undefined && !required)) {
-      continue
-    }
-    if (rule.severity !== 'warn' && rule.severity !== 'error') {
-      throw new Error(
-        `${name}.severity must be exactly "warn" or "error", got ${JSON.stringify(rule.severity)}.`,
-      )
-    }
-  }
-}
-
 export async function loadArchitectureConfig(configPath = defaultArchitectureRulesPath) {
   const config = JSON.parse(await readFile(configPath, 'utf8'))
-  assertSeverities(config)
+  assertArchitectureChecksConfig(config)
   assertContextConfig(config)
   assertVariantConfig(config)
-  assertAllowedEdgeReasons(config)
   return config
 }
 
@@ -363,6 +324,10 @@ export async function runArchitectureAudit(options = {}) {
         relativePath,
         source,
         config.checks?.rendererBridge,
+      )
+
+      fileViolations.push(
+        ...sqliteTransactionViolations(relativePath, source, config.checks?.sqliteTransactions),
       )
 
       for (const rule of config.checks?.forbiddenImportSpecifiers ?? []) {

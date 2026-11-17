@@ -53,8 +53,9 @@ class MockDatabase {
     }
   }
 
-  transaction<T extends (...args: never[]) => unknown>(fn: T): T {
-    return ((...args: never[]) => fn(...args)) as T
+  transaction<TArgs extends unknown[], TResult>(fn: (...args: TArgs) => TResult) {
+    const execute = (...args: TArgs) => fn(...args)
+    return Object.assign(execute, { immediate: execute })
   }
 
   close(): void {
