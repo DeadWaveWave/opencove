@@ -1,0 +1,196 @@
+name: Experiment 647 S6 (drag budget, measurement runs of #738)
+
+# Lives only on the experiment branches; main never carries it. See #647 and #738 (measurement runs).
+# Trigger: a push to the spike branch. The baseline branch starts nothing.
+on:
+  push:
+    branches: [claude/experiment-647-s6-spike]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+  BASELINE_REF: origin/claude/experiment-647-s6-baseline
+
+jobs:
+  measure-ubuntu:
+    strategy:
+      fail-fast: false
+      matrix:
+        replica: [1, 2]
+
+    # Playwright 1.58 cannot install browser dependencies on ubuntu-latest (26.04) yet.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # The pair check needs the baseline branch and the merge base with main.
+          fetch-depth: 0
+
+      - name: Free disk space
+        run: |
+          df -h
+          sudo rm -rf /usr/local/lib/android || true
+          sudo rm -rf /usr/share/dotnet || true
+          sudo rm -rf /opt/ghc || true
+          sudo rm -rf /usr/share/swift || true
+          df -h
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9.6.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium for Desktop/Web continuity E2E
+        # apt mirrors occasionally stall; fail fast instead of burning the 6h job limit.
+        timeout-minutes: 15
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: ''
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Check the pair
+        run: bash experiments/647-a/check-pair.sh artifacts/experiment-647a/ubuntu-${{ matrix.replica }}
+
+      - name: Build baseline and spike
+        run: bash experiments/647-a/build-pair.sh artifacts/experiment-647a/ubuntu-${{ matrix.replica }}/pair.json
+
+      - name: Measure (interleaved)
+        timeout-minutes: 100
+        env:
+          OPENCOVE_E2E_SKIP_BUILD: '1'
+          OPENCOVE_E2E_WINDOW_MODE: inactive
+          OPENCOVE_E2E_RETRIES: '0'
+          OPENCOVE_E2E_DISABLE_CRASH_FALLBACK: '1'
+          OPENCOVE_DRAG_PROFILE: '1'
+        run: bash experiments/647-a/run-trials.sh artifacts/experiment-647a/ubuntu-${{ matrix.replica }}
+
+      - name: Summarize this replica
+        if: always()
+        shell: bash
+        run: node experiments/647-a/summarize.mjs artifacts/experiment-647a/ubuntu-${{ matrix.replica }} | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: experiment-647a-ubuntu-${{ matrix.replica }}-attempt-${{ github.run_attempt }}
+          path: artifacts/experiment-647a/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Cleanup E2E temp dirs
+        if: always()
+        run: |
+          if [ -n "${RUNNER_TEMP:-}" ]; then rm -rf "${RUNNER_TEMP}/opencove-e2e" || true; fi
+          rm -rf "/tmp/opencove-e2e" || true
+          rm -rf "/tmp/cove-e2e-user-data-"* || true
+
+  measure-macos:
+    runs-on: macos-latest
+    timeout-minutes: 150
+    env:
+      NODE_OPTIONS: --max-old-space-size=4096
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # The pair check needs the baseline branch and the merge base with main.
+          fetch-depth: 0
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9.6.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # No Chromium install: the Electron files need none (the macos-platform job of ci.yml).
+
+      - name: Check the pair
+        run: bash experiments/647-a/check-pair.sh artifacts/experiment-647a/macos-1
+
+      - name: Build baseline and spike
+        run: bash experiments/647-a/build-pair.sh artifacts/experiment-647a/macos-1/pair.json
+
+      - name: Measure (interleaved)
+        timeout-minutes: 120
+        env:
+          OPENCOVE_E2E_SKIP_BUILD: '1'
+          OPENCOVE_E2E_WINDOW_MODE: inactive
+          OPENCOVE_E2E_RETRIES: '0'
+          OPENCOVE_E2E_DISABLE_CRASH_FALLBACK: '1'
+          OPENCOVE_DRAG_PROFILE: '1'
+        run: bash experiments/647-a/run-trials.sh artifacts/experiment-647a/macos-1
+
+      - name: Summarize this replica
+        if: always()
+        shell: bash
+        run: node experiments/647-a/summarize.mjs artifacts/experiment-647a/macos-1 | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: experiment-647a-macos-1-attempt-${{ github.run_attempt }}
+          path: artifacts/experiment-647a/
+          if-no-files-found: warn
+          retention-days: 30
+
+  verdict:
+    needs: [measure-ubuntu, measure-macos]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Download results
+        uses: actions/download-artifact@v7
+        with:
+          pattern: experiment-647a-*
+          path: artifacts/experiment-647a-all
+
+      - name: Combined verdict
+        shell: bash
+        run: node experiments/647-a/summarize.mjs --combined artifacts/experiment-647a-all/* | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload verdict
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: experiment-647a-verdict-attempt-${{ github.run_attempt }}
+          path: artifacts/experiment-647a-all/summary-all.json
+          if-no-files-found: warn
+          retention-days: 30
