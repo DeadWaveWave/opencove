@@ -128,8 +128,11 @@ interface InteractionSnapshot<T> {
  * priority instead, inside the frame, and is deliberately not used here. Every subscriber of the
  * slice goes through this hook, so guides, previews and nodes stay in one lane.
  *
- * The selector must be a module constant that returns a stored value or a primitive. In the
- * render that receives a new store the hook returns that store's value, never the old one's.
+ * The selector must be a module-scope `const` arrow function that returns a field of the slice or
+ * a primitive, never a new object or array: an inline function re-subscribes on every render and a
+ * new value is never equal to the last one. `canvasUi.leafSubscribers.spec.ts` reads every caller
+ * and fails on either. In the render that receives a new store the hook returns that store's
+ * value, never the old one's.
  */
 export function useCanvasInteraction<T>(selector: (interaction: CanvasInteractionState) => T): T {
   const { api } = useCanvasStore()
