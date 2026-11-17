@@ -169,8 +169,8 @@ export function useWorkspaceCanvasShortcuts({
         case 'workspaceCanvas.cycleIdleSpacesForward':
         case 'workspaceCanvas.cycleIdleSpacesBackward': {
           // The Spaces and the nodes as the store holds them when the key is pressed.
-          const document = readDocument()
-          const topLevelSpaces = document.spaces.filter(space => !space.parentSpaceId)
+          const canvasDocument = readDocument()
+          const topLevelSpaces = canvasDocument.spaces.filter(space => !space.parentSpaceId)
           const nextSpaceId = resolveCycledSpaceId({
             direction:
               commandId === 'workspaceCanvas.cycleSpacesForward' ||
@@ -181,7 +181,7 @@ export function useWorkspaceCanvasShortcuts({
             spaceIds:
               commandId === 'workspaceCanvas.cycleIdleSpacesForward' ||
               commandId === 'workspaceCanvas.cycleIdleSpacesBackward'
-                ? resolveIdleSpaceIds({ spaces: topLevelSpaces, nodes: document.nodes })
+                ? resolveIdleSpaceIds({ spaces: topLevelSpaces, nodes: canvasDocument.nodes })
                 : topLevelSpaces.map(space => space.id),
           })
 

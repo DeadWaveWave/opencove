@@ -119,11 +119,11 @@ function Canvas() {
   })
   const Document = composed.nodeTypes.documentNode
   const Task = composed.nodeTypes.taskNode
-  const document = documentNode()
+  const documentItem = documentNode()
   const task = taskNode()
   return (
     <WorkspaceCanvasNodeTypesProvider value={composed.nodeTypesParameters}>
-      <Document id={document.id} data={document.data} />
+      <Document id={documentItem.id} data={documentItem.data} />
       <Task id={task.id} data={task.data} />
     </WorkspaceCanvasNodeTypesProvider>
   )

@@ -197,7 +197,7 @@ it('retains React types, live iframe and editor identities across canonical refr
   })
   acceptPersistedStateSnapshot({ state, revision, isPersisted: true })
   render(
-    <CanvasStoreTestProvider>
+    <CanvasStoreTestProvider workspaceId="views">
       <Shell />
     </CanvasStoreTestProvider>,
   )

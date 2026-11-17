@@ -299,7 +299,7 @@ describe('getSpaceBlockingNodes', () => {
     expect(blocking).toEqual({ agentNodeIds: [], terminalNodeIds: ['t-1'] })
   })
 
-  it('answers for A in a render of A while B is displayed', () => {
+  it('answers for A from the render that showed A, after B is shown', () => {
     const { showB, ops } = renderOps({
       a: { nodes: [terminal('t-1')], spaces: [spaceOf('s-1', ['t-1'])] },
     })

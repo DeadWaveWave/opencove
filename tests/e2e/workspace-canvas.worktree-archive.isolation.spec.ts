@@ -219,6 +219,28 @@ for (const theme of ['light', 'dark'] as const) {
           await expect(window.getByTestId(overlayId)).toHaveCount(0)
           if (outcome === 'success') {
             await expect(target).toHaveCount(0)
+            // The archive is one store write that flushes on itself: the saved state has lost the
+            // Space and its note and kept the other ones.
+            await expect
+              .poll(async () =>
+                window.evaluate(async () => {
+                  const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
+                  const parsed = raw
+                    ? (JSON.parse(raw) as {
+                        workspaces?: Array<{
+                          nodes?: Array<{ id: string }>
+                          spaces?: Array<{ id: string }>
+                        }>
+                      })
+                    : null
+                  const workspace = parsed?.workspaces?.[0]
+                  return {
+                    nodeIds: workspace?.nodes?.map(node => node.id) ?? null,
+                    spaceIds: workspace?.spaces?.map(space => space.id) ?? null,
+                  }
+                }),
+              )
+              .toEqual({ nodeIds: ['other-note'], spaceIds: ['other-space'] })
           } else {
             await expect(target).toBeVisible()
             await expect(window.getByTestId('space-worktree-window')).toBeVisible()
