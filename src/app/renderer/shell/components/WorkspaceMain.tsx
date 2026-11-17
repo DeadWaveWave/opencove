@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef } from 'react'
+import React, { useCallback, useLayoutEffect, useRef } from 'react'
 import { acquireInertRootLease } from '@app/renderer/components/ui/inertRootLease'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
 import type { TerminalClientDisplayCalibration } from '@contexts/settings/domain/terminalDisplayCalibration'
@@ -52,6 +52,23 @@ function WorkspaceMainComponent({
     }
     return undefined
   }, [isSettingsPageOpen])
+  // The canvas is memoized: a new function here would re-render all of it on every render of this
+  // component, which happens on every render of the shell. Bound to the shown workspace's id.
+  const activeWorkspaceId = activeWorkspace?.id ?? null
+  const handleOpenSpaceContextMenu = useCallback(
+    (spaceId: string, anchor: { x: number; y: number }) => {
+      if (activeWorkspaceId === null) {
+        return
+      }
+      onOpenProjectContextMenu({
+        workspaceId: activeWorkspaceId,
+        x: anchor.x,
+        y: anchor.y,
+        target: { kind: 'space', workspaceId: activeWorkspaceId, spaceId },
+      })
+    },
+    [activeWorkspaceId, onOpenProjectContextMenu],
+  )
   const surfaceProps = {
     ref: surfaceRef,
     className: `workspace-main${isSettingsPageOpen && !isFocusNodeTargetZoomPreviewing ? ' workspace-main--covered' : ''}`,
@@ -91,18 +108,7 @@ function WorkspaceMainComponent({
         spaces={activeWorkspace.spaces}
         activeSpaceId={activeWorkspace.activeSpaceId}
         onActiveSpaceChange={onActiveSpaceChange}
-        onOpenSpaceContextMenu={(spaceId, anchor) => {
-          onOpenProjectContextMenu({
-            workspaceId: activeWorkspace.id,
-            x: anchor.x,
-            y: anchor.y,
-            target: {
-              kind: 'space',
-              workspaceId: activeWorkspace.id,
-              spaceId,
-            },
-          })
-        }}
+        onOpenSpaceContextMenu={handleOpenSpaceContextMenu}
         shortcutsEnabled={shortcutsEnabled}
         agentSettings={agentSettings}
         terminalDisplayCalibration={terminalDisplayCalibration}

@@ -241,10 +241,11 @@ export default function App(): React.JSX.Element {
   })
 
   const requestAddWorkspace = useAddProjectRequest(openAddProjectWizard, setFocusNodeZoomPreviewing)
-  const handleAddWorkspace = () => {
+  // Stable across the shell's renders, so the memoized workspace main does not re-render for it.
+  const handleAddWorkspace = useCallback(() => {
     handleCloseSettings()
     requestAddWorkspace()
-  }
+  }, [handleCloseSettings, requestAddWorkspace])
 
   const {
     handleWorkspaceViewportChange,
