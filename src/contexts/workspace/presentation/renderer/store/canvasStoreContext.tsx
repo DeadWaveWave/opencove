@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useLayoutEffect,
   useMemo,
   useState,
   type ReactElement,
@@ -9,6 +10,7 @@ import {
 } from 'react'
 import { useStore } from 'zustand'
 import { createCanvasStore, type CanvasStore } from './canvasStore'
+import type { CanvasInteractionCommands, CanvasInteractionState } from './canvasStore.interaction'
 import type { CanvasSelectionCommands, CanvasSelectionState } from './canvasStore.selection'
 import type { CanvasUiCommands, CanvasUiState } from './canvasStore.ui'
 import { DEFAULT_WORKSPACE_VIEWPORT, type WorkspaceSpaceState } from '../types'
@@ -37,7 +39,11 @@ const EMPTY_WORKSPACE_DOCUMENT: WorkspaceDocument = Object.freeze({
   isMinimapVisible: false,
 })
 
-/** Owns one canvas store per workspace id; a new id gets a new store in the same render. */
+/**
+ * Owns one canvas store per workspace id; a new id gets a new store in the same render. The store
+ * is empty, except for the magnetic-snapping toggle: it is a session preference, so the new store
+ * starts with the value the previous one had (Decision 10 of #738).
+ */
 export function CanvasStoreProvider({
   workspaceId,
   children,
@@ -52,7 +58,12 @@ export function CanvasStoreProvider({
 
   let current = entry
   if (entry.workspaceId !== workspaceId) {
-    current = { workspaceId, store: createCanvasStore() }
+    current = {
+      workspaceId,
+      store: createCanvasStore({
+        magneticSnappingEnabled: entry.store.api.getState().interaction.magneticSnappingEnabled,
+      }),
+    }
     setEntry(current)
   }
 
@@ -101,6 +112,67 @@ export function useReadCanvasSelection(): () => CanvasSelectionState {
 
 export function useCanvasSelectionCommands(): CanvasSelectionCommands {
   return useCanvasStore().commands.selection
+}
+
+interface InteractionSnapshot<T> {
+  readonly api: CanvasStore['api']
+  readonly value: T
+}
+
+/**
+ * Subscribes to the `interaction` slice, and is the one place that decides when a gesture frame
+ * renders its subscribers (arm B of #738, "Render priority"). The value lives in React state that
+ * the store's `subscribe` sets, so a write from an animation frame renders at default priority,
+ * after the frame, as the canvas's own `setState` calls do; a write from a discrete event renders
+ * in that event's batch. `useStore` would render every write at sync
+ * priority instead, inside the frame, and is deliberately not used here. Every subscriber of the
+ * slice goes through this hook, so guides, previews and nodes stay in one lane.
+ *
+ * The selector must be a module-scope `const` arrow function that returns a field of the slice or
+ * a primitive, never a new object or array: an inline function re-subscribes on every render and a
+ * new value is never equal to the last one. `canvasUi.leafSubscribers.spec.ts` reads every caller
+ * and fails on either. In the render that receives a new store the hook returns that store's
+ * value, never the old one's.
+ */
+export function useCanvasInteraction<T>(selector: (interaction: CanvasInteractionState) => T): T {
+  const { api } = useCanvasStore()
+  const [snapshot, setSnapshot] = useState<InteractionSnapshot<T>>(() => ({
+    api,
+    value: selector(api.getState().interaction),
+  }))
+
+  useLayoutEffect(() => {
+    const sync = (): void => {
+      const value = selector(api.getState().interaction)
+      setSnapshot(previous =>
+        previous.api === api && Object.is(previous.value, value) ? previous : { api, value },
+      )
+    }
+
+    // A write between the render and this effect never reaches `subscribe`; read once.
+    sync()
+    return api.subscribe(sync)
+  }, [api, selector])
+
+  return snapshot.api === api ? snapshot.value : selector(api.getState().interaction)
+}
+
+/** A stable reader for handlers: it does not subscribe, so callers do not re-render. */
+export function useReadCanvasInteraction(): () => CanvasInteractionState {
+  const { api } = useCanvasStore()
+  return useCallback(() => api.getState().interaction, [api])
+}
+
+export function useCanvasInteractionCommands(): CanvasInteractionCommands {
+  return useCanvasStore().commands.interaction
+}
+
+/**
+ * The workspace this canvas's provider was rendered for. A callback made in a render keeps the id
+ * of that render: after a switch it still names the workspace it was made for.
+ */
+export function useCanvasWorkspaceId(): string {
+  return useCanvasStoreEntry().workspaceId
 }
 
 /**

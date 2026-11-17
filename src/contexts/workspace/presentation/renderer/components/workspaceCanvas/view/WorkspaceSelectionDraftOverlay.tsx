@@ -1,20 +1,19 @@
 import React, { useMemo, type CSSProperties } from 'react'
-import type { SelectionDraftState } from '../types'
-
-type SelectionDraftUiState = Pick<
-  SelectionDraftState,
-  'startX' | 'startY' | 'currentX' | 'currentY' | 'phase'
->
+import type { CanvasInteractionState } from '../../../store/canvasStore.interaction'
+import { useCanvasInteraction } from '../../../store/canvasStoreContext'
 
 interface WorkspaceSelectionDraftOverlayProps {
   canvasRef: React.RefObject<HTMLDivElement | null>
-  draft: SelectionDraftUiState | null
 }
 
+const selectSelectionDraft = (interaction: CanvasInteractionState) => interaction.selectionDraft
+
+// A leaf subscriber of the `interaction` slice (Decision 2 of #738): a marquee frame renders this
+// component and nothing above it.
 export function WorkspaceSelectionDraftOverlay({
   canvasRef,
-  draft,
 }: WorkspaceSelectionDraftOverlayProps): React.JSX.Element | null {
+  const draft = useCanvasInteraction(selectSelectionDraft)
   const style = useMemo<CSSProperties | null>(() => {
     if (!draft) {
       return null

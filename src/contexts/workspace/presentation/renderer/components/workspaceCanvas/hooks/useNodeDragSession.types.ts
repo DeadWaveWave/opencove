@@ -7,7 +7,6 @@ export interface WorkspaceCanvasNodeDragSession {
     nodeId: string
     offset: { x: number; y: number }
   } | null>
-  nodeSpaceFramePreview: ReadonlyMap<string, WorkspaceSpaceRect> | null
   dragBaselinePositionByIdRef: MutableRefObject<Map<string, { x: number; y: number }> | null>
   dragBaselineSpaceRectByIdRef: MutableRefObject<Map<string, WorkspaceSpaceRect> | null>
   beginNodeDragSession: (currentNodes: Node<TerminalNodeData>[]) => void
@@ -26,7 +25,8 @@ export interface WorkspaceCanvasNodeDragSession {
   applyPendingReleaseProjection: (
     currentNodes: Node<TerminalNodeData>[],
   ) => Node<TerminalNodeData>[]
-  endNodeDragSession: () => void
+  /** Ends the session; returns the Space frames its release writes (Space-dominant), or null. */
+  endNodeDragSession: () => ReadonlyMap<string, WorkspaceSpaceRect> | null
   clearNodeDragProjection: () => void
   /** Copies the selected Space ids for the length of one node drag. */
   captureDragStartSpaceSelection: () => void

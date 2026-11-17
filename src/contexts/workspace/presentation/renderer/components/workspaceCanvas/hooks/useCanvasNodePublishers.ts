@@ -1,53 +1,64 @@
-import { useCallback, type MutableRefObject } from 'react'
+import { useCallback } from 'react'
 import type { Node } from '@xyflow/react'
 import type { TerminalNodeData } from '../../../types'
-import { replaceWorkspaceNodes } from '../../../store/workspaceDocumentCommands'
+import { applyLiveNodes, type LiveNodes } from '../../../utils/canvasLiveNodes'
+import { useCanvasInteractionCommands } from '../../../store/canvasStoreContext'
+import {
+  commitCanvasDocument,
+  replaceWorkspaceNodes,
+  requestWorkspaceDocumentPersistFlush,
+} from '../../../store/workspaceDocumentCommands'
+import { applySpaceFramePreview, type NodesRelease } from './useApplyNodeChanges.helpers'
+import { removeNodesAndUnlink } from './useApplyNodeChanges'
 
-export function useWorkspaceCanvasNodePublishers({
-  workspaceId,
-  setCanvasNodes,
-  hasTransientNodePositionsRef,
-}: {
-  workspaceId: string
-  setCanvasNodes: React.Dispatch<React.SetStateAction<Node<TerminalNodeData>[]>>
-  hasTransientNodePositionsRef: MutableRefObject<boolean>
-}): {
-  publishLiveNodesChange: (nodes: Node<TerminalNodeData>[]) => void
+export function useWorkspaceCanvasNodePublishers({ workspaceId }: { workspaceId: string }): {
+  publishLiveNodesChange: (liveNodes: LiveNodes) => void
   commitNodesChange: (nodes: Node<TerminalNodeData>[]) => void
-  publishCommittedNodes: (nodes: Node<TerminalNodeData>[]) => void
-  isLiveGestureActive: () => boolean
+  commitNodesRelease: (release: NodesRelease) => void
 } {
+  const { publishLiveNodes } = useCanvasInteractionCommands()
+
+  // A drag frame reaches the overlay in the canvas store, not the document.
   const publishLiveNodesChange = useCallback(
-    (nextNodes: Node<TerminalNodeData>[]) => {
-      hasTransientNodePositionsRef.current = true
-      setCanvasNodes(nextNodes)
-    },
-    [hasTransientNodePositionsRef, setCanvasNodes],
+    (liveNodes: LiveNodes) => publishLiveNodes(liveNodes),
+    [publishLiveNodes],
   )
 
-  // The canvas-side half of a commit, for writers that already stored the nodes.
-  const publishCommittedNodes = useCallback(
-    (nextNodes: Node<TerminalNodeData>[]) => {
-      hasTransientNodePositionsRef.current = false
-      setCanvasNodes(nextNodes)
-    },
-    [hasTransientNodePositionsRef, setCanvasNodes],
-  )
-
-  // React Flow's change path computes from the node store's mirror of the canvas view and commits the
-  // whole array.
+  // The change path computes a batch from the stores when it runs and commits the whole array in
+  // one write. A canvas write does not end the overlay (S6, PR 4); the release does, in the change
+  // path, right after its own write.
   const commitNodesChange = useCallback(
     (nextNodes: Node<TerminalNodeData>[]) => {
-      publishCommittedNodes(nextNodes)
       replaceWorkspaceNodes(workspaceId, nextNodes)
     },
-    [publishCommittedNodes, workspaceId],
+    [workspaceId],
   )
 
-  const isLiveGestureActive = useCallback(
-    () => hasTransientNodePositionsRef.current,
-    [hasTransientNodePositionsRef],
+  // The release is one write, computed from the store as it is when it runs: the gesture's windows
+  // at their release position (the entries of the release array, nothing of the other windows) and,
+  // in a Space-dominant drag, the frame rects. A release that changes nothing writes nothing, and
+  // the persistence flush is requested only when a Space rect changed.
+  const commitNodesRelease = useCallback(
+    ({ liveNodes, removedIds, spaceRects }: NodesRelease) => {
+      let didChangeSpaceRect = false
+      commitCanvasDocument(workspaceId, document => {
+        const nodes = applyLiveNodes(removeNodesAndUnlink(document.nodes, removedIds), liveNodes)
+        const spaces = spaceRects
+          ? applySpaceFramePreview(document.spaces, spaceRects)
+          : document.spaces
+        didChangeSpaceRect = spaces !== document.spaces
+
+        return nodes === document.nodes && spaces === document.spaces
+          ? document
+          : { ...document, nodes, spaces }
+      })
+
+      if (didChangeSpaceRect) {
+        requestWorkspaceDocumentPersistFlush()
+      }
+    },
+    [workspaceId],
   )
 
-  return { publishLiveNodesChange, commitNodesChange, publishCommittedNodes, isLiveGestureActive }
+  return { publishLiveNodesChange, commitNodesChange, commitNodesRelease }
 }

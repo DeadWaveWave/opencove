@@ -67,13 +67,14 @@ export function useWorkspaceCanvasRuntimeIntegrations({
     onShowMessage,
   })
   const applyChanges = useWorkspaceCanvasApplyNodeChanges({
-    nodesRef: nodeStore.nodesRef,
     onNodesChange: nodePublishers.publishLiveNodesChange,
     onNodesCommit: nodePublishers.commitNodesChange,
+    onNodesRelease: nodePublishers.commitNodesRelease,
     onSelectedNodeIdsChange: canvasState.syncSelectedNodeIds,
     clearAgentLaunchToken: nodeStore.clearAgentLaunchToken,
     normalizePosition: nodeStore.normalizePosition,
     applyPendingScrollbacks: nodeStore.applyPendingScrollbacks,
+    nodes: canvasState.flowNodes,
     isNodeDraggingRef: nodeStore.isNodeDraggingRef,
     exclusiveNodeDragAnchorIdRef,
     nodeDragSession,

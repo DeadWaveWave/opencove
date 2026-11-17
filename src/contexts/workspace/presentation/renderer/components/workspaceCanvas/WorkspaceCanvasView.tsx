@@ -72,8 +72,6 @@ export function WorkspaceCanvasView({
   isTrackpadCanvasMode,
   useManualCanvasWheelGestures,
   isShiftPressed,
-  selectionDraft,
-  snapGuides,
   spaceVisuals,
   spaceFramePreview,
   openExplorerSpaceId,
@@ -100,8 +98,6 @@ export function WorkspaceCanvasView({
   activateSpace,
   activateAllSpaces,
   onOpenSpaceContextMenu,
-  magneticSnappingEnabled,
-  onToggleMagneticSnapping,
   createTerminalNode,
   createNoteNodeFromContextMenu,
   createWebsiteNodeFromContextMenu,
@@ -317,8 +313,8 @@ export function WorkspaceCanvasView({
         onOpen={materializeQuickPreview}
         onDragStart={beginQuickPreviewDrag}
       />
-      <WorkspaceSnapGuidesOverlay guides={snapGuides} />
-      <WorkspaceSelectionDraftOverlay canvasRef={canvasRef} draft={selectionDraft} />
+      <WorkspaceSnapGuidesOverlay />
+      <WorkspaceSelectionDraftOverlay canvasRef={canvasRef} />
       <WorkspaceCanvasActionBar
         canvasRef={canvasRef}
         defaultAgentProvider={agentSettings.defaultProvider}
@@ -363,8 +359,6 @@ export function WorkspaceCanvasView({
         insertQuickPhrase={insertQuickPhrase}
         openQuickMenuSettings={openQuickMenuSettings}
         spaces={spaces}
-        magneticSnappingEnabled={magneticSnappingEnabled}
-        onToggleMagneticSnapping={onToggleMagneticSnapping}
         arrangeAll={arrangeAll}
         arrangeCanvas={arrangeCanvas}
         arrangeInSpace={arrangeInSpace}

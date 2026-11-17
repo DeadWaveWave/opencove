@@ -1,13 +1,26 @@
-import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
+import type { MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
-import type { TerminalNodeData, WorkspaceSpaceRect } from '../../../types'
-import { areWorkspaceSnapGuidesEqual, type WorkspaceSnapGuide } from '../../../utils/workspaceSnap'
+import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
+import type { LiveNodes } from '../../../utils/canvasLiveNodes'
 import type { WorkspaceCanvasNodeDragSession } from './useNodeDragSession'
 
+/** What a release writes: the gesture's windows, what the batch removed, the frame rects. */
+export interface NodesRelease {
+  /** `toLiveNodes` of the release array: the windows the gesture owns, at their release position. */
+  liveNodes: LiveNodes
+  /** The windows the releasing batch removes (a remove batch that arrives mid-gesture). */
+  removedIds: ReadonlySet<string>
+  /** The Space frames of a Space-dominant release; null for any other. */
+  spaceRects: ReadonlyMap<string, WorkspaceSpaceRect> | null
+}
+
 export interface UseApplyNodeChangesParams {
-  nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
-  onNodesChange: (nodes: Node<TerminalNodeData>[]) => void
-  onNodesCommit?: (nodes: Node<TerminalNodeData>[]) => void
+  /** A drag frame: the overlay of the gesture's windows. */
+  onNodesChange: (liveNodes: LiveNodes) => void
+  /** Any other batch: the whole result, computed from the committed view. */
+  onNodesCommit: (nodes: Node<TerminalNodeData>[]) => void
+  /** A release: one write of the gesture's windows and Space frames. */
+  onNodesRelease: (release: NodesRelease) => void
   onSelectedNodeIdsChange?: (nodeIds: string[]) => void
   clearAgentLaunchToken: (nodeId: string) => void
   normalizePosition: (
@@ -16,16 +29,34 @@ export interface UseApplyNodeChangesParams {
     size: { width: number; height: number },
   ) => { x: number; y: number }
   applyPendingScrollbacks: (targetNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[]
+  /** The committed nodes: a drag whose grabbed window leaves them has been aborted. */
+  nodes: Node<TerminalNodeData>[]
   isNodeDraggingRef: MutableRefObject<boolean>
   exclusiveNodeDragAnchorIdRef?: MutableRefObject<string | null>
   nodeDragSession: WorkspaceCanvasNodeDragSession
 }
 
-export function setResolvedSnapGuides(
-  setSnapGuides: Dispatch<SetStateAction<WorkspaceSnapGuide[] | null>>,
-  guides: WorkspaceSnapGuide[] | null,
-): void {
-  setSnapGuides(current => (areWorkspaceSnapGuidesEqual(current, guides) ? current : guides))
+/** The Spaces with the rects of a released frame; the same array when no rect changes. */
+export function applySpaceFramePreview(
+  spaces: WorkspaceSpaceState[],
+  preview: ReadonlyMap<string, WorkspaceSpaceRect>,
+): WorkspaceSpaceState[] {
+  let hasSpaceChange = false
+  const nextSpaces = spaces.map(space => {
+    const rect = preview.get(space.id) ?? null
+    if (!rect) {
+      return space
+    }
+
+    if (space.rect && areSpaceRectsEqual(space.rect, rect)) {
+      return space
+    }
+
+    hasSpaceChange = true
+    return { ...space, rect: { ...rect } }
+  })
+
+  return hasSpaceChange ? nextSpaces : spaces
 }
 
 export function areSpaceRectsEqual(
@@ -41,45 +72,6 @@ export function areSpaceRectsEqual(
   }
 
   return a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height
-}
-
-function areSpaceFramePreviewMapsEqual(
-  a: ReadonlyMap<string, WorkspaceSpaceRect> | null,
-  b: ReadonlyMap<string, WorkspaceSpaceRect> | null,
-): boolean {
-  if (a === b) {
-    return true
-  }
-
-  if (!a || !b) {
-    return false
-  }
-
-  if (a.size !== b.size) {
-    return false
-  }
-
-  for (const [spaceId, rect] of a.entries()) {
-    const other = b.get(spaceId)
-    if (!other) {
-      return false
-    }
-
-    if (!areSpaceRectsEqual(rect, other)) {
-      return false
-    }
-  }
-
-  return true
-}
-
-export function setResolvedSpaceFramePreview(
-  setSpaceFramePreview: Dispatch<SetStateAction<ReadonlyMap<string, WorkspaceSpaceRect> | null>>,
-  nextPreview: ReadonlyMap<string, WorkspaceSpaceRect> | null,
-): void {
-  setSpaceFramePreview(current =>
-    areSpaceFramePreviewMapsEqual(current, nextPreview) ? current : nextPreview,
-  )
 }
 
 export function buildDragBaselineNodes({
@@ -117,4 +109,31 @@ export function buildDragBaselineNodes({
 
     return { ...node, position: resolvedBaseline }
   })
+}
+
+/**
+ * The window a live node drag was grabbed by, or null when that cannot be told. React Flow aborts a
+ * node-handle drag, and sends no release, when this window leaves the document. The pointer anchor
+ * names it while the overlay still holds that window: an anchor that no gesture of this overlay
+ * dragged is a stale one, left by an earlier drag. Without an anchor (a touch drag), a drag that
+ * moves exactly one window grabbed that window.
+ */
+export function resolveGrabbedNodeId(
+  pointerAnchor: { nodeId: string } | null,
+  liveNodes: LiveNodes | null,
+): string | null {
+  if (pointerAnchor && liveNodes?.get(pointerAnchor.nodeId)?.dragging === true) {
+    return pointerAnchor.nodeId
+  }
+
+  let draggedId: string | null = null
+  let draggedCount = 0
+  for (const [id, entry] of liveNodes ?? []) {
+    if (entry.dragging === true) {
+      draggedId = id
+      draggedCount += 1
+    }
+  }
+
+  return draggedCount === 1 ? draggedId : null
 }
