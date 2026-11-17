@@ -17,6 +17,7 @@ const tests = process.argv.includes('--worker-ownership')
       'tests/contract/agentTurnArchive/claudeClearTurnArchive.native.spec.ts',
       'tests/contract/agentTurnArchive/agentTurnArchiveReview.native.spec.ts',
       'tests/contract/platform/persistenceStore.revision.native.spec.ts',
+      'tests/contract/platform/persistenceStore.diagnostics.native.spec.ts',
       'tests/contract/platform/nodeLineage.native.spec.ts',
       'tests/contract/platform/nodeLineageManagedResume.native.spec.ts',
       'tests/contract/platform/nodeLineageManagedLaunch.native.spec.ts',

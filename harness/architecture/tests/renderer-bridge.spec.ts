@@ -1,5 +1,6 @@
 import { expect, it } from 'vitest'
 import { rendererBridgeViolations } from '../lib/renderer-bridge-rules.mjs'
+import rules from '../rules.json'
 const config = {
   id: 'architecture.rendererBridgeBoundary',
   severity: 'error',
@@ -55,4 +56,12 @@ it('allows only the explicit plugin diagnostic formatter to read author diagnost
     ),
   ).toEqual([])
   expect(rendererBridgeViolations(file, 'descriptor.debugMessage', scoped)).toHaveLength(1)
+})
+
+it('allows raw persistence errors only in the diagnostic logger, without opening other bridge access', () => {
+  const scoped = rules.checks.rendererBridge
+  const logger = 'src/app/renderer/shell/hooks/persistenceDiagnostics.ts'
+  expect(rendererBridgeViolations(logger, 'result.error.debugMessage', scoped)).toEqual([])
+  expect(rendererBridgeViolations(file, 'result.error.debugMessage', scoped)).toHaveLength(1)
+  expect(rendererBridgeViolations(logger, 'window.__opencoveBridge', scoped)).toHaveLength(1)
 })

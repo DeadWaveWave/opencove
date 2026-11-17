@@ -3,6 +3,37 @@ import React from 'react'
 import { act, render, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { join } from 'node:path'
+import { createDesktopOpenCoveApi } from '../../../src/app/renderer/bootstrap/installDesktopOpenCoveApi'
+import { createAppError, toAppErrorDescriptor } from '../../../src/shared/errors/appError'
+import type { PersistWriteResult } from '../../../src/shared/contracts/dto'
+import type { PersistenceStore } from '../../../src/platform/persistence/sqlite/PersistenceStore'
+
+const ipc = vi.hoisted(() => ({
+  profile: '',
+  listeners: new Map<string, (...args: unknown[]) => void>(),
+  handlers: new Map<string, (...args: unknown[]) => unknown>(),
+}))
+vi.mock('electron', () => ({
+  app: { getPath: () => ipc.profile },
+  contextBridge: {
+    exposeInMainWorld: (key: string, value: unknown) => Reflect.set(window, key, value),
+  },
+  webUtils: {},
+  ipcMain: {
+    on: (key: string, fn: (...args: unknown[]) => void) => ipc.listeners.set(key, fn),
+    removeListener: (key: string) => ipc.listeners.delete(key),
+    handle: (key: string, fn: (...args: unknown[]) => unknown) => ipc.handlers.set(key, fn),
+    removeHandler: (key: string) => ipc.handlers.delete(key),
+  },
+  ipcRenderer: {
+    on: vi.fn(),
+    send: (key: string, payload: unknown) => ipc.listeners.get(key)?.({}, structuredClone(payload)),
+    invoke: async (key: string, payload: unknown) =>
+      structuredClone(await ipc.handlers.get(key)?.({}, payload)),
+  },
+}))
 
 const { flushScheduledPersistedStateWrite, schedulePersistedStateWrite } = vi.hoisted(() => ({
   flushScheduledPersistedStateWrite: vi.fn(),
@@ -91,6 +122,103 @@ describe('usePersistedAppState', () => {
     )
     expect(flushScheduledScrollbackWrites).toHaveBeenCalledTimes(1)
     expect(flushScheduledPersistedStateWrite).toHaveBeenCalledTimes(1)
+  })
+
+  it('carries save errors through preload and logs once from the result handler into the profile', async () => {
+    ipc.profile = await mkdtemp(join(process.cwd(), 'node_modules/persistence-diagnostics-'))
+    const { registerDiagnosticsIpcHandlers } =
+      await import('../../../src/app/main/ipc/registerDiagnosticsIpcHandlers')
+    const { registerPersistenceIpcHandlers } =
+      await import('../../../src/platform/persistence/sqlite/ipc/register')
+    const failure: PersistWriteResult = {
+      ok: false,
+      reason: 'io',
+      outcome: 'notSubmitted',
+      error: toAppErrorDescriptor(
+        createAppError('persistence.io_failed', {
+          debugMessage: 'SqliteError(SQLITE_BUSY): database is locked',
+          details: { stage: 'worker-store', privateState: 'DO NOT LOG' },
+        }),
+      ),
+    }
+    const diagnostics = registerDiagnosticsIpcHandlers()
+    const persistence = registerPersistenceIpcHandlers(
+      async () =>
+        ({
+          writeAppState: async () => failure,
+        }) as unknown as PersistenceStore,
+    )
+    await import('../../../src/app/preload/index')
+    window.opencoveApi = createDesktopOpenCoveApi(window.__opencoveBridge)
+    let deliver!: (result: PersistWriteResult) => void
+    schedulePersistedStateWrite.mockImplementation((_producer, options) => {
+      deliver = options.onResult
+    })
+    function Harness() {
+      usePersistedAppState({
+        workspaces: [],
+        activeWorkspaceId: null,
+        agentSettings: DEFAULT_AGENT_SETTINGS,
+        isHydrated: true,
+        producePersistedState: () => ({
+          formatVersion: 0,
+          activeWorkspaceId: null,
+          workspaces: [],
+          settings: DEFAULT_AGENT_SETTINGS,
+        }),
+      })
+      return null
+    }
+    const rendered = render(
+      <React.StrictMode>
+        <Harness />
+      </React.StrictMode>,
+    )
+    try {
+      act(() => requestWorkspaceDocumentPersistFlush())
+      const result = await window.opencoveApi.persistence.writeAppState({ state: {} })
+      expect(result).toEqual(failure)
+      // A connection notice takes precedence, but must not hide save diagnostics.
+      const notice = {
+        tone: 'error' as const,
+        kind: 'connection' as const,
+        message: 'Disconnected',
+      }
+      act(() => useAppStore.getState().setPersistNotice(notice))
+      act(() => deliver(result))
+      expect(useAppStore.getState().persistNotice).toEqual(notice)
+      act(() => deliver({ ok: true, level: 'full', bytes: 1 }))
+      const raw = await readFile(join(ipc.profile, 'logs/runtime-diagnostics.log'), 'utf8')
+      const lines = raw
+        .trim()
+        .split('\n')
+        .map(line => JSON.parse(line))
+      expect(lines).toHaveLength(2)
+      expect(lines[0]).toMatchObject({
+        source: 'renderer-persistence',
+        level: 'error',
+        event: 'persistence-write-failed',
+        details: {
+          errorCode: 'persistence.io_failed',
+          reason: 'io',
+          outcome: 'notSubmitted',
+          debugMessage: 'SqliteError(SQLITE_BUSY): database is locked',
+          stage: 'worker-store',
+          noticeKey: 'persistence.ioFailed',
+        },
+      })
+      expect(lines[1]).toMatchObject({
+        source: 'renderer-persistence',
+        event: 'persistence-write-recovered',
+        details: { failedCount: 1 },
+      })
+      expect(raw).not.toContain('DO NOT LOG')
+    } finally {
+      rendered.unmount()
+      persistence.dispose()
+      diagnostics.dispose()
+      await rm(ipc.profile, { recursive: true, force: true })
+    }
   })
 
   it('keeps recovery notices after successful full writes', async () => {
