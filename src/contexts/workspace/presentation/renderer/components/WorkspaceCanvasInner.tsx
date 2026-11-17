@@ -1,6 +1,6 @@
 import { useReactFlow, type Edge, type Node } from '@xyflow/react'
 import * as workspaceCanvasHooks from './workspaceCanvas/hooks'
-import { TerminalDisplayAlignedWorkspaceCanvasView } from './workspaceCanvas/TerminalDisplayAlignedWorkspaceCanvasView'
+import { CanvasFlowHost } from './workspaceCanvas/CanvasFlowHost'
 import { openQuickMenuSettings } from './workspaceCanvas/openQuickMenuSettings'
 import type { WorkspaceCanvasInnerProps } from './workspaceCanvas/types'
 import { useCanvasCollapse } from './workspaceCanvas/collapse/useCanvasCollapse'
@@ -39,15 +39,11 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
   useCanvasCommitProbe('WorkspaceCanvasInner', props)
   const reactFlow = useReactFlow<Node<import('../types').TerminalNodeData>, Edge>()
   const canvasState = workspaceCanvasHooks.useWorkspaceCanvasState({
-    workspaceId,
     nodes,
     spaces,
     viewport,
   })
-  const nodePublishers = workspaceCanvasHooks.useWorkspaceCanvasNodePublishers({
-    ...canvasState,
-    workspaceId,
-  })
+  const nodePublishers = workspaceCanvasHooks.useWorkspaceCanvasNodePublishers({ workspaceId })
   // prettier-ignore
   const exclusiveNodeDragAnchorIdRef = workspaceCanvasHooks.useWorkspaceCanvasWorkspaceReset(workspaceId, canvasState.selectedNodeIds.length)
   const actionRefs = workspaceCanvasHooks.useWorkspaceCanvasActionRefs()
@@ -61,10 +57,7 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
     standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
     browserDefaultMode: agentSettings.browserDefaultMode,
   })
-  const nodeDragSession = workspaceCanvasHooks.useWorkspaceCanvasNodeDragSession({
-    workspaceId,
-    setSnapGuides: canvasState.setSnapGuides,
-  })
+  const nodeDragSession = workspaceCanvasHooks.useWorkspaceCanvasNodeDragSession({ workspaceId })
   // prettier-ignore
   const { updateSpaceDirectory, getSpaceBlockingNodes, closeNodesById } = workspaceCanvasHooks.useWorkspaceCanvasSpaceDirectoryOps({ workspacePath, updateCanvasDocument: nodeStore.updateCanvasDocument, closeNode: nodeStore.closeNode })
   const spacesApi = workspaceCanvasHooks.useWorkspaceCanvasSpaces({
@@ -86,7 +79,6 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
       reactFlow,
       setNodes: nodeStore.setNodes,
       updateCanvasDocument: nodeStore.updateCanvasDocument,
-      setSnapGuides: canvasState.setSnapGuides,
     })
   const {
     finalizeDraggedNodeDrop,
@@ -292,7 +284,7 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
       nodeStore={nodeStore}
       onShowMessage={onShowMessage}
     >
-      <TerminalDisplayAlignedWorkspaceCanvasView
+      <CanvasFlowHost
         workspaceId={workspaceId}
         terminalFontSize={agentSettings.terminalFontSize}
         terminalFontFamily={agentSettings.terminalFontFamily}
@@ -312,7 +304,7 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
         handleCanvasDragOver={handleCanvasDragOver}
         handleCanvasDrop={handleCanvasDrop}
         {...actionBarActions}
-        nodes={canvasState.flowNodes}
+        committedNodes={canvasState.flowNodes}
         edges={taskAgentEdges}
         nodeTypes={nodeTypes}
         onNodesChange={applyChanges}
@@ -326,9 +318,8 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
         isTrackpadCanvasMode={inputMode.isTrackpadCanvasMode}
         useManualCanvasWheelGestures={inputMode.useManualCanvasWheelGestures}
         isShiftPressed={canvasState.isShiftPressed}
-        snapGuides={canvasState.snapGuides}
         spaceVisuals={spacesApi.spaceVisuals}
-        spaceFramePreview={spaceFramePreview ?? nodeDragSession.nodeSpaceFramePreview}
+        spaceDragFramePreview={spaceFramePreview}
         handleSpaceDragHandlePointerDown={handleSpaceDragHandlePointerDown}
         commitSpaceRename={spacesApi.commitSpaceRename}
         activateSpaceTitle={spacesApi.activateSpaceTitle}

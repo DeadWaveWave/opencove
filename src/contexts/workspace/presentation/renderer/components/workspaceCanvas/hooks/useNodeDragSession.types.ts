@@ -7,7 +7,6 @@ export interface WorkspaceCanvasNodeDragSession {
     nodeId: string
     offset: { x: number; y: number }
   } | null>
-  nodeSpaceFramePreview: ReadonlyMap<string, WorkspaceSpaceRect> | null
   dragBaselinePositionByIdRef: MutableRefObject<Map<string, { x: number; y: number }> | null>
   dragBaselineSpaceRectByIdRef: MutableRefObject<Map<string, WorkspaceSpaceRect> | null>
   beginNodeDragSession: (currentNodes: Node<TerminalNodeData>[]) => void

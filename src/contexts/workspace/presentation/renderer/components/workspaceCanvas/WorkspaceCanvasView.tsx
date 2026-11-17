@@ -72,7 +72,6 @@ export function WorkspaceCanvasView({
   isTrackpadCanvasMode,
   useManualCanvasWheelGestures,
   isShiftPressed,
-  snapGuides,
   spaceVisuals,
   spaceFramePreview,
   openExplorerSpaceId,
@@ -314,7 +313,7 @@ export function WorkspaceCanvasView({
         onOpen={materializeQuickPreview}
         onDragStart={beginQuickPreviewDrag}
       />
-      <WorkspaceSnapGuidesOverlay guides={snapGuides} />
+      <WorkspaceSnapGuidesOverlay />
       <WorkspaceSelectionDraftOverlay canvasRef={canvasRef} />
       <WorkspaceCanvasActionBar
         canvasRef={canvasRef}

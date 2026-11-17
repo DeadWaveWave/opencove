@@ -17,7 +17,12 @@ import {
 import { ensureNodesHaveInitialDimensions } from '../../../utils/reactFlowNodeDimensions'
 import { resolveCanvasDocumentBase } from '../../../utils/canvasDocumentBase'
 import { commitCanvasDocument, isActiveWorkspace } from '../../../store/workspaceDocumentCommands'
-import { useCanvasDocumentCommands, useReadCanvasDocument } from '../../../store/canvasStoreContext'
+import {
+  useCanvasDocumentCommands,
+  useReadCanvasDocument,
+  useReadCanvasInteraction,
+} from '../../../store/canvasStoreContext'
+import { applyLiveNodes } from '../../../utils/canvasLiveNodes'
 import { removeNodeWithRelations } from './useNodesStore.closeNode'
 import { resolveWorkspaceLayoutAfterNodeResize } from './useNodesStore.resolveResizeLayout'
 import { useWorkspaceCanvasNodeCreation } from './useNodesStore.createNodes'
@@ -54,6 +59,7 @@ export function useWorkspaceCanvasNodesStore({
   // below stays only for the commit path and the nearest free position (Decision 7 of #702).
   const readDocument = useReadCanvasDocument()
   const { requestPersistFlush } = useCanvasDocumentCommands()
+  const readInteraction = useReadCanvasInteraction()
   const nodesRef = useRef(nodes)
   const agentLaunchTokenByNodeIdRef = useRef<Map<string, number>>(new Map())
   const pendingScrollbackByNodeRef = useRef<Map<string, string>>(new Map())
@@ -138,7 +144,11 @@ export function useWorkspaceCanvasNodesStore({
           const isShown = isActiveWorkspace(workspaceId)
           const base = resolveCanvasDocumentBase(
             document.nodes,
-            isShown ? nodesRef.current : document.nodes,
+            // The live view, as the change path computes it: after a write from elsewhere the
+            // mirror holds the committed view, and the live positions are only in the overlay.
+            isShown
+              ? applyLiveNodes(nodesRef.current, readInteraction().liveNodes)
+              : document.nodes,
             { includeLivePositions: isShown && isLiveGestureActive() },
           )
           const output = recipe({ nodes: base, spaces: document.spaces })
@@ -174,7 +184,7 @@ export function useWorkspaceCanvasNodesStore({
         window.dispatchEvent(new Event(TERMINAL_LAYOUT_SYNC_EVENT))
       }
     },
-    [isLiveGestureActive, onNodesCommitted, workspaceId],
+    [isLiveGestureActive, onNodesCommitted, readInteraction, workspaceId],
   )
   const setNodes = useCallback(
     (
