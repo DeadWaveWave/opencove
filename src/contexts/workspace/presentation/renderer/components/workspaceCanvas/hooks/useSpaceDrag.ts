@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useStoreApi, type Node, type ReactFlowInstance } from '@xyflow/react'
 import type { TerminalNodeData, WorkspaceSpaceRect } from '../../../types'
-import type { WorkspaceSnapGuide } from '../../../utils/workspaceSnap'
 import type { SpaceDragState } from '../types'
 import {
   resolveInteractiveSpaceFrameHandle,
@@ -17,6 +16,7 @@ import {
 import { createSpaceDragState } from './useSpaceDrag.startState'
 import { useCanvasCollapseStore } from '../../../store/useCanvasCollapseStore'
 import {
+  useCanvasInteractionCommands,
   useCanvasSelectionCommands,
   useCanvasUiCommands,
   useReadCanvasDocument,
@@ -30,7 +30,6 @@ interface UseSpaceDragParams {
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
   setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']
   updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
-  setSnapGuides: React.Dispatch<React.SetStateAction<WorkspaceSnapGuide[] | null>>
 }
 
 export function useWorkspaceCanvasSpaceDrag({
@@ -38,7 +37,6 @@ export function useWorkspaceCanvasSpaceDrag({
   reactFlow,
   setNodes,
   updateCanvasDocument,
-  setSnapGuides,
 }: UseSpaceDragParams): {
   spaceFramePreview: ReadonlyMap<string, WorkspaceSpaceRect> | null
   handleSpaceDragHandlePointerDown: (
@@ -52,6 +50,7 @@ export function useWorkspaceCanvasSpaceDrag({
   const readSelection = useReadCanvasSelection()
   const readInteraction = useReadCanvasInteraction()
   const selection = useCanvasSelectionCommands()
+  const { setSnapGuides } = useCanvasInteractionCommands()
 
   const reactFlowStore = useStoreApi()
   const [spaceFramePreview, setSpaceFramePreview] = useState<ReadonlyMap<

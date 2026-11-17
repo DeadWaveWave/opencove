@@ -349,6 +349,16 @@ const selectSelectionDraft = (interaction: CanvasInteractionState) => interactio
 
 const DRAFT = { startX: 1, startY: 2, currentX: 3, currentY: 4, phase: 'active' } as const
 
+// What a node gesture shows: nothing, until a drag frame writes it.
+const NO_GESTURE = { liveNodes: null, snapGuides: null, nodeDragFramePreview: null }
+const FRAME = [{ id: 'a', position: { x: 0, y: 30 }, data: {} }] as unknown as Parameters<
+  CanvasInteractionCommands['publishLiveNodes']
+>[0]
+const GUIDES = [{ kind: 'v', x: 1, y1: 0, y2: 10 }] as const
+const PREVIEW = new Map([['space-1', { x: 0, y: 0, width: 10, height: 10 }]])
+const selectLiveNodes = (interaction: CanvasInteractionState) => interaction.liveNodes
+const selectSnapGuides = (interaction: CanvasInteractionState) => interaction.snapGuides
+
 describe('CanvasStoreProvider interaction slice', () => {
   function renderToggleProbe(workspaceId: string) {
     const toggles: boolean[] = []
@@ -394,7 +404,38 @@ describe('CanvasStoreProvider interaction slice', () => {
     // No render under the new id saw the old store's marquee or lost the toggle.
     expect(probe.drafts.slice(rendersBeforeSwitch).every(draft => draft === null)).toBe(true)
     expect(probe.toggles.slice(rendersBeforeSwitch).every(enabled => !enabled)).toBe(true)
-    expect(probe.read()).toEqual({ selectionDraft: null, magneticSnappingEnabled: false })
+    expect(probe.read()).toEqual({
+      ...NO_GESTURE,
+      selectionDraft: null,
+      magneticSnappingEnabled: false,
+    })
+  })
+
+  // The overlay, the guides and the preview of a gesture belong to the workspace it ran in: the
+  // store of the new id is new, so none of them reaches it (#738, Lifecycle).
+  it('starts a new workspace id with no overlay, guides or preview in the first render', () => {
+    const probe = renderToggleProbe('workspace-a')
+    act(() => {
+      probe.commands().publishLiveNodes(FRAME)
+      probe.commands().setSnapGuides([...GUIDES])
+      probe.commands().setNodeDragFramePreview(PREVIEW)
+      probe.commands().toggleMagneticSnapping()
+    })
+    expect(probe.read()).toMatchObject({
+      liveNodes: FRAME,
+      snapGuides: GUIDES,
+      nodeDragFramePreview: PREVIEW,
+    })
+
+    probe.rerender('workspace-b')
+
+    expect(probe.read()).toEqual({
+      liveNodes: null,
+      snapGuides: null,
+      nodeDragFramePreview: null,
+      selectionDraft: null,
+      magneticSnappingEnabled: false,
+    })
   })
 
   it('carries a toggle that is on as well as one that is off, through every switch', () => {
@@ -452,6 +493,44 @@ describe('CanvasStoreProvider interaction slice', () => {
       act(() => (commands as unknown as CanvasInteractionCommands).setSelectionDraft(DRAFT))
 
       expect(toggles).toHaveLength(rendersBefore)
+    })
+
+    // The selector contract (#738): a subscriber re-renders for its own field and for no other.
+    it('does not render for a write to another field of the slice, and renders for its own', () => {
+      const lives: unknown[] = []
+      const guides: unknown[] = []
+      let commands: CanvasInteractionCommands | null = null
+      function LiveOnly(): null {
+        lives.push(useCanvasInteraction(selectLiveNodes))
+        return null
+      }
+      function GuidesOnly(): null {
+        guides.push(useCanvasInteraction(selectSnapGuides))
+        commands = useCanvasInteractionCommands()
+        return null
+      }
+      render(
+        <CanvasStoreProvider workspaceId="workspace-a">
+          <LiveOnly />
+          <GuidesOnly />
+        </CanvasStoreProvider>,
+      )
+      const write = (action: (commands: CanvasInteractionCommands) => void) =>
+        act(() => action(commands as unknown as CanvasInteractionCommands))
+      const livesBefore = lives.length
+      const guidesBefore = guides.length
+
+      write(c => c.setSnapGuides([...GUIDES]))
+      write(c => c.setNodeDragFramePreview(PREVIEW))
+      write(c => c.setSelectionDraft(DRAFT))
+      write(c => c.toggleMagneticSnapping())
+      expect(lives).toHaveLength(livesBefore)
+      expect(guides.length).toBeGreaterThan(guidesBefore)
+
+      const guidesBeforeFrame = guides.length
+      write(c => c.publishLiveNodes(FRAME))
+      expect(lives.at(-1)).toBe(FRAME)
+      expect(guides).toHaveLength(guidesBeforeFrame)
     })
 
     it('returns the new store value in the render that receives a new workspace id', () => {

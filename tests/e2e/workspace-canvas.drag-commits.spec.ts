@@ -75,6 +75,10 @@ test('dragging commits only the moving window and persists its final geometry on
         ),
       )
       .toBe(true)
+    // S6 (#738): a drag frame renders the flow host, not WorkspaceCanvasInner. The 120 frames, the
+    // release and the writes around them may commit it twice at most; the attachment above holds
+    // `canvasCommitCauses` (which inputs changed) if this ever grows.
+    expect(result.canvasCommits?.WorkspaceCanvasInner ?? 0).toBeLessThanOrEqual(2)
     await test
       .info()
       .attach('settled-drag-windows', { body: await window.screenshot(), contentType: 'image/png' })

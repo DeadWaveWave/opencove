@@ -1,7 +1,6 @@
-import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
+import type { MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
 import type { TerminalNodeData, WorkspaceSpaceRect } from '../../../types'
-import { areWorkspaceSnapGuidesEqual, type WorkspaceSnapGuide } from '../../../utils/workspaceSnap'
 import type { WorkspaceCanvasNodeDragSession } from './useNodeDragSession'
 
 export interface UseApplyNodeChangesParams {
@@ -21,13 +20,6 @@ export interface UseApplyNodeChangesParams {
   nodeDragSession: WorkspaceCanvasNodeDragSession
 }
 
-export function setResolvedSnapGuides(
-  setSnapGuides: Dispatch<SetStateAction<WorkspaceSnapGuide[] | null>>,
-  guides: WorkspaceSnapGuide[] | null,
-): void {
-  setSnapGuides(current => (areWorkspaceSnapGuidesEqual(current, guides) ? current : guides))
-}
-
 export function areSpaceRectsEqual(
   a: WorkspaceSpaceRect | null,
   b: WorkspaceSpaceRect | null,
@@ -41,45 +33,6 @@ export function areSpaceRectsEqual(
   }
 
   return a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height
-}
-
-function areSpaceFramePreviewMapsEqual(
-  a: ReadonlyMap<string, WorkspaceSpaceRect> | null,
-  b: ReadonlyMap<string, WorkspaceSpaceRect> | null,
-): boolean {
-  if (a === b) {
-    return true
-  }
-
-  if (!a || !b) {
-    return false
-  }
-
-  if (a.size !== b.size) {
-    return false
-  }
-
-  for (const [spaceId, rect] of a.entries()) {
-    const other = b.get(spaceId)
-    if (!other) {
-      return false
-    }
-
-    if (!areSpaceRectsEqual(rect, other)) {
-      return false
-    }
-  }
-
-  return true
-}
-
-export function setResolvedSpaceFramePreview(
-  setSpaceFramePreview: Dispatch<SetStateAction<ReadonlyMap<string, WorkspaceSpaceRect> | null>>,
-  nextPreview: ReadonlyMap<string, WorkspaceSpaceRect> | null,
-): void {
-  setSpaceFramePreview(current =>
-    areSpaceFramePreviewMapsEqual(current, nextPreview) ? current : nextPreview,
-  )
 }
 
 export function buildDragBaselineNodes({

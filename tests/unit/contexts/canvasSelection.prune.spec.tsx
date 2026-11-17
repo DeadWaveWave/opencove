@@ -38,7 +38,6 @@ describe('canvas selection prune', () => {
     const { result, rerender } = renderHook(
       ({ spaces }: { spaces: WorkspaceSpaceState[] }) => {
         useWorkspaceCanvasState({
-          workspaceId: 'prune',
           nodes,
           spaces,
           viewport: { x: 0, y: 0, zoom: 1 },
@@ -62,7 +61,6 @@ describe('canvas selection prune', () => {
     const { result, rerender } = renderHook(
       ({ spaces }: { spaces: WorkspaceSpaceState[] }) => {
         useWorkspaceCanvasState({
-          workspaceId: 'prune',
           nodes,
           spaces,
           viewport: { x: 0, y: 0, zoom: 1 },
@@ -85,7 +83,6 @@ describe('canvas selection prune', () => {
     const { result, rerender } = renderHook(
       () => {
         useWorkspaceCanvasState({
-          workspaceId: 'prune',
           nodes,
           spaces,
           viewport: { x: 0, y: 0, zoom: 1 },
@@ -113,7 +110,6 @@ describe('canvas selection prune of removed nodes', () => {
     return renderHook(
       ({ nodes }: { nodes: ReturnType<typeof noteNode>[] }) => {
         useWorkspaceCanvasState({
-          workspaceId: 'prune',
           nodes,
           spaces,
           viewport: { x: 0, y: 0, zoom: 1 },

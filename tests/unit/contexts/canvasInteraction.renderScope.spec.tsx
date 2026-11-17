@@ -34,7 +34,6 @@ describe('useWorkspaceCanvasState and the interaction slice', () => {
       renders += 1
       return {
         canvasState: useWorkspaceCanvasState({
-          workspaceId: 'workspace-1',
           nodes: NO_NODES,
           spaces: NO_SPACES,
           viewport: VIEWPORT,
@@ -52,6 +51,30 @@ describe('useWorkspaceCanvasState and the interaction slice', () => {
     act(() => view.result.current.interaction.setSelectionDraft(DRAFT))
     act(() => view.result.current.interaction.setSelectionDraft({ ...DRAFT, currentX: 40 }))
     act(() => view.result.current.interaction.setSelectionDraft(null))
+
+    expect(renders()).toBe(rendersBefore)
+  })
+
+  // #738, PR 3: the live nodes, the snap guides and the node-drag preview are read by the flow host
+  // and the guides overlay. A frame of a node drag must not render this hook.
+  it('does not render when the live nodes, the guides or the node-drag preview change', () => {
+    const { view, renders } = renderCanvasState()
+    const rendersBefore = renders()
+    const { interaction } = view.result.current
+    const frame = (y: number) =>
+      [{ id: 'a', position: { x: 0, y }, data: {} }] as unknown as Parameters<
+        typeof interaction.publishLiveNodes
+      >[0]
+
+    act(() => interaction.publishLiveNodes(frame(10)))
+    act(() => interaction.publishLiveNodes(frame(20)))
+    act(() => interaction.setSnapGuides([{ kind: 'v', x: 1, y1: 0, y2: 10 }]))
+    act(() =>
+      interaction.setNodeDragFramePreview(new Map([['s', { x: 0, y: 0, width: 9, height: 9 }]])),
+    )
+    act(() => interaction.setNodeDragFramePreview(null))
+    act(() => interaction.setSnapGuides(null))
+    act(() => interaction.endLiveNodes())
 
     expect(renders()).toBe(rendersBefore)
   })

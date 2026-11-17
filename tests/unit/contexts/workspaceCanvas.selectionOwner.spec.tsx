@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef, type ReactNode } from 'react'
+import React, { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { act, renderHook } from '@testing-library/react'
 import { ReactFlowProvider, type Edge, type Node, type ReactFlowInstance } from '@xyflow/react'
 import { describe, expect, it, vi } from 'vitest'
@@ -48,7 +48,6 @@ function renderSelectionOwner() {
   const order: string[] = []
   const session: WorkspaceCanvasNodeDragSession = {
     nodeDragPointerAnchorRef: { current: null },
-    nodeSpaceFramePreview: null,
     dragBaselinePositionByIdRef: { current: null },
     dragBaselineSpaceRectByIdRef: { current: null },
     beginNodeDragSession: vi.fn(),
@@ -66,9 +65,10 @@ function renderSelectionOwner() {
   }
   const hook = renderHook(
     () => {
+      // Stands for the document: the canvas state derives its view from the nodes it is given.
+      const [documentNodes, setNodes] = useState(initialNodes)
       const canvas = useWorkspaceCanvasState({
-        workspaceId: 'selection-owner',
-        nodes: initialNodes,
+        nodes: documentNodes,
         spaces,
         viewport: { x: 0, y: 0, zoom: 0.28 },
       })
@@ -85,7 +85,7 @@ function renderSelectionOwner() {
         },
         onNodesChange: nodes => {
           order.push('publish')
-          canvas.setCanvasNodes(nodes)
+          setNodes(nodes)
         },
         clearAgentLaunchToken: vi.fn(),
         normalizePosition: (_id, point) => point,
@@ -94,7 +94,7 @@ function renderSelectionOwner() {
         nodeDragSession: session,
       })
       const select = useWorkspaceCanvasSelectNode({
-        setNodes: canvas.setCanvasNodes,
+        setNodes,
         spacesRef: canvas.spacesRef,
       })
       const exclusiveNodeDragAnchorIdRef = useRef<string | null>(null)
@@ -109,12 +109,13 @@ function renderSelectionOwner() {
         reactFlow,
         nodeDragSession: session,
         exclusiveNodeDragAnchorIdRef,
-        setNodes: canvas.setCanvasNodes,
+        setNodes,
         updateCanvasDocument: vi.fn(),
         hideWorktreeMismatchDropWarning: true,
       })
       return {
         canvas,
+        setNodes,
         apply,
         select,
         ownership,
@@ -237,7 +238,7 @@ describe('canvas selection owner', () => {
     // The mirror alone: a document node flagged without the store naming it shows no selection.
     act(() => result.current.selection.clear())
     act(() =>
-      result.current.canvas.setCanvasNodes(nodes =>
+      result.current.setNodes(nodes =>
         nodes.map(node => ({ ...node, selected: node.id === 'compact' })),
       ),
     )

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { act, fireEvent, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import type { Node } from '@xyflow/react'
@@ -7,6 +7,8 @@ import { WorkspaceCanvasMenus } from '../../../src/contexts/workspace/presentati
 import { useWorkspaceCanvasNodeDragSession } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodeDragSession'
 import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { renderWithCanvasStore } from '../../support/canvasStoreTestHarness'
+import { useCanvasInteraction } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
+import type { CanvasInteractionState } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStore.interaction'
 import { seedWorkspaceCanvasStore } from '../../support/workspaceCanvasStoreHarness'
 import { createRowNodes } from '../../support/canvasSelectionFixtures'
 import type { WorkspaceSnapGuide } from '../../../src/contexts/workspace/presentation/renderer/utils/workspaceSnap'
@@ -61,12 +63,12 @@ interface DragHolder {
   guides: WorkspaceSnapGuide[] | null
 }
 
-// The drag session of the canvas, beside the menus, in the same store. Its guides are React state
-// until S6 moves them (PR 3 of #738).
+const selectSnapGuides = (interaction: CanvasInteractionState) => interaction.snapGuides
+
+// The drag session of the canvas, beside the menus, in the same store; its guides are the slice's.
 function DragSessionProbe({ holder }: { holder: DragHolder }): null {
-  const [guides, setSnapGuides] = useState<WorkspaceSnapGuide[] | null>(null)
-  holder.guides = guides
-  holder.session = useWorkspaceCanvasNodeDragSession({ workspaceId: 'menus-toggle', setSnapGuides })
+  holder.guides = useCanvasInteraction(selectSnapGuides)
+  holder.session = useWorkspaceCanvasNodeDragSession({ workspaceId: 'menus-toggle' })
   return null
 }
 

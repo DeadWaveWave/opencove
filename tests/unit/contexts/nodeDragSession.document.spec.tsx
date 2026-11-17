@@ -3,7 +3,10 @@ import type { Node } from '@xyflow/react'
 import { describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import { useWorkspaceCanvasNodeDragSession } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodeDragSession'
-import { useCanvasSelectionCommands } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
+import {
+  useCanvasSelectionCommands,
+  useReadCanvasInteraction,
+} from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
 import { readWorkspaceDocument } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
 import {
@@ -29,15 +32,11 @@ vi.mock(
   },
 )
 
-const setSnapGuides = vi.fn()
-
 function useSessionUnderTest({ workspaceId }: CanvasNodeStoreContext) {
   return {
-    session: useWorkspaceCanvasNodeDragSession({
-      workspaceId,
-      setSnapGuides,
-    }),
+    session: useWorkspaceCanvasNodeDragSession({ workspaceId }),
     selection: useCanvasSelectionCommands(),
+    readInteraction: useReadCanvasInteraction(),
   }
 }
 
@@ -86,9 +85,9 @@ describe('node drag session frames', () => {
       frameOf(session, [static1, drag], 'drag', { x: 24, y: 24 })
     })
 
-    expect(view.result.current.session.nodeSpaceFramePreview?.get('space')?.height).toBeGreaterThan(
-      360,
-    )
+    expect(
+      view.result.current.readInteraction().nodeDragFramePreview?.get('space')?.height,
+    ).toBeGreaterThan(360)
   })
 
   it('projects a Space-dominant frame from the Spaces the store holds when the frame runs', () => {
@@ -112,10 +111,9 @@ describe('node drag session frames', () => {
     })
 
     // The moved Space runs into the late one and pushes it; the preview names both.
-    expect([...(view.result.current.session.nodeSpaceFramePreview?.keys() ?? [])].sort()).toEqual([
-      'space-1',
-      'space-late',
-    ])
+    expect(
+      [...(view.result.current.readInteraction().nodeDragFramePreview?.keys() ?? [])].sort(),
+    ).toEqual(['space-1', 'space-late'])
   })
 
   it('starts a Space-dominant drag from the rects the store holds when it begins', () => {
@@ -134,7 +132,9 @@ describe('node drag session frames', () => {
       frameOf(session, [n1], 'n1', { x: 150, y: 100 }, true)
     })
 
-    expect(view.result.current.session.nodeSpaceFramePreview?.get('space-1')).toMatchObject({
+    expect(
+      view.result.current.readInteraction().nodeDragFramePreview?.get('space-1'),
+    ).toMatchObject({
       x: 100,
       y: 50,
     })
@@ -178,30 +178,31 @@ describe('node drag session frames', () => {
     })
     let current = 'workspace-a'
     const view = renderInCanvasDocument(
-      () => {
-        return useWorkspaceCanvasNodeDragSession({
-          workspaceId: current,
-          setSnapGuides,
-        })
-      },
+      () => ({
+        session: useWorkspaceCanvasNodeDragSession({ workspaceId: current }),
+        readInteraction: useReadCanvasInteraction(),
+      }),
       { workspaceId: () => current },
     )
-    const sessionOfA = view.result.current
+    const sessionOfA = view.result.current.session
+    const readInteractionOfA = view.result.current.readInteraction
     current = 'workspace-b'
     view.rerender()
     const nodes = stateA.nodes
 
     act(() => {
-      view.result.current.beginNodeDragSession(nodes)
-      frameOf(view.result.current as never, nodes, 'n2', { x: 24, y: 24 })
+      view.result.current.session.beginNodeDragSession(nodes)
+      frameOf(view.result.current.session, nodes, 'n2', { x: 24, y: 24 })
     })
-    expect(view.result.current.nodeSpaceFramePreview).toBeNull()
+    expect(view.result.current.readInteraction().nodeDragFramePreview).toBeNull()
 
     act(() => {
       sessionOfA.beginNodeDragSession(nodes)
-      frameOf(sessionOfA as never, nodes, 'n2', { x: 24, y: 24 })
+      frameOf(sessionOfA, nodes, 'n2', { x: 24, y: 24 })
     })
-    expect(view.result.current.nodeSpaceFramePreview?.get('space')).toBeDefined()
+    // The callbacks of A read A's Spaces and write A's canvas store; B's shows none of it.
+    expect(readInteractionOfA().nodeDragFramePreview?.get('space')).toBeDefined()
+    expect(view.result.current.readInteraction().nodeDragFramePreview).toBeNull()
   })
 
   // Both workspaces hold `space-1`, at other places. After the switch, the release of a
@@ -229,10 +230,7 @@ describe('node drag session frames', () => {
     let current = 'workspace-a'
     const view = renderInCanvasDocument(
       () => ({
-        session: useWorkspaceCanvasNodeDragSession({
-          workspaceId: current,
-          setSnapGuides,
-        }),
+        session: useWorkspaceCanvasNodeDragSession({ workspaceId: current }),
         selection: useCanvasSelectionCommands(),
       }),
       { workspaceId: () => current },

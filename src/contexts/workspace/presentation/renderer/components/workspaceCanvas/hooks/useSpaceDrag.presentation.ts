@@ -27,7 +27,7 @@ export function resolveSpaceMoveWithPresentation({
   desiredRect: WorkspaceSpaceRect
   spaces: WorkspaceSpaceState[]
   magneticSnappingEnabled: boolean
-  setSnapGuides: React.Dispatch<React.SetStateAction<WorkspaceSnapGuide[] | null>>
+  setSnapGuides: (guides: WorkspaceSnapGuide[] | null) => void
   commit?: boolean
 }): WorkspaceSpaceRect {
   const state = useCanvasCollapseStore.getState().workspaces[workspaceId] ?? EMPTY_CANVAS_COLLAPSE

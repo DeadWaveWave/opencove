@@ -1,5 +1,5 @@
 import { act } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { useWorkspaceCanvasNodeDragSession } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodeDragSession'
 import {
   useCanvasSelectionCommands,
@@ -12,14 +12,10 @@ import {
 } from '../../support/canvasDocumentHarness'
 import { createRowNodes, createSpace } from '../../support/canvasSelectionFixtures'
 
-// A state setter keeps its identity; a new one on every render would reset the session.
-const setSnapGuides = vi.fn()
-
 function useDragSessionUnderTest({ workspaceId }: CanvasNodeStoreContext) {
   return {
     session: useWorkspaceCanvasNodeDragSession({
       workspaceId,
-      setSnapGuides,
     }),
     selection: useCanvasSelectionCommands(),
     ui: useCanvasUiCommands(),
