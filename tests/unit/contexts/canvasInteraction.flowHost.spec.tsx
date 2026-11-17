@@ -163,6 +163,8 @@ function CanvasHarness() {
       onViewportChange={() => undefined}
       onMinimapVisibilityChange={() => undefined}
       agentSettings={DEFAULT_AGENT_SETTINGS}
+      onAppendSpaceArchiveRecord={() => undefined}
+      onChangePreserveWindowSizesOnArrange={() => undefined}
     />
   )
 }

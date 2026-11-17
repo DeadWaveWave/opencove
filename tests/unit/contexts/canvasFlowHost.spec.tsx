@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { type ComponentProps } from 'react'
 import { act } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { Node } from '@xyflow/react'
@@ -34,13 +34,13 @@ function mountHost({
   spaceDragFramePreview?: ReadonlyMap<string, ReturnType<typeof rect>> | null
 }) {
   seen.props.length = 0
-  const view = renderWithCanvasStore(
-    <CanvasFlowHost
-      {...({ workspaceId: 'workspace-1', marker: 'passed through' } as never)}
-      committedNodes={committedNodes}
-      spaceDragFramePreview={spaceDragFramePreview}
-    />,
-  )
+  const props = {
+    workspaceId: 'workspace-1',
+    marker: 'passed through',
+    committedNodes,
+    spaceDragFramePreview,
+  } as unknown as ComponentProps<typeof CanvasFlowHost>
+  const view = renderWithCanvasStore(<CanvasFlowHost {...props} />)
   const last = () =>
     seen.props.at(-1) as {
       nodes: Node<TerminalNodeData>[]
