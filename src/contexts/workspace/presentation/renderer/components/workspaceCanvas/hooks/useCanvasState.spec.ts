@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest'
 import type { WorkspaceCanvasProps } from '../types'
 import type { WorkspaceCanvasViewProps } from '../WorkspaceCanvasView.types'
 import type { useWorkspaceCanvasState } from './useCanvasState'
-import type { UseWorkspaceCanvasNodesStoreParams } from './useNodesStore.types'
+import type {
+  UseWorkspaceCanvasNodesStoreParams,
+  UseWorkspaceCanvasNodesStoreResult,
+} from './useNodesStore.types'
 
 // The end of #702 (S5 of #647): the canvas state no longer exposes the Spaces ref, and neither the
 // node store nor the canvas takes the persistence flush as a callback. `pnpm check` compiles this
@@ -62,6 +65,24 @@ describe('the retired canvas channels', () => {
     expect(canvasState.setSnapGuides).toBeUndefined()
     // @ts-expect-error -- hasTransientNodePositionsRef is retired; read liveNodes from the store (#738)
     expect(canvasState.hasTransientNodePositionsRef).toBeUndefined()
+  })
+
+  // #738 (S6 of #647), the commit path: the node store keeps no mirror of the canvas view. The
+  // change path and the writers read the document and the canvas store when they run.
+  it('do not keep the canvas view in the node store', () => {
+    const store = {} as UseWorkspaceCanvasNodesStoreResult
+
+    // @ts-expect-error -- nodesRef is retired; read useReadCanvasDocument, write useCanvasNodeWriter (#738)
+    expect(store.nodesRef).toBeUndefined()
+  })
+
+  it('do not hand the node store a gesture callback or a commit callback', () => {
+    const params = {} as UseWorkspaceCanvasNodesStoreParams
+
+    // @ts-expect-error -- onNodesCommitted is retired; a canvas write no longer ends the overlay (#738)
+    expect(params.onNodesCommitted).toBeUndefined()
+    // @ts-expect-error -- isLiveGestureActive is retired; a canvas write never reads live positions (#738)
+    expect(params.isLiveGestureActive).toBeUndefined()
   })
 
   it('are not part of the canvas view props', () => {
