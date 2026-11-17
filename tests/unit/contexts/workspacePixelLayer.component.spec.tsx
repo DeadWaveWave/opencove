@@ -341,7 +341,14 @@ describe('workspace pixel layer lifecycle', () => {
     fireEvent.change(view.getByTestId('survivor-input'), { target: { value: 'still usable' } })
     expect(view.getByTestId('survivor-input')).toHaveValue('still usable')
     expect(foreground).toHaveAttribute('data-cove-pixel-burst', 'bursting')
-    tick(540)
+    // The last painted frame starts before expiry (100 + 420ms), but drawing crosses it.
+    context.fillRect.mockImplementationOnce(() => {
+      now = 521
+    })
+    tick(519)
+    expect(foreground).toHaveAttribute('data-cove-pixel-burst', 'bursting')
+    expect(frames.size).toBe(1)
+    tick(620)
     expect(foreground).toHaveAttribute('data-cove-pixel-burst', 'idle')
     expect(foreground).toHaveAttribute('data-cove-pixel-burst-node-ids', '')
     // With the burst done the layer has nothing left to animate: the wall owns ambience.
