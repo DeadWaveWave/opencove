@@ -92,21 +92,6 @@ export function focusNodeInViewport(
   })
 }
 
-export function centerNodeInViewport(
-  reactFlow: ReactFlowInstance<Node<TerminalNodeData>>,
-  node: Pick<Node<TerminalNodeData>, 'position' | 'data'>,
-  options: { duration?: number; zoom: number },
-): void {
-  reactFlow.setCenter(
-    node.position.x + node.data.width / 2,
-    node.position.y + node.data.height / 2,
-    {
-      ...resolveWorkspaceCanvasViewportAnimation(options.duration ?? 180),
-      zoom: Number.isFinite(options.zoom) && options.zoom > 0 ? options.zoom : 1,
-    },
-  )
-}
-
 export function centerFlowPositionInViewportPreservingZoom(
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>,
   position: Point,

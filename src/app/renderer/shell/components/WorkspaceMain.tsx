@@ -22,7 +22,6 @@ function WorkspaceMainComponent({
   shortcutsEnabled,
   onAddWorkspace,
   onShowMessage,
-  onRequestPersistFlush,
   onAppendSpaceArchiveRecord,
   onViewportChange,
   onMinimapVisibilityChange,
@@ -39,7 +38,6 @@ function WorkspaceMainComponent({
   shortcutsEnabled: boolean
   onAddWorkspace: () => void
   onShowMessage: (message: string, tone?: WorkspaceCanvasMessageTone) => void
-  onRequestPersistFlush: () => void
   onAppendSpaceArchiveRecord: (record: SpaceArchiveRecord) => void
   onViewportChange: (viewport: WorkspaceViewport) => void
   onMinimapVisibilityChange: (isVisible: boolean) => void
@@ -84,7 +82,6 @@ function WorkspaceMainComponent({
         environmentVariables={activeWorkspace.environmentVariables}
         worktreesRoot={activeWorkspace.worktreesRoot}
         nodes={activeWorkspace.nodes}
-        onRequestPersistFlush={onRequestPersistFlush}
         onAppendSpaceArchiveRecord={onAppendSpaceArchiveRecord}
         viewport={activeWorkspace.viewport}
         isMinimapVisible={activeWorkspace.isMinimapVisible}

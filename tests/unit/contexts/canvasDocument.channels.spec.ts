@@ -25,11 +25,8 @@ const ALLOWED_FILES: Record<string, readonly string[]> = {
     'src/app/preload/api.d.ts',
     'src/app/preload/index.ts',
     'src/app/renderer/browser/browserOpenCoveApi.ts',
-    'src/app/renderer/shell/AppShell.tsx',
-    'src/app/renderer/shell/components/WorkspaceMain.tsx',
     'src/app/renderer/shell/hooks/useAppQuitPersistenceFlush.ts',
     'src/contexts/task/presentation/renderer/components/promptTemplates/TaskPromptTemplatesMenu.tsx',
-    '~/types.ts',
   ],
 }
 
