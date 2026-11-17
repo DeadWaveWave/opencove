@@ -26,6 +26,10 @@ test('continuous window drag with pixel wall, terminals and Space minimaps', asy
         { name: 'prefers-reduced-transparency', value: 'no-preference' },
       ],
     })
+    // What renders on this machine (GPU, software or fallback), so a run answers it by itself.
+    const gpu = await electronApp.evaluate(({ app }) => app.getGPUFeatureStatus())
+    // eslint-disable-next-line no-console -- retain the runner's GPU status in the run log.
+    console.log('[perf:gpu]', JSON.stringify(gpu))
     await prepareDragScene(window, 100)
     const results = []
     for (let trial = 0; trial < 3; trial++) {
@@ -40,6 +44,7 @@ test('continuous window drag with pixel wall, terminals and Space minimaps', asy
         {
           revision: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
           mode: process.env.OPENCOVE_E2E_WINDOW_MODE,
+          gpu,
           results,
         },
         null,
