@@ -2,13 +2,16 @@ import { useCallback, type MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
 import type { TerminalNodeData } from '../../../types'
 import { replaceWorkspaceNodes } from '../../../store/workspaceDocumentCommands'
+import type { LiveCanvasStore } from './useCanvasState'
 
 export function useWorkspaceCanvasNodePublishers({
   workspaceId,
+  liveStore,
   setCanvasNodes,
   hasTransientNodePositionsRef,
 }: {
   workspaceId: string
+  liveStore: LiveCanvasStore
   setCanvasNodes: React.Dispatch<React.SetStateAction<Node<TerminalNodeData>[]>>
   hasTransientNodePositionsRef: MutableRefObject<boolean>
 }): {
@@ -20,18 +23,21 @@ export function useWorkspaceCanvasNodePublishers({
   const publishLiveNodesChange = useCallback(
     (nextNodes: Node<TerminalNodeData>[]) => {
       hasTransientNodePositionsRef.current = true
-      setCanvasNodes(nextNodes)
+      liveStore.setState(state => ({ ...state, liveNodes: nextNodes }))
     },
-    [hasTransientNodePositionsRef, setCanvasNodes],
+    [hasTransientNodePositionsRef, liveStore],
   )
 
   // The canvas-side half of a commit, for writers that already stored the nodes.
   const publishCommittedNodes = useCallback(
     (nextNodes: Node<TerminalNodeData>[]) => {
       hasTransientNodePositionsRef.current = false
+      liveStore.setState(state =>
+        state.liveNodes === null ? state : { ...state, liveNodes: null },
+      )
       setCanvasNodes(nextNodes)
     },
-    [hasTransientNodePositionsRef, setCanvasNodes],
+    [hasTransientNodePositionsRef, liveStore, setCanvasNodes],
   )
 
   // React Flow's change path computes from the node store's mirror of the canvas view and commits the

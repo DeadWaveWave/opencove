@@ -1,5 +1,6 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useStore, type Node, type Viewport } from '@xyflow/react'
+import { createStore, type StoreApi } from 'zustand/vanilla'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import {
   createCanvasInputModalityState,
@@ -16,6 +17,36 @@ import {
 } from '../../../store/canvasStoreContext'
 
 const EMPTY_ID_SET: ReadonlySet<string> = new Set()
+
+/** Experiment 647-A: the per-frame state of a node drag, outside `WorkspaceCanvasInner`'s state. */
+export type LiveCanvasState = {
+  liveNodes: Node<TerminalNodeData>[] | null
+  snapGuides: WorkspaceSnapGuide[] | null
+}
+export type LiveCanvasStore = StoreApi<LiveCanvasState>
+
+/** `selected` and `dragHandle` derived from the selection; unchanged nodes keep their identity. */
+export function decorateFlowNodes(
+  nodes: Node<TerminalNodeData>[],
+  selectedNodeIdSet: ReadonlySet<string>,
+  isDragSurfaceSelectionMode: boolean,
+): Node<TerminalNodeData>[] {
+  return nodes.map(node => {
+    const isSelected = selectedNodeIdSet.has(node.id)
+    const dragHandle =
+      isSelected && isDragSurfaceSelectionMode ? undefined : NODE_DRAG_HANDLE_SELECTOR
+
+    if (node.selected === isSelected && node.dragHandle === dragHandle) {
+      return node
+    }
+
+    return {
+      ...node,
+      selected: isSelected,
+      dragHandle,
+    }
+  })
+}
 
 type SelectionDraftUiState = Pick<
   SelectionDraftState,
@@ -79,7 +110,9 @@ export function useWorkspaceCanvasState({
   magneticSnappingEnabled: boolean
   setMagneticSnappingEnabled: React.Dispatch<React.SetStateAction<boolean>>
   magneticSnappingEnabledRef: React.MutableRefObject<boolean>
-  snapGuides: WorkspaceSnapGuide[] | null
+  liveStore: LiveCanvasStore
+  selectedNodeIdSet: ReadonlySet<string>
+  isDragSurfaceSelectionMode: boolean
   setSnapGuides: React.Dispatch<React.SetStateAction<WorkspaceSnapGuide[] | null>>
   canvasRef: React.RefObject<HTMLDivElement | null>
   restoredViewportWorkspaceIdRef: React.MutableRefObject<string | null>
@@ -108,7 +141,22 @@ export function useWorkspaceCanvasState({
   const [isShiftPressed, setIsShiftPressed] = useState(false)
   const [isCanvasWheelGestureCaptureActive, setIsCanvasWheelGestureCaptureActive] = useState(false)
   const [magneticSnappingEnabled, setMagneticSnappingEnabled] = useState(true)
-  const [snapGuides, setSnapGuides] = useState<WorkspaceSnapGuide[] | null>(null)
+  const [liveStore] = useState(() =>
+    createStore<LiveCanvasState>()(() => ({ liveNodes: null, snapGuides: null })),
+  )
+  // Same type as the useState setter; an unchanged value returns the same state, so zustand does
+  // not notify.
+  const setSnapGuides = useCallback<
+    React.Dispatch<React.SetStateAction<WorkspaceSnapGuide[] | null>>
+  >(
+    action => {
+      liveStore.setState(state => {
+        const next = typeof action === 'function' ? action(state.snapGuides) : action
+        return Object.is(next, state.snapGuides) ? state : { ...state, snapGuides: next }
+      })
+    },
+    [liveStore],
+  )
 
   const canvasRef = useRef<HTMLDivElement>(null)
   const workspaceIdRef = useRef(workspaceId)
@@ -143,14 +191,22 @@ export function useWorkspaceCanvasState({
 
     if (workspaceChanged) {
       hasTransientNodePositionsRef.current = false
+      liveStore.setState(state =>
+        state.liveNodes === null && state.snapGuides === null
+          ? state
+          : { liveNodes: null, snapGuides: null },
+      )
     }
 
     if (hasTransientNodePositionsRef.current) {
-      setCanvasNodes(currentNodes => mergeExternalNodesIntoTransientCanvas(currentNodes, nodes))
-    } else {
-      setCanvasNodes(nodes)
+      liveStore.setState(state =>
+        state.liveNodes
+          ? { ...state, liveNodes: mergeExternalNodesIntoTransientCanvas(state.liveNodes, nodes) }
+          : state,
+      )
     }
-  }, [nodes, workspaceId])
+    setCanvasNodes(nodes)
+  }, [liveStore, nodes, workspaceId])
 
   // The selection names only nodes and Spaces that exist (Decision 8 of #692 for Spaces). The set
   // of a list is built only when that list is not empty: during a drag `canvasNodes` changes every
@@ -169,22 +225,7 @@ export function useWorkspaceCanvasState({
   }, [canvasNodes, readSelection, selectedNodeIds, selectionCommands, spaces])
 
   const flowNodes = useMemo(
-    () =>
-      canvasNodes.map(node => {
-        const isSelected = selectedNodeIdSet.has(node.id)
-        const dragHandle =
-          isSelected && isDragSurfaceSelectionMode ? undefined : NODE_DRAG_HANDLE_SELECTOR
-
-        if (node.selected === isSelected && node.dragHandle === dragHandle) {
-          return node
-        }
-
-        return {
-          ...node,
-          selected: isSelected,
-          dragHandle,
-        }
-      }),
+    () => decorateFlowNodes(canvasNodes, selectedNodeIdSet, isDragSurfaceSelectionMode),
     [canvasNodes, isDragSurfaceSelectionMode, selectedNodeIdSet],
   )
 
@@ -202,7 +243,9 @@ export function useWorkspaceCanvasState({
     magneticSnappingEnabled,
     setMagneticSnappingEnabled,
     magneticSnappingEnabledRef,
-    snapGuides,
+    liveStore,
+    selectedNodeIdSet,
+    isDragSurfaceSelectionMode,
     setSnapGuides,
     canvasRef,
     restoredViewportWorkspaceIdRef,

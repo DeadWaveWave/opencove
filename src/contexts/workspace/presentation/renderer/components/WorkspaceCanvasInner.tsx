@@ -1,6 +1,6 @@
 import { useReactFlow, type Edge, type Node } from '@xyflow/react'
 import * as workspaceCanvasHooks from './workspaceCanvas/hooks'
-import { TerminalDisplayAlignedWorkspaceCanvasView } from './workspaceCanvas/TerminalDisplayAlignedWorkspaceCanvasView'
+import { CanvasFlowHost } from './workspaceCanvas/CanvasFlowHost'
 import { openQuickMenuSettings } from './workspaceCanvas/openQuickMenuSettings'
 import type { WorkspaceCanvasInnerProps } from './workspaceCanvas/types'
 import { useCanvasCollapse } from './workspaceCanvas/collapse/useCanvasCollapse'
@@ -295,7 +295,11 @@ export function WorkspaceCanvasInner({
       nodeStore={nodeStore}
       onShowMessage={onShowMessage}
     >
-      <TerminalDisplayAlignedWorkspaceCanvasView
+      <CanvasFlowHost
+        liveStore={canvasState.liveStore}
+        committedNodes={canvasState.flowNodes}
+        selectedNodeIdSet={canvasState.selectedNodeIdSet}
+        isDragSurfaceSelectionMode={canvasState.isDragSurfaceSelectionMode}
         workspaceId={workspaceId}
         terminalFontSize={agentSettings.terminalFontSize}
         terminalFontFamily={agentSettings.terminalFontFamily}
@@ -315,7 +319,6 @@ export function WorkspaceCanvasInner({
         handleCanvasDragOver={handleCanvasDragOver}
         handleCanvasDrop={handleCanvasDrop}
         {...actionBarActions}
-        nodes={canvasState.flowNodes}
         edges={taskAgentEdges}
         nodeTypes={nodeTypes}
         onNodesChange={applyChanges}
@@ -330,7 +333,6 @@ export function WorkspaceCanvasInner({
         useManualCanvasWheelGestures={inputMode.useManualCanvasWheelGestures}
         isShiftPressed={canvasState.isShiftPressed}
         selectionDraft={canvasState.selectionDraftUi}
-        snapGuides={canvasState.snapGuides}
         spaceVisuals={spacesApi.spaceVisuals}
         spaceFramePreview={spaceFramePreview ?? nodeDragSession.nodeSpaceFramePreview}
         handleSpaceDragHandlePointerDown={handleSpaceDragHandlePointerDown}
