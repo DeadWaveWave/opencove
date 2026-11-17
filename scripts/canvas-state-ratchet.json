@@ -4,7 +4,6 @@
     "src/app/renderer/browser/browserOpenCoveApi.ts": 1,
     "src/app/renderer/shell/hooks/useAppQuitPersistenceFlush.ts": 1,
     "src/contexts/plugins/presentation/renderer/PluginRuntimePreview.tsx": 5,
-    "src/contexts/task/presentation/renderer/components/promptTemplates/TaskPromptTemplatesMenu.tsx": 4,
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useAgentNodeLifecycle.support.ts": 2,
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useAgentNodeLifecycle.ts": 11,
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useAgentNodeSessionControls.ts": 4,

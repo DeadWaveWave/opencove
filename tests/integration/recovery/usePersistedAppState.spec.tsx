@@ -337,6 +337,79 @@ describe('usePersistedAppState', () => {
       expect(flushScheduledPersistedStateWrite).toHaveBeenCalledTimes(1)
     })
 
+    // Hydration changes the identity of `requestPersistFlush`. React runs every passive cleanup
+    // of a commit before any passive setup, so a registration that followed the identity left
+    // the child effects of that commit with nothing to reach.
+    it('reaches the shell from a child effect in the commit that completes hydration', () => {
+      function FlushOnHydration({ isHydrated }: { isHydrated: boolean }) {
+        React.useEffect(() => {
+          if (isHydrated) {
+            requestWorkspaceDocumentPersistFlush()
+          }
+        }, [isHydrated])
+        return null
+      }
+      function HydratingHarness({ isHydrated }: { isHydrated: boolean }) {
+        usePersistedAppState({
+          workspaces: [],
+          activeWorkspaceId: null,
+          agentSettings: DEFAULT_AGENT_SETTINGS,
+          isHydrated,
+          producePersistedState,
+        })
+        return <FlushOnHydration isHydrated={isHydrated} />
+      }
+      const producePersistedState = () => ({
+        formatVersion: 0,
+        activeWorkspaceId: null,
+        workspaces: [],
+        settings: DEFAULT_AGENT_SETTINGS,
+      })
+
+      const rendered = render(<HydratingHarness isHydrated={false} />)
+      schedulePersistedStateWrite.mockClear()
+      flushScheduledPersistedStateWrite.mockClear()
+
+      rendered.rerender(<HydratingHarness isHydrated />)
+
+      // Without the request, hydration skips its first write.
+      expect(schedulePersistedStateWrite).toHaveBeenCalled()
+      expect(flushScheduledPersistedStateWrite).toHaveBeenCalledTimes(1)
+
+      // Later requests reach the hydrated function, which schedules a write by itself.
+      schedulePersistedStateWrite.mockClear()
+      act(() => requestWorkspaceDocumentPersistFlush())
+      expect(schedulePersistedStateWrite).toHaveBeenCalledTimes(1)
+    })
+
+    it("reaches the shell from a child effect in the shell's first commit", () => {
+      function FlushOnMount() {
+        React.useEffect(() => {
+          requestWorkspaceDocumentPersistFlush()
+        }, [])
+        return null
+      }
+      function MountingHarness() {
+        usePersistedAppState({
+          workspaces: [],
+          activeWorkspaceId: null,
+          agentSettings: DEFAULT_AGENT_SETTINGS,
+          isHydrated: true,
+          producePersistedState: () => ({
+            formatVersion: 0,
+            activeWorkspaceId: null,
+            workspaces: [],
+            settings: DEFAULT_AGENT_SETTINGS,
+          }),
+        })
+        return <FlushOnMount />
+      }
+
+      render(<MountingHarness />)
+
+      expect(flushScheduledPersistedStateWrite).toHaveBeenCalledTimes(1)
+    })
+
     it('reaches nothing after the shell is gone', () => {
       const rendered = render(<Harness />)
       rendered.unmount()

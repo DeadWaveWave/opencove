@@ -1,6 +1,6 @@
 import { registerWorkspaceDocumentPersistFlush } from '@contexts/workspace/presentation/renderer'
 import { currentManagedClaudeCompatibilityNotice } from '@contexts/workspace/presentation/renderer/utils/managedClaudeCompatibilityNotice'
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
 import type {
@@ -115,7 +115,19 @@ export function usePersistedAppState({
     }
   }, [handlePersistWriteResult, isHydrated, producePersistedState])
 
-  useEffect(() => registerWorkspaceDocumentPersistFlush(requestPersistFlush), [requestPersistFlush])
+  // One registration for the shell's lifetime, calling the latest `requestPersistFlush`. Its
+  // identity changes with hydration and the language; re-registering on each change left the
+  // child effects of that commit with nothing to reach, because React runs every passive cleanup
+  // of a commit before any passive setup. A layout effect registers before any passive effect of
+  // the first commit runs.
+  const requestPersistFlushRef = useRef(requestPersistFlush)
+  useLayoutEffect(() => {
+    requestPersistFlushRef.current = requestPersistFlush
+  }, [requestPersistFlush])
+  useLayoutEffect(
+    () => registerWorkspaceDocumentPersistFlush(() => requestPersistFlushRef.current()),
+    [],
+  )
 
   useEffect(() => {
     if (window.opencoveApi?.meta?.isTest) {
