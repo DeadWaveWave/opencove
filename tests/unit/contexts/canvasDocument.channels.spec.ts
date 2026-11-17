@@ -12,7 +12,7 @@ const CANVAS_DIR = 'src/contexts/workspace/presentation/renderer/components/work
 // The end of the slice (#702, PR 14). `nodesRef` stays in the six files of Decision 7, which the
 // node store owns until S6. `spacesRef` and `onSpacesChange` are gone. The `onRequestPersistFlush`
 // that remains is not the canvas's: the quit flush subscription of the preload bridge and its
-// browser stand-in, the shell's quit handler, and an unused prop of the task prompt menu.
+// browser stand-in, and the shell's quit handler.
 const ALLOWED_FILES: Record<string, readonly string[]> = {
   nodesRef: [
     '~/hooks/useApplyNodeChanges.helpers.ts',
@@ -29,7 +29,6 @@ const ALLOWED_FILES: Record<string, readonly string[]> = {
     'src/app/preload/index.ts',
     'src/app/renderer/browser/browserOpenCoveApi.ts',
     'src/app/renderer/shell/hooks/useAppQuitPersistenceFlush.ts',
-    'src/contexts/task/presentation/renderer/components/promptTemplates/TaskPromptTemplatesMenu.tsx',
   ],
 }
 

@@ -44,7 +44,6 @@ export function TaskPromptTemplatesMenu({
   triggerRef,
   currentRequirement,
   onChangeRequirement,
-  onRequestPersistFlush,
   testIdPrefix,
   isWithinDialog = false,
 }: {
@@ -55,7 +54,6 @@ export function TaskPromptTemplatesMenu({
   triggerRef?: React.RefObject<HTMLElement | null>
   currentRequirement: string
   onChangeRequirement: (nextRequirement: string) => void
-  onRequestPersistFlush?: () => void
   testIdPrefix: string
   isWithinDialog?: boolean
 }): React.JSX.Element | null {
@@ -178,7 +176,6 @@ export function TaskPromptTemplatesMenu({
       }
     })
 
-    onRequestPersistFlush?.()
     closeCreateDialog()
   }, [
     closeCreateDialog,
@@ -187,7 +184,6 @@ export function TaskPromptTemplatesMenu({
     globalNameKeys,
     isSaving,
     nameDraft,
-    onRequestPersistFlush,
     projectNameKeys,
     setAgentSettings,
     t,
