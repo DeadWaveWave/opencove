@@ -91,7 +91,8 @@ export function rendererBridgeViolations(file, source, rules) {
     if (
       property === 'debugMessage' &&
       renderer &&
-      !rules.pluginDiagnosticFormatters?.includes(file)
+      !rules.pluginDiagnosticFormatters?.includes(file) &&
+      !rules.persistenceDiagnosticLoggers?.includes(file)
     ) {
       report(node, 'Renderer code must not read private diagnostic text.')
     }

@@ -1,8 +1,14 @@
+import type { RuntimeDiagnosticsLogInput } from '@shared/contracts/dto'
+
+export function logRuntimeDiagnostics(input: RuntimeDiagnosticsLogInput): void {
+  window.opencoveApi.debug?.logRuntimeDiagnostics?.(input)
+}
+
 export function logRendererErrorBoundaryDiagnostic(
   error: Error,
   errorInfo: Pick<React.ErrorInfo, 'componentStack'>,
 ): void {
-  window.opencoveApi.debug?.logRuntimeDiagnostics?.({
+  logRuntimeDiagnostics({
     source: 'renderer-error-boundary',
     level: 'error',
     event: 'component-did-catch',

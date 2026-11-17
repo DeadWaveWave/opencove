@@ -251,3 +251,11 @@ This promise covers public exceptions and their display, not all data in the ren
 Web HTTP bodies are visible to the page. The facade is not an authorization or plugin isolation
 boundary; Main and Worker remain responsible for authorization. Web parity covers HTTP application
 failures, while native browser and PTY socket errors keep their own contracts.
+
+The persistence diagnostics observer in `shell/hooks/persistenceDiagnostics.ts` is the sole
+exception for reading raw `debugMessage` from returned save-result DTOs. It forwards only error
+codes/text and flat failure metadata through the existing runtime diagnostics adapter, so Dock
+launches retain evidence even when stderr is unavailable. It never renders that private text or
+logs workspace payloads. Its hook owns the per-signature 60-second suppression and recovery
+episode state; diagnostic failures must not affect save results or notice selection. This narrow
+exception is enforced by `rendererBridge.persistenceDiagnosticLoggers` in the architecture harness.

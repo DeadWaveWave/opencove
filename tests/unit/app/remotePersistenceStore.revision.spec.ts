@@ -88,7 +88,7 @@ it('returns a non-conflict Worker rejection unchanged', async () => {
       ok: false,
       reason: 'io',
       outcome: 'rejected',
-      error: rejection,
+      error: { ...rejection, details: { stage: 'worker-envelope' } },
     })
   } finally {
     vi.unstubAllGlobals()
@@ -135,7 +135,7 @@ it.each(rejectedManagedClaudeAgents)(
         ok: false,
         reason: 'io',
         outcome: 'rejected',
-        error: rejection,
+        error: { ...rejection, details: { ...rejection.details, stage: 'worker-envelope' } },
       })
       const writes = fetchMock.mock.calls
         .map(([, init]) => JSON.parse(init.body))

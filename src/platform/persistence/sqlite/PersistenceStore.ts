@@ -90,6 +90,13 @@ function hasExistingWorkspaces(sqlite: Database.Database): boolean {
   return !!row
 }
 
+function writeErrorMessage(error: unknown): string {
+  if (error instanceof Database.SqliteError) {
+    return `${error.name}(${error.code}): ${error.message}`
+  }
+  return toErrorMessage(error)
+}
+
 function shouldRejectEmptyWorkspaceOverwrite(
   sqlite: Database.Database,
   nextState: NonNullable<ReturnType<typeof normalizePersistedAppState>>,
@@ -255,7 +262,7 @@ export async function createPersistenceStore(storeOptions: {
         ok: false,
         reason: 'io',
         error: createAppErrorDescriptor('persistence.io_failed', {
-          debugMessage: toErrorMessage(error),
+          debugMessage: writeErrorMessage(error),
         }),
       }
     }
@@ -317,7 +324,7 @@ export async function createPersistenceStore(storeOptions: {
         ok: false,
         reason: 'io',
         error: createAppErrorDescriptor('persistence.io_failed', {
-          debugMessage: toErrorMessage(error),
+          debugMessage: writeErrorMessage(error),
         }),
       }
     }

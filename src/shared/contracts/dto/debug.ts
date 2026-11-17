@@ -35,6 +35,7 @@ export type RuntimeDiagnosticsSource =
   | 'main-app'
   | 'main-window'
   | 'renderer-error-boundary'
+  | 'renderer-persistence'
   | 'renderer-performance-monitor'
   | 'renderer-workspace-canvas'
 export type RuntimeDiagnosticsDetailValue = string | number | boolean | null

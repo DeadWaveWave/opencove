@@ -369,7 +369,8 @@
       "doc": "docs/architecture/ARCHITECTURE.md#windowopencoveapi",
       "pluginDiagnosticFormatters": [
         "src/contexts/plugins/presentation/renderer/pluginErrorMessage.ts"
-      ]
+      ],
+      "persistenceDiagnosticLoggers": ["src/app/renderer/shell/hooks/persistenceDiagnostics.ts"]
     }
   }
 }
