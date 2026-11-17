@@ -8,7 +8,7 @@ import {
   WORKSPACE_A as A,
   WORKSPACE_B as B,
 } from '../../support/agentRuntimeHarness'
-import { createRowNodes } from '../../support/canvasSelectionFixtures'
+import { createRowNodes, createSpace } from '../../support/canvasSelectionFixtures'
 import {
   drag,
   drop,
@@ -230,7 +230,7 @@ describe('a write from elsewhere in the middle of a gesture', () => {
     act(() => view.result.current.apply(drag('a', 0, 60)))
     runFrames()
     expect(yOf.shown('c')).toBe(500)
-    expect(liveIds()).not.toContain('b')
+    expect(liveIds()).not.toContain('c')
     act(() => view.result.current.apply(drop('a', 0, 60)))
 
     expect(yOf.stored('a')).toBe(60)
@@ -546,6 +546,37 @@ describe('a gesture across a workspace switch', () => {
 
     expect(documentOf(A).nodes.find(node => node.id === 'a')?.position.y).toBe(40)
     expect(documentOf(B).nodes).toBe(nodesOfB)
+  })
+
+  // Only the grabbed window lands (at its normalized place). What the drag had pushed was in A's
+  // overlay and the session is gone, so the pushed windows are not written. Pinned so that a
+  // later change is deliberate.
+  it('does not write the windows the drag had pushed when its release arrives after the switch', () => {
+    const [inside, dragged, pushed] = createRowNodes(['inside', 'dragged', 'pushed']).map(sized)
+    const { view, showB } = renderInTwoWorkspaces(context => useDragUnderTest(context), {
+      a: {
+        nodes: [
+          { ...inside, position: { x: 24, y: 24 } },
+          { ...dragged, position: { x: 24, y: 700 } },
+          { ...pushed, position: { x: 560, y: 24 } },
+        ],
+        spaces: [createSpace('space', { x: 0, y: 0, width: 520, height: 360 }, ['inside'])],
+      },
+      b: { nodes: createRowNodes(['x']).map(sized) },
+    })
+    const runFrames = stubFrames()
+    const applyOfA = view.result.current.apply
+    act(() => applyOfA(drag('dragged', 60, 200)))
+    runFrames()
+    expect([...view.result.current.readInteraction().liveNodes!.keys()]).toContain('pushed')
+    showB()
+
+    act(() => applyOfA(drop('dragged', 60, 200)))
+
+    const nodesOfA = documentOf(A).nodes
+    expect(nodesOfA.find(node => node.id === 'pushed')?.position).toEqual({ x: 560, y: 24 })
+    expect(nodesOfA.find(node => node.id === 'inside')?.position).toEqual({ x: 24, y: 24 })
+    expect(nodesOfA.find(node => node.id === 'dragged')?.position.y).not.toBe(700)
   })
 
   it('writes neither document when the release arrives after the switch', () => {

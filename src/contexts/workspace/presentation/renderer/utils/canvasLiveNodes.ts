@@ -43,8 +43,7 @@ export function toLiveNodes(
     const baseline = baselinePositionById?.get(node.id)
     const committed = committedById?.get(node.id)
     const isMoved =
-      baseline !== undefined &&
-      (baseline.x !== node.position.x || baseline.y !== node.position.y) &&
+      (baseline === undefined || baseline.x !== node.position.x || baseline.y !== node.position.y) &&
       (committed === undefined ||
         committed.position.x !== node.position.x ||
         committed.position.y !== node.position.y)

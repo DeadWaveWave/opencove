@@ -342,3 +342,155 @@ describe('the release of a Space-dominant drag', () => {
     expect(harness.readStoreDocument().spaces[0].rect).toMatchObject({ x: 0, y: 0 })
   })
 })
+
+// Review of PR 5: three ways a release came without the entry it needs.
+type N = Node<TerminalNodeData>
+const both = (ay: number, by: number, dragging: boolean) =>
+  [
+    { type: 'position', id: 'a', position: { x: 0, y: ay }, dragging },
+    { type: 'position', id: 'b', position: { x: 400, y: by }, dragging },
+  ] as never
+
+function fromElsewhere(context: ReturnType<typeof setup>, change: (nodes: N[]) => N[]) {
+  act(() => {
+    replaceWorkspaceNodes(
+      context.harness.workspaceId,
+      change(context.harness.readStoreDocument().nodes),
+    )
+  })
+}
+const moveTo = (id: string, x: number, y: number) => (nodes: N[]) =>
+  nodes.map(node => (node.id === id ? { ...node, position: { x, y } } : node))
+
+// A select or remove batch that arrives while a drag is live is a release: it ends the session.
+// React Flow's drag goes on, and so must the gesture: the rest of it lands at its release.
+describe('a release with no position change, in the middle of a drag', () => {
+  it('Escape on the focused window (an unselect batch): the rest of the drag still lands', () => {
+    const context = setup()
+    const { view, runFrames, yOf } = context
+    context.grab('a')
+    act(() => view.result.current.selection.select({ nodeIds: ['a'], spaceIds: [] }))
+    act(() => view.result.current.apply(drag('a', 0, 30)))
+    runFrames()
+
+    act(() => view.result.current.apply([{ type: 'select', id: 'a', selected: false }] as never))
+    // The release ended the gesture, so the flag is down and the next frame begins a session.
+    expect(view.result.current.nodeStore.isNodeDraggingRef.current).toBe(false)
+    act(() => view.result.current.apply(drag('a', 0, 200)))
+    runFrames()
+    expect(yOf.shown('a')).toBe(200)
+    act(() => view.result.current.apply(drop('a', 0, 200)))
+
+    expect(yOf.stored('a')).toBe(200)
+    expect(yOf.shown('a')).toBe(200)
+    // The batch in the middle wrote `dragging: true`; a document node left so makes Worker sync
+    // keep every local position of the workspace (`toShellWorkspaceStateForSync`).
+    expect(
+      context.harness.readStoreDocument().nodes.filter(node => node.dragging === true),
+    ).toEqual([])
+  })
+
+  it('a remove batch of another window: the rest of the drag still lands', () => {
+    const context = setup()
+    const { view, runFrames, yOf } = context
+    act(() => view.result.current.apply(drag('a', 0, 30)))
+    runFrames()
+
+    act(() => view.result.current.apply([{ type: 'remove', id: 'c' }] as never))
+    expect(view.result.current.nodeStore.isNodeDraggingRef.current).toBe(false)
+    act(() => view.result.current.apply(drag('a', 0, 60)))
+    runFrames()
+    expect(view.result.current.nodeDragSession.dragBaselinePositionByIdRef.current).not.toBeNull()
+    act(() => view.result.current.apply(drop('a', 0, 60)))
+
+    expect(yOf.stored('a')).toBe(60)
+  })
+
+  // React Flow aborts a touch drag when a second finger lands (`touches.length > 1`): no release,
+  // and nothing leaves the document, so the abort effect cannot see it. The next tap is a release.
+  it('a drag aborted with no release: after the next tap, the next drag lands', () => {
+    const context = setup()
+    const { view, runFrames, yOf } = context
+    act(() => view.result.current.apply(drag('a', 0, 30)))
+    runFrames()
+
+    act(() => view.result.current.apply([{ type: 'select', id: 'c', selected: true }] as never))
+    act(() => view.result.current.apply(drag('b', 400, 300)))
+    runFrames()
+    act(() => view.result.current.apply(drop('b', 400, 300)))
+
+    expect(yOf.stored('b')).toBe(300)
+    expect(yOf.shown('b')).toBe(300)
+  })
+})
+
+// The windows the release batch names are the gesture's, wherever they end.
+describe('a dragged window moved from elsewhere during the drag', () => {
+  it('lands where it is released, also at the spot where the drag began', () => {
+    const context = setup()
+    const { view, runFrames, yOf } = context
+    act(() => view.result.current.apply(drag('a', 0, 30)))
+    runFrames()
+    fromElsewhere(context, moveTo('a', 0, 500))
+    expect(yOf.shown('a')).toBe(30)
+
+    act(() => view.result.current.apply(drag('a', 0, 0)))
+    runFrames()
+    act(() => view.result.current.apply(drop('a', 0, 0)))
+
+    expect(yOf.stored('a')).toBe(0)
+    expect(yOf.shown('a')).toBe(0)
+  })
+
+  it('keeps a multi-window drag together when a peer was moved from elsewhere', () => {
+    const context = setup()
+    const { view, runFrames, yOf } = context
+    act(() => view.result.current.apply(both(30, 30, true)))
+    runFrames()
+    fromElsewhere(context, moveTo('b', 400, 900))
+
+    act(() => view.result.current.apply(both(0, 0, true)))
+    runFrames()
+    act(() => view.result.current.apply(both(0, 0, false)))
+
+    expect(yOf.stored('a')).toBe(0)
+    expect(yOf.stored('b')).toBe(0)
+  })
+
+  it('still writes nothing when the drag ends where it began and nothing moved it', () => {
+    const context = setup()
+    const { harness, view, runFrames } = context
+    act(() => view.result.current.apply(drag('a', 0, 30)))
+    runFrames()
+    const nodesBefore = harness.readStoreDocument().nodes
+    harness.notifications.mockClear()
+
+    act(() => view.result.current.apply(drop('a', 0, 0)))
+
+    expect(harness.notifications).not.toHaveBeenCalled()
+    expect(harness.readStoreDocument().nodes).toBe(nodesBefore)
+  })
+})
+
+// A window created during the drag has no baseline entry, but its base position is the store's:
+// any other position in the frame is the gesture's push (fix C). Before PR 5 the release pushed it.
+describe('a window created during the drag where the dragged window is', () => {
+  it('is pushed by the release instead of staying under the dropped window', () => {
+    const context = setup()
+    const { view, runFrames, yOf } = context
+    act(() => view.result.current.apply(drag('a', 0, 300)))
+    runFrames()
+    let created: N | null = null
+    act(() => {
+      created = view.result.current.nodeStore.createNoteNode({ x: 0, y: 300 })
+    })
+    const id = (created as N | null)!.id
+    act(() => view.result.current.apply(drag('a', 0, 320)))
+    runFrames()
+    act(() => view.result.current.apply(drop('a', 0, 320)))
+
+    expect(yOf.stored('a')).toBe(320)
+    // The note (200 high) no longer overlaps the window dropped at 320 (200 high).
+    expect(yOf.stored(id)).toBeGreaterThanOrEqual(520)
+  })
+})

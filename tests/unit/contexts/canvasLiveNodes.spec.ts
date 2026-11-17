@@ -104,17 +104,29 @@ describe('toLiveNodes', () => {
     expect(toLiveNodes([moved(a, 0, 0, true), b, c], BASELINE, committed).has('a')).toBe(true)
   })
 
-  it('leaves out a window the baseline never held, unless it is dragged', () => {
+  // Flipped by the review of PR 5. A window the baseline never held (created during the gesture)
+  // has the store's position as its base in a frame, because the overlay holds no entry for it, so
+  // a different position in the frame is the projection's push. It used to be left out, and the
+  // release then left it under the dropped window.
+  it('compares a window the baseline never held with the store only', () => {
     const created = { ...createRowNodes(['d'])[0], position: { x: 3000, y: 0 } }
+    const committed = [a, created]
 
-    expect(toLiveNodes([a, created], BASELINE).has('d')).toBe(false)
-    expect(toLiveNodes([a, { ...created, dragging: true }], BASELINE).has('d')).toBe(true)
+    expect(toLiveNodes([a, created], BASELINE, committed).has('d')).toBe(false)
+    expect(toLiveNodes([a, moved(created, 3200, 0, false)], BASELINE, committed).has('d')).toBe(
+      true,
+    )
+    expect(toLiveNodes([a, { ...created, dragging: true }], BASELINE, committed).has('d')).toBe(
+      true,
+    )
   })
 
-  it('holds only the windows marked as dragging when there is no baseline', () => {
-    const overlay = toLiveNodes([moved(a, 5, 30), moved(b, 410, 12, false), c], null)
+  it('compares every window with the store only when there is no baseline', () => {
+    const committed = [a, b, c]
+    const overlay = toLiveNodes([moved(a, 5, 30), moved(b, 410, 12, false), c], null, committed)
 
-    expect([...overlay.keys()]).toEqual(['a'])
+    expect([...overlay.keys()]).toEqual(['a', 'b'])
+    expect(toLiveNodes([a, b, c], null, committed).size).toBe(0)
   })
 
   it('returns nothing for an empty array', () => {

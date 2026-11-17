@@ -330,7 +330,10 @@ export function useWorkspaceCanvasApplyNodeChanges({
         }).nextNodes
       }
 
-      if (positionChanges.length > 0) {
+      // A release ends the gesture, also one with no position change (a select or remove batch
+      // that arrives mid-drag): the session is gone, so what React Flow sends next begins a new
+      // one instead of continuing without a baseline.
+      if (positionChanges.length > 0 || isRelease) {
         setNodeDragging(isDraggingThisFrame)
       }
 
@@ -373,8 +376,20 @@ export function useWorkspaceCanvasApplyNodeChanges({
         // shows the overlay over the released nodes, never the nodes before the drag. The write
         // applies the entries of the windows the store still holds and nothing else, so a release
         // of windows that are all gone from here writes nothing; it still ends the gesture.
+        // The windows the batch releases are the gesture's wherever they end, even back on their
+        // baseline after a move from elsewhere.
+        const releaseEntries = new Map(toLiveNodes(nextNodes, releaseBaseline, committedNodes))
+        for (const change of positionChanges) {
+          const released = nextNodes.find(node => node.id === change.id)
+          if (released && !releaseEntries.has(change.id)) {
+            releaseEntries.set(change.id, {
+              position: { x: released.position.x, y: released.position.y },
+              dragging: false,
+            })
+          }
+        }
         onNodesRelease({
-          liveNodes: toLiveNodes(nextNodes, releaseBaseline, committedNodes),
+          liveNodes: releaseEntries,
           removedIds,
           spaceRects: releaseSpaceRects,
         })
