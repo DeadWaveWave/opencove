@@ -181,7 +181,7 @@ workspace 画布文档（节点、Space、活动 Space、Space 归档记录、�
 
 - **Architecture**：禁止 Main / Preload / Renderer 逻辑越界；边界暴露统一走 `preload` 或契约层。
 - **Type Safety**：避免 `any`，IPC payload、跨层 DTO、边界返回值都要保持可校验、可推断。生产代码不得使用 `@ts-expect-error`、`@ts-ignore`、`@ts-nocheck`（`pnpm lint` 会报错）：遇到类型错误就修类型。类型测试写在 spec 里，`@ts-expect-error` 后必须写明预期的错误。
-- **Lint**：`pnpm lint` 遇到任何 warning 都失败（`--max-warnings=0`），本地与 CI 相同。确需保留的个例用 `// oxlint-disable-next-line <rule> -- <原因>` 就地写明原因，不放宽规则级别。
+- **Lint**：`pnpm lint` 遇到任何 warning 都失败（`--max-warnings=0`），本地与 CI 相同。确需保留的个例用 `// oxlint-disable-next-line <rule> -- <原因>` 就地写明原因，不放宽规则级别。`src/app/renderer/shell/components/WorkspaceMain.tsx` 额外启用 `react-perf/jsx-no-new-function-as-prop`：画布 `WorkspaceCanvas` 是 memo 组件，在这里传入的内联函数会让 shell 的每次渲染（性能采样器每秒约 3 次）都重渲染整个画布。
 - **Security**：保持 Context Isolation；Renderer 禁止 Node Integration；能启用 Sandbox 的路径不要随意放弃。
 
 ### UI 自动化与验证（UI Automation & Verification）
