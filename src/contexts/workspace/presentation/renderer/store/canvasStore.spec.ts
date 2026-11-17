@@ -8,8 +8,7 @@ import type {
   SpaceTargetMountPickerState,
   TaskEditorState,
 } from '../components/workspaceCanvas/types'
-import type { Node } from '@xyflow/react'
-import type { TerminalNodeData } from '../types'
+import type { LiveNodes } from '../utils/canvasLiveNodes'
 import type { WorkspaceSnapGuide } from '../utils/workspaceSnap'
 import { createCanvasStore } from './canvasStore'
 import { createInitialCanvasSelectionState } from './canvasStore.selection'
@@ -58,14 +57,6 @@ const deleteConfirmation: NodeDeleteConfirmationState = {
   primaryNodeTitle: 'Note',
   emptyingSpaces: [],
 }
-
-// Only the identity of the array matters to the slice, so the nodes carry no data.
-const rowNodes = (ids: string[]) =>
-  ids.map((id, index) => ({
-    id,
-    position: { x: index * 400, y: 0 },
-    data: {},
-  })) as unknown as Node<TerminalNodeData>[]
 
 describe('canvas store', () => {
   it('starts with every menu, dialog and rename closed', () => {
@@ -687,9 +678,12 @@ describe('canvas store', () => {
     })
 
     describe('the live nodes of a gesture', () => {
-      const frame = rowNodes(['a', 'b'])
+      const frame: LiveNodes = new Map([
+        ['a', { position: { x: 0, y: 30 }, dragging: true }],
+        ['b', { position: { x: 400, y: 10 } }],
+      ])
 
-      it('stores the live array, notifies once per new array and not for the same one', () => {
+      it('stores the overlay, notifies once per new overlay and not for an equal one', () => {
         const { api, commands } = createCanvasStore()
         const listener = vi.fn()
         api.subscribe(listener)
@@ -701,10 +695,30 @@ describe('canvas store', () => {
         commands.interaction.publishLiveNodes(frame)
         expect(listener).toHaveBeenCalledTimes(1)
 
-        const next = [...frame]
+        // The same ids, positions and flags in another map: nobody is told, the stored map stays.
+        commands.interaction.publishLiveNodes(
+          new Map([
+            ['a', { position: { x: 0, y: 30 }, dragging: true }],
+            ['b', { position: { x: 400, y: 10 }, dragging: false }],
+          ]),
+        )
+        expect(api.getState().interaction.liveNodes).toBe(frame)
+        expect(listener).toHaveBeenCalledTimes(1)
+
+        const next: LiveNodes = new Map([
+          ...frame,
+          ['a', { position: { x: 0, y: 31 }, dragging: true }],
+        ])
         commands.interaction.publishLiveNodes(next)
         expect(api.getState().interaction.liveNodes).toBe(next)
         expect(listener).toHaveBeenCalledTimes(2)
+
+        // A member, a position or a flag that differs is a new overlay.
+        commands.interaction.publishLiveNodes(new Map([['a', next.get('a')!]]))
+        commands.interaction.publishLiveNodes(
+          new Map([['a', { position: { x: 0, y: 31 }, dragging: false }]]),
+        )
+        expect(listener).toHaveBeenCalledTimes(4)
       })
 
       it('ends the gesture once, and ending with nothing live notifies nobody', () => {
@@ -828,7 +842,7 @@ describe('canvas store', () => {
       const { publishLiveNodes, endLiveNodes, setSnapGuides, setNodeDragFramePreview } =
         store.commands.interaction
 
-      store.commands.interaction.publishLiveNodes(rowNodes(['a']))
+      store.commands.interaction.publishLiveNodes(new Map([['a', { position: { x: 0, y: 1 } }]]))
       store.commands.interaction.setSnapGuides([{ kind: 'v', x: 1, y1: 0, y2: 1 }])
 
       expect(store.commands.interaction.publishLiveNodes).toBe(publishLiveNodes)

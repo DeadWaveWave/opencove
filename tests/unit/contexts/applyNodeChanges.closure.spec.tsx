@@ -45,9 +45,11 @@ describe('ReactFlow removal closure notifications', () => {
     vi.restoreAllMocks()
   })
 
-  it.each(['commit', 'change'] as const)(
+  // The batch had a second route, `onNodesChange`, for a caller with no commit callback. The
+  // callback now takes the overlay of a drag frame and the commit callback is required (S6, PR 5).
+  it.each(['commit'] as const)(
     'publishes one actual removal batch after the %s owner returns',
-    route => {
+    () => {
       const order: string[] = []
       const kill = vi.fn(() => {
         order.push('kill')
@@ -66,11 +68,13 @@ describe('ReactFlow removal closure notifications', () => {
       const view = renderHook(
         () =>
           useWorkspaceCanvasApplyNodeChanges({
-            onNodesChange: publish,
-            onNodesCommit: route === 'commit' ? publish : undefined,
+            onNodesChange: vi.fn(),
+            onNodesCommit: publish,
+            onNodesRelease: vi.fn(),
             clearAgentLaunchToken: vi.fn(),
             normalizePosition: (_id, desired) => desired,
             applyPendingScrollbacks: nodes => nodes,
+            nodes: [],
             isNodeDraggingRef: { current: false },
             nodeDragSession: dragSession(),
           }),

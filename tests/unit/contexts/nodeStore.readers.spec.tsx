@@ -428,10 +428,12 @@ describe('the render that showed A, called after B is shown', () => {
   })
 })
 
-// What a drag frame does: it publishes the live array to the canvas store.
+// What a drag frame does: it publishes the gesture's windows to the canvas store.
 function startLiveDrag(view: View, live: Node<TerminalNodeData>[]) {
   act(() => {
-    view.result.current.publishers.publishLiveNodesChange(live)
+    view.result.current.publishers.publishLiveNodesChange(
+      new Map(live.map(node => [node.id, { position: node.position, dragging: true }])),
+    )
   })
 }
 

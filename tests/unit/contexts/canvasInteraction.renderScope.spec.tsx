@@ -61,10 +61,7 @@ describe('useWorkspaceCanvasState and the interaction slice', () => {
     const { view, renders } = renderCanvasState()
     const rendersBefore = renders()
     const { interaction } = view.result.current
-    const frame = (y: number) =>
-      [{ id: 'a', position: { x: 0, y }, data: {} }] as unknown as Parameters<
-        typeof interaction.publishLiveNodes
-      >[0]
+    const frame = (y: number) => new Map([['a', { position: { x: 0, y }, dragging: true }]])
 
     act(() => interaction.publishLiveNodes(frame(10)))
     act(() => interaction.publishLiveNodes(frame(20)))

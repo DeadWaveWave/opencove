@@ -117,9 +117,7 @@ describe('workspace document commands: a late canvas write lands in the workspac
     act(() => {
       view.result.current.selection.setNodeIds(['terminal-1'])
       view.result.current.interaction.publishLiveNodes(
-        useAppStore
-          .getState()
-          .workspaces[1].nodes.map(node => ({ ...node, position: { x: 777, y: 777 } })),
+        new Map([['terminal-1', { position: { x: 777, y: 777 } }]]),
       )
     })
 

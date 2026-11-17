@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { act } from '@testing-library/react'
 import type { Node } from '@xyflow/react'
 import { vi } from 'vitest'
@@ -7,9 +8,13 @@ import type { CanvasInteractionState } from '../../src/contexts/workspace/presen
 import {
   useCanvasInteraction,
   useCanvasInteractionCommands,
+  useCanvasSelectionCommands,
   useReadCanvasInteraction,
 } from '../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
-import type { TerminalNodeData } from '../../src/contexts/workspace/presentation/renderer/types'
+import type {
+  TerminalNodeData,
+  WorkspaceSpaceState,
+} from '../../src/contexts/workspace/presentation/renderer/types'
 import { applyLiveNodes } from '../../src/contexts/workspace/presentation/renderer/utils/canvasLiveNodes'
 import {
   createCanvasDocumentHarness,
@@ -28,14 +33,19 @@ export type DragContext = CanvasNodeStoreContext | RuntimeCanvasContext
 
 export function useDragUnderTest({ workspaceId, canvasState, nodeStore, publishers }: DragContext) {
   const nodeDragSession = useWorkspaceCanvasNodeDragSession({ workspaceId })
+  // The window whose selection a drag start replaced; null until a test says otherwise.
+  const exclusiveNodeDragAnchorIdRef = useRef<string | null>(null)
   const apply = useWorkspaceCanvasApplyNodeChanges({
     onNodesChange: publishers.publishLiveNodesChange,
     onNodesCommit: publishers.commitNodesChange,
+    onNodesRelease: publishers.commitNodesRelease,
     onSelectedNodeIdsChange: canvasState.syncSelectedNodeIds,
     clearAgentLaunchToken: nodeStore.clearAgentLaunchToken,
     normalizePosition: nodeStore.normalizePosition,
     applyPendingScrollbacks: nodeStore.applyPendingScrollbacks,
+    nodes: canvasState.flowNodes,
     isNodeDraggingRef: nodeStore.isNodeDraggingRef,
+    exclusiveNodeDragAnchorIdRef,
     nodeDragSession,
   })
   // What the flow host renders: the committed view with the overlay applied.
@@ -43,6 +53,9 @@ export function useDragUnderTest({ workspaceId, canvasState, nodeStore, publishe
   const shown = applyLiveNodes(canvasState.flowNodes, liveNodes)
   return {
     apply,
+    nodeDragSession,
+    exclusiveNodeDragAnchorIdRef,
+    selection: useCanvasSelectionCommands(),
     readInteraction: useReadCanvasInteraction(),
     interactionCommands: useCanvasInteractionCommands(),
     shown,
@@ -71,17 +84,34 @@ export const drag = (id: string, x: number, y: number) =>
 export const drop = (id: string, x: number, y: number) =>
   [{ type: 'position', id, position: { x, y }, dragging: false }] as never
 
-export function setupNodeDrag(nodes: Node<TerminalNodeData>[] = ROW()) {
-  const harness = createCanvasDocumentHarness({ nodes })
-  const view = renderCanvasNodeStore(harness, { extend: useDragUnderTest })
+export function setupNodeDrag(
+  nodes: Node<TerminalNodeData>[] = ROW(),
+  options: { spaces?: WorkspaceSpaceState[]; magneticSnapping?: boolean } = {},
+) {
+  const harness = createCanvasDocumentHarness({ nodes, spaces: options.spaces })
+  const view = renderCanvasNodeStore(harness, {
+    extend: useDragUnderTest,
+    magneticSnapping: options.magneticSnapping,
+  })
   const runFrames = stubFrames()
   /** The y of node `id` as the host shows it, as the document holds it, and in the overlay. */
   const yOf = {
     shown: (id: string) => view.result.current.shown.find(node => node.id === id)?.position.y,
     stored: (id: string) =>
       harness.readStoreDocument().nodes.find(node => node.id === id)?.position.y,
-    live: (id: string) =>
-      view.result.current.readInteraction().liveNodes?.find(node => node.id === id)?.position.y,
+    live: (id: string) => view.result.current.readInteraction().liveNodes?.get(id)?.position.y,
   }
-  return { harness, view, runFrames, yOf }
+  /** The ids the overlay holds, in order; null while no gesture is live. */
+  const liveIds = () => {
+    const live = view.result.current.readInteraction().liveNodes
+    return live === null ? null : [...live.keys()]
+  }
+  /** Tells the session which window the pointer grabbed, as the canvas's drag start does. */
+  const grab = (nodeId: string) => {
+    view.result.current.nodeDragSession.nodeDragPointerAnchorRef.current = {
+      nodeId,
+      offset: { x: 0, y: 0 },
+    }
+  }
+  return { harness, view, runFrames, yOf, liveIds, grab }
 }

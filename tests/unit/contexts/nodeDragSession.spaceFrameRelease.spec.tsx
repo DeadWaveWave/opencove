@@ -11,6 +11,7 @@ import {
   type CanvasNodeStoreContext,
 } from '../../support/canvasDocumentHarness'
 import { createRowNodes, createSpace } from '../../support/canvasSelectionFixtures'
+import { releaseSession } from '../../support/changePathCallbacks'
 
 function useDragSessionUnderTest({ workspaceId }: CanvasNodeStoreContext) {
   return {
@@ -22,8 +23,9 @@ function useDragSessionUnderTest({ workspaceId }: CanvasNodeStoreContext) {
   }
 }
 
-// A Space-dominant node drag moves the selected Space frames; the release writes them once, and
-// RF calls `onNodeDragStop` in the same call, which reads the Spaces for the drop target.
+// A Space-dominant node drag moves the selected Space frames; the release writes them once (the
+// session hands them back, the release's own write stores them), and RF calls `onNodeDragStop` in
+// the same call, which reads the Spaces for the drop target.
 describe('node drag session: releasing a Space frame', () => {
   it('stores the pushed frame once, and a read in the same call sees it', () => {
     const [node] = createRowNodes(['n1'])
@@ -32,7 +34,7 @@ describe('node drag session: releasing a Space frame', () => {
     const harness = createCanvasDocumentHarness({ nodes: [movingNode], spaces: [space] })
     const view = renderCanvasNodeStore(harness, { extend: useDragSessionUnderTest })
     act(() => view.result.current.selection.setSpaceIds([space.id]))
-    const { session } = view.result.current
+    const { session, publishers } = view.result.current
     act(() => session.captureDragStartSpaceSelection())
     act(() => session.beginNodeDragSession([movingNode]))
     act(() => {
@@ -48,7 +50,7 @@ describe('node drag session: releasing a Space frame', () => {
     let seenAfterRelease: unknown = null
 
     act(() => {
-      session.endNodeDragSession()
+      releaseSession(session, publishers)
       seenAfterRelease = harness.readStoreDocument().spaces[0].rect
     })
 
