@@ -537,7 +537,12 @@ describe('canvas store', () => {
 
   describe('interaction', () => {
     // What a node gesture shows: nothing, until a drag frame writes it.
-    const NO_GESTURE = { liveNodes: null, snapGuides: null, nodeDragFramePreview: null }
+    const NO_GESTURE = {
+      liveNodes: null,
+      snapGuides: null,
+      nodeDragFramePreview: null,
+      spaceDragFramePreview: null,
+    }
     const draft: SelectionDraftUiState = {
       startX: 10,
       startY: 20,
@@ -837,10 +842,103 @@ describe('canvas store', () => {
       })
     })
 
+    // The preview of a Space drag (PR 6) is the same kind of value as the node drag's, in a field
+    // of its own: one never replaces or clears the other.
+    describe('the Space drag frame preview', () => {
+      const rect = { x: 0, y: 0, width: 300, height: 200 }
+      const preview = () => new Map([['space-1', { ...rect }]])
+
+      it('notifies once per changing write and keeps the stored preview for an equal one', () => {
+        const { api, commands } = createCanvasStore()
+        const listener = vi.fn()
+        api.subscribe(listener)
+
+        commands.interaction.setSpaceDragFramePreview(preview())
+        expect(listener).toHaveBeenCalledTimes(1)
+        const stored = api.getState().interaction.spaceDragFramePreview
+
+        commands.interaction.setSpaceDragFramePreview(preview())
+        expect(listener).toHaveBeenCalledTimes(1)
+        expect(api.getState().interaction.spaceDragFramePreview).toBe(stored)
+      })
+
+      it('compares the ids and every field of every rect', () => {
+        const { api, commands } = createCanvasStore()
+        commands.interaction.setSpaceDragFramePreview(preview())
+        const listener = vi.fn()
+        api.subscribe(listener)
+
+        for (const next of [
+          new Map([['space-1', { ...rect, x: 1 }]]),
+          new Map([['space-1', { ...rect, y: 1 }]]),
+          new Map([['space-1', { ...rect, width: 301 }]]),
+          new Map([['space-1', { ...rect, height: 201 }]]),
+          new Map([['space-2', { ...rect }]]),
+          new Map([
+            ['space-1', { ...rect }],
+            ['space-2', { ...rect }],
+          ]),
+        ]) {
+          commands.interaction.setSpaceDragFramePreview(next)
+          commands.interaction.setSpaceDragFramePreview(preview())
+        }
+
+        expect(listener).toHaveBeenCalledTimes(12)
+      })
+
+      it('clears the preview once, and a clear with none shown notifies nobody', () => {
+        const { api, commands } = createCanvasStore()
+        const listener = vi.fn()
+        api.subscribe(listener)
+
+        commands.interaction.setSpaceDragFramePreview(null)
+        expect(listener).not.toHaveBeenCalled()
+
+        commands.interaction.setSpaceDragFramePreview(preview())
+        commands.interaction.setSpaceDragFramePreview(null)
+        commands.interaction.setSpaceDragFramePreview(null)
+
+        expect(api.getState().interaction.spaceDragFramePreview).toBeNull()
+        expect(listener).toHaveBeenCalledTimes(2)
+      })
+
+      it('is independent of the preview of a node drag', () => {
+        const { api, commands } = createCanvasStore()
+        const nodeDrag = new Map([['space-9', { ...rect }]])
+
+        commands.interaction.setNodeDragFramePreview(nodeDrag)
+        commands.interaction.setSpaceDragFramePreview(preview())
+        commands.interaction.setSpaceDragFramePreview(null)
+
+        expect(api.getState().interaction.nodeDragFramePreview).toBe(nodeDrag)
+
+        commands.interaction.setSpaceDragFramePreview(preview())
+        commands.interaction.setNodeDragFramePreview(null)
+
+        expect(api.getState().interaction.spaceDragFramePreview).toEqual(preview())
+      })
+
+      it('is not ended by ending the live nodes, which a release does', () => {
+        const { api, commands } = createCanvasStore()
+        commands.interaction.publishLiveNodes(new Map([['a', { position: { x: 0, y: 1 } }]]))
+        commands.interaction.setSpaceDragFramePreview(preview())
+
+        commands.interaction.endLiveNodes()
+
+        expect(api.getState().interaction.liveNodes).toBeNull()
+        expect(api.getState().interaction.spaceDragFramePreview).toEqual(preview())
+      })
+    })
+
     it('keeps the gesture commands stable across state changes', () => {
       const store = createCanvasStore()
-      const { publishLiveNodes, endLiveNodes, setSnapGuides, setNodeDragFramePreview } =
-        store.commands.interaction
+      const {
+        publishLiveNodes,
+        endLiveNodes,
+        setSnapGuides,
+        setNodeDragFramePreview,
+        setSpaceDragFramePreview,
+      } = store.commands.interaction
 
       store.commands.interaction.publishLiveNodes(new Map([['a', { position: { x: 0, y: 1 } }]]))
       store.commands.interaction.setSnapGuides([{ kind: 'v', x: 1, y1: 0, y2: 1 }])
@@ -849,6 +947,7 @@ describe('canvas store', () => {
       expect(store.commands.interaction.endLiveNodes).toBe(endLiveNodes)
       expect(store.commands.interaction.setSnapGuides).toBe(setSnapGuides)
       expect(store.commands.interaction.setNodeDragFramePreview).toBe(setNodeDragFramePreview)
+      expect(store.commands.interaction.setSpaceDragFramePreview).toBe(setSpaceDragFramePreview)
     })
   })
 })
