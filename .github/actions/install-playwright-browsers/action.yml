@@ -1,21 +1,27 @@
 name: Install Playwright browsers on Ubuntu
 description: >-
   Installs Playwright browsers with their Ubuntu packages. The downloaded package files are kept
-  in the Actions cache, so a run fetches from the runner's apt mirror only what the cache lacks.
+  in the Actions cache, so a run fetches from the runner's apt mirror only the package index and
+  the package files the cache lacks.
 
 # Why the package files are cached: `playwright install --with-deps chromium webkit` downloads
 # about 125 MB of packages on every run, and `--with-deps chromium` about 32 MB. The runner's
 # regional mirror usually delivers that in seconds, but it has slowed to tens of kB/s for hours at
 # a time, which failed the install step after its 15-minute limit (#749) and hung jobs before the
-# limit existed. The browsers themselves still download from Playwright's CDN, which has not.
+# limit existed. The package index (about 13 MB) is still fetched on every run; during those
+# slowdowns it kept arriving at several hundred kB/s while the package files crawled. The browsers
+# themselves still download from Playwright's CDN, which has not stalled.
 #
 # Integrity: apt reuses a file already in its archive directory when only its size matches, so
-# every restored file is checked against the SHA256 in the freshly updated, signed package index
-# first (drop-unverified-packages.sh). Files that do not match are deleted and downloaded again.
+# every .deb file present before the install is checked against the SHA256 in the freshly updated,
+# signed package index first (drop-unverified-packages.sh). Files that do not match are deleted and
+# downloaded again. The check runs whenever such files exist, not only after a reported cache hit,
+# so it also covers files left by a restore that failed partway.
 #
-# The key names the runner image version, so a new image starts a new entry; it is restored from
-# the newest older entry for the same browsers, which already holds most of the packages. A run
-# saves the cache only when its exact key was not restored.
+# The key names the runner image version, so a new image starts a new entry. When the exact key is
+# missing, the most recently created entry for the same browser set is restored; it already holds
+# most of the packages. A run saves the cache only when its exact key was not restored, so packages
+# superseded during an image's lifetime are downloaded again until the next image.
 
 inputs:
   browsers:
@@ -32,9 +38,12 @@ runs:
         BROWSERS: ${{ inputs.browsers }}
       run: |
         set -euo pipefail
-        playwright_version="$(pnpm exec playwright --version | awk '{print $2}')"
-        browsers_slug="$(printf '%s' "$BROWSERS" | tr -s ' ' '-')"
-        prefix="playwright-apt-${ImageOS:-unknown-os}-${browsers_slug}-"
+        playwright_version="$(pnpm exec playwright --version | awk '/^Version / && !found { print $2; found = 1 }')"
+        : "${playwright_version:?could not read the Playwright version}"
+        # `--` ends the browser set, so the prefix for `chromium` is not a prefix of the keys for
+        # `chromium webkit`, whose entries are four times larger.
+        browsers_slug="$(printf '%s' "$BROWSERS" | tr -s ' ' '+')"
+        prefix="playwright-apt-${ImageOS:-unknown-os}-${browsers_slug}--"
         echo "prefix=${prefix}" >> "$GITHUB_OUTPUT"
         echo "key=${prefix}${playwright_version}-${ImageVersion:-unknown-image}" >> "$GITHUB_OUTPUT"
 
@@ -48,18 +57,27 @@ runs:
     - name: Restore the Ubuntu package files
       id: restore
       uses: actions/cache/restore@v6
+      env:
+        # A stalled cache download gives up after 3 minutes instead of 10, which leaves the step
+        # time to fetch from the mirror instead.
+        SEGMENT_DOWNLOAD_TIMEOUT_MINS: '3'
       with:
         path: /var/cache/apt/archives/*.deb
         key: ${{ steps.key.outputs.key }}
         restore-keys: ${{ steps.key.outputs.prefix }}
 
-    - name: Drop restored package files that the package index does not vouch for
-      if: steps.restore.outputs.cache-matched-key != ''
+    - name: Drop package files that the package index does not vouch for
       shell: bash
       run: |
         set -euo pipefail
-        sudo apt-get update -qq
-        bash "$GITHUB_ACTION_PATH/drop-unverified-packages.sh" /var/cache/apt/archives
+        shopt -s nullglob
+        present=(/var/cache/apt/archives/*.deb)
+        if [ "${#present[@]}" -gt 0 ]; then
+          sudo apt-get update -qq
+          bash "$GITHUB_ACTION_PATH/drop-unverified-packages.sh" /var/cache/apt/archives
+        else
+          echo "No package files to verify."
+        fi
 
     - name: Install the browsers and their packages
       id: install

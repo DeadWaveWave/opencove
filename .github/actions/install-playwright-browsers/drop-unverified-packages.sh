@@ -15,6 +15,7 @@ dropped=0
 shopt -s nullglob
 for deb in "$archive_dir"/*.deb; do
   expected=''
+  # shellcheck disable=SC2016 # the dpkg-deb format fields are meant literally
   if fields="$(dpkg-deb --show --showformat='${Package} ${Version} ${Architecture}' "$deb" 2>/dev/null)"; then
     read -r package version architecture <<<"$fields"
     if [ "$architecture" = all ]; then
@@ -22,7 +23,10 @@ for deb in "$archive_dir"/*.deb; do
     else
       selector="${package}:${architecture}=${version}"
     fi
-    expected="$(apt-cache show --no-all-versions "$selector" 2>/dev/null | awk '/^SHA256: /{print $2; exit}')" || expected=''
+    # An explicit version selects that version's record from the index, so no candidate lookup
+    # (--no-all-versions) is needed; it would build apt's policy for every package on each call.
+    # awk reads all input rather than exiting at the first match, so apt-cache never gets SIGPIPE.
+    expected="$(apt-cache show "$selector" 2>/dev/null | awk '/^SHA256: / && !found { print $2; found = 1 }')" || expected=''
   fi
   actual="$(sha256sum "$deb" | cut -d' ' -f1)"
   if [ -n "$expected" ] && [ "$expected" = "$actual" ]; then

@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 const rootDir = resolve(import.meta.dirname, '../../..')
 const ubuntuInstallAction = './.github/actions/install-playwright-browsers'
+const directInstall = 'pnpm exec playwright install'
 
 function readJob(workflow: string, jobName: string, nextJobName: string): string {
   const start = workflow.indexOf(`  ${jobName}:`)
@@ -14,22 +15,32 @@ function readJob(workflow: string, jobName: string, nextJobName: string): string
   return workflow.slice(start, end)
 }
 
-function readStep(job: string, stepName: string): string {
-  const start = job.indexOf(`- name: ${stepName}`)
-  if (start < 0) {
-    throw new Error(`Missing CI step ${stepName}`)
+/** Splits a list of steps at its `- name:` items, given the indentation of the dash. */
+function readSteps(text: string, indent: string): Map<string, string> {
+  const marker = `\n${indent}- name: `
+  const steps = new Map<string, string>()
+  for (const chunk of text.split(marker).slice(1)) {
+    const name = chunk.slice(0, chunk.indexOf('\n')).trim()
+    steps.set(name, chunk)
   }
-  const next = job.indexOf('\n      - name: ', start + 1)
-  return job.slice(start, next < 0 ? undefined : next)
+  return steps
 }
 
-async function readWorkflow(): Promise<string> {
-  return await readFile(resolve(rootDir, '.github/workflows/ci.yml'), 'utf8')
+function readStep(steps: Map<string, string>, name: string): string {
+  const step = steps.get(name)
+  if (step === undefined) {
+    throw new Error(`Missing CI step ${name}`)
+  }
+  return step
+}
+
+async function readRepoFile(path: string): Promise<string> {
+  return await readFile(resolve(rootDir, path), 'utf8')
 }
 
 describe('CI E2E browser provisioning', () => {
   it('installs the browsers through the cached Ubuntu action, bounded, before the Ubuntu tests', async () => {
-    const workflow = await readWorkflow()
+    const workflow = await readRepoFile('.github/workflows/ci.yml')
     const cases = [
       {
         job: readJob(workflow, 'e2e-ubuntu', 'web-canvas-continuity-ubuntu'),
@@ -46,56 +57,66 @@ describe('CI E2E browser provisioning', () => {
     ]
 
     for (const { job, install, browsers, firstTest } of cases) {
-      const step = readStep(job, install)
-      expect(step).toContain(`uses: ${ubuntuInstallAction}`)
+      const steps = readSteps(job, '      ')
+      const step = readStep(steps, install)
+      expect(step).toContain(`uses: ${ubuntuInstallAction}\n`)
       expect(step).toContain(`browsers: ${browsers}\n`)
-      expect(step).toMatch(/timeout-minutes: \d+/)
-      expect(job.indexOf(install)).toBeLessThan(job.indexOf(firstTest))
-      // Every Ubuntu browser install goes through the action, so none fetches packages uncached.
-      expect(job).not.toContain('pnpm exec playwright install')
+      expect(step).toMatch(/\n {8}timeout-minutes: \d+\n/)
+      const names = [...steps.keys()]
+      expect(names.indexOf(install)).toBeLessThan(names.indexOf(firstTest))
     }
   })
 
-  it('installs Chromium directly on macOS, where there are no apt packages', async () => {
-    const workflow = await readWorkflow()
+  it('installs browsers directly only on macOS, where there are no apt packages', async () => {
+    const workflow = await readRepoFile('.github/workflows/ci.yml')
     const job = readJob(workflow, 'ci-macos', 'platform-e2e-windows')
-    const step = readStep(job, 'Install Chromium for Desktop/Web continuity E2E')
+    const steps = readSteps(job, '      ')
+    const step = readStep(steps, 'Install Chromium for Desktop/Web continuity E2E')
 
     expect(step).toContain("PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: ''")
-    expect(step).toContain('pnpm exec playwright install chromium')
-    expect(job.indexOf('Install Chromium for Desktop/Web continuity E2E')).toBeLessThan(
-      job.indexOf('E2E tests (shard)'),
+    expect(step).toContain(`${directInstall} chromium`)
+    const names = [...steps.keys()]
+    expect(names.indexOf('Install Chromium for Desktop/Web continuity E2E')).toBeLessThan(
+      names.indexOf('E2E tests (shard)'),
     )
+    // A new Ubuntu job that installs browsers directly would download every package uncached.
+    expect(workflow.split(directInstall).length - 1).toBe(1)
   })
 
-  it('caches only verified package files and installs with the browser download enabled', async () => {
-    const action = await readFile(
-      resolve(rootDir, '.github/actions/install-playwright-browsers/action.yml'),
-      'utf8',
-    )
-    const restoreAt = action.indexOf('uses: actions/cache/restore@')
-    const verifyAt = action.indexOf(
-      'bash "$GITHUB_ACTION_PATH/drop-unverified-packages.sh" /var/cache/apt/archives',
-    )
-    const installAt = action.indexOf('pnpm exec playwright install --with-deps $BROWSERS')
-    const saveAt = action.indexOf('uses: actions/cache/save@')
+  it('verifies every package file before the install and caches only .deb files', async () => {
+    const action = await readRepoFile('.github/actions/install-playwright-browsers/action.yml')
+    const steps = readSteps(action, '    ')
+    const names = [...steps.keys()]
+    const restore = 'Restore the Ubuntu package files'
+    const verify = 'Drop package files that the package index does not vouch for'
+    const install = 'Install the browsers and their packages'
+    const save = 'Save the Ubuntu package files'
 
     // Restore, then verify against the index, then install, then save: the order is the contract.
-    expect(restoreAt).toBeGreaterThanOrEqual(0)
-    expect(restoreAt).toBeLessThan(verifyAt)
-    expect(verifyAt).toBeLessThan(installAt)
-    expect(installAt).toBeLessThan(saveAt)
-    expect(action.slice(restoreAt, verifyAt)).toContain('sudo apt-get update')
+    expect(names.indexOf(restore)).toBeGreaterThanOrEqual(0)
+    expect(names.indexOf(restore)).toBeLessThan(names.indexOf(verify))
+    expect(names.indexOf(verify)).toBeLessThan(names.indexOf(install))
+    expect(names.indexOf(install)).toBeLessThan(names.indexOf(save))
+
+    // The check runs whenever package files are present, whatever the restore step reported.
+    const verifyStep = readStep(steps, verify)
+    expect(verifyStep).not.toMatch(/\n {6}if:/)
+    expect(verifyStep).toContain('sudo apt-get update')
+    expect(verifyStep).toContain(
+      'bash "$GITHUB_ACTION_PATH/drop-unverified-packages.sh" /var/cache/apt/archives',
+    )
+    expect(verifyStep.indexOf('sudo apt-get update')).toBeLessThan(
+      verifyStep.indexOf('drop-unverified-packages.sh'),
+    )
 
     // Restore and save the same files: apt's .deb archives, never its lock file or partial downloads.
-    const cachedPaths = [...action.matchAll(/^\s+path: (.+)$/gm)].map(match => match[1])
-    expect(cachedPaths).toEqual(['/var/cache/apt/archives/*.deb', '/var/cache/apt/archives/*.deb'])
+    for (const name of [restore, save]) {
+      expect(readStep(steps, name)).toContain('path: /var/cache/apt/archives/*.deb\n')
+    }
 
-    expect(action.slice(installAt - 400, installAt)).toContain(
-      "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: ''",
-    )
-    expect(action.slice(saveAt - 200, saveAt)).toContain(
-      "steps.restore.outputs.cache-hit != 'true'",
-    )
+    const installStep = readStep(steps, install)
+    expect(installStep).toContain("PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: ''")
+    expect(installStep).toContain('pnpm exec playwright install --with-deps $BROWSERS')
+    expect(readStep(steps, save)).toContain("steps.restore.outputs.cache-hit != 'true'")
   })
 })
