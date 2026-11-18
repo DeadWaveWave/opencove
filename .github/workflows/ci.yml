@@ -126,11 +126,12 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install Chromium for Desktop/Web continuity E2E
-        # apt mirrors occasionally stall; fail fast instead of burning the 6h job limit.
+        # The Ubuntu packages come from the Actions cache when it has them (see the action). A
+        # stalled apt mirror still fails this step after 15 minutes instead of the 6h job limit.
         timeout-minutes: 15
-        env:
-          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: ''
-        run: pnpm exec playwright install --with-deps chromium
+        uses: ./.github/actions/install-playwright-browsers
+        with:
+          browsers: chromium
 
       - name: Build
         run: pnpm build
@@ -198,11 +199,12 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install Web Canvas browsers
-        # apt mirrors occasionally stall; fail fast instead of burning the 6h job limit.
+        # The Ubuntu packages come from the Actions cache when it has them (see the action). A
+        # stalled apt mirror still fails this step after 15 minutes instead of the 6h job limit.
         timeout-minutes: 15
-        env:
-          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: ''
-        run: pnpm exec playwright install --with-deps chromium webkit
+        uses: ./.github/actions/install-playwright-browsers
+        with:
+          browsers: chromium webkit
 
       - name: Build
         id: build

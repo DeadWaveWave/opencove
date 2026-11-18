@@ -1,0 +1,86 @@
+name: Install Playwright browsers on Ubuntu
+description: >-
+  Installs Playwright browsers with their Ubuntu packages. The downloaded package files are kept
+  in the Actions cache, so a run fetches from the runner's apt mirror only what the cache lacks.
+
+# Why the package files are cached: `playwright install --with-deps chromium webkit` downloads
+# about 125 MB of packages on every run, and `--with-deps chromium` about 32 MB. The runner's
+# regional mirror usually delivers that in seconds, but it has slowed to tens of kB/s for hours at
+# a time, which failed the install step after its 15-minute limit (#749) and hung jobs before the
+# limit existed. The browsers themselves still download from Playwright's CDN, which has not.
+#
+# Integrity: apt reuses a file already in its archive directory when only its size matches, so
+# every restored file is checked against the SHA256 in the freshly updated, signed package index
+# first (drop-unverified-packages.sh). Files that do not match are deleted and downloaded again.
+#
+# The key names the runner image version, so a new image starts a new entry; it is restored from
+# the newest older entry for the same browsers, which already holds most of the packages. A run
+# saves the cache only when its exact key was not restored.
+
+inputs:
+  browsers:
+    description: Space-separated Playwright browser names, for example `chromium webkit`.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Compute the package cache key
+      id: key
+      shell: bash
+      env:
+        BROWSERS: ${{ inputs.browsers }}
+      run: |
+        set -euo pipefail
+        playwright_version="$(pnpm exec playwright --version | awk '{print $2}')"
+        browsers_slug="$(printf '%s' "$BROWSERS" | tr -s ' ' '-')"
+        prefix="playwright-apt-${ImageOS:-unknown-os}-${browsers_slug}-"
+        echo "prefix=${prefix}" >> "$GITHUB_OUTPUT"
+        echo "key=${prefix}${playwright_version}-${ImageVersion:-unknown-image}" >> "$GITHUB_OUTPUT"
+
+    # The restore writes into apt's own archive directory, so apt's layout and its download
+    # sandbox stay as they are. Only the .deb files are cached, not apt's lock file or partial
+    # downloads.
+    - name: Let the cache restore write apt's package files
+      shell: bash
+      run: sudo chown "$(id -u)" /var/cache/apt/archives
+
+    - name: Restore the Ubuntu package files
+      id: restore
+      uses: actions/cache/restore@v6
+      with:
+        path: /var/cache/apt/archives/*.deb
+        key: ${{ steps.key.outputs.key }}
+        restore-keys: ${{ steps.key.outputs.prefix }}
+
+    - name: Drop restored package files that the package index does not vouch for
+      if: steps.restore.outputs.cache-matched-key != ''
+      shell: bash
+      run: |
+        set -euo pipefail
+        sudo apt-get update -qq
+        bash "$GITHUB_ACTION_PATH/drop-unverified-packages.sh" /var/cache/apt/archives
+
+    - name: Install the browsers and their packages
+      id: install
+      shell: bash
+      env:
+        BROWSERS: ${{ inputs.browsers }}
+        PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: ''
+      run: |
+        set -euo pipefail
+        # shellcheck disable=SC2086 # the browser names are separate arguments
+        pnpm exec playwright install --with-deps $BROWSERS
+        # Drop package files that the current index no longer lists, so a saved entry does not
+        # carry superseded versions.
+        sudo apt-get autoclean -qq
+        count="$(find /var/cache/apt/archives -maxdepth 1 -name '*.deb' | wc -l)"
+        echo "Package files in apt's archive directory: ${count}"
+        echo "count=${count}" >> "$GITHUB_OUTPUT"
+
+    - name: Save the Ubuntu package files
+      if: steps.restore.outputs.cache-hit != 'true' && steps.install.outputs.count != '0'
+      uses: actions/cache/save@v6
+      with:
+        path: /var/cache/apt/archives/*.deb
+        key: ${{ steps.key.outputs.key }}
