@@ -21,7 +21,7 @@ See parallel work at a glance, keep context visible, and resume exactly where yo
 
 ## 📣 Important Announcement
 
-**OpenCove 0.5.0 redraws the app in pixels, shows on the canvas what every Agent is doing, tells you once when one needs you, and lets Agents hand work to each other. Run `opencove skill` in a canvas terminal to see how.**
+**OpenCove 0.5.1 makes it easier for agents to coordinate from the CLI and improves desktop, terminal and workspace recovery. Run `opencove skill` in a canvas terminal to see how.**
 
 ## 📖 What is OpenCove?
 
