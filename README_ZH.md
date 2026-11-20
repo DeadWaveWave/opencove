@@ -21,7 +21,7 @@
 
 ## 📣 重要公告
 
-**OpenCove 0.5.0 用像素重绘整个应用，在画布上呈现每个 Agent 正在做什么，Agent 需要你时只提醒一次，并让 Agent 之间互相交接工作。在画布终端中运行 `opencove skill` 了解用法。**
+**OpenCove 0.5.1 让 Agent 更容易通过 CLI 协作，并改善桌面、终端和工作区的恢复行为。在画布终端中运行 `opencove skill` 了解用法。**
 
 ## 📖 什么是 OpenCove？
 

@@ -1,0 +1,147 @@
+{
+  "schemaVersion": 1,
+  "version": "0.5.1",
+  "channel": "stable",
+  "publishedAt": "2026-11-20T00:00:00.000Z",
+  "provenance": "curated",
+  "defaultLocale": "en",
+  "compareUrl": "https://github.com/DeadWaveWave/opencove/compare/v0.5.0...v0.5.1",
+  "locales": {
+    "en": {
+      "summary": "OpenCove 0.5.1 makes it easier for agents to coordinate from the CLI and improves desktop, terminal and workspace recovery.",
+      "items": [
+        {
+          "kind": "added",
+          "summary": "See your agent tree and remaining slots, start up to ten agents in one command and read their replies in input order, and claim or release tasks without competing agents overwriting each other.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/661",
+          "prNumber": 661,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "Resume the CLI event stream from a saved cursor and wait until every selected agent finishes a turn.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/633",
+          "prNumber": 633,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "Use --near to create a note, terminal or agent beside an existing window without overlapping other windows.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/636",
+          "prNumber": 636,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "If a desktop window renderer crashes, OpenCove reloads it and restores the workspace instead of closing the app.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/653",
+          "prNumber": 653,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "When a terminal loses its WebGL renderer, it switches to plain rendering while keeping its scrollback, scroll position and selection.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/622",
+          "prNumber": 622,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "Long-running Claude Code, Codex and Pi agents keep their hooks working when the system cleans temporary files.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/737",
+          "prNumber": 737,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "Saving a workspace waits for a concurrent database write instead of immediately failing with Persistence I/O failed.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/741",
+          "prNumber": 741,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "The local Worker can recover a configuration lock left by a stopped process on Windows, instead of blocking every later start.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/718",
+          "prNumber": 718,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "Dragging a Space saves its layout on release; switching workspaces mid-drag leaves the old workspace unchanged.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/748",
+          "prNumber": 748,
+          "sha": null
+        }
+      ]
+    },
+    "zh-CN": {
+      "summary": "OpenCove 0.5.1 让 Agent 更容易通过 CLI 协作，并改善桌面、终端和工作区的恢复行为。",
+      "items": [
+        {
+          "kind": "added",
+          "summary": "查看 Agent 树和剩余名额，一条命令启动最多十个 Agent 并按输入顺序读取回复；认领或释放任务时，竞争的 Agent 不会互相覆盖。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/661",
+          "prNumber": 661,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "CLI 事件流可从保存的游标恢复，并等待每个选中的 Agent 完成一轮。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/633",
+          "prNumber": 633,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "使用 --near 在现有窗口旁创建笔记、终端或 Agent，避免与其他窗口重叠。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/636",
+          "prNumber": 636,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "桌面窗口的渲染进程崩溃时，OpenCove 会重新加载窗口并恢复工作区，而不是关闭应用。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/653",
+          "prNumber": 653,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "终端失去 WebGL 渲染器时，会切换到普通渲染并保留历史输出、滚动位置和选区。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/622",
+          "prNumber": 622,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "系统清理临时文件时，长时间运行的 Claude Code、Codex 和 Pi Agent 的 Hook 仍可正常工作。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/737",
+          "prNumber": 737,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "保存工作区时会等待并发的数据库写入完成，不再立即报 Persistence I/O failed。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/741",
+          "prNumber": 741,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "Windows 本地 Worker 可恢复已停止进程遗留的配置锁，不再阻塞后续每次启动。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/718",
+          "prNumber": 718,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "拖动 Space 时，松手才保存布局；拖动中切换工作区时，旧工作区保持原样。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/748",
+          "prNumber": 748,
+          "sha": null
+        }
+      ]
+    }
+  }
+}
