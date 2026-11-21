@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { execFileSync } from 'node:child_process'
-import { readFile, mkdtemp, rm, access, writeFile, copyFile } from 'node:fs/promises'
+import { readFile, mkdtemp, rm, access, writeFile, copyFile, mkdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, dirname } from 'node:path'
 import { expect, it } from 'vitest'
@@ -104,13 +104,20 @@ async function launch(
     },
   }
 }
+async function receivedArguments(output: string): Promise<string[]> {
+  return (await readFile(output, 'utf8'))
+    .trimEnd()
+    .split(/\r?\n/)
+    .map(value => Buffer.from(value, 'base64').toString('utf8'))
+}
+
 for (const [name, mode] of [
   ['powershell.exe', 'Legacy'],
   ['pwsh.exe', 'Legacy'],
   ['pwsh.exe', 'Standard'],
 ]) {
   native(
-    `${name}/${mode} preserves native receiver argv, exit code and npm shim forwarding`,
+    `${name}/${mode} preserves argv and exit code through native, npm Node and npm native entrypoints`,
     async () => {
       const shell = await powershellPath(name)
       if (!shell) {
@@ -122,38 +129,42 @@ for (const [name, mode] of [
         child = await launch(f.root, f.executable, f.output, shell, mode)
         expect(await child.exit).toBe(37)
         expect(await readFile(f.output + '.transport', 'utf8')).toBe('absent,absent,absent')
-        expect(
-          (await readFile(f.output, 'utf8'))
-            .trimEnd()
-            .split(/\r?\n/)
-            .map(value => Buffer.from(value, 'base64').toString('utf8')),
-        ).toEqual(vectors)
-        // A real standard npm .cmd is never evaluated by cmd.exe: its Node entrypoint is native.
-        const shim = join(f.root, 'provider.cmd')
-        await copyFile('tests/fixtures/windows-argv/npm-node.cmd', shim)
-        await copyFile(f.executable, join(f.root, 'node.exe'))
+        expect(await receivedArguments(f.output)).toEqual(vectors)
+        // Standard npm wrappers are recognized as data, never evaluated by either shell.
         const entry = join(f.root, 'node_modules', 'provider', 'cli.js')
-        const { mkdir } = await import('node:fs/promises')
         await mkdir(dirname(entry), { recursive: true })
         await writeFile(entry, 'inert fixture')
-        child = await launch(f.root, shim, f.output, shell, mode)
-        expect(await child.exit).toBe(37)
-        expect(
-          (await readFile(f.output, 'utf8'))
-            .trimEnd()
-            .split(/\r?\n/)
-            .map(value => Buffer.from(value, 'base64').toString('utf8')),
-        ).toEqual([entry, ...vectors])
-        const ps1 = join(f.root, 'provider.ps1')
-        await copyFile('tests/fixtures/windows-argv/npm-node.ps1', ps1)
-        child = await launch(f.root, ps1, f.output, shell, mode)
-        expect(await child.exit).toBe(37)
-        expect(
-          (await readFile(f.output, 'utf8'))
-            .trimEnd()
-            .split(/\r?\n/)
-            .map(value => Buffer.from(value, 'base64').toString('utf8')),
-        ).toEqual([entry, ...vectors])
+        await copyFile(f.executable, join(f.root, 'node.exe'))
+        for (const ext of ['cmd', 'ps1']) {
+          const nodeShim = join(f.root, `provider.${ext}`)
+          await copyFile(`tests/fixtures/windows-argv/npm-node.${ext}`, nodeShim)
+          child = await launch(f.root, nodeShim, f.output, shell, mode)
+          expect(await child.exit).toBe(37)
+          expect(await receivedArguments(f.output)).toEqual([entry, ...vectors])
+        }
+
+        // Standard npm can also point directly at a native binary, as Claude Code does.
+        const nativeEntry = join(
+          f.root,
+          'node_modules',
+          '@anthropic-ai',
+          'claude-code',
+          'bin',
+          'claude.exe',
+        )
+        await mkdir(dirname(nativeEntry), { recursive: true })
+        await copyFile(f.executable, nativeEntry)
+        for (const ext of ['cmd', 'ps1']) {
+          const nativeShim = join(f.root, `claude.${ext}`)
+          await copyFile(`tests/fixtures/windows-argv/npm-native.${ext}`, nativeShim)
+          await rm(f.output)
+          child = await launch(f.root, nativeShim, f.output, shell, mode)
+          expect(await child.exit).toBe(37)
+          // A native target gets no Node entrypoint prefix.
+          expect(await receivedArguments(f.output)).toEqual(vectors)
+        }
+
+        const shim = join(f.root, 'claude.cmd')
         await writeFile(shim, 'echo unsafe\r\n' + (await readFile(shim, 'utf8')))
         await rm(f.output)
         child = await launch(f.root, shim, f.output, shell, mode)

@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-11-21
+
+OpenCove 0.5.2 restores the Claude Code shortcut on Windows for supported npm installations.
+
+### Fixed
+
+- Windows: restore in-app shortcut launches of Claude Code with supported official npm native-executable wrappers while still refusing unrecognized wrappers and preserving prompt arguments.
+
 ## [0.5.1] - 2026-11-20
 
 OpenCove 0.5.1 makes it easier for agents to coordinate from the CLI and improves desktop, terminal and workspace recovery.

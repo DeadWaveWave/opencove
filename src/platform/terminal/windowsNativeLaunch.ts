@@ -1,5 +1,5 @@
 import { serializeWindowsArguments } from '../process/windowsCommandLine'
-import { npmNodeCmdPattern, npmNodePs1Pattern } from './windowsNpmShim'
+import { npmCmdPattern, npmPs1Pattern } from './windowsNpmShim'
 
 function encodedValue(value: string): string {
   return `[Text.Encoding]::Unicode.GetString([Convert]::FromBase64String('${Buffer.from(value, 'utf16le').toString('base64')}'))`
@@ -27,16 +27,21 @@ export function buildPowerShellExecLaunch(
     '$extension = [IO.Path]::GetExtension($native).ToLowerInvariant()',
     'if (@(".cmd", ".ps1") -contains $extension) {',
     '  $source = [IO.File]::ReadAllText($native).Replace("`r`n", "`n")',
-    `  $pattern = if ($extension -eq '.cmd') { ${encodedValue(npmNodeCmdPattern)} } else { ${encodedValue(npmNodePs1Pattern)} }`,
+    `  $pattern = if ($extension -eq '.cmd') { ${encodedValue(npmCmdPattern)} } else { ${encodedValue(npmPs1Pattern)} }`,
     '  $match = [regex]::Match($source, $pattern)',
     '  if (-not $match.Success) { throw "This command wrapper cannot preserve prompt text. Select a native executable or reinstall the CLI with a standard npm installation." }',
     '  $directory = [IO.Path]::GetDirectoryName($native)',
-    '  $target = [IO.Path]::GetFullPath([IO.Path]::Combine($directory, $match.Groups["target"].Value))',
+    '  $entry = if ($match.Groups["nativeTarget"].Success) { $match.Groups["nativeTarget"].Value } else { $match.Groups["target"].Value }',
+    '  $target = [IO.Path]::GetFullPath([IO.Path]::Combine($directory, $entry))',
     '  if (-not [IO.File]::Exists($target)) { throw "The CLI entry point is missing. Reinstall the CLI and try again." }',
-    '  $native = [IO.Path]::Combine($directory, "node.exe")',
-    '  if (-not [IO.File]::Exists($native)) { $native = (Get-Command node.exe -CommandType Application -ErrorAction Stop | Select-Object -First 1).Path }',
+    '  if ($match.Groups["nativeTarget"].Success) {',
+    '    $native = $target',
+    '  } else {',
+    '    $native = [IO.Path]::Combine($directory, "node.exe")',
+    '    if (-not [IO.File]::Exists($native)) { $native = (Get-Command node.exe -CommandType Application -ErrorAction Stop | Select-Object -First 1).Path }',
     // Paths cannot contain quotes on Windows. Quoted trailing slash rules still apply.
-    String.raw`  $arguments = '"' + [regex]::Replace($target, '(\\+)$', '$1$1') + '" ' + $arguments`,
+    String.raw`    $arguments = '"' + [regex]::Replace($target, '(\\+)$', '$1$1') + '" ' + $arguments`,
+    '  }',
     '}',
     'if (@(".exe", ".com") -notcontains [IO.Path]::GetExtension($native).ToLowerInvariant()) {',
     '  throw "This command wrapper cannot preserve prompt text. Select a native executable or reinstall the CLI with a standard npm installation."',

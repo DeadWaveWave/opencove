@@ -21,7 +21,7 @@
 
 ## 📣 重要公告
 
-**OpenCove 0.5.1 让 Agent 更容易通过 CLI 协作，并改善桌面、终端和工作区的恢复行为。在画布终端中运行 `opencove skill` 了解用法。**
+**OpenCove 0.5.2 修复了 Windows 上受支持的 npm 安装无法通过应用内快捷方式启动 Claude Code 的问题。**
 
 ## 📖 什么是 OpenCove？
 

@@ -21,7 +21,7 @@ See parallel work at a glance, keep context visible, and resume exactly where yo
 
 ## 📣 Important Announcement
 
-**OpenCove 0.5.1 makes it easier for agents to coordinate from the CLI and improves desktop, terminal and workspace recovery. Run `opencove skill` in a canvas terminal to see how.**
+**OpenCove 0.5.2 restores the Claude Code shortcut on Windows for supported npm installations.**
 
 ## 📖 What is OpenCove?
 
