@@ -321,13 +321,53 @@ describe('TerminalProfileResolver', () => {
       cwd: '/repo',
       command: 'codex',
       args: [],
+    })
+
+    expect(result.env.PATH).toBe('/usr/bin')
+    expect(result.env.ELECTRON_RUN_AS_NODE).toBeUndefined()
+  })
+
+  it('keeps an explicit Electron-as-Node opt-in from POSIX terminal sessions', async () => {
+    const resolver = new TerminalProfileResolver({
+      platform: 'darwin',
+      env: () => ({
+        PATH: '/usr/bin',
+        ELECTRON_RUN_AS_NODE: '1',
+      }),
+    })
+
+    const result = await resolver.resolveTerminalSpawn({
+      cwd: '/repo',
+      cols: 80,
+      rows: 24,
       env: {
         ELECTRON_RUN_AS_NODE: '1',
       },
     })
 
     expect(result.env.PATH).toBe('/usr/bin')
-    expect(result.env.ELECTRON_RUN_AS_NODE).toBeUndefined()
+    expect(result.env.ELECTRON_RUN_AS_NODE).toBe('1')
+  })
+
+  it('keeps an explicit Electron-as-Node opt-in from command sessions', async () => {
+    const resolver = new TerminalProfileResolver({
+      platform: 'darwin',
+      env: () => ({
+        PATH: '/usr/bin',
+      }),
+    })
+
+    const result = await resolver.resolveCommandSpawn({
+      cwd: '/repo',
+      command: 'codex',
+      args: [],
+      env: {
+        ELECTRON_RUN_AS_NODE: '1',
+      },
+    })
+
+    expect(result.env.PATH).toBe('/usr/bin')
+    expect(result.env.ELECTRON_RUN_AS_NODE).toBe('1')
   })
 
   it('injects only explicit command env into WSL command wrappers', async () => {

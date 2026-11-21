@@ -118,6 +118,22 @@ function hasMeaningfulEnvValue(value: string | undefined): boolean {
   return typeof value === 'string' && value.trim().length > 0
 }
 
+function resolveSpawnEnvironment(
+  inheritedEnv: NodeJS.ProcessEnv,
+  explicitEnv: NodeJS.ProcessEnv | undefined,
+): NodeJS.ProcessEnv {
+  const env = removeElectronRunAsNode({ ...inheritedEnv, ...(explicitEnv ?? {}) })
+  // The app uses ELECTRON_RUN_AS_NODE to run bundled CLI/worker entrypoints via
+  // Electron. Strip it from the inherited environment so it cannot leak into
+  // interactive shells, but keep an explicit opt-in (same rule as
+  // resolvePtyHostSpawnEnv): test stubs launch the Electron binary as Node
+  // through this flag.
+  if (explicitEnv?.ELECTRON_RUN_AS_NODE === '1') {
+    env.ELECTRON_RUN_AS_NODE = '1'
+  }
+  return env
+}
+
 function withTerminalCapabilityEnv(
   env: NodeJS.ProcessEnv,
   platform: NodeJS.Platform,
@@ -181,7 +197,7 @@ export class TerminalProfileResolver {
 
   public async resolveTerminalSpawn(input: SpawnTerminalInput): Promise<ResolvedTerminalSpawn> {
     const env = withTerminalCapabilityEnv(
-      removeElectronRunAsNode({ ...this.deps.env(), ...(input.env ?? {}) }),
+      resolveSpawnEnvironment(this.deps.env(), input.env),
       this.deps.platform,
     )
     stripParentAgentSessionEnv(env)
@@ -240,10 +256,7 @@ export class TerminalProfileResolver {
     assertSpawnArguments(input.command, input.args, input.cwd)
     const command = input.command.trim()
     const args = [...input.args]
-    const env = removeElectronRunAsNode({
-      ...this.deps.env(),
-      ...(input.env ?? {}),
-    })
+    const env = resolveSpawnEnvironment(this.deps.env(), input.env)
     stripParentAgentSessionEnv(env)
     const resolvedEnv = withTerminalCapabilityEnv(env, this.deps.platform)
     assertSpawnEnvironment(resolvedEnv)
