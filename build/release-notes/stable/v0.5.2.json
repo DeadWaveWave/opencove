@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "version": "0.5.2",
+  "channel": "stable",
+  "publishedAt": "2026-11-21T00:00:00.000Z",
+  "provenance": "curated",
+  "defaultLocale": "en",
+  "compareUrl": "https://github.com/DeadWaveWave/opencove/compare/v0.5.1...v0.5.2",
+  "locales": {
+    "en": {
+      "summary": "OpenCove 0.5.2 restores the Claude Code shortcut on Windows for supported npm installations.",
+      "items": [
+        {
+          "kind": "fixed",
+          "summary": "Launch Claude Code from the OpenCove shortcut on Windows when its official npm package uses a native executable wrapper.",
+          "url": null,
+          "prNumber": null,
+          "sha": null
+        }
+      ]
+    },
+    "zh-CN": {
+      "summary": "OpenCove 0.5.2 修复了 Windows 上受支持的 npm 安装无法通过应用内快捷方式启动 Claude Code 的问题。",
+      "items": [
+        {
+          "kind": "fixed",
+          "summary": "在 Windows 上使用采用原生可执行文件包装脚本的官方 npm 安装时，可以再次从 OpenCove 快捷方式启动 Claude Code。",
+          "url": null,
+          "prNumber": null,
+          "sha": null
+        }
+      ]
+    }
+  }
+}
