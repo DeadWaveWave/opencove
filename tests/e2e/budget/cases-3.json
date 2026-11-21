@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "count": 190,
+  "count": 191,
   "entries": {
     "tests/e2e/agent-hook-relay.spec.ts › claude-code executes Electron hooks through the real launch path and retains keyboard input": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/agent-launch.path-resolution.spec.ts › Agent launch resolves the provider on PATH › codex starts the real executable found by name": "Desktop: pre-restructure inventory; existing assertions retained",
@@ -73,6 +73,7 @@
     "tests/e2e/workspace-canvas.agent-island.spec.ts › Agent island › a card grows out of the pill with sparks, holds while OpenCove is behind, retracts into the pill six seconds after it comes to the front, and the jump answers it": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/workspace-canvas.agent-island.spec.ts › Agent island › labels an unacknowledged completion as finished in light": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/workspace-canvas.agent-launcher.remote-project.spec.ts › remote project context menu launches terminal and agents in its default remote mount": "Desktop: pre-restructure inventory; existing assertions retained",
+    "tests/e2e/workspace-canvas.agent-npm-native.windows.spec.ts › New Agent dock button starts npm-installed Claude Code in a live PowerShell PTY": "Desktop: the Windows New Agent dock click must resolve a real npm wrapper by name, launch its native executable, and deliver keyboard input through ConPTY.",
     "tests/e2e/workspace-canvas.agent-observing-status.spec.ts › Workspace Canvas - Agent observing status › shows observing only on an agent node without runtime evidence": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/workspace-canvas.agent-provider-exit.spec.ts › Workspace Canvas - dedicated Agent provider exit › claude-code keeps its node but replaces live status on PTY exit": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/workspace-canvas.agent-provider-exit.spec.ts › Workspace Canvas - dedicated Agent provider exit › opencode keeps its node but replaces live status on PTY exit": "Desktop: pre-restructure inventory; existing assertions retained",
