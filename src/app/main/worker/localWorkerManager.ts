@@ -428,14 +428,24 @@ async function startLocalWorkerInternal(): Promise<WorkerStatusResult> {
     return stoppedWorkerStatus()
   }
 
+  const firstSpawnStartedAtMs = Date.now()
+
   try {
     const info = await spawnWorkerAndWaitForLiveConnection(args, userDataPath)
     if (localWorkerShutdownRequested) {
       await stopOwnedLocalWorker().catch(() => undefined)
       return stoppedWorkerStatus()
     }
+    // oxlint-disable-next-line no-console -- first-start timing is the #722 diagnostic.
+    console.info(`[OpenCove] Local worker started in ${Date.now() - firstSpawnStartedAtMs}ms.`)
     return { status: 'running', connection: info }
   } catch (firstError) {
+    const firstSpawnElapsedMs = Date.now() - firstSpawnStartedAtMs
+    const firstSpawnReason = firstError instanceof Error ? firstError.message : String(firstError)
+    // oxlint-disable-next-line no-console -- the first spawn's failure is otherwise invisible (#722).
+    console.warn(
+      `[OpenCove] Local worker first spawn failed after ${firstSpawnElapsedMs}ms (${firstSpawnReason}); retrying once.`,
+    )
     if (localWorkerShutdownRequested) {
       await stopOwnedLocalWorker().catch(() => undefined)
       return stoppedWorkerStatus()
