@@ -299,7 +299,9 @@ export function useWorkspaceCanvasSpaceExplorer({
           return null
         }
 
-        repositionCreatedExplorerNode({
+        // The push-away must measure the node as stored after the reposition, not the
+        // pre-move object: the reposition may have moved it (#725).
+        const placed = repositionCreatedExplorerNode({
           created,
           creationAnchor,
           creationPlacement,
@@ -310,13 +312,13 @@ export function useWorkspaceCanvasSpaceExplorer({
         assignNodeToSpaceAndExpand({
           workspaceId,
           createdNodeId: created.id,
-          createdNode: created,
+          createdNode: placed,
           targetSpaceId: space.id,
           updateCanvasDocument,
         })
 
         requestPersistFlush()
-        return created
+        return placed
       } catch {
         return null
       }

@@ -5,6 +5,12 @@ import type { WorkspaceDocument } from '../../../store/workspaceDocument'
 import type { NodeCreationPlacementOptions } from '../types'
 import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 
+/**
+ * Moves a just-created explorer node to the nearest free spot to the right of its anchor when
+ * the placement asks for it, and returns the node as stored after the move (or the created node
+ * itself when it did not move), so callers hand the push-away the rect the node actually
+ * occupies (#725).
+ */
 export function repositionCreatedExplorerNode({
   created,
   creationAnchor,
@@ -17,9 +23,9 @@ export function repositionCreatedExplorerNode({
   creationPlacement: NodeCreationPlacementOptions
   readDocument: () => WorkspaceDocument
   setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']
-}): void {
+}): Node<TerminalNodeData> {
   if (creationPlacement.preferredDirection !== 'right' || !creationPlacement.avoidRects?.length) {
-    return
+    return created
   }
   const nextPosition = findNearestFreePositionOnRight(
     creationAnchor,
@@ -37,11 +43,12 @@ export function repositionCreatedExplorerNode({
     !nextPosition ||
     (nextPosition.x === created.position.x && nextPosition.y === created.position.y)
   ) {
-    return
+    return created
   }
   setNodes(
     previous =>
       previous.map(node => (node.id === created.id ? { ...node, position: nextPosition } : node)),
     { syncLayout: false },
   )
+  return { ...created, position: nextPosition }
 }

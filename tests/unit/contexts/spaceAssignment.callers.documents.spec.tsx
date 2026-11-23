@@ -10,6 +10,7 @@ import {
   type WorkspaceDocumentNavigation,
 } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/WorkspaceDocumentNavigationContext'
 import { resolveSpaceExplorerPreviewDisplay } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceExplorer.helpers'
+import { resolveFlowRectPlacement } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceExplorer.placement'
 import { useCanvasSpaceExplorer } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasSpaceExplorer'
 import { useWorkspaceCanvasSpaceExplorer } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceExplorer'
 import { useWorkspaceDocumentOpening } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useWorkspaceDocumentOpening'
@@ -181,6 +182,57 @@ describe('the push-away of the explorer', () => {
       argsOf: assignArgs,
       flush: 'document',
     })
+  })
+})
+
+describe('the push-away of the explorer after the reposition moves the created node', () => {
+  it('measures the moved rect, not the pre-move one (#725)', async () => {
+    const api = window as unknown as { opencoveApi?: Record<string, unknown> }
+    api.opencoveApi = { workspace: { writeCanvasImage: vi.fn(async () => undefined) } }
+    mocks.resolveFilesystem.mockReturnValue({
+      readFileBytes: vi.fn(async () => ({ bytes: new Uint8Array(3) })),
+    })
+    // The avoid rect covers the anchor (10, 10) where the created 100x100 node lands, so the
+    // reposition scans for the nearest free spot: it holds x and scans y first (down, one 24px
+    // grid step at a time), landing at y = 10 + 5 * 24 = 130, clear of the rect's bottom
+    // edge at 110. `expectsWriterOfTheRender` invokes once per workspace, so the placement
+    // is queued for both renders.
+    const movedPlacement = {
+      rect: { x: 10, y: 10, width: 100, height: 100 },
+      anchor: { x: 10, y: 10 },
+      preferredDirection: 'right' as const,
+      avoidRects: [{ x: 10, y: 10, width: 100, height: 100 }],
+    }
+    vi.mocked(resolveFlowRectPlacement)
+      .mockReturnValueOnce(movedPlacement)
+      .mockReturnValueOnce(movedPlacement)
+    await expectsWriterOfTheRender({
+      assign: assignMock,
+      useHook: updateCanvasDocument =>
+        useWorkspaceCanvasSpaceExplorer({
+          workspaceId: 'workspace',
+          canvasRef,
+          spaces: [TARGET],
+          setNodes,
+          reactFlow,
+          nodeDragSession: {},
+          finalizeDraggedNodeDrop: vi.fn(),
+          createDocumentNode,
+          createImageNode,
+          standardWindowSizeBucket: 'regular',
+          updateCanvasDocument,
+        } as never),
+      invoke: async ({ hook }) => {
+        const before = assignMock.mock.calls.length
+        hook.openFileInSpace('target', 'file:///repo/picture.png')
+        await vi.waitFor(() => expect(assignMock.mock.calls.length).toBeGreaterThan(before))
+      },
+      argsOf: assignArgs,
+      flush: 'document',
+    })
+    expect(assignArgs()?.createdNode).toEqual(
+      expect.objectContaining({ id: 'created', position: { x: 10, y: 130 } }),
+    )
   })
 })
 
