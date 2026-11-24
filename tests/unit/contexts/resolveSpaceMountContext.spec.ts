@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { resolveSpaceMountContext } from '../../../src/contexts/space/application/resolveSpaceMountContext'
+import {
+  resolveBestMount,
+  resolveSpaceMountContext,
+} from '../../../src/contexts/space/application/resolveSpaceMountContext'
 import type { MountDto } from '../../../src/shared/contracts/dto'
 
 function createMount(overrides: Partial<MountDto>): MountDto {
@@ -124,5 +127,27 @@ describe('resolveSpaceMountContext', () => {
       targetMountId: 'mount-1',
       directoryPath: '/repo/packages/app',
     })
+  })
+})
+
+describe('resolveBestMount Windows drive roots', () => {
+  it('matches a subfolder under a drive-root mount (D:\\)', () => {
+    const mounts = [createMount({ rootPath: 'D:\\', rootUri: 'file:///D:/' })]
+    expect(resolveBestMount(mounts, 'D:\\work1\\deploy-panel')?.mountId).toBe('mount-1')
+  })
+
+  it('matches the drive root itself', () => {
+    const mounts = [createMount({ rootPath: 'D:\\', rootUri: 'file:///D:/' })]
+    expect(resolveBestMount(mounts, 'D:\\')?.mountId).toBe('mount-1')
+  })
+
+  it('matches a subfolder under a nested Windows mount root', () => {
+    const mounts = [createMount({ rootPath: 'D:\\work1', rootUri: 'file:///D:/work1' })]
+    expect(resolveBestMount(mounts, 'D:\\work1\\opencove')?.mountId).toBe('mount-1')
+  })
+
+  it('returns null for a directory outside every mount', () => {
+    const mounts = [createMount({ rootPath: 'D:\\work1', rootUri: 'file:///D:/work1' })]
+    expect(resolveBestMount(mounts, 'D:\\work2\\game')).toBeNull()
   })
 })

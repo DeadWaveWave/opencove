@@ -13,6 +13,7 @@ export const enWorkspaceCanvas = {
     arrange: 'Arrange',
     arrangeBy: 'Arrange By',
     createSpaceWithSelected: 'Create Space with Selected',
+    createSpaceWithNodeDirectory: 'Create Space from This Directory',
     convertToTask: 'Convert to Task',
     clearSelection: 'Clear Selection',
   },

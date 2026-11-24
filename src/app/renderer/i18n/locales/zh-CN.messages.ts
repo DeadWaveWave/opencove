@@ -115,6 +115,8 @@ export const zhCNMessages = {
   childSpaceRequiresSelection: '请先选择同一个 Space 内的窗口。',
   childSpaceRequiresParent: '只能用同一个父 Space 内的窗口创建 Space。',
   projectHasNoMounts: '该项目还没有 mounts，请先添加一个 mount。',
+  spaceNodeHasNoDirectory: '所选节点没有可用的目录。',
+  spaceDirectoryOutsideMounts: '该目录不在任何项目 mount 范围内。',
   projectNoLocalLocationToOpen: '该项目当前没有可在本地文件管理器中打开的位置。',
   projectOpenInFileManagerFailed: '在文件管理器中打开项目失败：{{message}}',
   mountListFailed: '加载 mounts 失败：{{message}}',

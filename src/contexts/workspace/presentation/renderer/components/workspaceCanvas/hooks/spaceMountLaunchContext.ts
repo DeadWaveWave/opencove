@@ -1,7 +1,14 @@
-import { resolveSpaceMountContext } from '@contexts/space/application/resolveSpaceMountContext'
+import {
+  resolveBestMount,
+  resolveSpaceMountContext,
+} from '@contexts/space/application/resolveSpaceMountContext'
 import { resolveSpaceWorkingDirectory } from '@contexts/space/application/resolveSpaceWorkingDirectory'
 import type { ListMountsResult, MountDto } from '@shared/contracts/dto'
 import type { WorkspaceSpaceState } from '../../../types'
+
+// The canvas mount facade: Space creation picks the containing mount with the same domain
+// normalisation the launch context uses, instead of a parallel picker.
+export { resolveBestMount }
 
 function resolveControlSurfaceInvoke():
   | (<TResult>(request: {

@@ -43,6 +43,7 @@ export function WorkspaceCanvasMenus({
   arrangeCanvas,
   arrangeInSpace,
   createSpaceFromSelectedNodes,
+  createSpaceFromNodeDirectory,
   createChildSpaceInParent,
   createEmptySpaceAtPoint,
   clearNodeSelection,
@@ -81,6 +82,7 @@ export function WorkspaceCanvasMenus({
   | 'arrangeCanvas'
   | 'arrangeInSpace'
   | 'createSpaceFromSelectedNodes'
+  | 'createSpaceFromNodeDirectory'
   | 'createChildSpaceInParent'
   | 'createEmptySpaceAtPoint'
   | 'clearNodeSelection'
@@ -159,6 +161,7 @@ export function WorkspaceCanvasMenus({
         arrangeCanvas={arrangeCanvas}
         arrangeInSpace={arrangeInSpace}
         createSpaceFromSelectedNodes={createSpaceFromSelectedNodes}
+        createSpaceFromNodeDirectory={createSpaceFromNodeDirectory}
         createChildSpaceInParent={createChildSpaceInParent}
         createEmptySpaceAtPoint={createEmptySpaceAtPoint}
         clearNodeSelection={clearNodeSelection}

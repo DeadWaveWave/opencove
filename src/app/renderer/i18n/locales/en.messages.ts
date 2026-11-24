@@ -131,6 +131,8 @@ export const enMessages = {
   childSpaceRequiresSelection: 'Select windows inside one space first.',
   childSpaceRequiresParent: 'Space can only be created from windows inside one parent space.',
   projectHasNoMounts: 'Project has no mounts yet. Add a mount first.',
+  spaceNodeHasNoDirectory: 'The selected node has no usable directory.',
+  spaceDirectoryOutsideMounts: 'This directory is not inside any project mount.',
   projectNoLocalLocationToOpen: 'This project does not have a local location to open.',
   projectOpenInFileManagerFailed: 'Failed to open the project in the file manager: {{message}}',
   mountListFailed: 'Failed to load mounts: {{message}}',
