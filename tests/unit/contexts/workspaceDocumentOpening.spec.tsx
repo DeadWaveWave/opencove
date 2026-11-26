@@ -143,6 +143,37 @@ describe('shared document opening', () => {
     expect(options.harness.flush).toHaveBeenCalledOnce()
   })
 
+  it('hands the push-away the created node as repositioned, not as created (#725)', async () => {
+    const options = fixture()
+    const { result } = renderInCanvasDocument(() => useWorkspaceDocumentOpening(options), {
+      workspaceId: options.workspaceId,
+    })
+    let placed: Node<TerminalNodeData> | null = null
+    await act(async () => {
+      placed = await result.current({
+        ...request,
+        placement: {
+          preferredDirection: 'right',
+          avoidRects: [{ x: 10, y: 20, width: 400, height: 300 }],
+        },
+      })
+    })
+    // The avoid rect covers the created rect (10, 20, 400x300), so the reposition scans for the
+    // nearest free spot: it holds x and scans y first (down, one 24px grid step at a time),
+    // landing at y = 20 + 13 * 24 = 332, clear of the rect's bottom edge at 320.
+    expect(placed?.position).toEqual({ x: 10, y: 332 })
+    expect(options.nodesRef.current.find(node => node.id === 'new-document')?.position).toEqual({
+      x: 10,
+      y: 332,
+    })
+    expect(mocks.assign).toHaveBeenCalledWith(
+      expect.objectContaining({
+        createdNodeId: 'new-document',
+        createdNode: expect.objectContaining({ position: { x: 10, y: 332 } }),
+      }),
+    )
+  })
+
   it('rechecks the destination after resolving a mount and never falls back to local', async () => {
     const options = fixture()
     let resolve!: (value: NodeWorkerBinding | null) => void
