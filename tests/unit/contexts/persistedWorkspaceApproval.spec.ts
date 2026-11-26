@@ -88,4 +88,102 @@ describe('PersistedWorkspaceApproval', () => {
     expect(registeredRoots).toEqual(['/tmp/test-root', '/tmp/persisted', '/tmp/later'])
     expect(approvedWorkspaces.isPathApproved).toHaveBeenCalledWith('/tmp/persisted')
   })
+
+  it('registers extra roots even when the startup read fails', async () => {
+    const approvedRoots = new Set<string>()
+    const approvedWorkspaces = {
+      registerRoot: vi.fn(async (rootPath: string) => {
+        approvedRoots.add(rootPath)
+      }),
+      isPathApproved: vi.fn(async (targetPath: string) => approvedRoots.has(targetPath)),
+    }
+    const onError = vi.fn()
+
+    const gate = createPersistedWorkspaceApprovalGate({
+      approvedWorkspaces,
+      readAppState: async () => {
+        throw new Error('Storage is unavailable')
+      },
+      extraRoots: ['/tmp/test-root'],
+      onError,
+    })
+
+    await expect(gate.ready).resolves.toBeUndefined()
+    expect(onError).toHaveBeenCalledTimes(1)
+    await expect(gate.approvedWorkspaces.isPathApproved('/tmp/test-root')).resolves.toBe(true)
+  })
+
+  it('re-reads on the next approval check after a failed startup read', async () => {
+    const approvedRoots = new Set<string>()
+    const approvedWorkspaces = {
+      registerRoot: vi.fn(async (rootPath: string) => {
+        approvedRoots.add(rootPath)
+      }),
+      isPathApproved: vi.fn(async (targetPath: string) => approvedRoots.has(targetPath)),
+    }
+    const onError = vi.fn()
+    const readAppState = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('Storage is unavailable'))
+      .mockResolvedValue({
+        activeWorkspaceId: 'workspace-1',
+        workspaces: [{ id: 'workspace-1', name: 'One', path: '/tmp/persisted', nodes: [] }],
+      })
+
+    const gate = createPersistedWorkspaceApprovalGate({
+      approvedWorkspaces,
+      readAppState,
+      onError,
+    })
+
+    await expect(gate.ready).resolves.toBeUndefined()
+    expect(onError).toHaveBeenCalledTimes(1)
+    expect(readAppState).toHaveBeenCalledTimes(1)
+
+    await expect(gate.approvedWorkspaces.isPathApproved('/tmp/persisted')).resolves.toBe(true)
+    expect(readAppState).toHaveBeenCalledTimes(2)
+    expect(onError).toHaveBeenCalledTimes(1)
+
+    // Once hydrated, later checks do not read again.
+    await expect(gate.approvedWorkspaces.isPathApproved('/tmp/persisted')).resolves.toBe(true)
+    expect(readAppState).toHaveBeenCalledTimes(2)
+  })
+
+  it('re-reads on the next registerRoot after a failed startup read and shares one retry between concurrent checks', async () => {
+    const approvedRoots = new Set<string>()
+    const approvedWorkspaces = {
+      registerRoot: vi.fn(async (rootPath: string) => {
+        approvedRoots.add(rootPath)
+      }),
+      isPathApproved: vi.fn(async (targetPath: string) => approvedRoots.has(targetPath)),
+    }
+    const readAppState = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('Storage is unavailable'))
+      .mockResolvedValue({
+        activeWorkspaceId: 'workspace-1',
+        workspaces: [{ id: 'workspace-1', name: 'One', path: '/tmp/persisted', nodes: [] }],
+      })
+
+    const gate = createPersistedWorkspaceApprovalGate({
+      approvedWorkspaces,
+      readAppState,
+    })
+
+    await expect(gate.ready).resolves.toBeUndefined()
+    expect(readAppState).toHaveBeenCalledTimes(1)
+
+    const [firstCheck, secondCheck] = await Promise.all([
+      gate.approvedWorkspaces.isPathApproved('/tmp/persisted'),
+      gate.approvedWorkspaces.isPathApproved('/tmp/persisted'),
+    ])
+
+    expect(firstCheck).toBe(true)
+    expect(secondCheck).toBe(true)
+    expect(readAppState).toHaveBeenCalledTimes(2)
+
+    await expect(gate.approvedWorkspaces.registerRoot('/tmp/later')).resolves.toBeUndefined()
+    await expect(gate.approvedWorkspaces.isPathApproved('/tmp/later')).resolves.toBe(true)
+    expect(readAppState).toHaveBeenCalledTimes(2)
+  })
 })
