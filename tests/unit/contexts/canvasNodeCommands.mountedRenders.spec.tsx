@@ -514,20 +514,24 @@ describe('what node components consume keeps its identity (Decision 14)', () => 
           DEFAULT_AGENT_SETTINGS.browserDefaultMode === 'native' ? 'iframe' : 'native',
       }),
     ],
-    ['the workspace path', () => controls.setPath('/tmp/edited')],
+    // The folder body also reads the filesystem actions, which are made for the workspace path.
+    ['the workspace path', () => controls.setPath('/tmp/edited'), ['A-folder']],
     [
       'agentProviderOrder',
       settings({ agentProviderOrder: [...DEFAULT_AGENT_SETTINGS.agentProviderOrder].reverse() }),
     ],
-  ])('renders no body that reads no preference when %s changes', async (_name, change) => {
-    await mountCanvas()
+  ])(
+    'renders no body that reads no preference when %s changes',
+    async (_name, change, also = []) => {
+      await mountCanvas()
 
-    await act(async () => {
-      change()
-    })
+      await act(async () => {
+        change()
+      })
 
-    const readers = ['A-note', 'A-web', 'A-task', 'A-role']
-    expect(Object.keys(counts.leaf).length).toBeGreaterThan(0)
-    expect(Object.keys(counts.leaf).filter(key => !readers.includes(key))).toEqual([])
-  })
+      const readers = ['A-note', 'A-web', 'A-task', 'A-role', ...also]
+      expect(Object.keys(counts.leaf).length).toBeGreaterThan(0)
+      expect(Object.keys(counts.leaf).filter(key => !readers.includes(key))).toEqual([])
+    },
+  )
 })

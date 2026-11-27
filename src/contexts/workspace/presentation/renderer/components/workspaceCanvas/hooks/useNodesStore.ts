@@ -355,6 +355,7 @@ export function useWorkspaceCanvasNodesStore({
       }
 
       const idSet = new Set(normalizedIds)
+      let didChange = false
       updateNodes(
         prevNodes => {
           let hasChanged = false
@@ -370,6 +371,7 @@ export function useWorkspaceCanvasNodesStore({
             }
 
             hasChanged = true
+            didChange = true
             return {
               ...node,
               data: {
@@ -381,10 +383,15 @@ export function useWorkspaceCanvasNodesStore({
 
           return hasChanged ? nextNodes : prevNodes
         },
-        { syncLayout: false, flush: true },
+        { syncLayout: false },
       )
+
+      // The write decides whether there is anything to persist.
+      if (didChange) {
+        requestPersistFlush()
+      }
     },
-    [updateNodes],
+    [requestPersistFlush, updateNodes],
   )
 
   const publishCreatedNodes = useCreatedNodePublisher(updateNodes)

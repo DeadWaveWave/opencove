@@ -15,7 +15,7 @@ export interface CanvasWindowCommands {
   /** `toggle` adds or removes the window within its Space scope; otherwise selects it alone, unless it is already selected. */
   select(nodeId: string, options?: { toggle?: boolean }): void
   clearSelection(): void
-  /** Confirms first when the policy asks (task, role, last window of a Space). */
+  /** Closes the window if the document holds it. It never confirms: task and role windows call `requestDelete`, which does. */
   close(nodeId: string): Promise<void>
   requestDelete(nodeIds: readonly string[]): void
   resize(nodeId: string, desiredFrame: NodeFrame): void

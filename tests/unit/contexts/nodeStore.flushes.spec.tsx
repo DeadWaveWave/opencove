@@ -229,7 +229,7 @@ const MUTATIONS: Mutation[] = [
     nodes: () => [terminal()],
     change: store => store.setNodeLabelColorOverride(['terminal-1'], 'blue'),
     changed: node => node.data.labelColorOverride === 'blue',
-    flushesWithoutChange: true,
+    flushesWithoutChange: false,
     missing: store => store.setNodeLabelColorOverride(['missing'], 'blue'),
   },
   {
@@ -279,7 +279,7 @@ const MUTATIONS: Mutation[] = [
     nodes: () => [websiteNode()],
     change: store => store.updateWebsiteUrl('website-1', 'https://b.example'),
     changed: node => node.data.website?.url === 'https://b.example',
-    flushesWithoutChange: true,
+    flushesWithoutChange: false,
     missing: store => store.updateWebsiteUrl('missing', 'https://b.example'),
   },
   {
@@ -288,7 +288,7 @@ const MUTATIONS: Mutation[] = [
     nodes: () => [websiteNode()],
     change: store => store.setWebsitePinned('website-1', true),
     changed: node => node.data.website?.pinned === true,
-    flushesWithoutChange: true,
+    flushesWithoutChange: false,
     missing: store => store.setWebsitePinned('missing', true),
   },
   {
@@ -297,7 +297,7 @@ const MUTATIONS: Mutation[] = [
     nodes: () => [websiteNode()],
     change: store => store.setWebsiteSession('website-1', 'incognito', null),
     changed: node => node.data.website?.sessionMode === 'incognito',
-    flushesWithoutChange: true,
+    flushesWithoutChange: false,
     missing: store => store.setWebsiteSession('missing', 'incognito', null),
   },
   {
@@ -306,7 +306,7 @@ const MUTATIONS: Mutation[] = [
     nodes: () => [websiteNode()],
     change: store => store.setWebsiteMode('website-1', 'native'),
     changed: node => node.data.website?.browserMode === 'native',
-    flushesWithoutChange: true,
+    flushesWithoutChange: false,
     missing: store => store.setWebsiteMode('missing', 'native'),
   },
   {
@@ -315,7 +315,7 @@ const MUTATIONS: Mutation[] = [
     nodes: () => [websiteNode()],
     change: store => store.setWebsiteFullscreen('website-1', frame, null, true),
     changed: node => node.data.website?.isFullscreen === true && node.data.width === 700,
-    flushesWithoutChange: true,
+    flushesWithoutChange: false,
     missing: store => store.setWebsiteFullscreen('missing', frame, null, true),
   },
 ]

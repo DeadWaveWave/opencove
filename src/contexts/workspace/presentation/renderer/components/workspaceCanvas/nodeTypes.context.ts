@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react'
+import { createContext, createElement, useContext, type ReactNode } from 'react'
 import type { MutableRefObject } from 'react'
 import type { AgentSessionSummary, BrowserMode } from '@shared/contracts/dto'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
@@ -64,7 +64,25 @@ export interface WorkspaceCanvasNodeTypesParams extends TransitionalNodeActionRe
 }
 
 const Context = createContext<WorkspaceCanvasNodeTypesParams | null>(null)
-export const WorkspaceCanvasNodeTypesProvider = Context.Provider
+const CommandsContext = createContext<WiredCanvasNodeCommands | null>(null)
+/**
+ * Provides the params, and the commands in a context of their own. A context consumer renders on
+ * every change of the value it reads, whatever field it uses, so a memoised window body that reads
+ * only commands must not consume the params: they also hold the preferences, which change.
+ */
+export function WorkspaceCanvasNodeTypesProvider({
+  value,
+  children,
+}: {
+  value: WorkspaceCanvasNodeTypesParams
+  children?: ReactNode
+}) {
+  return createElement(
+    Context.Provider,
+    { value },
+    createElement(CommandsContext.Provider, { value: value.commands }, children),
+  )
+}
 export function useWorkspaceCanvasNodeTypeParameters(): WorkspaceCanvasNodeTypesParams {
   const parameters = useContext(Context)
   if (!parameters) {
@@ -75,5 +93,9 @@ export function useWorkspaceCanvasNodeTypeParameters(): WorkspaceCanvasNodeTypes
 
 /** The canvas's commands. A node binds its own id where it renders a child. */
 export function useCanvasNodeCommands(): WiredCanvasNodeCommands {
-  return useWorkspaceCanvasNodeTypeParameters().commands
+  const commands = useContext(CommandsContext)
+  if (!commands) {
+    throw new Error('Workspace canvas node commands are missing.')
+  }
+  return commands
 }
