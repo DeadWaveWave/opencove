@@ -1,7 +1,10 @@
 import React from 'react'
 import { act, cleanup, renderHook } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { useWorkspaceCanvasApplyNodeChanges } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useApplyNodeChanges'
+import {
+  removeNodesAndUnlink,
+  useWorkspaceCanvasApplyNodeChanges,
+} from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useApplyNodeChanges'
 import { subscribeWorkspaceNodesClosed } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeClosureEvents'
 import type { WorkspaceCanvasNodeDragSession } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodeDragSession'
 import { ReactFlowProvider } from '@xyflow/react'
@@ -10,9 +13,10 @@ import {
   CanvasStoreTestProvider,
 } from '../../support/canvasStoreTestHarness'
 import {
+  commitCanvasDocument,
   readWorkspaceDocument,
-  replaceWorkspaceNodes,
 } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+import type { NodesCommit } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useApplyNodeChanges.helpers'
 import { seedWorkspaceCanvasStore } from '../../support/workspaceCanvasStoreHarness'
 import { pixelNode } from './workspacePixelLayer.fixtures'
 
@@ -61,9 +65,12 @@ describe('ReactFlow removal closure notifications', () => {
         workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID,
         nodes: [pixelNode(), { ...pixelNode({ kind: 'note', sessionId: '' }), id: 'note-2' }],
       })
-      const publish = vi.fn((nodes: Parameters<typeof replaceWorkspaceNodes>[1]) => {
+      const publish = vi.fn(({ removedIds }: NodesCommit) => {
         order.push('commit')
-        replaceWorkspaceNodes(CANVAS_STORE_TEST_WORKSPACE_ID, nodes)
+        commitCanvasDocument(CANVAS_STORE_TEST_WORKSPACE_ID, document => ({
+          ...document,
+          nodes: removeNodesAndUnlink(document.nodes, removedIds),
+        }))
       })
       const view = renderHook(
         () =>

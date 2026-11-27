@@ -1,19 +1,20 @@
 import { useCallback } from 'react'
-import type { Node } from '@xyflow/react'
-import type { TerminalNodeData } from '../../../types'
-import { applyLiveNodes, type LiveNodes } from '../../../utils/canvasLiveNodes'
+import { applyReleasedPositions, type LiveNodes } from '../../../utils/canvasLiveNodes'
 import { useCanvasInteractionCommands } from '../../../store/canvasStoreContext'
 import {
   commitCanvasDocument,
-  replaceWorkspaceNodes,
   requestWorkspaceDocumentPersistFlush,
 } from '../../../store/workspaceDocumentCommands'
-import { applySpaceFramePreview, type NodesRelease } from './useApplyNodeChanges.helpers'
+import {
+  applySpaceFramePreview,
+  type NodesCommit,
+  type NodesRelease,
+} from './useApplyNodeChanges.helpers'
 import { removeNodesAndUnlink } from './useApplyNodeChanges'
 
 export function useWorkspaceCanvasNodePublishers({ workspaceId }: { workspaceId: string }): {
   publishLiveNodesChange: (liveNodes: LiveNodes) => void
-  commitNodesChange: (nodes: Node<TerminalNodeData>[]) => void
+  commitNodesChange: (commit: NodesCommit) => void
   commitNodesRelease: (release: NodesRelease) => void
 } {
   const { publishLiveNodes } = useCanvasInteractionCommands()
@@ -24,25 +25,35 @@ export function useWorkspaceCanvasNodePublishers({ workspaceId }: { workspaceId:
     [publishLiveNodes],
   )
 
-  // The change path computes a batch from the stores when it runs and commits the whole array in
-  // one write. A canvas write does not end the overlay (S6, PR 4); the release does, in the change
-  // path, right after its own write.
+  // The change path computes a batch from the stores when it runs and writes what the batch does
+  // to the document: its removals, then its settled positions, as one recipe over the committed
+  // nodes. A batch that only selects reaches no commit. A canvas write does not end the overlay
+  // (S6, PR 4); the release does, in the change path, right after its own write.
   const commitNodesChange = useCallback(
-    (nextNodes: Node<TerminalNodeData>[]) => {
-      replaceWorkspaceNodes(workspaceId, nextNodes)
+    ({ removedIds, settledPositions }: NodesCommit) => {
+      commitCanvasDocument(workspaceId, document => {
+        const nodes = applyReleasedPositions(
+          removeNodesAndUnlink(document.nodes, removedIds),
+          settledPositions,
+        )
+        return nodes === document.nodes ? document : { ...document, nodes }
+      })
     },
     [workspaceId],
   )
 
   // The release is one write, computed from the store as it is when it runs: the gesture's windows
-  // at their release position (the entries of the release array, nothing of the other windows) and,
-  // in a Space-dominant drag, the frame rects. A release that changes nothing writes nothing, and
+  // at their release position (the entries of the release array, their positions only, nothing of
+  // the other windows) and, in a Space-dominant drag, the frame rects. A release that changes nothing writes nothing, and
   // the persistence flush is requested only when a Space rect changed.
   const commitNodesRelease = useCallback(
     ({ liveNodes, removedIds, spaceRects }: NodesRelease) => {
       let didChangeSpaceRect = false
       commitCanvasDocument(workspaceId, document => {
-        const nodes = applyLiveNodes(removeNodesAndUnlink(document.nodes, removedIds), liveNodes)
+        const nodes = applyReleasedPositions(
+          removeNodesAndUnlink(document.nodes, removedIds),
+          liveNodes,
+        )
         const spaces = spaceRects
           ? applySpaceFramePreview(document.spaces, spaceRects)
           : document.spaces

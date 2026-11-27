@@ -5,7 +5,6 @@ import { TERMINAL_LAYOUT_SYNC_EVENT } from '../../../src/contexts/workspace/pres
 import {
   commitCanvasDocument,
   readWorkspaceDocument,
-  replaceWorkspaceNodes,
 } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import type {
   TerminalNodeData,
@@ -22,6 +21,7 @@ import { releaseSession } from '../../support/changePathCallbacks'
 import { renderSpaceOwnershipInDocument } from '../../support/spaceOwnershipHarness'
 import { pixelNode } from './workspacePixelLayer.fixtures'
 import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
+import { setDocumentNodes } from '../../support/documentNodes'
 
 // The drop and the warning of a node drag read the committed document when they run, write the
 // nodes and the Spaces of a drop in one store update, and flush once, after the last synchronous
@@ -111,7 +111,7 @@ function releaseAt(
   position: { x: number; y: number },
 ) {
   act(() => {
-    replaceWorkspaceNodes(
+    setDocumentNodes(
       harness.workspaceId,
       harness
         .readStoreDocument()
@@ -277,15 +277,18 @@ describe('a node drop into a Space', () => {
     expect(harness.flush).toHaveBeenCalledTimes(1)
   })
 
-  it('applies the node changes to the nodes of the write, which carry the canvas fields', () => {
+  it('applies the node changes to the committed nodes and stores no canvas-only field', () => {
     const { harness, view } = setup([note('n1', 50, 60)])
     // `selected` exists only in the canvas view; the store's node does not hold it.
     act(() => view.result.current.selection.setNodeIds(['n1']))
-    expect(harness.readStoreDocument().nodes[0].selected).toBeFalsy()
+    expect(harness.readStoreDocument().nodes[0].selected).toBeUndefined()
 
     dropN1IntoC(view, harness)
 
-    expect(harness.readStoreDocument().nodes[0].selected).toBe(true)
+    const [stored] = harness.readStoreDocument().nodes
+    expect(stored.selected).toBeUndefined()
+    expect(stored.dragHandle).toBeUndefined()
+    expect(stored.dragging).toBeUndefined()
   })
 })
 
@@ -585,7 +588,7 @@ describe('the reads of a node drop', () => {
 
     // The Space and its member moved 100 to the right while the other node was dragged.
     act(() => {
-      replaceWorkspaceNodes(
+      setDocumentNodes(
         harness.workspaceId,
         harness
           .readStoreDocument()
@@ -614,7 +617,7 @@ describe('the reads of a node drop', () => {
         if (asked !== 3) {
           return
         }
-        replaceWorkspaceNodes(harness.workspaceId, [...harness.readStoreDocument().nodes, lateNode])
+        setDocumentNodes(harness.workspaceId, [...harness.readStoreDocument().nodes, lateNode])
         replaceSpacesInStore(harness.workspaceId, [
           ...harness.readStoreDocument().spaces,
           lateSpace,
@@ -940,7 +943,7 @@ describe('the workspace of a node drop', () => {
     const handlers = view.result.current
     act(() => handlers.handleNodeDragStart({ ...keepSelection }, task, [task]))
     act(() => {
-      replaceWorkspaceNodes('workspace-b', [{ ...task, position: NODE_IN_C }])
+      setDocumentNodes('workspace-b', [{ ...task, position: NODE_IN_C }])
     })
     const dropped = readWorkspaceDocument('workspace-b')!.nodes[0]
 

@@ -2,8 +2,9 @@ import { act } from '@testing-library/react'
 import type { Node } from '@xyflow/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
-import { replaceWorkspaceNodes } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+
 import { drag, drop, ROW, setupNodeDrag as setup } from '../../support/nodeDragHarness'
+import { setDocumentNodes } from '../../support/documentNodes'
 
 // The change path of React Flow (#738, PR 4) reads the stores when a batch runs, never a copy made
 // at the last render: a drag frame and a release read the live view, every other batch the
@@ -25,7 +26,7 @@ function writeFromElsewhere(
   { harness }: Setup,
   change: (nodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
 ): void {
-  replaceWorkspaceNodes(harness.workspaceId, change(harness.readStoreDocument().nodes))
+  setDocumentNodes(harness.workspaceId, change(harness.readStoreDocument().nodes))
 }
 
 const titleOf = ({ harness }: Setup, id: string) =>
@@ -37,8 +38,9 @@ const OTHER_BATCHES = [
     name: 'a select batch',
     cAfter: 500,
     batch: () => [{ type: 'select', id: 'c', selected: true }] as never,
-    effect: ({ harness }: Setup) =>
-      expect(harness.readStoreDocument().nodes.find(node => node.id === 'c')?.selected).toBe(true),
+    // The selection is the slice's: a select batch writes no document (S7, PR 3).
+    effect: ({ view }: Setup) =>
+      expect(view.result.current.canvasState.selectedNodeIds).toEqual(['c']),
   },
   {
     name: 'a remove batch',
@@ -224,21 +226,20 @@ describe('normalizePosition', () => {
   })
 })
 
-// The base is decorated from the selection slice, not from the `selected` mirror of the document
-// nodes. The two differ, for example, after a switch back to a workspace: its new canvas store
-// starts with no selection while its document nodes still say `selected: true`.
-describe('the change path reads the selection slice, not the document mirror', () => {
+// The base is decorated from the selection slice, never from a `selected` flag of the document
+// nodes. The document holds none after S7 (a write that carries one throws in development), but a
+// node seeded with one stands for the two that could differ, for example after a switch back to a
+// workspace: its new canvas store starts with no selection.
+describe('the change path reads the selection slice, not a flag of the document', () => {
   it('a select batch selects only what the slice and the batch say', () => {
     const stale = ROW().map(node => (node.id === 'a' ? { ...node, selected: true } : node))
-    const { harness, view } = setup(stale)
+    const { view } = setup(stale)
 
     act(() => view.result.current.apply([{ type: 'select', id: 'c', selected: true }] as never))
 
+    expect(view.result.current.canvasState.selectedNodeIds).toEqual(['c'])
     expect(
-      harness
-        .readStoreDocument()
-        .nodes.filter(node => node.selected)
-        .map(node => node.id),
+      view.result.current.canvasState.flowNodes.filter(node => node.selected).map(node => node.id),
     ).toEqual(['c'])
   })
 })

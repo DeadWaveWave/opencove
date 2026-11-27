@@ -6,7 +6,6 @@ import {
   bindWorkspaceDocumentStore,
   commitCanvasDocument,
   readWorkspaceDocument,
-  replaceWorkspaceNodes,
   type WorkspaceDocumentCommandResult,
 } from '../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import type {
@@ -14,6 +13,7 @@ import type {
   WorkspaceSpaceState,
   WorkspaceState,
 } from '../../src/contexts/workspace/presentation/renderer/types'
+import { setDocumentNodes } from './documentNodes'
 
 // The canvas writes its nodes and Spaces into the app store, so its specs seed that store and read
 // the document back from it. This module owns setup and teardown: specs never rebind the store.
@@ -135,7 +135,7 @@ export function storeBackedChannelsOf(
       return read().nodes
     },
     set current(next: Node<TerminalNodeData>[]) {
-      replaceWorkspaceNodes(workspaceId, next)
+      setDocumentNodes(workspaceId, next)
     },
   }
   const spacesRef = {

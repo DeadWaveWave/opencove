@@ -16,7 +16,11 @@ export function SelectionWritersWrapper({ children }: { children: ReactNode }): 
   )
 }
 
-/** Notes in a row, 300 x 200 each, 100 px apart: a at x 0, b at x 400, c at x 800. */
+/**
+ * Notes in a row, 300 x 200 each, 100 px apart: a at x 0, b at x 400, c at x 800. The nodes of
+ * `selectedIds` carry `selected: true`, as a node of the view does; the others carry no flag, as a
+ * node of the document does.
+ */
 export function createRowNodes(
   ids: readonly string[] = ['a', 'b', 'c'],
   selectedIds: readonly string[] = [],
@@ -25,7 +29,7 @@ export function createRowNodes(
     ...pixelNode({ kind: 'note', sessionId: '', note: { text: id } }),
     id,
     position: { x: index * 400, y: 0 },
-    selected: selectedIds.includes(id),
+    ...(selectedIds.includes(id) ? { selected: true } : {}),
   }))
 }
 

@@ -7,7 +7,7 @@ import { useWorkspaceCanvasQuickMenuActions } from '../../../src/contexts/worksp
 import { useWorkspaceCanvasTerminalCreation } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useInteractions.terminalCreation'
 import { useWebsiteWindowOpenUrlNodeCreation } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useWebsiteWindowOpenUrlNodeCreation'
 import { useCanvasUiCommands } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
-import { replaceWorkspaceNodes } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+
 import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { WEBSITE_WINDOW_OPEN_URL_EVENT_NAME } from '../../../src/shared/contracts/websiteWindowCanvas'
 import {
@@ -15,6 +15,7 @@ import {
   renderInCanvasDocument,
 } from '../../support/canvasDocumentHarness'
 import { createRowNodes } from '../../support/canvasSelectionFixtures'
+import { setDocumentNodes } from '../../support/documentNodes'
 
 // The node creation paths of the pane read the committed document of the workspace whose render made
 // the callback, when they run (#702, PR 7). Each case writes the store in the same call, before the
@@ -85,7 +86,7 @@ describe('the default title of a pane terminal', () => {
       view.rerender()
     })
     act(() => {
-      replaceWorkspaceNodes('workspace-a', createRowNodes(['a1', 'a2', 'a3']))
+      setDocumentNodes('workspace-a', createRowNodes(['a1', 'a2', 'a3']))
     })
     await act(async () => {
       finishSpawn({ sessionId: 'session-1', profileId: null, runtimeKind: 'posix' })
@@ -125,7 +126,7 @@ describe('the website opened from a website window', () => {
     }
 
     act(() => {
-      replaceWorkspaceNodes('workspace-a', [source])
+      setDocumentNodes('workspace-a', [source])
       window.dispatchEvent(
         new CustomEvent(WEBSITE_WINDOW_OPEN_URL_EVENT_NAME, {
           detail: { type: 'open-url', url: 'https://example.com', sourceNodeId: 'source' },
@@ -159,7 +160,7 @@ describe('the quick command', () => {
         ...createRowNodes([input.nodeId ?? 'created'])[0],
         data: { ...createRowNodes(['x'])[0].data, kind: 'terminal', sessionId: input.sessionId },
       } as Node<TerminalNodeData>
-      replaceWorkspaceNodes('workspace-a', [node])
+      setDocumentNodes('workspace-a', [node])
       return node
     })
     const view = renderInCanvasDocument(
@@ -202,7 +203,7 @@ describe('the quick command', () => {
   it('does not write when the node leaves the store while attach is pending', async () => {
     const { api, view } = setup()
     api.pty.attach.mockImplementationOnce(async () => {
-      replaceWorkspaceNodes('workspace-a', [])
+      setDocumentNodes('workspace-a', [])
     })
 
     await act(async () => {

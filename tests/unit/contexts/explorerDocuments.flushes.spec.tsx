@@ -1,7 +1,7 @@
 import { act } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { documentOf, stubOpencoveApi, WORKSPACE_A as A } from '../../support/agentRuntimeHarness'
-import { replaceWorkspaceNodes } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+
 import {
   documentNodeAt,
   folderNodeAt,
@@ -11,6 +11,7 @@ import {
   renderOpening,
   spaceAt,
 } from '../../support/explorerDocumentsHarness'
+import { setDocumentNodes } from '../../support/documentNodes'
 
 // The persistence flushes of the filesystem nodes, the document opening and the explorer (#702,
 // PR 12): each is requested once, after the last write of its branch, and as often as before. A
@@ -260,7 +261,7 @@ describe('the document opening', () => {
 
     await act(async () => {
       const pending = view.result.current(request(null))
-      replaceWorkspaceNodes(A, [documentNodeAt('concurrent', FILE_URI)])
+      setDocumentNodes(A, [documentNodeAt('concurrent', FILE_URI)])
       finish(LOCAL)
       await pending
     })

@@ -142,7 +142,10 @@ export function useWindowCommitProbe(kind: WindowKindFamily, inputs: CommitInput
       if (nodeId) {
         countsByNode.set(nodeId, (countsByNode.get(nodeId) ?? 0) + 1)
       }
-      const current: CommitInputs = { ...inputs, selected: node?.classList.contains('selected') }
+      const current: CommitInputs = {
+        ...inputs,
+        selectedClass: node?.classList.contains('selected'),
+      }
       const changes = changedInputs(previous.current, current)
       previous.current = current
       records.push({

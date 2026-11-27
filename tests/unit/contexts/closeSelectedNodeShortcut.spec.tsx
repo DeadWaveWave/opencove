@@ -5,12 +5,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ApplicationShortcutEvent } from '../../../src/shared/contracts/applicationShortcut'
 import { useCloseSelectedNodeShortcut } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCloseSelectedNodeShortcut'
 import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
-import { replaceWorkspaceNodes } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+
 import {
   CANVAS_STORE_TEST_WORKSPACE_ID,
   renderWithCanvasStore,
 } from '../../support/canvasStoreTestHarness'
 import { seedWorkspaceCanvasStore } from '../../support/workspaceCanvasStoreHarness'
+import { setDocumentNodes } from '../../support/documentNodes'
 
 vi.mock('@app/renderer/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
 type Props = Parameters<typeof useCloseSelectedNodeShortcut>[0]
@@ -64,7 +65,7 @@ describe('selected node close shortcut', () => {
     // The canvas view has not seen the node: the shortcut reads the committed document.
     const stored = { id: 'stored', data: { kind: 'terminal' } } as Node<TerminalNodeData>
     act(() => {
-      replaceWorkspaceNodes(CANVAS_STORE_TEST_WORKSPACE_ID, [stored])
+      setDocumentNodes(CANVAS_STORE_TEST_WORKSPACE_ID, [stored])
       f.result.selection.setNodeIds(['stored'])
     })
     f.send()
@@ -108,7 +109,7 @@ describe('selected node close shortcut', () => {
   it('does not close a hidden focused node', () => {
     const f = fixture([])
     act(() =>
-      replaceWorkspaceNodes(CANVAS_STORE_TEST_WORKSPACE_ID, [
+      setDocumentNodes(CANVAS_STORE_TEST_WORKSPACE_ID, [
         { ...f.nodes[0], hidden: true },
         f.nodes[1],
       ]),

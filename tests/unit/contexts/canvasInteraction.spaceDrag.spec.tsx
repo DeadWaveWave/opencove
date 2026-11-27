@@ -2,7 +2,7 @@ import { act } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import { useCanvasCollapseStore } from '../../../src/contexts/workspace/presentation/renderer/store/useCanvasCollapseStore'
-import { replaceWorkspaceNodes } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+
 import { createCanvasDocumentHarness } from '../../support/canvasDocumentHarness'
 import { createSpace } from '../../support/canvasSelectionFixtures'
 import {
@@ -15,6 +15,7 @@ import {
   renderSwitchingSpaceDrag,
   spaceA,
 } from '../../support/spaceDragHarness'
+import { setDocumentNodes } from '../../support/documentNodes'
 
 // #738, PR 6 (Decision 9): a Space drag frame publishes to the overlay and the preview of the
 // `interaction` slice and writes nothing else. The document, and with it the sidebar, the
@@ -125,7 +126,7 @@ describe('a frame of a Space drag', () => {
     const { harness, view } = renderOpenSpace()
     press(view, 'space-a', INSIDE_A)
     act(() => {
-      replaceWorkspaceNodes(harness.workspaceId, [
+      setDocumentNodes(harness.workspaceId, [
         ...harness.readStoreDocument().nodes,
         nodeAt('n-created', 3000, 60),
       ])
@@ -167,7 +168,7 @@ describe('a frame of a Space drag', () => {
 
     // A window the store gained since the pointer went down, in the way of the moved Space.
     act(() => {
-      replaceWorkspaceNodes(harness.workspaceId, [
+      setDocumentNodes(harness.workspaceId, [
         ...harness.readStoreDocument().nodes,
         nodeAt('n-late', 650, 100),
       ])
@@ -192,7 +193,7 @@ describe('a frame of a Space drag', () => {
     dragTo({ x: INSIDE_A.x + 40, y: INSIDE_A.y })
 
     act(() => {
-      replaceWorkspaceNodes(
+      setDocumentNodes(
         harness.workspaceId,
         harness
           .readStoreDocument()
@@ -216,7 +217,7 @@ describe('a frame of a Space drag', () => {
     dragTo({ x: INSIDE_A.x + 40, y: INSIDE_A.y })
 
     act(() => {
-      replaceWorkspaceNodes(
+      setDocumentNodes(
         harness.workspaceId,
         harness.readStoreDocument().nodes.filter(node => node.id !== 'n1'),
       )
@@ -314,7 +315,7 @@ describe('the release of a Space drag', () => {
     press(view, 'space-a', INSIDE_A)
     dragTo({ x: INSIDE_A.x + 40, y: INSIDE_A.y })
     act(() => {
-      replaceWorkspaceNodes(
+      setDocumentNodes(
         harness.workspaceId,
         harness
           .readStoreDocument()

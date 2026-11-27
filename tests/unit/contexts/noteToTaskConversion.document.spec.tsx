@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TERMINAL_LAYOUT_SYNC_EVENT } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/constants'
 import { useWorkspaceCanvasNoteToTaskConversion } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNoteToTaskConversion'
 import { useCanvasSelectionCommands } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
-import { replaceWorkspaceNodes } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+
 import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
 import {
   createCanvasDocumentHarness,
@@ -12,6 +12,7 @@ import {
   type CanvasNodeStoreContext,
 } from '../../support/canvasDocumentHarness'
 import { createRowNodes, createSpace } from '../../support/canvasSelectionFixtures'
+import { setDocumentNodes } from '../../support/documentNodes'
 
 vi.mock('@app/renderer/i18n', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -104,7 +105,7 @@ describe('note to task conversion as one store write', () => {
     let converted = false
 
     act(() => {
-      replaceWorkspaceNodes(harness.workspaceId, sizedNotes(['late']))
+      setDocumentNodes(harness.workspaceId, sizedNotes(['late']))
       converted = convert('late')
     })
 
@@ -112,17 +113,21 @@ describe('note to task conversion as one store write', () => {
     expect(harness.readStoreDocument().nodes[0].data.kind).toBe('task')
   })
 
-  it('keeps the canvas selection flag of the converted note', () => {
+  // The selection is the slice's: the conversion stores no flag, and the view still shows the
+  // converted window as selected (S7).
+  it('keeps the converted note selected in the view and stores no selection flag', () => {
     const { harness, view, convert } = setup()
     act(() => view.result.current.selection.setNodeIds(['a']))
-    expect(harness.readStoreDocument().nodes[0].selected).toBeFalsy()
+    expect(harness.readStoreDocument().nodes[0].selected).toBeUndefined()
     expect(view.result.current.canvasState.flowNodes[0].selected).toBe(true)
 
     act(() => {
       convert('a')
     })
 
-    expect(harness.readStoreDocument().nodes[0].selected).toBe(true)
+    expect(harness.readStoreDocument().nodes[0].data.kind).toBe('task')
+    expect(harness.readStoreDocument().nodes[0].selected).toBeUndefined()
+    expect(view.result.current.canvasState.flowNodes[0].selected).toBe(true)
   })
 
   it.each([
@@ -182,7 +187,7 @@ describe('note to task conversion as one store write', () => {
     let converted = true
 
     act(() => {
-      replaceWorkspaceNodes(
+      setDocumentNodes(
         harness.workspaceId,
         harness
           .readStoreDocument()

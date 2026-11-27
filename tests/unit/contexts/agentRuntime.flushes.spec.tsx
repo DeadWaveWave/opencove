@@ -12,7 +12,7 @@ import {
 import { useAgentNodeSessionSwitch } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useAgentNodeSessionSwitch'
 import { useTerminalAgentSessionActions } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useTerminalAgentSessionActions'
 import { useWorkspaceCanvasPtyTaskCompletion } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/usePtyTaskCompletion'
-import { replaceWorkspaceNodes } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+
 import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
 import {
   agentNode,
@@ -24,6 +24,7 @@ import {
   WORKSPACE_A as A,
 } from '../../support/agentRuntimeHarness'
 import { pixelNode } from './workspacePixelLayer.fixtures'
+import { setDocumentNodes } from '../../support/documentNodes'
 
 // The persistence flushes of the session switch, the terminal agent session actions and the PTY
 // task completion (#702, PR 10): each is requested once, after the write it follows, and as often
@@ -202,7 +203,7 @@ describe('the terminal session action flush', () => {
   it('does not flush when the write finds the runtime already replaced', async () => {
     const { view, harness, flushes } = renderActions(async input => {
       // The terminal's runtime is replaced while the Worker re-executes.
-      replaceWorkspaceNodes(A, [overlayNode('pty-replacement')])
+      setDocumentNodes(A, [overlayNode('pty-replacement')])
       return await reexecuted(input)
     })
     harness.notifications.mockClear()

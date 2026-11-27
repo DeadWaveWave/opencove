@@ -12,10 +12,7 @@ import {
   renderHookWithCanvasStore,
 } from '../support/canvasStoreTestHarness'
 import { createCanvasDocumentHarness } from '../support/canvasDocumentHarness'
-import {
-  commitCanvasDocument,
-  replaceWorkspaceNodes,
-} from '../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+import { commitCanvasDocument } from '../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import { useWorkspaceCanvasQuickMenuActions } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useInteractions.quickMenuActions'
 import { useWorkspaceCanvasNodeCreation } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore.createNodes'
 import { createRemotePtySessionCoordinator } from '../../src/app/main/controlSurface/remote/remotePtyRuntime.sessionCoordinator'
@@ -25,6 +22,7 @@ import {
   RemotePtyAgentStateReplay,
 } from '../../src/app/main/controlSurface/remote/remotePtyRuntime.attach'
 import { writeRemotePtyThroughAttachedSocket } from '../../src/app/main/controlSurface/remote/remotePtyRuntime.socketSend'
+import { setDocumentNodes } from '../support/documentNodes'
 
 vi.mock('electron', () => ({ webContents: { fromId: () => null } }))
 
@@ -131,7 +129,7 @@ function setup() {
     ({ workspaceId }) => {
       const creationOptions = {
         setNodes: (updater: (nodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[]) => {
-          replaceWorkspaceNodes(CANVAS_STORE_TEST_WORKSPACE_ID, updater(readNodes()))
+          setDocumentNodes(CANVAS_STORE_TEST_WORKSPACE_ID, updater(readNodes()))
         },
         standardWindowSizeBucket: 'regular' as const,
         browserDefaultMode: 'native' as const,
@@ -209,7 +207,7 @@ describe('terminal quick command launch and PTY attachment', () => {
     })
     await waitFor(() => expect(harness.attach).toHaveBeenCalledTimes(1))
     act(() => {
-      replaceWorkspaceNodes(CANVAS_STORE_TEST_WORKSPACE_ID, [])
+      setDocumentNodes(CANVAS_STORE_TEST_WORKSPACE_ID, [])
     })
     harness.coordinator.onSessionAttached('created-session', { role: 'controller', epoch: 1 })
     await launch

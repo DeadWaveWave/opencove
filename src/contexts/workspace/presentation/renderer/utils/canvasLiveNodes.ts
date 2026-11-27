@@ -127,7 +127,47 @@ export function applyLiveNodes(committed: FlowNode[], overlay: LiveNodes | null)
   return didChange ? applied : committed
 }
 
-/** `selected` and `dragHandle` derived from the selection; unchanged nodes keep their identity. */
+/**
+ * What a release writes to the document: the positions of `release`'s entries, applied to the
+ * store's nodes, and nothing else of them. `dragging` belongs to the overlay and the view
+ * (`applyLiveNodes`); the document holds no canvas-only field. Keeps the object of a node an entry
+ * agrees with, and returns `nodes` itself when no entry moves a node. An entry of a node that is
+ * gone is ignored.
+ */
+export function applyReleasedPositions(nodes: FlowNode[], release: LiveNodes): FlowNode[] {
+  if (release.size === 0) {
+    return nodes
+  }
+
+  let didChange = false
+
+  const applied = nodes.map(node => {
+    const entry = release.get(node.id)
+    if (!entry || (entry.position.x === node.position.x && entry.position.y === node.position.y)) {
+      return node
+    }
+
+    didChange = true
+    return { ...node, position: entry.position }
+  })
+
+  return didChange ? applied : nodes
+}
+
+/**
+ * The view of each committed node, the last one `decorateFlowNodes` built for it. Weakly held and
+ * keyed by the committed node object (not its id), so a write that replaces a node can never be
+ * answered with the view of its predecessor, and a node that leaves the document is collected.
+ */
+const decoratedViews = new WeakMap<FlowNode, FlowNode>()
+
+/**
+ * `selected` and `dragHandle` derived from the selection: the one place the committed view of the
+ * canvas gets them. The document holds neither, so a committed node never equals its own view; the
+ * cache is what keeps the view object of a node whose flags and committed object did not change,
+ * and with it React Flow's wrapper of that node (`adoptUserNodes` renders a wrapper whenever its
+ * user node is a new object). Returns a new array, as `nodes.map` does.
+ */
 export function decorateFlowNodes(
   nodes: FlowNode[],
   selectedNodeIdSet: ReadonlySet<string>,
@@ -138,14 +178,22 @@ export function decorateFlowNodes(
     const dragHandle =
       isSelected && isDragSurfaceSelectionMode ? undefined : NODE_DRAG_HANDLE_SELECTOR
 
+    // A node that already carries the derived flags is its own view (a view fed back in).
     if (node.selected === isSelected && node.dragHandle === dragHandle) {
       return node
     }
 
-    return {
+    const cached = decoratedViews.get(node)
+    if (cached && cached.selected === isSelected && cached.dragHandle === dragHandle) {
+      return cached
+    }
+
+    const view = {
       ...node,
       selected: isSelected,
       dragHandle,
     }
+    decoratedViews.set(node, view)
+    return view
   })
 }

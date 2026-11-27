@@ -176,7 +176,6 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
         },
         draggable: true,
         selectable: true,
-        selected: true,
       },
       {
         id: 'inside-node',

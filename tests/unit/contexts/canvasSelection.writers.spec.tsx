@@ -33,10 +33,8 @@ import {
   createSpace,
 } from '../../support/canvasSelectionFixtures'
 import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
-import {
-  readWorkspaceDocument,
-  replaceWorkspaceNodes,
-} from '@contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+import { readWorkspaceDocument } from '@contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+import { setDocumentNodes } from '../../support/documentNodes'
 
 // Each writer of the node selection writes the canvas store's `selection` slice with one command
 // and the two React Flow store flags in the same call, and writes nothing else: not the document
@@ -715,7 +713,7 @@ describe('Space click selection in useWorkspaceCanvasSpaceDrag', () => {
 
   it('moves the windows selected in the store together with the Space it drags', () => {
     // `c` is outside Space `s` and selected; dragging `s` must carry it. `d` is not selected.
-    const { holder, down, up } = setup({ flagged: ['c'], nodeIds: ['c'], spaceIds: ['s'] })
+    const { holder, down, up } = setup({ nodeIds: ['c'], spaceIds: ['s'] })
     const before = Object.fromEntries(holder.nodes.map(node => [node.id, node.position.x]))
 
     down('s', { x: 100, y: -40 })
@@ -845,7 +843,7 @@ describe('the selection writers read the document when they run', () => {
   // read at call time sees it.
   function addWindowAfterRender(harness: CanvasDocumentHarness): void {
     act(() => {
-      replaceWorkspaceNodes(harness.workspaceId, [
+      setDocumentNodes(harness.workspaceId, [
         ...harness.readStoreDocument().nodes,
         { ...documentRow(['n'])[0], position: { x: 800, y: 0 } },
       ])

@@ -58,6 +58,28 @@ function requireStore(): WorkspaceDocumentStore {
   return boundStore
 }
 
+const CANVAS_ONLY_FIELDS = ['selected', 'dragHandle', 'dragging'] as const
+
+/**
+ * Development guard of Invariant 1 of S7 (#647): the document holds no canvas-only field. Those
+ * three exist only in the view handed to React Flow (`decorateFlowNodes`, `applyLiveNodes`), so a
+ * node that carries one has been read from the view and written back, or built from a view node by
+ * a spread. The write fails where it is made instead of reaching the document, the sync merge or
+ * the persisted state. A field named with the value `undefined` is not carried.
+ */
+function assertNoCanvasOnlyFields(nodes: readonly Node<TerminalNodeData>[]): void {
+  for (const node of nodes) {
+    for (const field of CANVAS_ONLY_FIELDS) {
+      if (node[field] !== undefined) {
+        throw new Error(
+          `workspace document write carries canvas-only field "${field}" on node "${node.id}"; ` +
+            'selected, dragHandle and dragging belong to the view, not the document',
+        )
+      }
+    }
+  }
+}
+
 /**
  * Requests the persistence flush the shell registered; a no-op when none is registered. For a
  * caller that changed state which is persisted but is not a document field, such as collapse.
@@ -109,6 +131,10 @@ export function commitCanvasDocument(
     result = recipe(toWorkspaceDocument(workspace))
   } finally {
     isRecipeRunning = false
+  }
+
+  if (import.meta.env.DEV && result.nodes !== workspace.nodes) {
+    assertNoCanvasOnlyFields(result.nodes)
   }
 
   const next = applyWorkspaceDocument(workspace, result)
@@ -183,6 +209,11 @@ export function applyRuntimeObservation(
   }
   if (import.meta.env.DEV) {
     assertOnlyNodesChanged(workspaces, result.nextWorkspaces)
+    result.nextWorkspaces.forEach((workspace, index) => {
+      if (workspace !== workspaces[index]) {
+        assertNoCanvasOnlyFields(workspace.nodes)
+      }
+    })
   }
   store.setState({ workspaces: result.nextWorkspaces })
   if (result.durableDidChange) {
@@ -198,6 +229,9 @@ export function applyRuntimeObservation(
 export function replaceFromSync(next: WorkspaceDocumentStoreState): void {
   if (isRecipeRunning) {
     throw new Error('workspace document command ran inside a recipe')
+  }
+  if (import.meta.env.DEV) {
+    next.workspaces.forEach(workspace => assertNoCanvasOnlyFields(workspace.nodes))
   }
   requireStore().setState({
     workspaces: next.workspaces,
@@ -268,6 +302,7 @@ export function mergeHydratedNodes(
   }
   if (import.meta.env.DEV) {
     assertSameNodeIds(workspace.nodes, nodes)
+    assertNoCanvasOnlyFields(nodes)
   }
 
   const next = { ...workspace, nodes }
@@ -301,13 +336,6 @@ export function repairWorkspaceSpaces(
   if (didRepair) {
     store.setState({ workspaces })
   }
-}
-
-export function replaceWorkspaceNodes(
-  workspaceId: string,
-  nodes: Node<TerminalNodeData>[],
-): WorkspaceDocumentCommandResult {
-  return commitCanvasDocument(workspaceId, document => ({ ...document, nodes }))
 }
 
 export function setWorkspaceViewport(

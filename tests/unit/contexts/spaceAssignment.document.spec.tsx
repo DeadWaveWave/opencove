@@ -7,10 +7,7 @@ import { EMPTY_CANVAS_COLLAPSE } from '../../../src/contexts/workspace/presentat
 import { TERMINAL_LAYOUT_SYNC_EVENT } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/constants'
 import { useWorkspaceCanvasNodesStore } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore'
 import { assignNodeToSpaceAndExpand } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useInteractions.spaceAssignment'
-import {
-  readWorkspaceDocument,
-  replaceWorkspaceNodes,
-} from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+import { readWorkspaceDocument } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import type {
   TerminalNodeData,
   WorkspaceSpaceState,
@@ -24,6 +21,7 @@ import {
   useWorkspaceCanvasStoreNodes,
   replaceSpacesInStore,
 } from '../../support/workspaceCanvasStoreHarness'
+import { setDocumentNodes } from '../../support/documentNodes'
 
 // The push-away that follows a node creation reads the document when it writes and writes the
 // moved nodes and the pushed Spaces in one store update (#702, PR 6). The node was already added
@@ -125,7 +123,7 @@ describe('assignNodeToSpaceAndExpand as one store write', () => {
 
     act(() => {
       // The canvas copy of the nodes lags this write until React renders again.
-      replaceWorkspaceNodes(harness.workspaceId, [...harness.readStoreDocument().nodes, bystander])
+      setDocumentNodes(harness.workspaceId, [...harness.readStoreDocument().nodes, bystander])
       assign(update(), {
         workspaceId: harness.workspaceId,
         createdNodeId: wide.id,
@@ -155,7 +153,7 @@ describe('assignNodeToSpaceAndExpand as one store write', () => {
       assignCreated(wide)
       // Nothing was in the way of the first assignment. The second node is created after it, and
       // so is the node that it will meet.
-      replaceWorkspaceNodes(harness.workspaceId, [
+      setDocumentNodes(harness.workspaceId, [
         ...harness.readStoreDocument().nodes,
         wider,
         farBystander,

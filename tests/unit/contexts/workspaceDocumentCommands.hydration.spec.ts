@@ -4,13 +4,13 @@ import {
   bindWorkspaceDocumentStore,
   hydrateWorkspaceList,
   mergeHydratedNodes,
-  replaceWorkspaceNodes,
 } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import type {
   WorkspaceSpaceState,
   WorkspaceState,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { pixelNode } from './workspacePixelLayer.fixtures'
+import { setDocumentNodes } from '../../support/documentNodes'
 
 function workspace(id: string): WorkspaceState {
   return {
@@ -134,7 +134,7 @@ describe('workspace document hydration entries', () => {
   })
 
   it('computes from the store at call time, not from an earlier snapshot', () => {
-    replaceWorkspaceNodes('a', [pixelNode({ title: 'user edit' })])
+    setDocumentNodes('a', [pixelNode({ title: 'user edit' })])
 
     mergeHydratedNodes('a', nodes =>
       nodes.map(node => ({ ...node, data: { ...node.data, scrollback: 'restored' } })),

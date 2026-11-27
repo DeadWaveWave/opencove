@@ -25,15 +25,12 @@ import {
 function mergeRuntimeNode(
   persistedNode: Node<TerminalNodeData>,
   existingNode: Node<TerminalNodeData> | undefined,
-  workspaceHasActiveDrag: boolean,
   hasAcceptedBase: boolean,
 ): Node<TerminalNodeData> {
   if (!existingNode) {
     return persistedNode
   }
 
-  const isDragging = existingNode.dragging === true
-  const shouldPreservePosition = workspaceHasActiveDrag || isDragging
   const kind = persistedNode.data.kind
   // Persisted snapshots do not own the live terminal overlay. Keep its provider projection
   // together with the overlay until the explicit terminal lifecycle clears both.
@@ -43,13 +40,8 @@ function mergeRuntimeNode(
 
   const nextNode: Node<TerminalNodeData> = {
     ...persistedNode,
-    dragHandle: existingNode.dragHandle,
     draggable: existingNode.draggable ?? persistedNode.draggable,
     selectable: existingNode.selectable ?? persistedNode.selectable,
-    selected: existingNode.selected,
-    ...(shouldPreservePosition ? { position: existingNode.position } : {}),
-    ...(isDragging ? { dragging: true } : {}),
-    ...(existingNode.dragging === false ? { dragging: false } : {}),
     width: existingNode.width,
     height: existingNode.height,
     data: {
@@ -93,7 +85,6 @@ export function toShellWorkspaceStateForSync(
   baseWorkspace?: PersistedWorkspaceState,
 ): WorkspaceState {
   const existingNodes = existingWorkspace?.nodes ?? []
-  const workspaceHasActiveDrag = existingNodes.some(node => node.dragging === true)
   const baseNodeIds = new Set(baseWorkspace?.nodes.map(node => node.id) ?? [])
   const rebasedWorkspace = rebaseGuardedNodesForSync(workspace, existingWorkspace, baseWorkspace)
   const persistedNodes = toRuntimeNodes(rebasedWorkspace).map(repairRuntimeNodeFrame)
@@ -105,7 +96,6 @@ export function toShellWorkspaceStateForSync(
     const mergedNode = mergeRuntimeNode(
       node,
       existingNodeById.get(node.id),
-      workspaceHasActiveDrag,
       baseNodeIds.has(node.id),
     )
     mergedNodeById.set(node.id, mergedNode)

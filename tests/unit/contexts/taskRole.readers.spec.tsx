@@ -1,7 +1,7 @@
 import { act } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
-import { replaceWorkspaceNodes } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+
 import {
   agentNode,
   documentOf,
@@ -25,6 +25,7 @@ import {
   taskNodeWith,
 } from '../../support/taskRoleHarness'
 import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
+import { setDocumentNodes } from '../../support/documentNodes'
 
 // The task run, the task resume, the role run, the task editor, the task node creation, the role
 // node creation and the delete confirmation read the committed document of the workspace whose
@@ -108,7 +109,7 @@ describe('the task run and the task resume', () => {
       const { refs, launchAgentInNode, showB } = renderTaskActions()
 
       await act(async () => {
-        replaceWorkspaceNodes(A, [linkedTask('task-a', 'agent-a'), agentNode('agent-a')])
+        setDocumentNodes(A, [linkedTask('task-a', 'agent-a'), agentNode('agent-a')])
         await refs.run.ref.current('task-a')
       })
       expect(launchAgentInNode).toHaveBeenLastCalledWith(
@@ -119,7 +120,7 @@ describe('the task run and the task resume', () => {
 
       showB()
       await act(async () => {
-        replaceWorkspaceNodes(B, [linkedTask('task-b', 'agent-b'), agentNode('agent-b')])
+        setDocumentNodes(B, [linkedTask('task-b', 'agent-b'), agentNode('agent-b')])
         await refs.run.ref.current('task-b')
       })
       expect(launchAgentInNode).toHaveBeenLastCalledWith(
@@ -212,7 +213,7 @@ describe('the task run and the task resume', () => {
 
       // 'update' is a command of Claude Code, not a prompt: it is refused for that provider only.
       await act(async () => {
-        replaceWorkspaceNodes(A, [
+        setDocumentNodes(A, [
           taskNodeWith('task-a', { linkedAgentNodeId: 'agent-a', requirement: 'update' }),
           agentNode('agent-a', {}, { provider: 'claude-code' }),
         ])
@@ -237,7 +238,7 @@ describe('the task run and the task resume', () => {
       })
 
       await act(async () => {
-        replaceWorkspaceNodes(A, [linkedTask('task-a', 'agent-a')])
+        setDocumentNodes(A, [linkedTask('task-a', 'agent-a')])
         held.resolve(BOUND)
         await pending
       })
@@ -266,7 +267,7 @@ describe('the task run and the task resume', () => {
         pending = refs.run.ref.current('task-a')
       })
       act(() => {
-        replaceWorkspaceNodes(A, [
+        setDocumentNodes(A, [
           taskNodeWith('task-a', { linkedAgentNodeId: 'agent-a', requirement: 'update' }),
           agentNode('agent-a', {}, { provider: 'claude-code' }),
         ])
@@ -305,7 +306,7 @@ describe('the task run and the task resume', () => {
       const { refs, showB } = renderTaskActions()
 
       await act(async () => {
-        replaceWorkspaceNodes(A, [withRecord('task-a')])
+        setDocumentNodes(A, [withRecord('task-a')])
         await refs.resume.ref.current('task-a', 'record-1')
       })
       expect(launch.session).toHaveBeenLastCalledWith(
@@ -314,7 +315,7 @@ describe('the task run and the task resume', () => {
 
       showB()
       await act(async () => {
-        replaceWorkspaceNodes(B, [withRecord('task-b')])
+        setDocumentNodes(B, [withRecord('task-b')])
         await refs.resume.ref.current('task-b', 'record-1')
       })
       expect(launch.session).toHaveBeenCalledTimes(2)
@@ -374,7 +375,7 @@ describe('the role run', () => {
     const { run, showB } = renderRoleActions()
 
     await act(async () => {
-      replaceWorkspaceNodes(A, [roleNode('role-a', { input: 'in A' })])
+      setDocumentNodes(A, [roleNode('role-a', { input: 'in A' })])
       await run.ref.current('role-a')
     })
     expect(launch.session).toHaveBeenLastCalledWith(
@@ -383,7 +384,7 @@ describe('the role run', () => {
 
     showB()
     await act(async () => {
-      replaceWorkspaceNodes(B, [roleNode('role-b', { input: 'in B' })])
+      setDocumentNodes(B, [roleNode('role-b', { input: 'in B' })])
       await run.ref.current('role-b')
     })
     expect(launch.session).toHaveBeenLastCalledWith(
@@ -533,7 +534,7 @@ describe('the task editor', () => {
     const { view, open, showB } = renderEditor()
 
     act(() => {
-      replaceWorkspaceNodes(A, [taskNodeWith('task-a', { title: 'Task A', requirement: 'in A' })])
+      setDocumentNodes(A, [taskNodeWith('task-a', { title: 'Task A', requirement: 'in A' })])
       open.ref.current('task-a')
     })
     expect(view.result.current.readUi().taskEditor).toMatchObject({
@@ -544,7 +545,7 @@ describe('the task editor', () => {
 
     showB()
     act(() => {
-      replaceWorkspaceNodes(B, [taskNodeWith('task-b', { title: 'Task B', requirement: 'in B' })])
+      setDocumentNodes(B, [taskNodeWith('task-b', { title: 'Task B', requirement: 'in B' })])
       open.ref.current('task-b')
     })
     expect(view.result.current.readUi().taskEditor).toMatchObject({
@@ -646,7 +647,7 @@ describe('the delete confirmation', () => {
     const { view, requestNodeDelete, showB } = renderConfirmation()
 
     act(() => {
-      replaceWorkspaceNodes(A, [taskNodeWith('task-a', { title: 'Task A' })])
+      setDocumentNodes(A, [taskNodeWith('task-a', { title: 'Task A' })])
       replaceSpacesInStore(A, [spaceOf('space-a', ['task-a'])])
       requestNodeDelete.ref.current(['task-a'])
     })
@@ -659,7 +660,7 @@ describe('the delete confirmation', () => {
 
     showB()
     act(() => {
-      replaceWorkspaceNodes(B, [taskNodeWith('task-b', { title: 'Task B' })])
+      setDocumentNodes(B, [taskNodeWith('task-b', { title: 'Task B' })])
       requestNodeDelete.ref.current(['task-b'])
     })
     expect(view.result.current.readUi().nodeDeleteConfirmation).toMatchObject({
@@ -702,7 +703,7 @@ describe('the delete confirmation', () => {
     const madeInA = view.result.current.confirmation
 
     await act(async () => {
-      replaceWorkspaceNodes(A, [taskNodeWith('task-a')])
+      setDocumentNodes(A, [taskNodeWith('task-a')])
       await madeInA.requestNodeClose('task-a')
     })
     expect(closeNode).toHaveBeenLastCalledWith('task-a')

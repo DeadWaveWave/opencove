@@ -10,7 +10,7 @@ import {
 } from '../../../src/app/renderer/shell/utils/ptyEventHub'
 import { useWorkspaceCanvasPtyTaskCompletion } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/usePtyTaskCompletion'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
-import { replaceWorkspaceNodes } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+
 import {
   agentNode,
   nodeOf,
@@ -18,6 +18,7 @@ import {
   WORKSPACE_A as A,
   WORKSPACE_B as B,
 } from '../../support/agentRuntimeHarness'
+import { setDocumentNodes } from '../../support/documentNodes'
 
 // The PTY task completion reads the observed node from the store when an event arrives, and when
 // a title scan finishes (#702, PR 10): a node the store holds before the canvas view catches up is
@@ -119,7 +120,7 @@ describe('the PTY task completion in two workspaces', () => {
     renderCompletion({}, query)
 
     await act(async () => {
-      replaceWorkspaceNodes(A, [watched('agent-a')])
+      setDocumentNodes(A, [watched('agent-a')])
       emitMetadata(metadataOf('agent-a'))
     })
 
@@ -133,14 +134,14 @@ describe('the PTY task completion in two workspaces', () => {
     ])
     const { showB } = renderCompletion({}, query)
     await act(async () => {
-      replaceWorkspaceNodes(A, [watched('agent-a')])
+      setDocumentNodes(A, [watched('agent-a')])
       emitMetadata(metadataOf('agent-a'))
     })
     expect(nodeOf(A, 'agent-a').data.title).toBe('codex · Title of agent-a')
 
     showB()
     await act(async () => {
-      replaceWorkspaceNodes(B, [watched('agent-b')])
+      setDocumentNodes(B, [watched('agent-b')])
       emitMetadata(metadataOf('agent-b'))
     })
 
@@ -193,7 +194,7 @@ describe('the PTY task completion in two workspaces', () => {
 
     // The runtime of the node is replaced in the store while the scan runs; the scan re-reads it.
     await act(async () => {
-      replaceWorkspaceNodes(A, [
+      setDocumentNodes(A, [
         { ...watched('agent-a'), data: { ...watched('agent-a').data, sessionId: 'replacement' } },
       ])
       resolve([summaryOf('agent-a-resume', 'Review persistence')])

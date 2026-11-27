@@ -8,8 +8,11 @@ import { selectDragSurfaceSelectionMode } from '../../terminalNode/reactFlowStat
 /**
  * The committed view of a canvas: nodes of the document with `selected` and `dragHandle` derived
  * from the selection slice and the drag surface mode of React Flow, read when the function runs.
- * It is the one derivation of the committed view that handlers use; `useWorkspaceCanvasState`
- * renders the same function. A gesture's live positions are never part of it.
+ * It is the one derivation of the committed view that handlers use (the change path, which needs
+ * what React Flow shows); `useWorkspaceCanvasState` renders the same function, so both get the same
+ * view object for a node that did not change. The node writer does not use it: a recipe is given
+ * the committed nodes, which hold no `selected` or `dragHandle` (S7). A gesture's live positions
+ * are never part of it.
  */
 export function useDecorateCommittedNodes(): (
   documentNodes: Node<TerminalNodeData>[],

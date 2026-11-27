@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Node } from '@xyflow/react'
 import {
   applyLiveNodes,
+  applyReleasedPositions,
   areLiveNodesEqual,
   decorateFlowNodes,
   toLiveNodes,
@@ -284,17 +285,18 @@ describe('applyLiveNodes', () => {
 })
 
 describe('decorateFlowNodes', () => {
-  const nodes = createRowNodes(['a', 'b', 'c'])
+  // The document holds no canvas-only field (S7): a committed node carries none of the three.
+  const committed = createRowNodes(['a', 'b', 'c'])
 
   it('derives selected and dragHandle from the selection', () => {
-    const decorated = decorateFlowNodes(nodes, new Set(['b']), false)
+    const decorated = decorateFlowNodes(committed, new Set(['b']), false)
 
     expect(decorated.map(node => node.selected)).toEqual([false, true, false])
     expect(decorated.map(node => node.dragHandle)).toEqual(Array(3).fill(NODE_DRAG_HANDLE_SELECTOR))
   })
 
   it('drops the drag handle of a selected node on the drag surface', () => {
-    const decorated = decorateFlowNodes(nodes, new Set(['b']), true)
+    const decorated = decorateFlowNodes(committed, new Set(['b']), true)
 
     expect(decorated.map(node => node.dragHandle)).toEqual([
       NODE_DRAG_HANDLE_SELECTOR,
@@ -303,13 +305,111 @@ describe('decorateFlowNodes', () => {
     ])
   })
 
+  it('leaves the committed nodes without the fields', () => {
+    decorateFlowNodes(committed, new Set(['b']), false)
+
+    expect(committed.map(node => node.selected)).toEqual([undefined, undefined, undefined])
+    expect(committed.map(node => node.dragHandle)).toEqual([undefined, undefined, undefined])
+  })
+
   it('keeps the identity of the nodes that did not change', () => {
-    const first = decorateFlowNodes(nodes, new Set(['b']), false)
+    const first = decorateFlowNodes(committed, new Set(['b']), false)
     const second = decorateFlowNodes(first, new Set(['b', 'c']), false)
 
     expect(second[0]).toBe(first[0])
     expect(second[1]).toBe(first[1])
     expect(second[2]).not.toBe(first[2])
     expect(second[2].selected).toBe(true)
+  })
+
+  // The cache (S7, PR 3): the document no longer stores the flags, so a committed node never
+  // equals its own view. Without a cache every node would get a new object on each decoration, and
+  // React Flow would render every wrapper.
+  it('gives a committed node the same view object on two decorations, in a new array', () => {
+    const first = decorateFlowNodes(committed, new Set(['b']), false)
+    const second = decorateFlowNodes(committed, new Set(['b']), false)
+
+    expect(second).not.toBe(first)
+    second.forEach((view, index) => expect(view).toBe(first[index]))
+  })
+
+  it('replaces only the nodes whose flags change on a selection change', () => {
+    const first = decorateFlowNodes(committed, new Set(['b']), false)
+
+    const added = decorateFlowNodes(committed, new Set(['b', 'c']), false)
+    expect(added[0]).toBe(first[0])
+    expect(added[1]).toBe(first[1])
+    expect(added[2]).not.toBe(first[2])
+    expect(added[2].selected).toBe(true)
+
+    const swapped = decorateFlowNodes(committed, new Set(['c']), false)
+    expect(swapped[0]).toBe(first[0])
+    expect(swapped[1]).not.toBe(added[1])
+    expect(swapped[1].selected).toBe(false)
+    expect(swapped[2]).toBe(added[2])
+  })
+
+  it('replaces only the selected nodes when the drag surface mode changes', () => {
+    const first = decorateFlowNodes(committed, new Set(['b']), false)
+
+    const surface = decorateFlowNodes(committed, new Set(['b']), true)
+
+    expect(surface[0]).toBe(first[0])
+    expect(surface[1]).not.toBe(first[1])
+    expect(surface[1].dragHandle).toBeUndefined()
+    expect(surface[2]).toBe(first[2])
+  })
+
+  it('keeps the view of the windows of A and gives B a new one when a write changes B', () => {
+    const first = decorateFlowNodes(committed, new Set(['a']), false)
+    const afterWrite = [committed[0], retitled(committed[1], 'written'), committed[2]]
+
+    const second = decorateFlowNodes(afterWrite, new Set(['a']), false)
+
+    expect(second[0]).toBe(first[0])
+    expect(second[1]).not.toBe(first[1])
+    expect(second[1].data.title).toBe('written')
+    expect(second[1].selected).toBe(false)
+    expect(second[2]).toBe(first[2])
+  })
+
+  it('shows the data of the current committed node, never a view cached for an earlier one', () => {
+    decorateFlowNodes(committed, new Set(), false)
+    const next = retitled(committed[0], 'later')
+
+    const [view] = decorateFlowNodes([next], new Set(), false)
+
+    expect(view.data.title).toBe('later')
+    expect(view).toEqual({ ...next, selected: false, dragHandle: NODE_DRAG_HANDLE_SELECTOR })
+  })
+})
+
+describe('applyReleasedPositions', () => {
+  const [a, b, c] = createRowNodes(['a', 'b', 'c'])
+
+  it('applies the position of an entry and no flag of it', () => {
+    const release = new Map([['a', { position: { x: 5, y: 30 }, dragging: false }]])
+
+    const applied = applyReleasedPositions([a, b, c], release)
+
+    expect(applied[0]).toEqual({ ...a, position: { x: 5, y: 30 } })
+    expect('dragging' in applied[0]).toBe(false)
+    expect(applied[1]).toBe(b)
+    expect(applied[2]).toBe(c)
+  })
+
+  it('returns the array itself when no entry moves a node, a dragging flag included', () => {
+    const nodes = [a, b, c]
+    const release = new Map([['a', { position: { ...a.position }, dragging: false }]])
+
+    expect(applyReleasedPositions(nodes, release)).toBe(nodes)
+    expect(applyReleasedPositions(nodes, new Map())).toBe(nodes)
+  })
+
+  it('ignores the entry of a node that is gone', () => {
+    const nodes = [a, b]
+    const release = new Map([['c', { position: { x: 1, y: 1 } }]])
+
+    expect(applyReleasedPositions(nodes, release)).toBe(nodes)
   })
 })

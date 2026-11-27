@@ -61,8 +61,6 @@ function createWorkspace(): WorkspaceState {
         },
         type: 'default',
         measured: { width: 320, height: 240 },
-        selected: false,
-        dragging: false,
         deletable: true,
       },
     ],
