@@ -4,7 +4,10 @@ import React, { type ReactNode } from 'react'
 import { useAppStore } from '@app/renderer/shell/store/useAppStore'
 import { useWorkerSyncStateUpdates } from '@app/renderer/shell/hooks/useWorkerSyncStateUpdates'
 import { toShellWorkspaceState } from '@app/renderer/shell/hooks/useHydrateAppState.helpers'
-import { WorkspaceCanvasNodeTypesProvider } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeTypes.context'
+import {
+  useCanvasNodeCommands,
+  WorkspaceCanvasNodeTypesProvider,
+} from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeTypes.context'
 import { useWorkspaceCanvasNodeTypes } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeTypes'
 import { useWorkspaceCanvasActionRefs } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useActionRefs'
 import { GenericPluginView } from '@contexts/plugins/presentation/renderer/GenericPluginView'
@@ -15,6 +18,7 @@ import { DEFAULT_AGENT_SETTINGS } from '@contexts/settings/domain/agentSettings'
 import type { PersistedAppState } from '@contexts/workspace/presentation/renderer/types'
 import type { PluginManifest } from '@contexts/plugins/domain/pluginTypes'
 import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
+import { noopNodeCommands } from '../../support/nodeCommandsFixture'
 
 vi.mock(
   '@contexts/workspace/presentation/renderer/components/workspaceCanvas/nodePosition',
@@ -50,19 +54,20 @@ vi.mock(
     WorkspaceCanvasWebsiteNodeType: ({
       id,
       browserSearchEngine,
-      selectNode,
     }: {
       id: string
       browserSearchEngine: string
-      selectNode: (id: string) => void
-    }) => (
-      <iframe
-        sandbox=""
-        title={id}
-        onClick={() => selectNode(id)}
-        data-engine={browserSearchEngine}
-      />
-    ),
+    }) => {
+      const windowCommands = useCanvasNodeCommands().window
+      return (
+        <iframe
+          sandbox=""
+          title={id}
+          onClick={() => windowCommands.select(id)}
+          data-engine={browserSearchEngine}
+        />
+      )
+    },
   }),
 )
 vi.mock(
@@ -108,9 +113,13 @@ function Canvas() {
     defaultProvider: agentSettings.defaultProvider,
     browserDefaultMode: agentSettings.browserDefaultMode,
     browserSearchEngine: agentSettings.browserSearchEngine,
-    selectNode: id => selected.push(workspace.name + ':' + id),
-    convertNoteToTask: () => false,
-    setNodeLabelColorOverride: () => {},
+    commands: {
+      ...noopNodeCommands,
+      window: {
+        ...noopNodeCommands.window,
+        select: id => selected.push(workspace.name + ':' + id),
+      },
+    },
   })
   types = composed.nodeTypes
   return (

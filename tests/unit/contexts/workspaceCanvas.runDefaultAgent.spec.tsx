@@ -16,6 +16,7 @@ import {
   seedWorkspaceCanvasStore,
   useWorkspaceCanvasStoreNodes,
 } from '../../support/workspaceCanvasStoreHarness'
+import { agentSettingsProps } from '../../support/agentSettingsReader'
 
 vi.mock('@xyflow/react', () => {
   let currentNodes: Array<{ id: string; type: string; data: unknown }> = []
@@ -200,7 +201,7 @@ describe('WorkspaceCanvas run default agent', () => {
           isMinimapVisible={false}
           onViewportChange={() => undefined}
           onMinimapVisibilityChange={() => undefined}
-          agentSettings={{
+          {...agentSettingsProps({
             ...DEFAULT_AGENT_SETTINGS,
             defaultProvider: 'codex',
             defaultTerminalProfileId: 'wsl:Ubuntu',
@@ -218,7 +219,7 @@ describe('WorkspaceCanvas run default agent', () => {
               codex: ['gpt-5.2-codex'],
             },
             standardWindowSizeBucket: 'large',
-          }}
+          })}
         />
       )
     }
@@ -354,7 +355,7 @@ describe('WorkspaceCanvas run default agent', () => {
           isMinimapVisible={false}
           onViewportChange={() => undefined}
           onMinimapVisibilityChange={() => undefined}
-          agentSettings={{
+          {...agentSettingsProps({
             ...DEFAULT_AGENT_SETTINGS,
             defaultProvider: 'codex',
             customModelEnabledByProvider: {
@@ -369,7 +370,7 @@ describe('WorkspaceCanvas run default agent', () => {
               ...DEFAULT_AGENT_SETTINGS.customModelOptionsByProvider,
               'claude-code': ['claude-sonnet-4-6'],
             },
-          }}
+          })}
         />
       )
     }
@@ -468,10 +469,10 @@ describe('WorkspaceCanvas run default agent', () => {
           isMinimapVisible={false}
           onViewportChange={() => undefined}
           onMinimapVisibilityChange={() => undefined}
-          agentSettings={{
+          {...agentSettingsProps({
             ...DEFAULT_AGENT_SETTINGS,
             agentProviderOrder: ['codex', 'claude-code', 'opencode', 'gemini'],
-          }}
+          })}
         />
       )
     }

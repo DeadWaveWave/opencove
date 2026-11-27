@@ -9,6 +9,7 @@ import { updateWorkspacesWithTerminalAgentActivityMetadata } from '../../../src/
 import { updateWorkspacesWithAgentExit } from '../../../src/app/renderer/shell/hooks/usePtyWorkspaceRuntimeSync'
 import { createTerminalAgentWorkspace, invocationEvent } from './terminalAgentExit.testSupport'
 import { installTerminalThemePtyApiMock } from './terminalNode.theme.testHarness'
+import { NodeCommandsProvider } from '../../support/nodeCommandsFixture'
 
 vi.mock('@xyflow/react', () => ({
   Handle: () => null,
@@ -32,25 +33,23 @@ function renderNode(data: TerminalNodeData) {
   installTerminalThemePtyApiMock()
   const reload = vi.fn(async () => undefined)
   const element = (nextData: TerminalNodeData) => (
-    <WorkspaceCanvasTerminalNodeType
-      id="terminal-1"
-      data={nextData}
-      terminalFontSize={14}
-      terminalFontFamily={null}
-      terminalDisplayCalibration={null}
-      selectNode={vi.fn()}
-      closeNodeRef={{ current: vi.fn(async () => undefined) }}
-      resizeNodeRef={{ current: vi.fn() }}
-      copyAgentLastMessageRef={{ current: vi.fn(async () => undefined) }}
-      reloadAgentSessionRef={{ current: reload }}
-      listAgentSessionsRef={{ current: vi.fn(async () => []) }}
-      switchAgentSessionRef={{ current: vi.fn(async () => undefined) }}
-      updateNodeScrollbackRef={{ current: vi.fn() }}
-      normalizeViewportForTerminalInteractionRef={{ current: vi.fn() }}
-      updateTerminalTitleRef={{ current: vi.fn() }}
-      clearTerminalAgentOverlayRef={{ current: vi.fn() }}
-      renameTerminalTitleRef={{ current: vi.fn() }}
-    />
+    <NodeCommandsProvider>
+      <WorkspaceCanvasTerminalNodeType
+        id="terminal-1"
+        data={nextData}
+        terminalFontSize={14}
+        terminalFontFamily={null}
+        terminalDisplayCalibration={null}
+        copyAgentLastMessageRef={{ current: vi.fn(async () => undefined) }}
+        reloadAgentSessionRef={{ current: reload }}
+        listAgentSessionsRef={{ current: vi.fn(async () => []) }}
+        switchAgentSessionRef={{ current: vi.fn(async () => undefined) }}
+        updateNodeScrollbackRef={{ current: vi.fn() }}
+        updateTerminalTitleRef={{ current: vi.fn() }}
+        clearTerminalAgentOverlayRef={{ current: vi.fn() }}
+        renameTerminalTitleRef={{ current: vi.fn() }}
+      />
+    </NodeCommandsProvider>
   )
   const view = render(element(data))
   return { ...view, reload, update: (next: TerminalNodeData) => view.rerender(element(next)) }

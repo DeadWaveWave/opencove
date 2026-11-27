@@ -11,6 +11,7 @@ import {
   seedWorkspaceCanvasStore,
   useWorkspaceCanvasStoreNodes,
 } from '../../support/workspaceCanvasStoreHarness'
+import { agentSettingsProps } from '../../support/agentSettingsReader'
 
 // #738, PR 6: a frame of a Space drag renders the flow host and what is below it, and
 // `WorkspaceCanvasInner` does not (a node drag's frame, PR 3, already behaves so). The canvas view
@@ -118,7 +119,7 @@ function CanvasHarness() {
       isMinimapVisible={false}
       onViewportChange={() => undefined}
       onMinimapVisibilityChange={() => undefined}
-      agentSettings={DEFAULT_AGENT_SETTINGS}
+      {...agentSettingsProps(DEFAULT_AGENT_SETTINGS)}
       onAppendSpaceArchiveRecord={() => undefined}
       onChangePreserveWindowSizesOnArrange={() => undefined}
     />

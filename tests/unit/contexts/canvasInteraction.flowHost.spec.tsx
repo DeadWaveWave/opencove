@@ -10,6 +10,7 @@ import {
 } from '../../support/workspaceCanvasStoreHarness'
 import { createRowNodes } from '../../support/canvasSelectionFixtures'
 import { setDocumentNodes } from '../../support/documentNodes'
+import { agentSettingsProps } from '../../support/agentSettingsReader'
 
 // The flow host (#738, PR 3): a node drag frame renders the host and what is below it, and the
 // canvas component, `WorkspaceCanvasInner`, does not. React Flow is mocked so that the nodes it
@@ -160,7 +161,7 @@ function CanvasHarness() {
       isMinimapVisible={false}
       onViewportChange={() => undefined}
       onMinimapVisibilityChange={() => undefined}
-      agentSettings={DEFAULT_AGENT_SETTINGS}
+      {...agentSettingsProps(DEFAULT_AGENT_SETTINGS)}
       onAppendSpaceArchiveRecord={() => undefined}
       onChangePreserveWindowSizesOnArrange={() => undefined}
     />

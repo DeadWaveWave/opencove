@@ -11,6 +11,7 @@ import type { WorkspaceSpaceState } from '../../../src/contexts/workspace/presen
 import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
 import { createCanvasDocumentHarness } from '../../support/canvasDocumentHarness'
 import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
+import { noopNodeCommands } from '../../support/nodeCommandsFixture'
 import { pixelNode } from './workspacePixelLayer.fixtures'
 
 // The node types read the Spaces of the document when they render (#702, PR 14): the mount of a
@@ -113,9 +114,7 @@ function Canvas() {
     defaultProvider: DEFAULT_AGENT_SETTINGS.defaultProvider,
     browserDefaultMode: DEFAULT_AGENT_SETTINGS.browserDefaultMode,
     browserSearchEngine: DEFAULT_AGENT_SETTINGS.browserSearchEngine,
-    selectNode: () => {},
-    convertNoteToTask: () => false,
-    setNodeLabelColorOverride: () => {},
+    commands: noopNodeCommands,
   })
   const Document = composed.nodeTypes.documentNode
   const Task = composed.nodeTypes.taskNode

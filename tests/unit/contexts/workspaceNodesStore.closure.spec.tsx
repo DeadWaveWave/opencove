@@ -31,7 +31,6 @@ const disposers: Array<() => void> = []
 const documentNodes = () => readWorkspaceDocument('workspace-1')?.nodes
 
 function renderStore(nodes = [pixelNode()], onStoreWrite = vi.fn(), onFlush = vi.fn()) {
-  const requestNodeDeleteRef = { current: (_nodeIds: string[]) => undefined }
   seedWorkspaceCanvasStore({ nodes })
   // The store flushes through the persist flush the shell registered with the document module.
   disposers.push(registerWorkspaceDocumentPersistFlush(onFlush))
@@ -48,11 +47,10 @@ function renderStore(nodes = [pixelNode()], onStoreWrite = vi.fn(), onFlush = vi
       })
       const confirmation = useWorkspaceCanvasNodeDeleteConfirmation({
         closeNode: store.closeNode,
-        requestNodeDeleteRef,
       })
       const readUi = useReadCanvasUi()
       const ui = useCanvasUiCommands()
-      return { ...store, confirmation, requestNodeDeleteRef, readUi, ui }
+      return { ...store, confirmation, readUi, ui }
     },
     {
       wrapper: ({ children }): React.JSX.Element => (
@@ -195,7 +193,7 @@ describe('node store successful closure', () => {
     const closed = vi.fn()
     unsubscribe = subscribeWorkspaceNodesClosed(closed)
     await act(() => view.result.current.closeNode('missing'))
-    act(() => view.result.current.requestNodeDeleteRef.current([note.id]))
+    act(() => view.result.current.confirmation.requestNodeDelete([note.id]))
     expect(view.result.current.readUi().nodeDeleteConfirmation).not.toBeNull()
     act(() => view.result.current.ui.closeDialog('nodeDeleteConfirmation'))
     await act(() => view.result.current.confirmation.confirmNodeDelete())
