@@ -7,21 +7,24 @@ import {
 import { createRowNodes } from '../../support/canvasSelectionFixtures'
 
 describe('setNodes flush option', () => {
-  it('flushes once for { flush: true }, also when the updater changes nothing, and not without it', () => {
+  it('flushes once for { flush: true } on a write that changes something, never for one that changes nothing or without it', () => {
     const harness = createCanvasDocumentHarness({ nodes: createRowNodes(['a', 'b']) })
     const view = renderCanvasNodeStore(harness)
     const rename = (title: string) => (prev: ReturnType<typeof createRowNodes>) =>
       prev.map(node => (node.id === 'a' ? { ...node, data: { ...node.data, title } } : node))
 
+    // The first write gives the row nodes their initial sizes, which is a write; nothing else
+    // changes after it.
+    act(() => view.result.current.nodeStore.setNodes(prev => prev))
     act(() => view.result.current.nodeStore.setNodes(prev => prev, { flush: true }))
-    expect(harness.flush).toHaveBeenCalledTimes(1)
+    expect(harness.flush).not.toHaveBeenCalled()
 
     act(() => view.result.current.nodeStore.setNodes(prev => prev))
     act(() => view.result.current.nodeStore.setNodes(rename('one')))
-    expect(harness.flush).toHaveBeenCalledTimes(1)
+    expect(harness.flush).not.toHaveBeenCalled()
 
     act(() => view.result.current.nodeStore.setNodes(rename('two'), { flush: true }))
-    expect(harness.flush).toHaveBeenCalledTimes(2)
+    expect(harness.flush).toHaveBeenCalledTimes(1)
     expect(harness.readStoreDocument().nodes[0].data.title).toBe('two')
   })
 })

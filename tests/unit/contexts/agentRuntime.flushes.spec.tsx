@@ -133,6 +133,23 @@ describe('the session switch flush', () => {
     expect(flushes[0].notificationsBefore).toBe(0)
   })
 
+  // The switch flushes at its end, explicitly: the history write finds no task and changes nothing.
+  it('flushes once, after the relaunch wrote, when the task node was deleted during it', async () => {
+    const { view, harness, flushes } = renderSwitch(async () => {
+      setDocumentNodes(A, [linked('resume-new')])
+      return receiptFor('resume-new')
+    }, [linked('resume-old'), taskNode('task-1', 'agent-1')])
+
+    await act(async () => {
+      await view.result.current('agent-1', summary('resume-new'))
+    })
+
+    expect(harness.notifications).toHaveBeenCalledTimes(1)
+    expect(flushes).toHaveLength(1)
+    expect(flushes[0].notificationsBefore).toBe(1)
+    expect(flushes[0].document.nodes.map(node => node.id)).toEqual(['agent-1'])
+  })
+
   it('does not flush when the node is not an agent of the store, or is already on the session', async () => {
     const { view, flushes } = renderSwitch(
       async () => receiptFor('resume-new'),

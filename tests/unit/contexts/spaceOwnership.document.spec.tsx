@@ -219,6 +219,26 @@ describe('a node drop into a Space', () => {
     expect(harness.flush).toHaveBeenCalledTimes(1)
   })
 
+  // The flush ends the drop, explicitly, whatever its last write did: here the directory write finds
+  // the expected directory already right and changes nothing, and the one flush follows the
+  // drop's own write.
+  it('flushes once, after the drop write, when the directory write that follows changes nothing', () => {
+    const { harness, view } = setup(
+      [terminal('n1', 50, 60, { execution: REPO, expected: REPO })],
+      [spaceA(), spaceC(REPO)],
+    )
+    const notificationsAtFlush: number[] = []
+    harness.flush.mockImplementation(() => {
+      notificationsAtFlush.push(harness.notifications.mock.calls.length)
+    })
+
+    dropN1IntoC(view, harness)
+
+    expect(harness.notifications).toHaveBeenCalledTimes(1)
+    expect(harness.flush).toHaveBeenCalledTimes(1)
+    expect(notificationsAtFlush).toEqual([1])
+  })
+
   it('asks the terminals to sync their layout for the drop and not for the directory write', () => {
     const { harness, view } = setup(
       [terminal('n1', 50, 60, { execution: REPO, expected: OTHER })],

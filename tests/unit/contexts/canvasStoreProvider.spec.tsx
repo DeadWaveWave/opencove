@@ -292,7 +292,7 @@ describe('CanvasStoreProvider document reader and commands', () => {
     expect(harness.flush).toHaveBeenCalledTimes(1)
   })
 
-  it('writes nothing for a recipe that returns the same Spaces, and flushes when asked', () => {
+  it('writes nothing and requests no flush for a recipe that returns the same Spaces', () => {
     const harness = seedTwoWorkspaces()
     const { seen } = renderProbe('workspace-a')
     const commands = (seen.at(-1) as DocumentProbe).commands
@@ -301,7 +301,7 @@ describe('CanvasStoreProvider document reader and commands', () => {
     expect(commands.updateSpaces(spaces => spaces, { flush: true }).status).toBe('unchanged')
 
     expect(harness.notifications).not.toHaveBeenCalled()
-    expect(harness.flush).toHaveBeenCalledTimes(1)
+    expect(harness.flush).not.toHaveBeenCalled()
   })
 
   it('computes the recipe from the store at call time and reports a missing workspace', () => {

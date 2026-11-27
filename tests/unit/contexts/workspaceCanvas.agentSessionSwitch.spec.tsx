@@ -9,12 +9,16 @@ import type {
   WorkspaceSpaceState,
   WorkspaceViewport,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
-import { registerWorkspaceDocumentPersistFlush } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+import {
+  readWorkspaceDocument,
+  registerWorkspaceDocumentPersistFlush,
+} from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import { WorkspaceCanvas } from '../../../src/contexts/workspace/presentation/renderer/components/WorkspaceCanvas'
 import {
   seedWorkspaceCanvasStore,
   useWorkspaceCanvasStoreNodes,
 } from '../../support/workspaceCanvasStoreHarness'
+import { setDocumentNodes } from '../../support/documentNodes'
 import { agentSettingsProps } from '../../support/agentSettingsReader'
 
 const SWITCH_SUMMARY: AgentSessionSummary = {
@@ -307,6 +311,74 @@ describe('WorkspaceCanvas agent session switch', () => {
         }),
       )
     })
+  })
+
+  // The switch flushes once, at its end, explicitly: the write that records the old session on its
+  // task changes nothing when the task was deleted during the relaunch, and the switch itself,
+  // written by the relaunch, still has to persist.
+  it('flushes once, after the switch is written, when the task node was deleted during the relaunch', async () => {
+    const flushedWith: Array<string | null | undefined> = []
+    onTestFinished(
+      registerWorkspaceDocumentPersistFlush(() => {
+        const agent = readWorkspaceDocument('workspace-1')?.nodes.find(
+          node => node.id === 'agent-1',
+        )
+        flushedWith.push(agent?.data.agent?.resumeSessionId)
+      }),
+    )
+    const launch = vi.fn(async () => {
+      const document = readWorkspaceDocument('workspace-1')!
+      setDocumentNodes(
+        'workspace-1',
+        document.nodes.filter(node => node.id !== 'task-1'),
+      )
+      return createLaunchResult('session-switched', 'resume-target')
+    })
+    Object.defineProperty(window, 'opencoveApi', {
+      configurable: true,
+      writable: true,
+      value: {
+        pty: {
+          kill: vi.fn(async () => undefined),
+          onExit: vi.fn(() => () => undefined),
+          spawn: vi.fn(async () => ({ sessionId: 'spawned' })),
+        },
+        workspace: { ensureDirectory: vi.fn(async () => undefined) },
+        agent: {
+          launch,
+          listSessions: vi.fn(async () => ({ provider: 'codex', cwd: '/tmp/repo', sessions: [] })),
+        },
+      },
+    })
+    seedWorkspaceCanvasStore({ nodes: createInitialNodes() })
+
+    function Harness() {
+      const nodes = useWorkspaceCanvasStoreNodes()
+      return (
+        <WorkspaceCanvas
+          workspaceId="workspace-1"
+          workspacePath="/tmp/repo"
+          worktreesRoot=""
+          nodes={nodes}
+          spaces={[]}
+          activeSpaceId={null}
+          onActiveSpaceChange={() => undefined}
+          viewport={{ x: 0, y: 0, zoom: 1 }}
+          isMinimapVisible={false}
+          onViewportChange={() => undefined}
+          onMinimapVisibilityChange={() => undefined}
+          {...agentSettingsProps(DEFAULT_AGENT_SETTINGS)}
+        />
+      )
+    }
+
+    render(<Harness />)
+    fireEvent.click(screen.getByTestId('agent-switch'))
+
+    await waitFor(() => expect(flushedWith).toEqual(['resume-target']))
+    expect(readWorkspaceDocument('workspace-1')?.nodes.some(node => node.id === 'task-1')).toBe(
+      false,
+    )
   })
 
   it('preserves the current binding when switch relaunch fails', async () => {
