@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import { resolvePaneNodeCreationAnchor } from './useInteractions.creationAnchor'
 import type { Node } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
@@ -18,9 +18,8 @@ import {
 } from './useInteractions.spaceAssignment'
 import type { CreateNodeInput, NodePlacementOptions, ShowWorkspaceCanvasMessage } from '../types'
 import { resolveDefaultRoleWindowSize } from '../constants'
-import type { WorkspaceCanvasActionRefs } from './useActionRefs'
+import { useCanvasNodeWriter } from './useCanvasNodeWriter'
 import { runRoleNodeAction } from './useRoleActions.run'
-import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 import {
   useCanvasDocumentCommands,
   useCanvasUiCommands,
@@ -37,31 +36,29 @@ export function useWorkspaceCanvasRoleActions({
   workspacePath,
   environmentVariables,
   agentSettings,
+  readAgentSettings,
   readDocument,
-  setNodes,
-  updateCanvasDocument,
   onShowMessage,
   standardWindowSizeBucket,
   createRoleNode,
   createNodeForSession,
-  updateRoleProvider,
   updateRoleInput,
   appendRoleRunRecord,
-  actionRefs,
   buildAgentNodeTitle,
 }: {
   workspaceId: string
   workspacePath: string
   environmentVariables?: Record<string, string>
+  /** What the menus and dialogs of the role UI render with; a role run reads `readAgentSettings`. */
   agentSettings: AgentSettings
+  /** The app's settings when a role run starts (S7 of #647, Decision 2): never a render's copy. */
+  readAgentSettings: () => AgentSettings
   /**
    * The document reader of the render that made these actions. The role UI makes it: this file
    * subscribes to the app store for the settings, and a file that reads the document through its
    * own reader does not also subscribe to that store.
    */
   readDocument: () => WorkspaceDocument
-  setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']
-  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
   onShowMessage?: ShowWorkspaceCanvasMessage
   standardWindowSizeBucket: StandardWindowSizeBucket
   createRoleNode: (
@@ -70,7 +67,6 @@ export function useWorkspaceCanvasRoleActions({
     placement?: NodePlacementOptions & { selectedProvider?: AgentProvider | null },
   ) => Node<TerminalNodeData> | null
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
-  updateRoleProvider: (nodeId: string, provider: AgentProvider) => void
   updateRoleInput: (nodeId: string, input: string) => void
   appendRoleRunRecord: (
     nodeId: string,
@@ -79,9 +75,10 @@ export function useWorkspaceCanvasRoleActions({
       record: RoleNodeData['runHistory'][number]
     },
   ) => void
-  actionRefs: WorkspaceCanvasActionRefs
   buildAgentNodeTitle: (provider: AgentProvider, label: string | null) => string
 }): {
+  /** The role family's `run`: starts a role node's agent (S7 of #647). */
+  runRole: (nodeId: string, inputOverride?: string) => Promise<void>
   openRoleCreator: () => void
   closeRoleCreator: () => void
   createRole: () => void
@@ -92,6 +89,7 @@ export function useWorkspaceCanvasRoleActions({
   const ui = useCanvasUiCommands()
   const readUi = useReadCanvasUi()
   const documentCommands = useCanvasDocumentCommands()
+  const { updateNodes, updateCanvasDocument } = useCanvasNodeWriter()
 
   const { t } = useTranslation()
   const setAgentSettings = useAppStore(state => state.setAgentSettings)
@@ -243,7 +241,7 @@ export function useWorkspaceCanvasRoleActions({
     })
 
     if (roleCreator.mode === 'edit') {
-      setNodes(
+      updateNodes(
         prevNodes =>
           prevNodes.map(node =>
             node.data.kind === 'role' && node.data.role?.roleId === role.id
@@ -279,22 +277,26 @@ export function useWorkspaceCanvasRoleActions({
     projectRoles,
     readUi,
     setAgentSettings,
-    setNodes,
     t,
     ui,
+    updateNodes,
     workspaceId,
   ])
 
-  const runRoleNode = useCallback(
+  // A command: it reads the settings when the run starts, and keeps the workspace, the reader and
+  // the writer of the render that made it, so a run that started in A and finishes after the switch
+  // to B writes A (Decision 4).
+  const runRole = useCallback(
     async (nodeId: string, inputOverride?: string): Promise<void> => {
+      const settings = readAgentSettings()
       await runRoleNodeAction(nodeId, inputOverride, {
         workspaceId,
         workspacePath,
         environmentVariables,
-        agentSettings,
-        projectRoles,
+        agentSettings: settings,
+        projectRoles: settings.projectRolesByWorkspaceId[workspaceId] ?? [],
         readDocument,
-        setNodes,
+        updateNodes,
         updateCanvasDocument,
         updateSpaces: documentCommands.updateSpaces,
         onShowMessage,
@@ -306,35 +308,22 @@ export function useWorkspaceCanvasRoleActions({
       })
     },
     [
-      agentSettings,
       appendRoleRunRecord,
       buildAgentNodeTitle,
       createNodeForSession,
       documentCommands,
       environmentVariables,
       onShowMessage,
-      projectRoles,
+      readAgentSettings,
       readDocument,
-      setNodes,
       t,
       updateCanvasDocument,
+      updateNodes,
       updateRoleInput,
       workspaceId,
       workspacePath,
     ],
   )
-
-  useLayoutEffect(() => {
-    actionRefs.updateRoleProviderRef.current = updateRoleProvider
-  }, [actionRefs.updateRoleProviderRef, updateRoleProvider])
-
-  useLayoutEffect(() => {
-    actionRefs.updateRoleInputRef.current = updateRoleInput
-  }, [actionRefs.updateRoleInputRef, updateRoleInput])
-
-  useLayoutEffect(() => {
-    actionRefs.runRoleRef.current = runRoleNode
-  }, [actionRefs.runRoleRef, runRoleNode])
 
   const runProjectRoleFromContextMenu = useCallback(
     (roleId: string) => {
@@ -408,6 +397,7 @@ export function useWorkspaceCanvasRoleActions({
   )
 
   return {
+    runRole,
     openRoleCreator,
     closeRoleCreator,
     createRole,

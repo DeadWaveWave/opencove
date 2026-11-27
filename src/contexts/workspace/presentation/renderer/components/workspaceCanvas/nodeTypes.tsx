@@ -109,9 +109,6 @@ function createNodeTypes(): Record<string, FunctionComponent<WorkspaceCanvasNode
         <WorkspaceCanvasRoleNodeType
           data={data}
           id={id}
-          updateRoleProviderRef={parameters.updateRoleProviderRef}
-          updateRoleInputRef={parameters.updateRoleInputRef}
-          runRoleRef={parameters.runRoleRef}
           agentProviderOrder={parameters.agentProviderOrder}
           defaultProvider={parameters.defaultProvider}
         />
@@ -149,9 +146,6 @@ export function useWorkspaceCanvasNodeTypes({
   browserDefaultMode,
   browserSearchEngine,
   commands,
-  updateRoleProviderRef,
-  updateRoleInputRef,
-  runRoleRef,
   openTaskEditorRef,
   quickUpdateTaskTitleRef,
   quickUpdateTaskRequirementRef,
@@ -171,9 +165,6 @@ export function useWorkspaceCanvasNodeTypes({
       browserDefaultMode,
       browserSearchEngine,
       commands,
-      updateRoleProviderRef,
-      updateRoleInputRef,
-      runRoleRef,
       openTaskEditorRef,
       quickUpdateTaskTitleRef,
       quickUpdateTaskRequirementRef,
@@ -190,9 +181,6 @@ export function useWorkspaceCanvasNodeTypes({
       browserDefaultMode,
       browserSearchEngine,
       commands,
-      updateRoleProviderRef,
-      updateRoleInputRef,
-      runRoleRef,
       openTaskEditorRef,
       quickUpdateTaskTitleRef,
       quickUpdateTaskRequirementRef,

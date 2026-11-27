@@ -18,7 +18,7 @@ import { assignNodeToSpaceAndExpand } from './useInteractions.spaceAssignment'
 import { composeProjectRolePrompt } from './useRolePrompt'
 import type { CanvasDocumentCommands } from '../../../store/canvasStoreContext'
 import type { WorkspaceDocument } from '../../../store/workspaceDocument'
-import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
+import type { CanvasNodeWriter } from './useCanvasNodeWriter'
 import {
   buildMergedAgentLaunchEnv,
   launchWorkspaceAgentSession,
@@ -26,7 +26,7 @@ import {
   resolveWorkspaceAgentLaunchBinding,
 } from './useWorkspaceAgentLaunch.shared'
 
-type SetNodes = UseWorkspaceCanvasNodesStoreResult['setNodes']
+type UpdateNodes = CanvasNodeWriter['updateNodes']
 
 export interface RoleRunActionContext {
   workspaceId: string
@@ -39,8 +39,12 @@ export interface RoleRunActionContext {
    * started it, whichever workspace is shown by the time the run awaits.
    */
   readDocument: () => WorkspaceDocument
-  setNodes: SetNodes
-  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
+  /**
+   * The writer of the render that started the run, which writes the workspace that started it.
+   * A plain function takes it explicitly (S7, Decision 8).
+   */
+  updateNodes: UpdateNodes
+  updateCanvasDocument: CanvasNodeWriter['updateCanvasDocument']
   updateSpaces: CanvasDocumentCommands['updateSpaces']
   onShowMessage?: ShowWorkspaceCanvasMessage
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
@@ -73,15 +77,15 @@ export function resolveNodeRoleDefinition(
 function setRoleNodeLastError({
   nodeId,
   message,
-  setNodes,
+  updateNodes,
   flush,
 }: {
   nodeId: string
   message: string
-  setNodes: SetNodes
+  updateNodes: UpdateNodes
   flush?: boolean
 }): void {
-  setNodes(
+  updateNodes(
     prevNodes =>
       prevNodes.map(node =>
         node.id === nodeId
@@ -118,7 +122,7 @@ export async function runRoleNodeAction(
     setRoleNodeLastError({
       nodeId,
       message: context.t('roleNode.missingRoleDefinition'),
-      setNodes: context.setNodes,
+      updateNodes: context.updateNodes,
       flush: true,
     })
     return
@@ -138,7 +142,11 @@ export async function runRoleNodeAction(
   try {
     assertProviderInitialPrompt(provider, prompt)
   } catch (error) {
-    setRoleNodeLastError({ nodeId, message: toErrorMessage(error), setNodes: context.setNodes })
+    setRoleNodeLastError({
+      nodeId,
+      message: toErrorMessage(error),
+      updateNodes: context.updateNodes,
+    })
     return
   }
   const owningSpace =
@@ -250,7 +258,7 @@ export async function runRoleNodeAction(
         createdAt: now,
       },
     })
-    context.setNodes(
+    context.updateNodes(
       prevNodes =>
         prevNodes.map(node =>
           node.id === nodeId
@@ -284,7 +292,7 @@ export async function runRoleNodeAction(
     const message = context.t('messages.agentLaunchFailed', {
       message: toErrorMessage(error),
     })
-    setRoleNodeLastError({ nodeId, message, setNodes: context.setNodes, flush: true })
+    setRoleNodeLastError({ nodeId, message, updateNodes: context.updateNodes, flush: true })
     context.onShowMessage?.(message, 'error')
   }
 }

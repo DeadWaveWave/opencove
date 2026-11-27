@@ -4,6 +4,7 @@ import type { TerminalNodeData } from '../../../types'
 import type { WorkspaceCanvasProps } from '../types'
 import type {
   CanvasNoteCommands,
+  CanvasRoleCommands,
   CanvasTerminalCommands,
   CanvasWebsiteCommands,
   CanvasWindowCommands,
@@ -15,8 +16,8 @@ import { useCanvasFocusForInteraction } from './useCanvasFocusForInteraction'
  * Composes the canvas's node commands (S7 of #647) from the functions that implement them, taken by
  * name. Each family is memoised on its functions and the whole object on its families, so a node
  * component that reads it renders again only when a command is made again: with the workspace
- * (its path or environment), the language, the host's message callback, or the terminal display
- * calibration. React Flow's viewport initializing is not one of them.
+ * (its path or environment), the language, or the host's message callback. React Flow's viewport
+ * initializing is not one of them.
  * Nothing here closes over the document, the selection, the app settings or a node: each
  * implementation reads its owner when it runs.
  */
@@ -45,6 +46,9 @@ export function useComposedCanvasNodeCommands({
   setWebsiteSession,
   setWebsiteMode,
   setWebsiteFullscreen,
+  updateRoleInput,
+  updateRoleProvider,
+  runRole,
 }: {
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
   readAgentSettings: WorkspaceCanvasProps['readAgentSettings']
@@ -70,6 +74,9 @@ export function useComposedCanvasNodeCommands({
   setWebsiteSession: CanvasWebsiteCommands['setSession']
   setWebsiteMode: CanvasWebsiteCommands['setMode']
   setWebsiteFullscreen: CanvasWebsiteCommands['setFullscreen']
+  updateRoleInput: CanvasRoleCommands['updateInput']
+  updateRoleProvider: CanvasRoleCommands['updateProvider']
+  runRole: CanvasRoleCommands['run']
 }): WiredCanvasNodeCommands {
   const focusForInteraction = useCanvasFocusForInteraction({ reactFlow, readAgentSettings })
 
@@ -134,8 +141,13 @@ export function useComposedCanvasNodeCommands({
     [setWebsiteFullscreen, setWebsiteMode, setWebsitePinned, setWebsiteSession, updateWebsiteUrl],
   )
 
+  const role = useMemo<CanvasRoleCommands>(
+    () => ({ updateInput: updateRoleInput, updateProvider: updateRoleProvider, run: runRole }),
+    [runRole, updateRoleInput, updateRoleProvider],
+  )
+
   return useMemo(
-    () => ({ window: windowCommands, terminal, note, website }),
-    [note, terminal, website, windowCommands],
+    () => ({ window: windowCommands, terminal, note, website, role }),
+    [note, role, terminal, website, windowCommands],
   )
 }

@@ -25,6 +25,7 @@ import type {
   NodeCreationPlacementOptions,
   NodePlacementOptions,
   ShowWorkspaceCanvasMessage,
+  WorkspaceCanvasProps,
 } from '../types'
 
 export interface CreateNoteNodeOptions {
@@ -41,6 +42,7 @@ export interface UseWorkspaceCanvasNodesStoreParams {
   onNodeCreated?: (nodeId: string) => void
   standardWindowSizeBucket: StandardWindowSizeBucket
   browserDefaultMode: BrowserMode
+  readAgentSettings: WorkspaceCanvasProps['readAgentSettings']
 }
 
 export interface UseWorkspaceCanvasNodeCreationParams {
@@ -51,6 +53,12 @@ export interface UseWorkspaceCanvasNodeCreationParams {
   setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']
   standardWindowSizeBucket: StandardWindowSizeBucket
   browserDefaultMode: BrowserMode
+  /**
+   * `createNodeForSession` sizes the window it creates from the app's settings when it runs: the
+   * role and task commands call it, and a command keeps its identity across a settings change
+   * (S7 of #647, Decision 3). The other creators still take the render's bucket.
+   */
+  readAgentSettings: WorkspaceCanvasProps['readAgentSettings']
 }
 
 export interface CanvasDocumentWriteOptions {

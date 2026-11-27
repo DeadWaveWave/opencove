@@ -59,6 +59,7 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
     onShowMessage,
     standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
     browserDefaultMode: agentSettings.browserDefaultMode,
+    readAgentSettings,
   })
   const nodeDragSession = workspaceCanvasHooks.useWorkspaceCanvasNodeDragSession({ workspaceId })
   // prettier-ignore
@@ -131,7 +132,7 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
     terminalDisplayMetrics,
   })
   // prettier-ignore
-  const roleUiProps = workspaceCanvasHooks.useWorkspaceCanvasRoleUi({ workspaceId, workspacePath, environmentVariables, agentSettings, nodeStore, agentSupport, onShowMessage, actionRefs })
+  const { runRole, ...roleUiProps } = workspaceCanvasHooks.useWorkspaceCanvasRoleUi({ workspaceId, workspacePath, environmentVariables, agentSettings, readAgentSettings, nodeStore, agentSupport, onShowMessage })
   // prettier-ignore
   const inputMode = workspaceCanvasHooks.useWorkspaceCanvasInputMode({ canvasInputModeSetting: agentSettings.canvasInputMode, canvasWheelBehaviorSetting: agentSettings.canvasWheelBehavior, canvasWheelZoomModifierSetting: agentSettings.canvasWheelZoomModifier, detectedCanvasInputMode: canvasState.detectedCanvasInputMode, inputModalityStateRef: canvasState.inputModalityStateRef, setDetectedCanvasInputMode: canvasState.setDetectedCanvasInputMode, canvasRef: canvasState.canvasRef, trackpadGestureLockRef: canvasState.trackpadGestureLockRef, setIsCanvasWheelGestureCaptureActive: canvasState.setIsCanvasWheelGestureCaptureActive, viewportRef: canvasState.viewportRef, reactFlow, onViewportChange })
   // Committed nodes feed collapse read models; the actions plan from the committed document.
@@ -219,6 +220,9 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
     setWebsiteSession: nodeStore.setWebsiteSession,
     setWebsiteMode: nodeStore.setWebsiteMode,
     setWebsiteFullscreen: nodeStore.setWebsiteFullscreen,
+    updateRoleInput: nodeStore.updateRoleInput,
+    updateRoleProvider: nodeStore.updateRoleProvider,
+    runRole,
   })
   const { nodeTypes, nodeTypesParameters } =
     workspaceCanvasHooks.useWorkspaceCanvasComposedNodeTypes({

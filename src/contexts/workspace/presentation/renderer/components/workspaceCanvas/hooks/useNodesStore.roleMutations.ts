@@ -1,15 +1,9 @@
 import { useCallback } from 'react'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
-import type { Node } from '@xyflow/react'
-import type { RoleNodeData, TerminalNodeData } from '../../../types'
-import type { CanvasDocumentWriteOptions } from './useNodesStore.types'
+import type { RoleNodeData } from '../../../types'
+import { useCanvasNodeWriter } from './useCanvasNodeWriter'
 
-type SetNodes = (
-  updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-  options?: CanvasDocumentWriteOptions,
-) => void
-
-export function useWorkspaceCanvasRoleNodeMutations({ setNodes }: { setNodes: SetNodes }): {
+export function useWorkspaceCanvasRoleNodeMutations(): {
   updateRoleProvider: (nodeId: string, provider: AgentProvider) => void
   updateRoleInput: (nodeId: string, input: string) => void
   appendRoleRunRecord: (
@@ -19,9 +13,10 @@ export function useWorkspaceCanvasRoleNodeMutations({ setNodes }: { setNodes: Se
     },
   ) => void
 } {
+  const { updateNodes } = useCanvasNodeWriter()
   const updateRoleProvider = useCallback(
     (nodeId: string, provider: AgentProvider) => {
-      setNodes(
+      updateNodes(
         prevNodes => {
           let hasChanged = false
           const now = new Date().toISOString()
@@ -53,12 +48,12 @@ export function useWorkspaceCanvasRoleNodeMutations({ setNodes }: { setNodes: Se
         { syncLayout: false, flush: true },
       )
     },
-    [setNodes],
+    [updateNodes],
   )
 
   const updateRoleInput = useCallback(
     (nodeId: string, input: string) => {
-      setNodes(
+      updateNodes(
         prevNodes => {
           let hasChanged = false
           const now = new Date().toISOString()
@@ -90,7 +85,7 @@ export function useWorkspaceCanvasRoleNodeMutations({ setNodes }: { setNodes: Se
         { syncLayout: false, flush: true },
       )
     },
-    [setNodes],
+    [updateNodes],
   )
 
   const appendRoleRunRecord = useCallback(
@@ -100,7 +95,7 @@ export function useWorkspaceCanvasRoleNodeMutations({ setNodes }: { setNodes: Se
         record: RoleNodeData['runHistory'][number]
       },
     ) => {
-      setNodes(
+      updateNodes(
         prevNodes => {
           let hasChanged = false
           const updatedAt = new Date().toISOString()
@@ -129,7 +124,7 @@ export function useWorkspaceCanvasRoleNodeMutations({ setNodes }: { setNodes: Se
         { syncLayout: false, flush: true },
       )
     },
-    [setNodes],
+    [updateNodes],
   )
 
   return {
