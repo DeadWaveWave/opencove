@@ -2,27 +2,20 @@ import type { Node } from '@xyflow/react'
 import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
 import type { Point, TaskPriority, TerminalNodeData } from '../../../types'
 import type { NodePlacementOptions } from '../types'
-import type { WorkspaceCanvasActionRefs } from './useActionRefs'
 import { useWorkspaceCanvasNodeDeleteConfirmation } from './useNodeDeleteConfirmation'
 import { useWorkspaceCanvasTaskNodeCreation } from './useTaskNodeCreation'
 import { useWorkspaceCanvasTaskEditor } from './useTaskEditor'
-import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 
 export function useWorkspaceCanvasTaskWindows({
   workspaceId,
   taskTagOptions,
-  setNodes,
-  updateCanvasDocument,
   suggestTaskTitle,
   standardWindowSizeBucket,
   createTaskNode,
   closeNode,
-  actionRefs,
 }: {
   workspaceId?: string
   taskTagOptions: string[]
-  setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']
-  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
   suggestTaskTitle: (
     requirement: string,
   ) => Promise<{ title: string; priority: TaskPriority; tags: string[] }>
@@ -37,21 +30,15 @@ export function useWorkspaceCanvasTaskWindows({
     placement?: NodePlacementOptions,
   ) => Node<TerminalNodeData> | null
   closeNode: (nodeId: string) => Promise<void>
-  actionRefs: WorkspaceCanvasActionRefs
 }) {
   const { createTaskAtPoint, createTaskFromContextMenu } = useWorkspaceCanvasTaskNodeCreation({
     workspaceId,
-    updateCanvasDocument,
     standardWindowSizeBucket,
     createTaskNode,
   })
 
-  const { closeTaskEditor, generateTaskEditorTitle, saveTaskEdits } = useWorkspaceCanvasTaskEditor({
-    setNodes,
-    suggestTaskTitle,
-    taskTagOptions,
-    openTaskEditorRef: actionRefs.openTaskEditorRef,
-  })
+  const { openTaskEditor, closeTaskEditor, generateTaskEditorTitle, saveTaskEdits } =
+    useWorkspaceCanvasTaskEditor({ suggestTaskTitle, taskTagOptions })
 
   const { confirmNodeDelete, requestNodeClose, requestNodeDelete } =
     useWorkspaceCanvasNodeDeleteConfirmation({ closeNode })
@@ -59,6 +46,7 @@ export function useWorkspaceCanvasTaskWindows({
   return {
     createTaskAtPoint,
     createTaskFromContextMenu,
+    openTaskEditor,
     closeTaskEditor,
     generateTaskEditorTitle,
     saveTaskEdits,

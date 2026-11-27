@@ -1,4 +1,4 @@
-import { useCallback, useEffect, type MutableRefObject } from 'react'
+import { useCallback } from 'react'
 import type { Node } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
 import {
@@ -6,63 +6,60 @@ import {
   resolveTaskTitleProvider,
   type AgentSettings,
 } from '@contexts/settings/domain/agentSettings'
-import type { TerminalPtyGeometryDisplayMetrics } from '@contexts/workspace/domain/terminalPtyGeometry'
 import type { TaskPriority, TaskRuntimeStatus, TerminalNodeData } from '../../../types'
 import { normalizeTaskPriority, normalizeTaskTagSelection } from '../helpers'
-import type {
-  CreateNodeInput,
-  QuickUpdateTaskRequirement,
-  QuickUpdateTaskTitle,
-  UpdateTaskStatus,
-} from '../types'
+import type { CreateNodeInput, WorkspaceCanvasProps } from '../types'
 import { resumeTaskAgentSessionAction, runTaskAgentAction } from './useTaskActions.agentSession'
 import { useCanvasDocumentCommands, useReadCanvasDocument } from '../../../store/canvasStoreContext'
-import type { TaskActionContext } from './useTaskActions.agentSession.shared'
+import {
+  mapNodesKeepingIdentity,
+  type TaskActionContext,
+} from './useTaskActions.agentSession.shared'
+import { useCanvasNodeWriter } from './useCanvasNodeWriter'
+import { resolveTerminalDisplayMetrics } from './useTerminalDisplayMetrics'
 
 interface UseTaskActionsParams {
-  updateCanvasDocument: TaskActionContext['updateCanvasDocument']
-  setNodes: TaskActionContext['setNodes']
+  /** The app's settings when an action starts (S7 of #647, Decision 2): never a render's copy. */
+  readAgentSettings: () => AgentSettings
+  /** The display calibration when a launch starts: a font load or a display change moves it. */
+  readTerminalDisplayCalibration: NonNullable<
+    WorkspaceCanvasProps['readTerminalDisplayCalibration']
+  >
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
   buildAgentNodeTitle: (
     provider: AgentSettings['defaultProvider'],
     effectiveModel: string | null,
   ) => string
   launchAgentInNode: TaskActionContext['launchAgentInNode']
-  agentSettings: AgentSettings
   workspaceId: string
   workspacePath: string
   environmentVariables?: Record<string, string>
   taskTagOptions: string[]
-  terminalDisplayMetrics: TerminalPtyGeometryDisplayMetrics
-  runTaskAgentRef: MutableRefObject<(nodeId: string) => Promise<void>>
-  resumeTaskAgentSessionRef: MutableRefObject<
-    (taskNodeId: string, recordId: string) => Promise<void>
-  >
-  removeTaskAgentSessionRecordRef: MutableRefObject<(taskNodeId: string, recordId: string) => void>
-  updateTaskStatusRef: MutableRefObject<UpdateTaskStatus>
-  quickUpdateTaskTitleRef: MutableRefObject<QuickUpdateTaskTitle>
-  quickUpdateTaskRequirementRef: MutableRefObject<QuickUpdateTaskRequirement>
 }
 
+/**
+ * The task family's commands (S7 of #647) and the title suggestion of the task editor. A command
+ * keeps the workspace, the document reader and the writer of the render that made it, so an action
+ * that started in A and finishes after the switch to B writes A. It reads the settings and the
+ * display calibration once, when it starts, and never again after an await.
+ */
 export function useWorkspaceCanvasTaskActions({
-  updateCanvasDocument,
-  setNodes,
+  readAgentSettings,
+  readTerminalDisplayCalibration,
   createNodeForSession,
   buildAgentNodeTitle,
   launchAgentInNode,
-  agentSettings,
   workspaceId,
   workspacePath,
   environmentVariables,
   taskTagOptions,
-  terminalDisplayMetrics,
-  runTaskAgentRef,
-  resumeTaskAgentSessionRef,
-  removeTaskAgentSessionRecordRef,
-  updateTaskStatusRef,
-  quickUpdateTaskTitleRef,
-  quickUpdateTaskRequirementRef,
 }: UseTaskActionsParams): {
+  runTaskAgent: (nodeId: string) => Promise<void>
+  resumeTaskAgentSession: (taskNodeId: string, recordId: string) => Promise<void>
+  removeTaskAgentSessionRecord: (taskNodeId: string, recordId: string) => void
+  updateTaskStatus: (nodeId: string, status: TaskRuntimeStatus) => void
+  quickUpdateTaskTitle: (nodeId: string, title: string) => void
+  quickUpdateTaskRequirement: (nodeId: string, requirement: string) => void
   suggestTaskTitle: (
     requirement: string,
   ) => Promise<{ title: string; priority: TaskPriority; tags: string[] }>
@@ -70,37 +67,42 @@ export function useWorkspaceCanvasTaskActions({
   const { t } = useTranslation()
   const documentCommands = useCanvasDocumentCommands()
   const readDocument = useReadCanvasDocument()
+  const { updateNodes, updateCanvasDocument } = useCanvasNodeWriter()
 
   const runTaskAgent = useCallback(
     async (taskNodeId: string) => {
+      const settings = readAgentSettings()
       await runTaskAgentAction(taskNodeId, {
         readDocument,
+        updateNodes,
         updateCanvasDocument,
         updateSpaces: documentCommands.updateSpaces,
-        setNodes,
         createNodeForSession,
         buildAgentNodeTitle,
         launchAgentInNode,
-        agentSettings,
+        agentSettings: settings,
         workspaceId,
         workspacePath,
         environmentVariables,
         t,
-        terminalDisplayMetrics,
+        terminalDisplayMetrics: resolveTerminalDisplayMetrics({
+          terminalFontSize: settings.terminalFontSize,
+          terminalDisplayCalibration: readTerminalDisplayCalibration(),
+        }),
       })
     },
     [
-      agentSettings,
       buildAgentNodeTitle,
       createNodeForSession,
       documentCommands,
       environmentVariables,
       launchAgentInNode,
+      readAgentSettings,
       readDocument,
-      setNodes,
+      readTerminalDisplayCalibration,
       t,
-      terminalDisplayMetrics,
       updateCanvasDocument,
+      updateNodes,
       workspaceId,
       workspacePath,
     ],
@@ -108,9 +110,9 @@ export function useWorkspaceCanvasTaskActions({
 
   const removeTaskAgentSessionRecord = useCallback(
     (taskNodeId: string, recordId: string) => {
-      setNodes(
+      updateNodes(
         prevNodes =>
-          prevNodes.map(node => {
+          mapNodesKeepingIdentity(prevNodes, node => {
             if (node.id !== taskNodeId || node.data.kind !== 'task' || !node.data.task) {
               return node
             }
@@ -134,37 +136,41 @@ export function useWorkspaceCanvasTaskActions({
         { flush: true },
       )
     },
-    [setNodes],
+    [updateNodes],
   )
 
   const resumeTaskAgentSession = useCallback(
     async (taskNodeId: string, recordId: string) => {
+      const settings = readAgentSettings()
       await resumeTaskAgentSessionAction(taskNodeId, recordId, {
         readDocument,
+        updateNodes,
         updateCanvasDocument,
         updateSpaces: documentCommands.updateSpaces,
-        setNodes,
         createNodeForSession,
         buildAgentNodeTitle,
-        agentSettings,
+        agentSettings: settings,
         workspaceId,
         workspacePath,
         environmentVariables,
         t,
-        terminalDisplayMetrics,
+        terminalDisplayMetrics: resolveTerminalDisplayMetrics({
+          terminalFontSize: settings.terminalFontSize,
+          terminalDisplayCalibration: readTerminalDisplayCalibration(),
+        }),
       })
     },
     [
-      agentSettings,
       buildAgentNodeTitle,
       createNodeForSession,
       documentCommands,
       environmentVariables,
+      readAgentSettings,
       readDocument,
-      setNodes,
+      readTerminalDisplayCalibration,
       t,
-      terminalDisplayMetrics,
       updateCanvasDocument,
+      updateNodes,
       workspaceId,
       workspacePath,
     ],
@@ -172,9 +178,9 @@ export function useWorkspaceCanvasTaskActions({
 
   const updateTaskStatus = useCallback(
     (taskNodeId: string, status: TaskRuntimeStatus) => {
-      setNodes(
+      updateNodes(
         prevNodes =>
-          prevNodes.map(node => {
+          mapNodesKeepingIdentity(prevNodes, node => {
             if (node.id !== taskNodeId || node.data.kind !== 'task' || !node.data.task) {
               return node
             }
@@ -194,7 +200,7 @@ export function useWorkspaceCanvasTaskActions({
         { flush: true },
       )
     },
-    [setNodes],
+    [updateNodes],
   )
 
   const quickUpdateTaskTitle = useCallback(
@@ -202,9 +208,9 @@ export function useWorkspaceCanvasTaskActions({
       const normalizedTitle = nextTitle.trim()
 
       const now = new Date().toISOString()
-      setNodes(
+      updateNodes(
         prevNodes =>
-          prevNodes.map(node => {
+          mapNodesKeepingIdentity(prevNodes, node => {
             if (node.id !== taskNodeId || node.data.kind !== 'task' || !node.data.task) {
               return node
             }
@@ -226,7 +232,7 @@ export function useWorkspaceCanvasTaskActions({
         { flush: true },
       )
     },
-    [setNodes],
+    [updateNodes],
   )
 
   const quickUpdateTaskRequirement = useCallback(
@@ -237,9 +243,9 @@ export function useWorkspaceCanvasTaskActions({
       }
 
       const now = new Date().toISOString()
-      setNodes(
+      updateNodes(
         prevNodes =>
-          prevNodes.map(node => {
+          mapNodesKeepingIdentity(prevNodes, node => {
             if (node.id !== taskNodeId || node.data.kind !== 'task' || !node.data.task) {
               return node
             }
@@ -260,15 +266,17 @@ export function useWorkspaceCanvasTaskActions({
         { flush: true },
       )
     },
-    [setNodes],
+    [updateNodes],
   )
 
   const suggestTaskTitle = useCallback(
     async (
       requirement: string,
     ): Promise<{ title: string; priority: TaskPriority; tags: string[] }> => {
-      const provider = resolveTaskTitleProvider(agentSettings)
-      const model = resolveTaskTitleModel(agentSettings)
+      // A callback of the task editor, not a command: it reads the settings when it runs.
+      const settings = readAgentSettings()
+      const provider = resolveTaskTitleProvider(settings)
+      const model = resolveTaskTitleModel(settings)
 
       const suggested = await window.opencoveApi.task.suggestTitle({
         provider,
@@ -284,44 +292,16 @@ export function useWorkspaceCanvasTaskActions({
         tags: normalizeTaskTagSelection(suggested.tags, taskTagOptions),
       }
     },
-    [agentSettings, taskTagOptions, workspacePath],
+    [readAgentSettings, taskTagOptions, workspacePath],
   )
 
-  useEffect(() => {
-    runTaskAgentRef.current = async nodeId => {
-      await runTaskAgent(nodeId)
-    }
-  }, [runTaskAgent, runTaskAgentRef])
-
-  useEffect(() => {
-    resumeTaskAgentSessionRef.current = async (taskNodeId, recordId) => {
-      await resumeTaskAgentSession(taskNodeId, recordId)
-    }
-  }, [resumeTaskAgentSession, resumeTaskAgentSessionRef])
-
-  useEffect(() => {
-    removeTaskAgentSessionRecordRef.current = (taskNodeId, recordId) => {
-      removeTaskAgentSessionRecord(taskNodeId, recordId)
-    }
-  }, [removeTaskAgentSessionRecord, removeTaskAgentSessionRecordRef])
-
-  useEffect(() => {
-    updateTaskStatusRef.current = (nodeId, status) => {
-      updateTaskStatus(nodeId, status)
-    }
-  }, [updateTaskStatus, updateTaskStatusRef])
-
-  useEffect(() => {
-    quickUpdateTaskTitleRef.current = (nodeId, title) => {
-      quickUpdateTaskTitle(nodeId, title)
-    }
-  }, [quickUpdateTaskTitle, quickUpdateTaskTitleRef])
-
-  useEffect(() => {
-    quickUpdateTaskRequirementRef.current = (nodeId, requirement) => {
-      quickUpdateTaskRequirement(nodeId, requirement)
-    }
-  }, [quickUpdateTaskRequirement, quickUpdateTaskRequirementRef])
-
-  return { suggestTaskTitle }
+  return {
+    runTaskAgent,
+    resumeTaskAgentSession,
+    removeTaskAgentSessionRecord,
+    updateTaskStatus,
+    quickUpdateTaskTitle,
+    quickUpdateTaskRequirement,
+    suggestTaskTitle,
+  }
 }

@@ -5,6 +5,7 @@ import {
   createTaskAgentAnchor,
   findTaskNode,
   findTaskSpace,
+  mapNodesKeepingIdentity,
   setTaskLastError,
   type ResumeTaskAgentSessionContext,
 } from './useTaskActions.agentSession.shared'
@@ -30,7 +31,7 @@ export async function resumeTaskAgentSessionAction(
     setTaskLastError({
       taskNodeId,
       message: context.t('messages.taskLinkedAgentWindowOpen'),
-      setNodes: context.setNodes,
+      updateNodes: context.updateNodes,
       flush: true,
     })
     return
@@ -45,7 +46,7 @@ export async function resumeTaskAgentSessionAction(
     setTaskLastError({
       taskNodeId,
       message: context.t('messages.taskResumeSessionMissing'),
-      setNodes: context.setNodes,
+      updateNodes: context.updateNodes,
       flush: true,
     })
     return
@@ -74,7 +75,7 @@ export async function resumeTaskAgentSessionAction(
     setTaskLastError({
       taskNodeId,
       message: context.t('messages.mountListFailed', { message: toErrorMessage(error) }),
-      setNodes: context.setNodes,
+      updateNodes: context.updateNodes,
       flush: true,
     })
     return
@@ -137,6 +138,8 @@ export async function resumeTaskAgentSessionAction(
       profileId: launched.profileId,
       runtimeKind: launched.runtimeKind,
       terminalGeometry: launchGeometry.terminalGeometry,
+      // The bucket the launch geometry above was sized from: read once, when the action started.
+      standardWindowSizeBucket: context.agentSettings.standardWindowSizeBucket,
       workerBinding: launched.workerBinding,
       title: context.buildAgentNodeTitle(record.provider, taskNode.data.title),
       anchor: createTaskAgentAnchor(taskNode),
@@ -175,9 +178,9 @@ export async function resumeTaskAgentSessionAction(
     })
 
     const now = new Date().toISOString()
-    context.setNodes(
+    context.updateNodes(
       prevNodes =>
-        prevNodes.map(node => {
+        mapNodesKeepingIdentity(prevNodes, node => {
           if (node.id !== taskNodeId || node.data.kind !== 'task' || !node.data.task) {
             return node
           }
@@ -218,7 +221,7 @@ export async function resumeTaskAgentSessionAction(
     setTaskLastError({
       taskNodeId,
       message: context.t('messages.agentResumeFailed', { message: toErrorMessage(error) }),
-      setNodes: context.setNodes,
+      updateNodes: context.updateNodes,
       flush: true,
     })
   }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, type MutableRefObject } from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import { AI_NAMING_FEATURES } from '@shared/featureFlags/aiNaming'
 import type { TaskPriority } from '../../../types'
@@ -8,23 +8,21 @@ import {
   useReadCanvasDocument,
   useReadCanvasUi,
 } from '../../../store/canvasStoreContext'
-import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
+import { useCanvasNodeWriter } from './useCanvasNodeWriter'
 
 interface UseTaskEditorParams {
-  setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']
   suggestTaskTitle: (
     requirement: string,
   ) => Promise<{ title: string; priority: TaskPriority; tags: string[] }>
   taskTagOptions: string[]
-  openTaskEditorRef: MutableRefObject<(nodeId: string) => void>
 }
 
 export function useWorkspaceCanvasTaskEditor({
-  setNodes,
   suggestTaskTitle,
   taskTagOptions,
-  openTaskEditorRef,
 }: UseTaskEditorParams): {
+  /** The task family's `openEditor` (S7 of #647): the canvas composes it into its commands. */
+  openTaskEditor: (nodeId: string) => void
   closeTaskEditor: () => void
   generateTaskEditorTitle: () => Promise<void>
   saveTaskEdits: () => Promise<void>
@@ -32,6 +30,7 @@ export function useWorkspaceCanvasTaskEditor({
   const ui = useCanvasUiCommands()
   const readUi = useReadCanvasUi()
   const readDocument = useReadCanvasDocument()
+  const { updateNodes } = useCanvasNodeWriter()
 
   const { t } = useTranslation()
   const isTaskAiNamingEnabled = AI_NAMING_FEATURES.taskTitleGeneration
@@ -168,7 +167,7 @@ export function useWorkspaceCanvasTaskEditor({
 
       const now = new Date().toISOString()
 
-      setNodes(
+      updateNodes(
         prevNodes =>
           prevNodes.map(node => {
             if (node.id !== taskEditor.nodeId || node.data.kind !== 'task' || !node.data.task) {
@@ -203,15 +202,10 @@ export function useWorkspaceCanvasTaskEditor({
         error: t('messages.taskUpdateFailed', { message: toErrorMessage(error) }),
       }))
     }
-  }, [isTaskAiNamingEnabled, readUi, setNodes, suggestTaskTitle, t, taskTagOptions, ui])
-
-  useEffect(() => {
-    openTaskEditorRef.current = nodeId => {
-      openTaskEditor(nodeId)
-    }
-  }, [openTaskEditor, openTaskEditorRef])
+  }, [isTaskAiNamingEnabled, readUi, suggestTaskTitle, t, taskTagOptions, ui, updateNodes])
 
   return {
+    openTaskEditor,
     closeTaskEditor,
     generateTaskEditorTitle,
     saveTaskEdits,

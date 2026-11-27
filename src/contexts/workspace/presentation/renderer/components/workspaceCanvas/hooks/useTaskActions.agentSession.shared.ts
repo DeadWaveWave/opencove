@@ -8,7 +8,7 @@ import { assignNodeToSpaceAndExpand } from './useInteractions.spaceAssignment'
 import type { AgentNodeLaunchOverrides } from './useAgentNodeLifecycle.support'
 import type { CanvasDocumentCommands } from '../../../store/canvasStoreContext'
 import type { WorkspaceDocument } from '../../../store/workspaceDocument'
-import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
+import type { CanvasNodeWriter } from './useCanvasNodeWriter'
 
 type TaskRuntimeNode = Node<TerminalNodeData> & {
   data: TerminalNodeData & {
@@ -23,9 +23,13 @@ export interface TaskActionContext {
    * that started it, however long the action awaits and whichever workspace is shown by then.
    */
   readDocument: () => WorkspaceDocument
-  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
+  /**
+   * The writer of the render that started the action, which writes the workspace that started it
+   * (S7, Decision 8): a plain function takes it explicitly.
+   */
+  updateNodes: CanvasNodeWriter['updateNodes']
+  updateCanvasDocument: CanvasNodeWriter['updateCanvasDocument']
   updateSpaces: CanvasDocumentCommands['updateSpaces']
-  setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
   buildAgentNodeTitle: (provider: AgentSettings['defaultProvider'], label: string | null) => string
   launchAgentInNode: (
@@ -33,12 +37,30 @@ export interface TaskActionContext {
     mode: 'new' | 'resume',
     overrides?: AgentNodeLaunchOverrides,
   ) => Promise<void>
+  /** What the app's settings were when the action started: read once, never again after an await. */
   agentSettings: AgentSettings
   workspaceId: string
   workspacePath: string
   environmentVariables?: Record<string, string>
   terminalDisplayMetrics: TerminalPtyGeometryDisplayMetrics
   t: TranslateFn
+}
+
+/**
+ * Maps the nodes, and returns the input when the map changed none: a recipe that matched no window
+ * (it is gone) writes nothing, so the write does not apply, notify or flush.
+ */
+export function mapNodesKeepingIdentity(
+  nodes: Node<TerminalNodeData>[],
+  map: (node: Node<TerminalNodeData>) => Node<TerminalNodeData>,
+): Node<TerminalNodeData>[] {
+  let changed = false
+  const next = nodes.map(node => {
+    const mapped = map(node)
+    changed ||= mapped !== node
+    return mapped
+  })
+  return changed ? next : nodes
 }
 
 export type ResumeTaskAgentSessionContext = Omit<TaskActionContext, 'launchAgentInNode'>
@@ -91,17 +113,17 @@ export function assignAgentNodeToTaskSpace({
 export function setTaskLastError({
   taskNodeId,
   message,
-  setNodes,
+  updateNodes,
   flush,
 }: {
   taskNodeId: string
   message: string
-  setNodes: TaskActionContext['setNodes']
+  updateNodes: TaskActionContext['updateNodes']
   flush?: boolean
 }): void {
-  setNodes(
+  updateNodes(
     prevNodes =>
-      prevNodes.map(node => {
+      mapNodesKeepingIdentity(prevNodes, node => {
         if (node.id !== taskNodeId) {
           return node
         }
@@ -121,16 +143,16 @@ export function setTaskLastError({
 /** `flush` requests the persistence flush on the write itself, for a caller that persists it. */
 export function clearStaleTaskLinkedAgent({
   taskNodeId,
-  setNodes,
+  updateNodes,
   flush,
 }: {
   taskNodeId: string
-  setNodes: TaskActionContext['setNodes']
+  updateNodes: TaskActionContext['updateNodes']
   flush?: boolean
 }): void {
-  setNodes(
+  updateNodes(
     prevNodes =>
-      prevNodes.map(node => {
+      mapNodesKeepingIdentity(prevNodes, node => {
         if (node.id !== taskNodeId || node.data.kind !== 'task' || !node.data.task) {
           return node
         }

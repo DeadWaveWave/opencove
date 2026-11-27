@@ -32,13 +32,6 @@ function createNodeTypes(): Record<string, FunctionComponent<WorkspaceCanvasNode
         id={id}
         nodePosition={nodePosition}
         workspacePath={parameters.workspacePath}
-        openTaskEditorRef={parameters.openTaskEditorRef}
-        quickUpdateTaskTitleRef={parameters.quickUpdateTaskTitleRef}
-        quickUpdateTaskRequirementRef={parameters.quickUpdateTaskRequirementRef}
-        runTaskAgentRef={parameters.runTaskAgentRef}
-        resumeTaskAgentSessionRef={parameters.resumeTaskAgentSessionRef}
-        removeTaskAgentSessionRecordRef={parameters.removeTaskAgentSessionRecordRef}
-        updateTaskStatusRef={parameters.updateTaskStatusRef}
       />
     )
   }
@@ -146,13 +139,6 @@ export function useWorkspaceCanvasNodeTypes({
   browserDefaultMode,
   browserSearchEngine,
   commands,
-  openTaskEditorRef,
-  quickUpdateTaskTitleRef,
-  quickUpdateTaskRequirementRef,
-  runTaskAgentRef,
-  resumeTaskAgentSessionRef,
-  removeTaskAgentSessionRecordRef,
-  updateTaskStatusRef,
 }: WorkspaceCanvasNodeTypesParams) {
   // Callers compose fresh containers on viewport renders; only the individual inputs
   // should notify node consumers. Component types remain stable independently of this cache.
@@ -165,13 +151,6 @@ export function useWorkspaceCanvasNodeTypes({
       browserDefaultMode,
       browserSearchEngine,
       commands,
-      openTaskEditorRef,
-      quickUpdateTaskTitleRef,
-      quickUpdateTaskRequirementRef,
-      runTaskAgentRef,
-      resumeTaskAgentSessionRef,
-      removeTaskAgentSessionRecordRef,
-      updateTaskStatusRef,
     }),
     [
       workspacePath,
@@ -181,13 +160,6 @@ export function useWorkspaceCanvasNodeTypes({
       browserDefaultMode,
       browserSearchEngine,
       commands,
-      openTaskEditorRef,
-      quickUpdateTaskTitleRef,
-      quickUpdateTaskRequirementRef,
-      runTaskAgentRef,
-      resumeTaskAgentSessionRef,
-      removeTaskAgentSessionRecordRef,
-      updateTaskStatusRef,
     ],
   )
   return { nodeTypes, nodeTypesParameters }

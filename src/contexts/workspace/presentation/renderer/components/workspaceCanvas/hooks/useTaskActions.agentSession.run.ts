@@ -15,6 +15,7 @@ import {
   createTaskAgentAnchor,
   findTaskNode,
   findTaskSpace,
+  mapNodesKeepingIdentity,
   setTaskLastError,
   type TaskActionContext,
 } from './useTaskActions.agentSession.shared'
@@ -65,9 +66,9 @@ function reuseLinkedAgentForTask({
       : linkedAgentNode.data.agent.executionDirectory
 
   // The flush rides on this write: the task and its agent are published together.
-  context.setNodes(
+  context.updateNodes(
     prevNodes =>
-      prevNodes.map(node => {
+      mapNodesKeepingIdentity(prevNodes, node => {
         if (node.id === linkedAgentNodeId && node.data.kind === 'agent' && node.data.agent) {
           return {
             ...node,
@@ -142,7 +143,7 @@ export async function runTaskAgentAction(
     setTaskLastError({
       taskNodeId,
       message: context.t('messages.taskRequirementRequired'),
-      setNodes: context.setNodes,
+      updateNodes: context.updateNodes,
     })
     return
   }
@@ -162,7 +163,11 @@ export async function runTaskAgentAction(
       )
       return true
     } catch (error) {
-      setTaskLastError({ taskNodeId, message: toErrorMessage(error), setNodes: context.setNodes })
+      setTaskLastError({
+        taskNodeId,
+        message: toErrorMessage(error),
+        updateNodes: context.updateNodes,
+      })
       return false
     }
   }
@@ -185,7 +190,11 @@ export async function runTaskAgentAction(
       ? await readManagedClaudeExecutionContext(linkedAgentNodeId, linked?.data.agent?.provider)
       : null
   } catch (error) {
-    setTaskLastError({ taskNodeId, message: toErrorMessage(error), setNodes: context.setNodes })
+    setTaskLastError({
+      taskNodeId,
+      message: toErrorMessage(error),
+      updateNodes: context.updateNodes,
+    })
     return
   }
 
@@ -208,7 +217,7 @@ export async function runTaskAgentAction(
       setTaskLastError({
         taskNodeId,
         message: context.t('messages.managedAgentDirectoryConflict'),
-        setNodes: context.setNodes,
+        updateNodes: context.updateNodes,
       })
       return
     }
@@ -230,7 +239,7 @@ export async function runTaskAgentAction(
 
     clearStaleTaskLinkedAgent({
       taskNodeId,
-      setNodes: context.setNodes,
+      updateNodes: context.updateNodes,
       flush: true,
     })
   }
@@ -289,6 +298,8 @@ export async function runTaskAgentAction(
       profileId: launched.profileId,
       runtimeKind: launched.runtimeKind,
       terminalGeometry: launchGeometry.terminalGeometry,
+      // The bucket the launch geometry above was sized from: read once, when the action started.
+      standardWindowSizeBucket: context.agentSettings.standardWindowSizeBucket,
       workerBinding: launched.workerBinding,
       title: context.buildAgentNodeTitle(provider, taskNode.data.title),
       anchor: createTaskAgentAnchor(taskNode),
@@ -324,9 +335,9 @@ export async function runTaskAgentAction(
     })
 
     const now = new Date().toISOString()
-    context.setNodes(
+    context.updateNodes(
       prevNodes =>
-        prevNodes.map(node => {
+        mapNodesKeepingIdentity(prevNodes, node => {
           if (node.id !== taskNodeId || node.data.kind !== 'task' || !node.data.task) {
             return node
           }
@@ -351,7 +362,7 @@ export async function runTaskAgentAction(
     setTaskLastError({
       taskNodeId,
       message: context.t('messages.agentLaunchFailed', { message: toErrorMessage(error) }),
-      setNodes: context.setNodes,
+      updateNodes: context.updateNodes,
       flush: true,
     })
   }

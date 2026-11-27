@@ -51,7 +51,6 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
   const nodePublishers = workspaceCanvasHooks.useWorkspaceCanvasNodePublishers({ workspaceId })
   // prettier-ignore
   const exclusiveNodeDragAnchorIdRef = workspaceCanvasHooks.useWorkspaceCanvasWorkspaceReset(workspaceId)
-  const actionRefs = workspaceCanvasHooks.useWorkspaceCanvasActionRefs()
   const nodeStore = workspaceCanvasHooks.useWorkspaceCanvasNodesStore({
     workspaceId,
     workspacePath,
@@ -116,20 +115,17 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
   })
   const taskUi = workspaceCanvasHooks.useWorkspaceCanvasTaskUi({
     agentTaskTagOptions: agentSettings.taskTagOptions,
-    setNodes: nodeStore.setNodes,
-    updateCanvasDocument: nodeStore.updateCanvasDocument,
+    readAgentSettings,
+    readTerminalDisplayCalibration,
     createNodeForSession: nodeStore.createNodeForSession,
     buildAgentNodeTitle: agentSupport.buildAgentNodeTitle,
     launchAgentInNode: agentSupport.launchAgentInNode,
-    agentSettings,
     workspaceId,
     workspacePath,
     environmentVariables,
     standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
     createTaskNode: nodeStore.createTaskNode,
     closeNode: nodeStore.closeNode,
-    actionRefs,
-    terminalDisplayMetrics,
   })
   // prettier-ignore
   const { runRole, ...roleUiProps } = workspaceCanvasHooks.useWorkspaceCanvasRoleUi({ workspaceId, workspacePath, environmentVariables, agentSettings, readAgentSettings, nodeStore, agentSupport, onShowMessage })
@@ -223,13 +219,19 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
     updateRoleInput: nodeStore.updateRoleInput,
     updateRoleProvider: nodeStore.updateRoleProvider,
     runRole,
+    runTaskAgent: taskUi.runTaskAgent,
+    resumeTaskAgentSession: taskUi.resumeTaskAgentSession,
+    removeTaskAgentSessionRecord: taskUi.removeTaskAgentSessionRecord,
+    openTaskEditor: taskUi.openTaskEditor,
+    updateTaskTitle: taskUi.quickUpdateTaskTitle,
+    updateTaskRequirement: taskUi.quickUpdateTaskRequirement,
+    updateTaskStatus: taskUi.updateTaskStatus,
   })
   const { nodeTypes, nodeTypesParameters } =
     workspaceCanvasHooks.useWorkspaceCanvasComposedNodeTypes({
       workspacePath,
       onShowMessage,
       agentSettings,
-      actionRefs,
       commands,
     })
   const actionBarActions = useWorkspaceCanvasActionBar({
