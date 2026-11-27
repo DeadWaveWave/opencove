@@ -208,7 +208,6 @@ describe('the push-away of the interactions as the canvas composes them', () => 
     isShiftPressedRef,
     selectionDraftRef,
     reactFlow: { ...reactFlow, getNodes: () => [], getNode: () => undefined },
-    setNodes,
     workspaceId: 'workspace',
     workspacePath: '/repo',
     defaultTerminalProfileId: null,
@@ -310,7 +309,6 @@ describe('the push-away of the interaction callers', () => {
     createWebsiteNode,
     browserDefaultMode: 'iframe',
     websiteWindowsEnabled: true,
-    setNodes,
     onSpacesChange,
   }
 
@@ -579,7 +577,6 @@ describe('the push-away of the interaction callers', () => {
         canvasRef,
         reactFlow,
         spaceNavigationAnchorIdRef: { current: null },
-        setNodes,
         onSpacesChange,
         updateCanvasDocument,
         nodeCreation: { createNodeForSession, createNoteNode },

@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
+import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
 
 // Invariant 1 of #702 (S5 of #647): outside the files listed here, canvas code reads committed
@@ -29,6 +30,9 @@ const ALLOWED_FILES: Record<string, readonly string[]> = {
   onNodesCommitted: [],
   publishCommittedNodes: [],
   resolveCanvasDocumentBase: [],
+  // Retired by S7 (PR 2): it wrote the dragged windows' `selected` mirror into the document one
+  // frame after a drop, which the canvas view never read.
+  restoreSelectionAfterDrop: [],
 }
 
 function trackedSourceFiles(): string[] {
@@ -122,5 +126,382 @@ describe('canvas document channels', () => {
       [`${CANVAS_DIR}hooks/useNodesStore.createPluginNode.ts`]: [],
       [`${CANVAS_DIR}hooks/useRoleActions.ts`]: ['state => state.setAgentSettings'],
     })
+  })
+})
+
+// Decision 7 and 8 of S7 (#647): a hook gets the node writer from `useCanvasNodeWriter()`, not as a
+// parameter. Plain (non-hook) action functions keep taking it. The hooks that still declare one are
+// listed; each pull request of the slice shortens the list, and PR 9 leaves it empty. The check
+// reads what a hook declares, not what it is called: a parameter, a property of a destructured
+// parameter (under whatever local name), a property read from an object parameter (`props.x`,
+// `nodeStore.x` on a destructured `nodeStore`, `const { x } = props`), a member of a parameter type
+// (inline, or an interface or alias of the same file, with its `extends`), or a parameter type that
+// names a writer: `Store['setNodes']`, `Pick<Store, 'setNodes'>`, `CanvasNodeWriter`. So
+// `const write = props.updateCanvasDocument`, `{ updateCanvasDocument: write }` and
+// `write: CanvasNodeWriter['updateNodes']` are caught like `updateCanvasDocument`.
+const WRITER_NAMES = new Set(['setNodes', 'updateNodes', 'updateCanvasDocument'])
+
+function isHookName(name: string | undefined): name is string {
+  return name !== undefined && /^use[A-Z0-9]/.test(name)
+}
+
+function propertyNameText(name: ts.PropertyName | ts.BindingName | undefined): string | null {
+  if (!name) {
+    return null
+  }
+  if (ts.isIdentifier(name) || ts.isStringLiteral(name) || ts.isNumericLiteral(name)) {
+    return name.text
+  }
+  return null
+}
+
+/** The writer names a parameter of a hook declares, by its name, its pattern or its type. */
+function declaredWriterNames(
+  parameter: ts.ParameterDeclaration,
+  localTypes: ReadonlyMap<string, ts.Node>,
+): string[] {
+  const found = new Set<string>()
+  const check = (name: string | null) => {
+    if (name !== null && WRITER_NAMES.has(name)) {
+      found.add(name)
+    }
+  }
+  const visitPattern = (name: ts.BindingName) => {
+    if (ts.isIdentifier(name)) {
+      return
+    }
+    for (const element of name.elements) {
+      if (ts.isOmittedExpression(element)) {
+        continue
+      }
+      if (ts.isObjectBindingPattern(name)) {
+        // `{ updateCanvasDocument: write }` declares the property `updateCanvasDocument`.
+        check(propertyNameText(element.propertyName ?? element.name))
+      }
+      visitPattern(element.name)
+    }
+  }
+  if (ts.isIdentifier(parameter.name)) {
+    check(parameter.name.text)
+  } else {
+    visitPattern(parameter.name)
+  }
+  const visited = new Set<ts.Node>()
+  const visitType = (node: ts.Node) => {
+    if (visited.has(node)) {
+      return
+    }
+    visited.add(node)
+    if (ts.isPropertySignature(node) || ts.isMethodSignature(node)) {
+      check(propertyNameText(node.name))
+    }
+    // `Store['setNodes']` and `Pick<Store, 'setNodes' | ...>` name the writer in a literal type.
+    if (ts.isLiteralTypeNode(node) && ts.isStringLiteral(node.literal)) {
+      check(node.literal.text)
+    }
+    if (ts.isTypeReferenceNode(node) && ts.isIdentifier(node.typeName)) {
+      if (node.typeName.text === 'CanvasNodeWriter') {
+        found.add('updateNodes')
+        found.add('updateCanvasDocument')
+      }
+      // A parameter typed by an interface or alias of the same file: its members are declared too.
+      const declaration = localTypes.get(node.typeName.text)
+      if (declaration) {
+        visitType(declaration)
+      }
+    }
+    // `interface P extends Q`, with `Q` of the same file.
+    if (ts.isExpressionWithTypeArguments(node) && ts.isIdentifier(node.expression)) {
+      const declaration = localTypes.get(node.expression.text)
+      if (declaration) {
+        visitType(declaration)
+      }
+    }
+    ts.forEachChild(node, visitType)
+  }
+  if (parameter.type) {
+    visitType(parameter.type)
+  }
+  return [...found]
+}
+
+/**
+ * The hooks (`use*` functions) of `source` that declare a node writer parameter, as `name` or
+ * `name:parameterWriterName`. Reads of `props.updateCanvasDocument` on an identifier parameter
+ * count as a declaration.
+ */
+function hooksDeclaringWriterParameters(source: string, fileName = 'source.ts'): string[] {
+  const file = ts.createSourceFile(
+    fileName,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  )
+  const hooks: string[] = []
+  const localTypes = new Map<string, ts.Node>()
+  for (const statement of file.statements) {
+    if (ts.isInterfaceDeclaration(statement) || ts.isTypeAliasDeclaration(statement)) {
+      localTypes.set(statement.name.text, statement)
+    }
+  }
+  const inspect = (hookName: string, fn: ts.SignatureDeclaration & { body?: ts.Node }) => {
+    const names = new Set<string>()
+    const objectParameters = new Set<string>()
+    // Every identifier a parameter binds is an object parameter: `nodeStore` in `{ nodeStore }`.
+    const bindNames = (name: ts.BindingName) => {
+      if (ts.isIdentifier(name)) {
+        objectParameters.add(name.text)
+        return
+      }
+      for (const element of name.elements) {
+        if (!ts.isOmittedExpression(element)) {
+          bindNames(element.name)
+        }
+      }
+    }
+    for (const parameter of fn.parameters) {
+      declaredWriterNames(parameter, localTypes).forEach(name => names.add(name))
+      bindNames(parameter.name)
+    }
+    if (fn.body) {
+      const read = (node: ts.Node) => {
+        if (
+          ts.isPropertyAccessExpression(node) &&
+          ts.isIdentifier(node.expression) &&
+          objectParameters.has(node.expression.text) &&
+          WRITER_NAMES.has(node.name.text)
+        ) {
+          names.add(node.name.text)
+        }
+        if (
+          ts.isElementAccessExpression(node) &&
+          ts.isIdentifier(node.expression) &&
+          objectParameters.has(node.expression.text) &&
+          ts.isStringLiteralLike(node.argumentExpression) &&
+          WRITER_NAMES.has(node.argumentExpression.text)
+        ) {
+          names.add(node.argumentExpression.text)
+        }
+        // `const { setNodes } = nodeStore` in the body.
+        if (
+          ts.isVariableDeclaration(node) &&
+          ts.isObjectBindingPattern(node.name) &&
+          node.initializer &&
+          ts.isIdentifier(node.initializer) &&
+          objectParameters.has(node.initializer.text)
+        ) {
+          for (const element of node.name.elements) {
+            const name = propertyNameText(element.propertyName ?? element.name)
+            if (name !== null && WRITER_NAMES.has(name)) {
+              names.add(name)
+            }
+          }
+        }
+        ts.forEachChild(node, read)
+      }
+      read(fn.body)
+    }
+    for (const name of [...names].sort()) {
+      hooks.push(`${hookName}:${name}`)
+    }
+  }
+  const visit = (node: ts.Node) => {
+    if (ts.isFunctionDeclaration(node) && isHookName(node.name?.text)) {
+      inspect(node.name!.text, node)
+    }
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      isHookName(node.name.text) &&
+      node.initializer &&
+      (ts.isArrowFunction(node.initializer) || ts.isFunctionExpression(node.initializer))
+    ) {
+      inspect(node.name.text, node.initializer)
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(file)
+  return hooks.sort()
+}
+
+// The hooks under `workspaceCanvas/` that still take the node writer as a parameter, as
+// `~/<file>#<hook>:<name>`. Do not add a line: take the writer from `useCanvasNodeWriter()`.
+const HOOKS_WITH_WRITER_PARAMETERS: readonly string[] = [
+  '~/collapse/useCanvasCollapse.ts#useCanvasCollapse:updateCanvasDocument',
+  '~/hooks/useAgentLauncher.ts#useWorkspaceCanvasAgentLauncher:updateCanvasDocument',
+  '~/hooks/useAgentNodeLifecycle.ts#useWorkspaceCanvasAgentNodeLifecycle:setNodes',
+  '~/hooks/useAgentNodeSessionControls.ts#useAgentNodeSessionControls:setNodes',
+  '~/hooks/useAgentNodeSessionSwitch.ts#useAgentNodeSessionSwitch:setNodes',
+  '~/hooks/useArrange.ts#useWorkspaceCanvasArrange:updateCanvasDocument',
+  '~/hooks/useCanvasAgentSupport.ts#useWorkspaceCanvasAgentSupport:setNodes',
+  '~/hooks/useCanvasAgentSupport.ts#useWorkspaceCanvasAgentSupport:updateCanvasDocument',
+  '~/hooks/useCanvasImageImport.ts#useWorkspaceCanvasImageImport:updateCanvasDocument',
+  '~/hooks/useCanvasMenuActions.ts#useWorkspaceCanvasMenuActions:updateCanvasDocument',
+  '~/hooks/useCanvasRoleUi.ts#useWorkspaceCanvasRoleUi:setNodes',
+  '~/hooks/useCanvasRoleUi.ts#useWorkspaceCanvasRoleUi:updateCanvasDocument',
+  '~/hooks/useCanvasRuntimeBindings.ts#useWorkspaceCanvasRuntimeBindings:setNodes',
+  '~/hooks/useCanvasRuntimeIntegrations.ts#useWorkspaceCanvasRuntimeIntegrations:setNodes',
+  '~/hooks/useCanvasShortcutActions.ts#useWorkspaceCanvasShortcutActions:updateCanvasDocument',
+  '~/hooks/useCanvasSpaceExplorer.ts#useCanvasSpaceExplorer:setNodes',
+  '~/hooks/useCanvasSpaceExplorer.ts#useCanvasSpaceExplorer:updateCanvasDocument',
+  '~/hooks/useCanvasTaskSupport.ts#useWorkspaceCanvasTaskSupport:setNodes',
+  '~/hooks/useCanvasTaskSupport.ts#useWorkspaceCanvasTaskSupport:updateCanvasDocument',
+  '~/hooks/useCanvasTaskUi.ts#useWorkspaceCanvasTaskUi:setNodes',
+  '~/hooks/useCanvasTaskUi.ts#useWorkspaceCanvasTaskUi:updateCanvasDocument',
+  '~/hooks/useCanvasTaskWindows.ts#useWorkspaceCanvasTaskWindows:setNodes',
+  '~/hooks/useCanvasTaskWindows.ts#useWorkspaceCanvasTaskWindows:updateCanvasDocument',
+  '~/hooks/useCreatedNodePublisher.ts#useCreatedNodePublisher:setNodes',
+  '~/hooks/useFilesystemNodes.ts#useFilesystemNodes:setNodes',
+  '~/hooks/useFilesystemNodes.ts#useFilesystemNodes:updateCanvasDocument',
+  '~/hooks/useInteractions.flowNodeCreation.ts#useWorkspaceCanvasFlowNodeCreation:updateCanvasDocument',
+  '~/hooks/useInteractions.pasteHandlers.ts#useWorkspaceCanvasPasteHandlers:updateCanvasDocument',
+  '~/hooks/useInteractions.quickMenuActions.ts#useWorkspaceCanvasQuickMenuActions:updateCanvasDocument',
+  '~/hooks/useInteractions.terminalCreation.ts#useWorkspaceCanvasTerminalCreation:updateCanvasDocument',
+  '~/hooks/useInteractions.ts#useWorkspaceCanvasInteractions:updateCanvasDocument',
+  '~/hooks/useInteractions.websiteContextMenu.ts#useWebsiteNodeContextMenuCreation:updateCanvasDocument',
+  '~/hooks/useNodesStore.createFilesystemNodes.ts#useWorkspaceCanvasFilesystemNodeCreation:setNodes',
+  '~/hooks/useNodesStore.createNodes.ts#useWorkspaceCanvasNodeCreation:setNodes',
+  '~/hooks/useNodesStore.createRoleNode.ts#useWorkspaceCanvasRoleNodeCreation:setNodes',
+  '~/hooks/useNodesStore.createWebsiteNode.ts#useWorkspaceCanvasWebsiteNodeCreation:setNodes',
+  '~/hooks/useNodesStore.noteMutations.ts#useWorkspaceCanvasNoteNodeMutations:setNodes',
+  '~/hooks/useNodesStore.roleMutations.ts#useWorkspaceCanvasRoleNodeMutations:setNodes',
+  '~/hooks/useNodesStore.terminalAgentOverlay.ts#useTerminalAgentOverlayMutations:setNodes',
+  '~/hooks/useNodesStore.websiteMutations.ts#useWorkspaceCanvasWebsiteNodeMutations:setNodes',
+  '~/hooks/useNoteToTaskConversion.ts#useWorkspaceCanvasNoteToTaskConversion:updateCanvasDocument',
+  '~/hooks/usePtyTaskCompletion.ts#useWorkspaceCanvasPtyTaskCompletion:setNodes',
+  '~/hooks/useRoleActions.ts#useWorkspaceCanvasRoleActions:setNodes',
+  '~/hooks/useRoleActions.ts#useWorkspaceCanvasRoleActions:updateCanvasDocument',
+  '~/hooks/useSpaceDirectoryOps.ts#useWorkspaceCanvasSpaceDirectoryOps:updateCanvasDocument',
+  '~/hooks/useSpaceDrag.ts#useWorkspaceCanvasSpaceDrag:updateCanvasDocument',
+  '~/hooks/useSpaceExplorer.quickPreviewActions.ts#useWorkspaceCanvasSpaceExplorerQuickPreviewActions:setNodes',
+  '~/hooks/useSpaceExplorer.ts#useWorkspaceCanvasSpaceExplorer:setNodes',
+  '~/hooks/useSpaceExplorer.ts#useWorkspaceCanvasSpaceExplorer:updateCanvasDocument',
+  '~/hooks/useSpaceOwnership.applyDrop.ts#useWorkspaceCanvasApplyOwnershipForDrop:updateCanvasDocument',
+  '~/hooks/useSpaceOwnership.ts#useWorkspaceCanvasSpaceOwnership:updateCanvasDocument',
+  '~/hooks/useSpaces.createChildSpace.ts#useWorkspaceCanvasCreateChildSpace:updateCanvasDocument',
+  '~/hooks/useSpaces.createSpace.ts#useWorkspaceCanvasCreateSpace:updateCanvasDocument',
+  '~/hooks/useSpaces.ts#useWorkspaceCanvasSpaces:updateCanvasDocument',
+  '~/hooks/useTaskActions.ts#useWorkspaceCanvasTaskActions:setNodes',
+  '~/hooks/useTaskActions.ts#useWorkspaceCanvasTaskActions:updateCanvasDocument',
+  '~/hooks/useTaskEditor.ts#useWorkspaceCanvasTaskEditor:setNodes',
+  '~/hooks/useTaskNodeCreation.ts#useWorkspaceCanvasTaskNodeCreation:updateCanvasDocument',
+  '~/hooks/useTerminalAgentSessionActions.ts#useTerminalAgentSessionActions:setNodes',
+  '~/hooks/useWebsiteWindowOpenUrlNodeCreation.ts#useWebsiteWindowOpenUrlNodeCreation:updateCanvasDocument',
+  '~/hooks/useWorkspaceDocumentOpening.ts#useWorkspaceDocumentOpening:setNodes',
+  '~/hooks/useWorkspaceDocumentOpening.ts#useWorkspaceDocumentOpening:updateCanvasDocument',
+]
+
+describe('hooks do not take the node writer as a parameter', () => {
+  const canvasFiles = trackedSourceFiles().filter(file => file.startsWith(CANVAS_DIR))
+
+  it('flags a parameter, a destructured property, an alias and an inline type', () => {
+    const flagged = (source: string) => hooksDeclaringWriterParameters(source)
+
+    expect(flagged('export function useA(setNodes: Fn) {}')).toEqual(['useA:setNodes'])
+    expect(flagged('export function useA({ updateNodes }: P) {}')).toEqual(['useA:updateNodes'])
+    expect(flagged('export function useA({ updateCanvasDocument: write }: P) {}')).toEqual([
+      'useA:updateCanvasDocument',
+    ])
+    expect(flagged('export function useA({ a: { setNodes: write } }: P) {}')).toEqual([
+      'useA:setNodes',
+    ])
+    expect(
+      flagged('export function useA(props: P) { const write = props.updateCanvasDocument }'),
+    ).toEqual(['useA:updateCanvasDocument'])
+    expect(flagged("export function useA(props: P) { props['setNodes'](x) }")).toEqual([
+      'useA:setNodes',
+    ])
+    expect(flagged('export function useA(p: { setNodes: Fn; other: number }) {}')).toEqual([
+      'useA:setNodes',
+    ])
+    // A parameter typed by an interface or alias of the same file declares its members.
+    expect(flagged('interface P { updateNodes: Fn }\nexport function useA(p: P) {}')).toEqual([
+      'useA:updateNodes',
+    ])
+    expect(flagged('type P = { setNodes: Fn }\nexport function useA(p: P) {}')).toEqual([
+      'useA:setNodes',
+    ])
+    // A parameter that is renamed but typed as the writer, or names it in a literal type.
+    expect(flagged("export function useA(write: CanvasNodeWriter['updateNodes']) {}")).toEqual([
+      'useA:updateCanvasDocument',
+      'useA:updateNodes',
+    ])
+    expect(flagged("export function useA({ commit }: { commit: Store['setNodes'] }) {}")).toEqual([
+      'useA:setNodes',
+    ])
+    expect(flagged('export function useA(writer: CanvasNodeWriter) {}')).toEqual([
+      'useA:updateCanvasDocument',
+      'useA:updateNodes',
+    ])
+    expect(
+      flagged("type P = Pick<Store, 'updateCanvasDocument'>\nexport function useA(p: P) {}"),
+    ).toEqual(['useA:updateCanvasDocument'])
+    expect(
+      flagged(
+        'interface Q { setNodes: Fn }\ninterface P extends Q {}\nexport function useA(p: P) {}',
+      ),
+    ).toEqual(['useA:setNodes'])
+    // A writer inside an object parameter that the hook destructures or reads.
+    expect(
+      flagged('export function useA({ nodeStore }: P) { const { setNodes } = nodeStore }'),
+    ).toEqual(['useA:setNodes'])
+    expect(
+      flagged('export function useA({ nodeStore }: P) { nodeStore.updateCanvasDocument(x) }'),
+    ).toEqual(['useA:updateCanvasDocument'])
+    expect(flagged('export function useA(props: P) { const { setNodes } = props }')).toEqual([
+      'useA:setNodes',
+    ])
+    expect(flagged('export const useA = ({ updateNodes }: P) => {}')).toEqual(['useA:updateNodes'])
+    expect(flagged('export const useA = function ({ setNodes }: P) {}')).toEqual(['useA:setNodes'])
+    expect(flagged('function outer() { function useA(setNodes: Fn) {} }')).toEqual([
+      'useA:setNodes',
+    ])
+  })
+
+  // The five hooks that receive the writer inside a `nodeStore` or an options object, which the
+  // first version of the check did not see (found in review). They are in the list because later
+  // pull requests remove them.
+  it.each([
+    ['hooks/useFilesystemNodes.ts', 'useFilesystemNodes'],
+    ['hooks/useCanvasRoleUi.ts', 'useWorkspaceCanvasRoleUi'],
+    ['hooks/useCanvasSpaceExplorer.ts', 'useCanvasSpaceExplorer'],
+    ['hooks/useCanvasRuntimeIntegrations.ts', 'useWorkspaceCanvasRuntimeIntegrations'],
+    ['hooks/useInteractions.quickMenuActions.ts', 'useWorkspaceCanvasQuickMenuActions'],
+  ])('finds the writer that %s receives inside an object parameter', (file, hook) => {
+    const found = hooksDeclaringWriterParameters(readFileSync(CANVAS_DIR + file, 'utf8'), file)
+
+    expect(found.some(entry => entry.startsWith(`${hook}:`))).toBe(true)
+    expect(HOOKS_WITH_WRITER_PARAMETERS.some(entry => entry.startsWith(`~/${file}#${hook}:`))).toBe(
+      true,
+    )
+  })
+
+  it('does not flag what Decision 8 allows', () => {
+    const flagged = (source: string) => hooksDeclaringWriterParameters(source)
+
+    // A plain action function takes the writer explicitly.
+    expect(flagged('export function runAction({ updateNodes }: P) {}')).toEqual([])
+    expect(flagged('export const apply = (setNodes: Fn) => {}')).toEqual([])
+    // A hook takes it from the context, under whatever local name.
+    expect(
+      flagged('export function useA() { const { updateNodes: setNodes } = useCanvasNodeWriter() }'),
+    ).toEqual([])
+    // A callback inside a hook is not the hook's parameter.
+    expect(flagged('export function useA() { return (setNodes: Fn) => setNodes(x) }')).toEqual([])
+    // Another property of the same parameter.
+    expect(flagged('export function useA(props: P) { return props.other }')).toEqual([])
+  })
+
+  it('lists exactly the hooks under workspaceCanvas that still declare one', () => {
+    expect(canvasFiles.length).toBeGreaterThan(300)
+
+    const declared = canvasFiles.flatMap(file =>
+      hooksDeclaringWriterParameters(readFileSync(file, 'utf8'), file).map(
+        hook => `~/${file.slice(CANVAS_DIR.length)}#${hook}`,
+      ),
+    )
+
+    expect(declared.sort()).toEqual([...HOOKS_WITH_WRITER_PARAMETERS].sort())
   })
 })

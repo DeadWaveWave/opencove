@@ -118,7 +118,7 @@ describe('displayed interaction geometry', () => {
   })
 
   it('box selection only uses displayed cards and excludes hidden Space children', () => {
-    let nodes = [node('a'), { ...node('hidden', 400), selected: true }]
+    const nodes = [node('a'), { ...node('hidden', 400), selected: true }]
     const collapsed = { ...state, collapsedSpaceIds: { space: true as const } }
     const spaces = [
       { ...space, nodeIds: ['hidden'], rect: { x: 1000, y: 1000, width: 900, height: 800 } },
@@ -141,6 +141,7 @@ describe('displayed interaction geometry', () => {
         screenToFlowPosition: point => point,
         getNodes: () => nodes,
       } as ReactFlowInstance<Node<TerminalNodeData>>,
+      nodes,
       spaces,
       collapseState: collapsed,
       selection: {
@@ -150,12 +151,8 @@ describe('displayed interaction geometry', () => {
         clear: vi.fn(),
         retain: vi.fn(),
       },
-      setNodes: update => {
-        nodes = update(nodes)
-      },
     })
     expect(select).toHaveBeenCalledExactlyOnceWith({ nodeIds: [], spaceIds: [] })
-    expect(nodes.every(item => !item.selected)).toBe(true)
     expect(nodes[0].data.width).toBe(640)
   })
 

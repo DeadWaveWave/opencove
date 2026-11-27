@@ -13,7 +13,7 @@ export function useWorkspaceCanvasComposedNodeTypes({
 }: {
   nodeStore: Pick<
     import('./useNodesStore.types').UseWorkspaceCanvasNodesStoreResult,
-    'setNodes' | 'setNodeLabelColorOverride'
+    'setNodeLabelColorOverride'
   >
   workspacePath: string
   onShowMessage?: Parameters<typeof useWorkspaceCanvasNodeTypes>[0]['onShowMessage']
@@ -21,11 +21,8 @@ export function useWorkspaceCanvasComposedNodeTypes({
   actionRefs: WorkspaceCanvasActionRefs
   convertNoteToTask: (nodeId: string) => boolean
 }) {
-  const { setNodes, setNodeLabelColorOverride } = nodeStore
-  const selectNode: (nodeId: string, options?: { toggle?: boolean }) => void =
-    useWorkspaceCanvasSelectNode({
-      setNodes,
-    })
+  const { setNodeLabelColorOverride } = nodeStore
+  const selectNode = useWorkspaceCanvasSelectNode()
 
   return useWorkspaceCanvasNodeTypes({
     workspacePath,

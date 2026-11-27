@@ -28,14 +28,12 @@ import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 interface UseSpaceDragParams {
   workspaceId: string
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
-  setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']
   updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
 }
 
 export function useWorkspaceCanvasSpaceDrag({
   workspaceId,
   reactFlow,
-  setNodes,
   updateCanvasDocument,
 }: UseSpaceDragParams): {
   handleSpaceDragHandlePointerDown: (
@@ -218,33 +216,13 @@ export function useWorkspaceCanvasSpaceDrag({
         return
       }
 
-      setNodes(
-        prevNodes => {
-          let hasChanged = false
-          const nextNodes = prevNodes.map(node => {
-            if (!node.selected) {
-              return node
-            }
-
-            hasChanged = true
-            return {
-              ...node,
-              selected: false,
-            }
-          })
-
-          return hasChanged ? nextNodes : prevNodes
-        },
-        { syncLayout: false },
-      )
-
       selection.select({ nodeIds: [], spaceIds: [spaceId] })
       reactFlowStore.setState({
         nodesSelectionActive: false,
         coveDragSurfaceSelectionMode: false,
       } as unknown as Parameters<typeof reactFlowStore.setState>[0])
     },
-    [reactFlowStore, readSelection, selection, setNodes],
+    [reactFlowStore, readSelection, selection],
   )
 
   const finalizeSpaceInteraction = useCallback(
@@ -256,7 +234,11 @@ export function useWorkspaceCanvasSpaceDrag({
       const shouldTreatAsClick = Math.hypot(screenDx, screenDy) <= 6
 
       if (shouldTreatAsClick) {
-        finalizeSpaceDrag(dragState, 0, 0)
+        // A click moves nothing and writes nothing: no document write and no flush. It ends the
+        // overlay a frame within the click radius may have published, and the preview the pointer
+        // down set; its selection is a select only (S7, Decision 10).
+        endLiveNodes()
+        setSpaceDragFramePreview(null)
         applySpaceClickSelection(dragState.spaceId, { toggle: dragState.shiftKey })
         spaceDragStateRef.current = null
         spaceDragSawPointerMoveRef.current = false
@@ -280,10 +262,12 @@ export function useWorkspaceCanvasSpaceDrag({
     [
       applySpaceClickSelection,
       cancelScheduledSpaceDragPreview,
+      endLiveNodes,
       finalizeSpaceDrag,
       reactFlow,
       resolveProjectedDragDelta,
       setSnapGuides,
+      setSpaceDragFramePreview,
     ],
   )
 

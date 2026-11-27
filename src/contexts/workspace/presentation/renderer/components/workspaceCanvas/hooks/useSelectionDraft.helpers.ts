@@ -9,12 +9,7 @@ import {
 } from '../../../utils/canvasCollapse'
 import type { CanvasSelectionCommands } from '../../../store/canvasStore.selection'
 import { projectCanvasInteractionLayout } from '../../../utils/canvasInteractionLayout'
-import {
-  isPointInsideRect,
-  rectIntersects,
-  type Rect,
-  type SetNodes,
-} from './useSpaceOwnership.helpers'
+import { isPointInsideRect, rectIntersects, type Rect } from './useSpaceOwnership.helpers'
 
 export function resolveSelectionDraftRect(
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>,
@@ -57,21 +52,23 @@ function toggleSelectionIds(selectedAtStart: string[], intersectingIds: string[]
   return [...nextSelected]
 }
 
+/**
+ * Writes the marquee's selection to the selection slice with one `select`. The windows come from
+ * the committed `nodes` in document order; no flag of a node is read or written.
+ */
 export function applySelectionDraft({
   draft,
   reactFlow,
+  nodes,
   spaces: canonicalSpaces,
   selection,
-  setNodes,
-  forceDeselectIntersectingNodes = false,
   collapseState = EMPTY_CANVAS_COLLAPSE,
 }: {
   draft: SelectionDraftState
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
+  nodes: readonly Node<TerminalNodeData>[]
   spaces: WorkspaceSpaceState[]
   selection: CanvasSelectionCommands
-  setNodes: SetNodes
-  forceDeselectIntersectingNodes?: boolean
   collapseState?: CanvasCollapseState
 }): void {
   const hidden = getCollapsedSpaceHiddenIds(
@@ -150,78 +147,52 @@ export function applySelectionDraft({
     : new Set<string>()
   const selectedIds: string[] = []
 
-  setNodes(
-    previousNodes => {
-      let hasChanged = false
+  for (const node of nodes) {
+    if (hidden.has(node.id)) {
+      continue
+    }
+    const size = getNodeDisplaySize(node, collapseState.collapsedNodeIds)
+    const nodeRect: Rect = {
+      x: node.position.x,
+      y: node.position.y,
+      width: size.width,
+      height: size.height,
+    }
 
-      const nextNodes = previousNodes.map(node => {
-        if (hidden.has(node.id)) {
-          if (!node.selected) {
-            return node
-          }
-          hasChanged = true
-          return { ...node, selected: false }
-        }
-        const size = getNodeDisplaySize(node, collapseState.collapsedNodeIds)
-        const nodeRect: Rect = {
-          x: node.position.x,
-          y: node.position.y,
-          width: size.width,
-          height: size.height,
-        }
+    const nodeCenter = {
+      x: node.position.x + size.width / 2,
+      y: node.position.y + size.height / 2,
+    }
 
-        const nodeCenter = {
-          x: node.position.x + size.width / 2,
-          y: node.position.y + size.height / 2,
+    const nodeScope =
+      spaces.find(space => {
+        if (!space.rect) {
+          return false
         }
 
-        const nodeScope =
-          spaces.find(space => {
-            if (!space.rect) {
-              return false
-            }
+        return isPointInsideRect(nodeCenter, space.rect)
+      })?.id ?? null
 
-            return isPointInsideRect(nodeCenter, space.rect)
-          })?.id ?? null
+    const intersects = rectIntersects(nodeRect, draftRect)
 
-        const intersects = rectIntersects(nodeRect, draftRect)
+    const allowedBySpace = selectionIsInSpace
+      ? Boolean(startSpaceRect && isPointInsideRect(nodeCenter, startSpaceRect))
+      : !intersectingSpaceRects.some(rect => isPointInsideRect(nodeCenter, rect))
 
-        const allowedBySpace = selectionIsInSpace
-          ? Boolean(startSpaceRect && isPointInsideRect(nodeCenter, startSpaceRect))
-          : !intersectingSpaceRects.some(rect => isPointInsideRect(nodeCenter, rect))
+    const intersectsSelectableArea = intersects && allowedBySpace
+    let isSelected = intersectsSelectableArea
 
-        const intersectsSelectableArea = intersects && allowedBySpace
-        let isSelected = intersectsSelectableArea
+    if (draft.toggleSelection) {
+      isSelected = nodeScope === draftScope && selectedAtStart.has(node.id)
+      if (intersectsSelectableArea) {
+        isSelected = !isSelected
+      }
+    }
 
-        if (draft.toggleSelection) {
-          isSelected = nodeScope === draftScope && selectedAtStart.has(node.id)
-          if (intersectsSelectableArea) {
-            isSelected = !isSelected
-          }
-        }
-
-        if (isSelected) {
-          selectedIds.push(node.id)
-        }
-
-        const shouldForceDeselectSync =
-          !draft.toggleSelection && forceDeselectIntersectingNodes && intersects && !allowedBySpace
-
-        if (node.selected === isSelected && !shouldForceDeselectSync) {
-          return node
-        }
-
-        hasChanged = true
-        return {
-          ...node,
-          selected: isSelected,
-        }
-      })
-
-      return hasChanged ? nextNodes : previousNodes
-    },
-    { syncLayout: false },
-  )
+    if (isSelected) {
+      selectedIds.push(node.id)
+    }
+  }
 
   selection.select({ nodeIds: selectedIds, spaceIds: nextSelectedSpaceIds })
 }

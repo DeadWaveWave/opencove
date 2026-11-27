@@ -12,7 +12,6 @@ import {
   collectDraggedNodePositions,
   resolveSpaceAtPoint as resolveSpaceAtPointFromHelpers,
 } from './useSpaceOwnership.drop.helpers'
-import { type SetNodes } from './useSpaceOwnership.helpers'
 import { useWorkspaceCanvasApplyOwnershipForDrop } from './useSpaceOwnership.applyDrop'
 import { useWorkspaceCanvasSpaceOwnershipWorktreeWarning } from './useSpaceOwnership.worktreeWarning'
 import type { WorkspaceCanvasNodeDragSession } from './useNodeDragSession.types'
@@ -27,7 +26,6 @@ export function useWorkspaceCanvasSpaceOwnership({
   reactFlow,
   nodeDragSession,
   exclusiveNodeDragAnchorIdRef,
-  setNodes,
   updateCanvasDocument,
   onShowMessage,
   hideWorktreeMismatchDropWarning,
@@ -41,7 +39,6 @@ export function useWorkspaceCanvasSpaceOwnership({
     'captureDragStartSpaceSelection' | 'getDragStartSpaceSelection' | 'clearDragStartSpaceSelection'
   >
   exclusiveNodeDragAnchorIdRef: React.MutableRefObject<string | null>
-  setNodes: SetNodes
   updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
   onShowMessage?: ShowWorkspaceCanvasMessage
   hideWorktreeMismatchDropWarning: boolean
@@ -106,7 +103,6 @@ export function useWorkspaceCanvasSpaceOwnership({
     workspaceId,
     workspacePath,
     reactFlow,
-    setNodes,
     updateCanvasDocument,
     onShowMessage,
     resolveSpaceAtPoint: resolveDropTargetSpaceAtPoint,
@@ -140,7 +136,6 @@ export function useWorkspaceCanvasSpaceOwnership({
     applyOwnershipForDrop,
     reactFlow,
     resolveDropTargetSpaceAtPoint,
-    setNodes,
     hideWorktreeMismatchDropWarning,
     workspacePath,
     t,
@@ -191,24 +186,6 @@ export function useWorkspaceCanvasSpaceOwnership({
       if (shouldReplaceSelection) {
         exclusiveNodeDragAnchorIdRef.current = node.id
 
-        setNodes(
-          prevNodes => {
-            let hasChanged = false
-            const nextNodes = prevNodes.map(item => {
-              const shouldSelect = item.id === node.id
-              if (item.selected === shouldSelect) {
-                return item
-              }
-
-              hasChanged = true
-              return { ...item, selected: shouldSelect }
-            })
-
-            return hasChanged ? nextNodes : prevNodes
-          },
-          { syncLayout: false },
-        )
-
         selection.select({ nodeIds: [node.id], spaceIds: [] })
         reactFlowStore.setState({
           nodesSelectionActive: true,
@@ -228,7 +205,6 @@ export function useWorkspaceCanvasSpaceOwnership({
       reactFlow,
       reactFlowStore,
       selection,
-      setNodes,
     ],
   )
 

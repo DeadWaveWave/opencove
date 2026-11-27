@@ -4,12 +4,7 @@ import type { TranslateFn } from '@app/renderer/i18n'
 import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
 import { validateSpaceTransfer } from '../helpers'
 import type { ShowWorkspaceCanvasMessage } from '../types'
-import {
-  applyDirectoryExpectationForDrop,
-  computeBoundingRect,
-  restoreSelectionAfterDrop,
-  type SetNodes,
-} from './useSpaceOwnership.helpers'
+import { applyDirectoryExpectationForDrop, computeBoundingRect } from './useSpaceOwnership.helpers'
 import {
   buildDraggedNodesForTarget,
   reassignNodesAcrossSpaces,
@@ -26,6 +21,7 @@ import {
 import { buildOwningSpaceIdByNodeId } from './workspaceLayoutPolicy'
 import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 import { useReadCanvasDocument } from '../../../store/canvasStoreContext'
+import { useCanvasNodeWriter } from './useCanvasNodeWriter'
 
 function rectEquals(a: WorkspaceSpaceRect | null, b: WorkspaceSpaceRect | null): boolean {
   if (a === b) {
@@ -74,7 +70,6 @@ export function useWorkspaceCanvasApplyOwnershipForDrop({
   workspaceId,
   workspacePath,
   reactFlow,
-  setNodes,
   updateCanvasDocument,
   onShowMessage,
   resolveSpaceAtPoint,
@@ -83,13 +78,13 @@ export function useWorkspaceCanvasApplyOwnershipForDrop({
   workspaceId?: string
   workspacePath: string
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
-  setNodes: SetNodes
   updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
   onShowMessage?: ShowWorkspaceCanvasMessage
   resolveSpaceAtPoint: (point: { x: number; y: number }) => WorkspaceSpaceState | null
   t: TranslateFn
 }): (input: ApplyOwnershipForDropInput, options?: { allowDirectoryMismatch?: boolean }) => void {
   const readDocument = useReadCanvasDocument()
+  const { updateNodes } = useCanvasNodeWriter()
   return useCallback(
     (
       {
@@ -175,7 +170,7 @@ export function useWorkspaceCanvasApplyOwnershipForDrop({
         )
 
         if (validationError) {
-          setNodes(
+          updateNodes(
             prevNodes => {
               let hasChanged = false
 
@@ -203,7 +198,6 @@ export function useWorkspaceCanvasApplyOwnershipForDrop({
             { syncLayout: false },
           )
 
-          restoreSelectionAfterDrop({ selectedNodeIds: nodeIds, setNodes })
           onShowMessage?.(validationError, 'warning')
           return
         }
@@ -322,19 +316,18 @@ export function useWorkspaceCanvasApplyOwnershipForDrop({
         nodeIds,
         targetSpace,
         workspacePath,
-        setNodes,
+        updateNodes,
         flush: true,
       })
-      restoreSelectionAfterDrop({ selectedNodeIds: nodeIds, setNodes })
     },
     [
       onShowMessage,
       readDocument,
       reactFlow,
       resolveSpaceAtPoint,
-      setNodes,
       t,
       updateCanvasDocument,
+      updateNodes,
       workspacePath,
       workspaceId,
     ],

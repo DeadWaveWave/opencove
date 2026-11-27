@@ -364,7 +364,6 @@ describe('the writer that launch callers hand to the mount repair and the bindin
       canvasRef: { current: canvas },
       reactFlow: { screenToFlowPosition: (point: unknown) => point },
       spaceNavigationAnchorIdRef: { current: null },
-      setNodes,
       onSpacesChange,
       nodeCreation: { createNodeForSession, createNoteNode: vi.fn() },
       launchAgentAtFlowPosition: vi.fn(),

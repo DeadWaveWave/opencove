@@ -21,7 +21,6 @@ import {
 import { CANVAS_STORE_TEST_WORKSPACE_ID } from '../../support/canvasStoreTestHarness'
 import {
   SelectionWritersWrapper,
-  createNodeHolder,
   createRowNodes,
   createSpace,
 } from '../../support/canvasSelectionFixtures'
@@ -226,7 +225,6 @@ describe('createSpaceFromSelectedNodes in useWorkspaceCanvasCreateSpace', () => 
 describe('spatial navigation in useWorkspaceCanvasShortcutActions', () => {
   function setup(options: { nodeIds: string[]; withSpaces?: boolean }) {
     vi.stubGlobal('opencoveApi', { meta: { platform: 'darwin' } })
-    const holder = createNodeHolder(createRowNodes(['a', 'b', 'c']))
     const canvas = document.createElement('div')
     document.body.append(canvas)
     const spaces = options.withSpaces
@@ -239,7 +237,7 @@ describe('spatial navigation in useWorkspaceCanvasShortcutActions', () => {
     // The shortcuts read the committed document of the workspace of the provider.
     createCanvasDocumentHarness({
       workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID,
-      nodes: holder.nodes,
+      nodes: createRowNodes(['a', 'b', 'c']),
       spaces,
     })
     const activateSpace = vi.fn()
@@ -266,7 +264,6 @@ describe('spatial navigation in useWorkspaceCanvasShortcutActions', () => {
           canvasRef: { current: canvas },
           reactFlow,
           spaceNavigationAnchorIdRef: { current: null },
-          setNodes: holder.setNodes,
           updateCanvasDocument: vi.fn(),
           nodeCreation: {
             createNodeForSession: vi.fn(async () => null),
@@ -298,7 +295,7 @@ describe('spatial navigation in useWorkspaceCanvasShortcutActions', () => {
           }),
         )
       })
-    return { holder, activateSpace, clearNodeSelection, press, ...hook }
+    return { activateSpace, clearNodeSelection, press, ...hook }
   }
 
   it('moves the selection from the window the store names to its neighbour', () => {

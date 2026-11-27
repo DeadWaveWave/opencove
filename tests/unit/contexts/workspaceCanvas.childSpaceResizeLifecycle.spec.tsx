@@ -44,7 +44,6 @@ function renderNestedResize() {
         screenToFlowPosition: point => point,
         getZoom: () => 1,
       },
-      setNodes: nodeStore.setNodes,
       updateCanvasDocument: nodeStore.updateCanvasDocument,
     })
     return {

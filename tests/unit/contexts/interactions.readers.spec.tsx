@@ -13,6 +13,7 @@ import { useWorkspaceCanvasSelectionDraft } from '../../../src/contexts/workspac
 import { useWorkspaceCanvasSelectNode } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSelectNode'
 import { useWorkspaceCanvasShortcuts } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useShortcuts'
 import {
+  useCanvasSelectionCommands,
   useCanvasUiCommands,
   useReadCanvasSelection,
   useReadCanvasUi,
@@ -26,11 +27,7 @@ import {
   createCanvasDocumentHarness,
   renderInCanvasDocument,
 } from '../../support/canvasDocumentHarness'
-import {
-  createNodeHolder,
-  createRowNodes,
-  createSpace,
-} from '../../support/canvasSelectionFixtures'
+import { createRowNodes, createSpace } from '../../support/canvasSelectionFixtures'
 import { CREATED, lastCall } from '../../support/pushAwayCallerHarness'
 import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
 
@@ -83,7 +80,6 @@ const assignMock = assignNodeToSpaceAndExpand as unknown as Mock
 
 const WIDE = { x: -5000, y: -5000, width: 10000, height: 10000 }
 const PANE_MENU = { kind: 'pane', x: 20, y: 20, flowX: 400, flowY: 300 } as const
-const setNodes = vi.fn()
 const updateCanvasDocument = vi.fn()
 const createNodeForSession = vi.fn(async () => CREATED)
 const createNoteNode = vi.fn(() => CREATED)
@@ -125,14 +121,17 @@ async function observeInBothWorkspaces<Result, Found>({
   useHook,
   invoke,
   spaces = wideSpaces(),
+  nodes = [],
 }: {
   useHook: () => Result
   invoke: (current: { hook: Result; ui: ReturnType<typeof useCanvasUiCommands> }) => Promise<Found>
   spaces?: Pair
+  /** The nodes of both workspaces. */
+  nodes?: Node<TerminalNodeData>[]
 }): Promise<[Found, Found]> {
-  createCanvasDocumentHarness({ workspaceId: 'workspace-a' })
+  createCanvasDocumentHarness({ workspaceId: 'workspace-a', nodes })
   useAppStore.setState(state => ({
-    workspaces: [...state.workspaces, { ...state.workspaces[0], id: 'workspace-b' }],
+    workspaces: [...state.workspaces, { ...state.workspaces[0], id: 'workspace-b', nodes }],
   }))
   let shown = 'workspace-a'
   const view = renderInCanvasDocument(() => ({ ui: useCanvasUiCommands(), hook: useHook() }), {
@@ -210,7 +209,6 @@ describe('the node creation callbacks of the interactions', () => {
     isShiftPressedRef: { current: false },
     selectionDraftRef: { current: null },
     reactFlow,
-    setNodes,
     updateCanvasDocument,
     workspaceId: 'workspace',
     workspacePath: '/repo',
@@ -343,7 +341,6 @@ describe('the shortcuts that create a node', () => {
     canvasRef,
     reactFlow,
     spaceNavigationAnchorIdRef: { current: null },
-    setNodes,
     updateCanvasDocument,
     nodeCreation: { createNodeForSession, createNoteNode },
     launchAgentAtFlowPosition: vi.fn(),
@@ -378,14 +375,18 @@ describe('the selection hooks', () => {
   // The canvas store's commands keep the value of the first render, so only the reader of the
   // render can make a callback follow the workspace shown.
   it('scopes a toggle by the Spaces of the workspace of the render', async () => {
-    const holder = createNodeHolder(createRowNodes(['a', 'b', 'c'], ['a']))
     const found = await observeInBothWorkspaces({
-      useHook: () => useWorkspaceCanvasSelectNode({ setNodes: holder.setNodes }),
+      useHook: () => ({
+        select: useWorkspaceCanvasSelectNode(),
+        selection: useCanvasSelectionCommands(),
+        readSelection: useReadCanvasSelection(),
+      }),
       invoke: async ({ hook }) => {
-        holder.setNodes(nodes => nodes.map(node => ({ ...node, selected: node.id === 'a' })))
-        hook('c', { toggle: true })
-        return holder.selectedIds
+        hook.selection.select({ nodeIds: ['a'], spaceIds: [] })
+        hook.select('c', { toggle: true })
+        return hook.readSelection().nodeIds
       },
+      nodes: createRowNodes(['a', 'b', 'c']),
       // Notes a and b are 300 wide at x 0 and 400; c is at x 800.
       spaces: [
         createSpace('space-a', { x: -50, y: -50, width: 700, height: 400 }, ['a', 'b']),
@@ -397,10 +398,10 @@ describe('the selection hooks', () => {
   })
 
   // Built once: a callback that is rebuilt only for another reason would hide a missing reader.
-  const marqueeNodes = createNodeHolder(createRowNodes(['a', 'b', 'c']))
+  const marqueeNodes = createRowNodes(['a', 'b', 'c'])
   const marqueeFlow = {
     screenToFlowPosition: (point: { x: number; y: number }) => point,
-    getNodes: () => marqueeNodes.nodes as Node<TerminalNodeData>[],
+    getNodes: () => marqueeNodes,
   } as unknown as ReactFlowInstance<Node<TerminalNodeData>>
   const marqueeShift = { current: false }
   function useMarquee(draftRef: { current: SelectionDraftState | null }) {
@@ -411,7 +412,6 @@ describe('the selection hooks', () => {
         isShiftPressedRef: marqueeShift,
         selectionDraftRef: draftRef,
         reactFlow: marqueeFlow,
-        setNodes: marqueeNodes.setNodes,
       }),
       readSelection: useReadCanvasSelection(),
     }

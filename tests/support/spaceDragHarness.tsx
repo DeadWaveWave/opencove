@@ -11,6 +11,7 @@ import {
   useCanvasInteractionCommands,
   useCanvasSelectionCommands,
   useReadCanvasInteraction,
+  useReadCanvasSelection,
 } from '../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
 import { commitCanvasDocument } from '../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import type {
@@ -32,7 +33,6 @@ import { createRowNodes, createSpace } from './canvasSelectionFixtures'
 export const SPACE_A_RECT = { x: 0, y: 0, width: 600, height: 400 }
 export const INSIDE_A = { x: 300, y: 200 }
 
-type SetNodes = UseWorkspaceCanvasNodesStoreResult['setNodes']
 type UpdateCanvasDocument = UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
 
 export function nodeAt(id: string, x: number, y: number): Node<TerminalNodeData> {
@@ -53,10 +53,10 @@ function useDragUnderTest({ workspaceId, nodeStore }: CanvasNodeStoreContext) {
     drag: useWorkspaceCanvasSpaceDrag({
       workspaceId,
       reactFlow: { ...flow, screenToFlowPosition: point => point, getZoom: () => 1 },
-      setNodes: nodeStore.setNodes,
       updateCanvasDocument: nodeStore.updateCanvasDocument,
     }),
     selection: useCanvasSelectionCommands(),
+    readSelection: useReadCanvasSelection(),
     interaction: useCanvasInteractionCommands(),
     readInteraction: useReadCanvasInteraction(),
   }
@@ -67,6 +67,7 @@ export interface DragView {
     current: {
       drag: Pick<ReturnType<typeof useWorkspaceCanvasSpaceDrag>, 'handleSpaceDragHandlePointerDown'>
       readInteraction: () => CanvasInteractionState
+      readSelection: () => { nodeIds: readonly string[]; spaceIds: readonly string[] }
       interaction: { setSnapGuides: (guides: never) => void }
     }
   }
@@ -137,14 +138,7 @@ export function renderSwitchingSpaceDrag() {
     ],
   }))
   let shown = 'workspace-a'
-  // Stable writers: only the reader (and the workspace id) can change when the user switches.
-  const setNodes: SetNodes = (updater, options) => {
-    commitCanvasDocument(
-      shown,
-      document => ({ ...document, nodes: updater(document.nodes) }),
-      options,
-    )
-  }
+  // A stable writer: only the reader (and the workspace id) can change when the user switches.
   const updateCanvasDocument: UpdateCanvasDocument = (recipe, options) => {
     commitCanvasDocument(shown, document => ({ ...document, ...recipe(document) }), options)
   }
@@ -162,7 +156,6 @@ export function renderSwitchingSpaceDrag() {
         drag: useWorkspaceCanvasSpaceDrag({
           workspaceId: shown,
           reactFlow,
-          setNodes,
           updateCanvasDocument,
         }),
       }

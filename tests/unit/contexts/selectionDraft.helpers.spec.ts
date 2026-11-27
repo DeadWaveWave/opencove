@@ -76,7 +76,7 @@ const identityReactFlow = {
 
 describe('applySelectionDraft', () => {
   it('toggles intersecting nodes during shift marquee selection', () => {
-    let nodes = [
+    const nodes = [
       createNode('node-a', { x: 20, y: 20, selected: true }),
       createNode('node-b', { x: 160, y: 20, selected: false }),
     ]
@@ -90,13 +90,9 @@ describe('applySelectionDraft', () => {
       reactFlow: identityReactFlow,
       spaces: [],
       selection: selection.commands,
-      setNodes: updater => {
-        nodes = updater(nodes)
-      },
+      nodes,
     })
 
-    expect(nodes.find(node => node.id === 'node-a')?.selected).toBe(false)
-    expect(nodes.find(node => node.id === 'node-b')?.selected).toBe(true)
     expect(selection.selectCalls).toEqual([{ nodeIds: ['node-b'], spaceIds: [] }])
     expect(selection.commands.setNodeIds).not.toHaveBeenCalled()
     expect(selection.commands.setSpaceIds).not.toHaveBeenCalled()
@@ -131,16 +127,14 @@ describe('applySelectionDraft', () => {
       reactFlow: identityReactFlow,
       spaces,
       selection: selection.commands,
-      setNodes: updater => {
-        updater([])
-      },
+      nodes: [],
     })
 
     expect(selection.selectCalls).toEqual([{ nodeIds: [], spaceIds: [] }])
   })
 
   it('drops out-of-scope selected nodes during shift marquee selection inside a space', () => {
-    let nodes = [
+    const nodes = [
       createNode('node-in', { x: 40, y: 40, selected: false }),
       createNode('node-out', { x: 420, y: 40, selected: true }),
     ]
@@ -171,18 +165,14 @@ describe('applySelectionDraft', () => {
       reactFlow: identityReactFlow,
       spaces,
       selection: selection.commands,
-      setNodes: updater => {
-        nodes = updater(nodes)
-      },
+      nodes,
     })
 
-    expect(nodes.find(node => node.id === 'node-in')?.selected).toBe(true)
-    expect(nodes.find(node => node.id === 'node-out')?.selected).toBe(false)
     expect(selection.selectCalls).toEqual([{ nodeIds: ['node-in'], spaceIds: [] }])
   })
 
   it('resolves inside-space scope from current spaces when the draft start scope is stale', () => {
-    let nodes = [
+    const nodes = [
       createNode('node-in', { x: 40, y: 40, selected: false }),
       createNode('node-out', { x: 420, y: 40, selected: false }),
     ]
@@ -215,18 +205,14 @@ describe('applySelectionDraft', () => {
       reactFlow: identityReactFlow,
       spaces,
       selection: selection.commands,
-      setNodes: updater => {
-        nodes = updater(nodes)
-      },
+      nodes,
     })
 
-    expect(nodes.find(node => node.id === 'node-in')?.selected).toBe(true)
-    expect(nodes.find(node => node.id === 'node-out')?.selected).toBe(false)
     expect(selection.selectCalls).toEqual([{ nodeIds: ['node-in'], spaceIds: [] }])
   })
 
   it('drops out-of-scope selected nodes during shift marquee selection outside spaces', () => {
-    let nodes = [
+    const nodes = [
       createNode('node-in', { x: 40, y: 40, selected: true }),
       createNode('node-out', { x: 420, y: 40, selected: false }),
     ]
@@ -261,13 +247,9 @@ describe('applySelectionDraft', () => {
       reactFlow: identityReactFlow,
       spaces,
       selection: selection.commands,
-      setNodes: updater => {
-        nodes = updater(nodes)
-      },
+      nodes,
     })
 
-    expect(nodes.find(node => node.id === 'node-in')?.selected).toBe(false)
-    expect(nodes.find(node => node.id === 'node-out')?.selected).toBe(true)
     expect(selection.selectCalls).toEqual([{ nodeIds: ['node-out'], spaceIds: [] }])
   })
 })

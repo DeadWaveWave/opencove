@@ -8,16 +8,81 @@ import {
   useReadCanvasSelection,
 } from '../../../store/canvasStoreContext'
 
-type SetNodes = (
-  updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-  options?: { syncLayout?: boolean },
-) => void
+function resolveContainingSpaceId(
+  node: Node<TerminalNodeData>,
+  spaces: readonly WorkspaceSpaceState[],
+): string | null {
+  const center = {
+    x: node.position.x + node.data.width / 2,
+    y: node.position.y + node.data.height / 2,
+  }
 
-export function useWorkspaceCanvasSelectNode({
-  setNodes,
+  for (const space of spaces) {
+    if (!space.rect) {
+      continue
+    }
+
+    if (isPointInsideRect(center, space.rect)) {
+      return space.id
+    }
+  }
+
+  return null
+}
+
+/**
+ * The windows selected after a click on `nodeId`, in document order. Which windows are selected
+ * now is the selection slice's (`selectedNodeIds`); the document's nodes only give the order and
+ * the positions, and its Spaces the scope. Nothing here reads a flag of a document node.
+ */
+function resolveNextSelectedNodeIds({
+  nodeId,
+  toggle,
+  nodes,
+  spaces,
+  selectedNodeIds,
 }: {
-  setNodes: SetNodes
-}): (nodeId: string, options?: { toggle?: boolean }) => void {
+  nodeId: string
+  toggle: boolean
+  nodes: readonly Node<TerminalNodeData>[]
+  spaces: readonly WorkspaceSpaceState[]
+  selectedNodeIds: ReadonlySet<string>
+}): string[] {
+  if (toggle) {
+    const targetNode = nodes.find(node => node.id === nodeId) ?? null
+    const targetScope = targetNode ? resolveContainingSpaceId(targetNode, spaces) : null
+    const toggledSelectedIds: string[] = []
+
+    for (const node of nodes) {
+      const isInScope = resolveContainingSpaceId(node, spaces) === targetScope
+      const wasSelected = selectedNodeIds.has(node.id)
+      const isSelected = isInScope && (node.id === nodeId ? !wasSelected : wasSelected)
+
+      if (isSelected) {
+        toggledSelectedIds.push(node.id)
+      }
+    }
+
+    return toggledSelectedIds
+  }
+
+  const isAlreadySelected = selectedNodeIds.has(nodeId) && nodes.some(node => node.id === nodeId)
+  if (isAlreadySelected) {
+    return nodes.filter(node => selectedNodeIds.has(node.id)).map(node => node.id)
+  }
+
+  return [nodeId]
+}
+
+/**
+ * Selects a window, or toggles it within its Space scope. It writes the selection slice and React
+ * Flow's two selection flags, and nothing else: the document does not carry the selection (S7,
+ * PR 2). It computes from the slice and the document when it runs.
+ */
+export function useWorkspaceCanvasSelectNode(): (
+  nodeId: string,
+  options?: { toggle?: boolean },
+) => void {
   const reactFlowStore = useStoreApi()
   const readDocument = useReadCanvasDocument()
   const readSelection = useReadCanvasSelection()
@@ -26,98 +91,17 @@ export function useWorkspaceCanvasSelectNode({
   return useCallback(
     (nodeId: string, options?: { toggle?: boolean }) => {
       const shouldToggle = options?.toggle === true
-      let nextSelectedNodeIds: readonly string[] = readSelection().nodeIds
-
-      const resolveContainingSpaceId = (
-        node: Node<TerminalNodeData>,
-        spaces: WorkspaceSpaceState[],
-      ): string | null => {
-        const center = {
-          x: node.position.x + node.data.width / 2,
-          y: node.position.y + node.data.height / 2,
-        }
-
-        for (const space of spaces) {
-          if (!space.rect) {
-            continue
-          }
-
-          if (isPointInsideRect(center, space.rect)) {
-            return space.id
-          }
-        }
-
-        return null
-      }
-
-      setNodes(
-        prevNodes => {
-          let hasChanged = false
-
-          if (shouldToggle) {
-            const toggledSelectedIds: string[] = []
-            const spaces = readDocument().spaces
-            const targetNode = prevNodes.find(node => node.id === nodeId) ?? null
-            const targetScope = targetNode ? resolveContainingSpaceId(targetNode, spaces) : null
-
-            const nextNodes = prevNodes.map(node => {
-              let nextSelected = node.selected
-              const isInScope = resolveContainingSpaceId(node, spaces) === targetScope
-
-              if (!isInScope) {
-                nextSelected = false
-              }
-
-              if (isInScope && node.id === nodeId) {
-                nextSelected = !node.selected
-              }
-
-              if (nextSelected) {
-                toggledSelectedIds.push(node.id)
-              }
-
-              if (node.selected === nextSelected) {
-                return node
-              }
-
-              hasChanged = true
-              return {
-                ...node,
-                selected: nextSelected,
-              }
-            })
-
-            nextSelectedNodeIds = toggledSelectedIds
-            return hasChanged ? nextNodes : prevNodes
-          }
-
-          const isAlreadySelected = prevNodes.some(node => node.id === nodeId && node.selected)
-          if (isAlreadySelected) {
-            nextSelectedNodeIds = prevNodes.filter(node => node.selected).map(node => node.id)
-            return prevNodes
-          }
-
-          nextSelectedNodeIds = [nodeId]
-          const nextNodes = prevNodes.map(node => {
-            const shouldSelect = node.id === nodeId
-            if (node.selected === shouldSelect) {
-              return node
-            }
-
-            hasChanged = true
-            return {
-              ...node,
-              selected: shouldSelect,
-            }
-          })
-
-          return hasChanged ? nextNodes : prevNodes
-        },
-        { syncLayout: false },
-      )
-
       // `before` is the selection the click found, read before this call writes it.
       const before = readSelection()
+      const { nodes, spaces } = readDocument()
+      const nextSelectedNodeIds = resolveNextSelectedNodeIds({
+        nodeId,
+        toggle: shouldToggle,
+        nodes,
+        spaces,
+        selectedNodeIds: new Set(before.nodeIds),
+      })
+
       const shouldClearSpaces =
         !shouldToggle &&
         nextSelectedNodeIds.includes(nodeId) &&
@@ -133,6 +117,6 @@ export function useWorkspaceCanvasSelectNode({
         coveDragSurfaceSelectionMode: shouldToggle && hasAnySelection,
       } as unknown as Parameters<typeof reactFlowStore.setState>[0])
     },
-    [reactFlowStore, readDocument, readSelection, selection, setNodes],
+    [reactFlowStore, readDocument, readSelection, selection],
   )
 }
