@@ -44,10 +44,10 @@ export function useWorkspaceCanvasNodesStore({
   const reactFlow = useReactFlow<Node<TerminalNodeData>, Edge>()
   // What this store reads to act on a node, and its creators to place a new one, is the committed
   // document as it is when the call runs, for the workspace of this render. It writes through the
-  // canvas's node writer under the name its callers know, `setNodes`.
+  // canvas's node writer, `updateNodes`; the result still offers it as `setNodes` until PR 8.
   const readDocument = useReadCanvasDocument()
   const { requestPersistFlush } = useCanvasDocumentCommands()
-  const { updateNodes: setNodes, updateCanvasDocument } = useCanvasNodeWriter()
+  const { updateNodes, updateCanvasDocument } = useCanvasNodeWriter()
   const agentLaunchTokenByNodeIdRef = useRef<Map<string, number>>(new Map())
   const pendingScrollbackByNodeRef = useRef<Map<string, string>>(new Map())
   const isNodeDraggingRef = useRef(false)
@@ -114,12 +114,12 @@ export function useWorkspaceCanvasNodesStore({
     }
   }, [nodes])
   const { updateTerminalTitle, clearTerminalAgentOverlay } =
-    useTerminalAgentOverlayMutations(setNodes)
+    useTerminalAgentOverlayMutations(updateNodes)
   const upsertNode = useCallback(
     (nextNode: Node<TerminalNodeData>) => {
-      setNodes(prevNodes => prevNodes.map(node => (node.id === nextNode.id ? nextNode : node)))
+      updateNodes(prevNodes => prevNodes.map(node => (node.id === nextNode.id ? nextNode : node)))
     },
-    [setNodes],
+    [updateNodes],
   )
   const bumpAgentLaunchToken = useCallback((nodeId: string): number => {
     const next = (agentLaunchTokenByNodeIdRef.current.get(nodeId) ?? 0) + 1
@@ -163,7 +163,7 @@ export function useWorkspaceCanvasNodesStore({
       }
 
       let closedNodeIds: string[] = []
-      setNodes(prevNodes => {
+      updateNodes(prevNodes => {
         const now = new Date().toISOString()
         const nextNodes = removeNodeWithRelations({
           prevNodes,
@@ -184,7 +184,7 @@ export function useWorkspaceCanvasNodesStore({
       // After the closure is announced, as before: the flush follows the write and its publication.
       requestPersistFlush()
     },
-    [clearAgentLaunchToken, readDocument, requestPersistFlush, setNodes],
+    [clearAgentLaunchToken, readDocument, requestPersistFlush, updateNodes],
   )
 
   // The committed nodes as the document holds them now, never a gesture's live positions: its
@@ -302,7 +302,7 @@ export function useWorkspaceCanvasNodesStore({
     (nodeId: string, title: string) => {
       const normalizedTitle = title.trim()
 
-      setNodes(
+      updateNodes(
         prevNodes => {
           let hasChanged = false
 
@@ -333,19 +333,19 @@ export function useWorkspaceCanvasNodesStore({
         { syncLayout: false, flush: true },
       )
     },
-    [setNodes],
+    [updateNodes],
   )
 
-  const { updateNoteText, renameNoteTitle } = useWorkspaceCanvasNoteNodeMutations({ setNodes })
+  const { updateNoteText, renameNoteTitle } = useWorkspaceCanvasNoteNodeMutations()
   const { updateRoleProvider, updateRoleInput, appendRoleRunRecord } =
-    useWorkspaceCanvasRoleNodeMutations({ setNodes })
+    useWorkspaceCanvasRoleNodeMutations({ setNodes: updateNodes })
   const {
     updateWebsiteUrl,
     setWebsitePinned,
     setWebsiteSession,
     setWebsiteMode,
     setWebsiteFullscreen,
-  } = useWorkspaceCanvasWebsiteNodeMutations({ setNodes })
+  } = useWorkspaceCanvasWebsiteNodeMutations()
 
   const setNodeLabelColorOverride = useCallback(
     (nodeIds: readonly string[], labelColorOverride: NodeLabelColorOverride) => {
@@ -355,7 +355,7 @@ export function useWorkspaceCanvasNodesStore({
       }
 
       const idSet = new Set(normalizedIds)
-      setNodes(
+      updateNodes(
         prevNodes => {
           let hasChanged = false
 
@@ -384,10 +384,10 @@ export function useWorkspaceCanvasNodesStore({
         { syncLayout: false, flush: true },
       )
     },
-    [setNodes],
+    [updateNodes],
   )
 
-  const publishCreatedNodes = useCreatedNodePublisher(setNodes)
+  const publishCreatedNodes = useCreatedNodePublisher(updateNodes)
   const {
     createNodeForSession,
     createNoteNode,
@@ -411,7 +411,7 @@ export function useWorkspaceCanvasNodesStore({
   return {
     pendingScrollbackByNodeRef,
     isNodeDraggingRef,
-    setNodes,
+    setNodes: updateNodes,
     updateCanvasDocument,
     upsertNode,
     bumpAgentLaunchToken,

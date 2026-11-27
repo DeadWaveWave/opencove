@@ -5,35 +5,29 @@ import {
   type AgentProvider,
 } from '@contexts/settings/domain/agentSettings'
 import { RoleNode } from '../RoleNode'
-import type { NodeFrame, TerminalNodeData } from '../../types'
+import type { TerminalNodeData } from '../../types'
 import { useNodePosition } from './nodePosition'
+import { useCanvasNodeCommands } from './nodeTypes.context'
 
 export function WorkspaceCanvasRoleNodeType({
   data,
   id,
-  selectNode,
-  requestNodeDeleteRef,
-  resizeNodeRef,
   updateRoleProviderRef,
   updateRoleInputRef,
   runRoleRef,
-  normalizeViewportForTerminalInteractionRef,
   agentProviderOrder,
   defaultProvider,
 }: {
   data: TerminalNodeData
   id: string
-  selectNode: (nodeId: string, options?: { toggle?: boolean }) => void
-  requestNodeDeleteRef: MutableRefObject<(nodeIds: readonly string[]) => void>
-  resizeNodeRef: MutableRefObject<(nodeId: string, desiredFrame: NodeFrame) => void>
   updateRoleProviderRef: MutableRefObject<(nodeId: string, provider: AgentProvider) => void>
   updateRoleInputRef: MutableRefObject<(nodeId: string, input: string) => void>
   runRoleRef: MutableRefObject<(nodeId: string, inputOverride?: string) => Promise<void>>
-  normalizeViewportForTerminalInteractionRef: MutableRefObject<(nodeId: string) => void>
   agentProviderOrder: AgentProvider[]
   defaultProvider: AgentProvider
 }): ReactElement | null {
   const nodePosition = useNodePosition(id)
+  const windowCommands = useCanvasNodeCommands().window
 
   if (!data.role) {
     return null
@@ -55,7 +49,7 @@ export function WorkspaceCanvasRoleNodeType({
       selectedProvider={selectedProvider}
       lastError={data.lastError}
       onClose={() => {
-        requestNodeDeleteRef.current([id])
+        windowCommands.requestDelete([id])
       }}
       onProviderChange={provider => {
         updateRoleProviderRef.current(id, provider)
@@ -66,22 +60,22 @@ export function WorkspaceCanvasRoleNodeType({
       onRun={input => {
         void runRoleRef.current(id, input)
       }}
-      onResize={frame => resizeNodeRef.current(id, frame)}
+      onResize={frame => windowCommands.resize(id, frame)}
       onInteractionStart={options => {
         if (options?.selectNode !== false) {
           if (options?.shiftKey === true) {
-            selectNode(id, { toggle: true })
+            windowCommands.select(id, { toggle: true })
             return
           }
 
-          selectNode(id)
+          windowCommands.select(id)
         }
 
         if (options?.normalizeViewport === false) {
           return
         }
 
-        normalizeViewportForTerminalInteractionRef.current(id)
+        windowCommands.focusForInteraction(id)
       }}
     />
   )

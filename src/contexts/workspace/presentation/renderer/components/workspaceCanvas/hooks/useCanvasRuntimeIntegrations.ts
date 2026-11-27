@@ -1,7 +1,5 @@
-import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
 import type { useWorkspaceCanvasActionRefs } from './useActionRefs'
 import type { useWorkspaceCanvasAgentSupport } from './useCanvasAgentSupport'
-import type { useWorkspaceCanvasTaskUi } from './useCanvasTaskUi'
 import type { useWorkspaceCanvasNodesStore } from './useNodesStore'
 import type { useWorkspaceCanvasState } from './useCanvasState'
 import type { useWorkspaceCanvasNodePublishers } from './useCanvasNodePublishers'
@@ -15,11 +13,7 @@ export function useWorkspaceCanvasRuntimeIntegrations({
   workspaceId,
   actionRefs,
   nodeStore,
-  taskUi,
   agentSupport,
-  agentSettings,
-  reactFlow,
-  clearNodeSelection,
   onShowMessage,
   canvasState,
   nodePublishers,
@@ -29,11 +23,7 @@ export function useWorkspaceCanvasRuntimeIntegrations({
   workspaceId: string
   actionRefs: ReturnType<typeof useWorkspaceCanvasActionRefs>
   nodeStore: ReturnType<typeof useWorkspaceCanvasNodesStore>
-  taskUi: Pick<ReturnType<typeof useWorkspaceCanvasTaskUi>, 'requestNodeClose'>
   agentSupport: ReturnType<typeof useWorkspaceCanvasAgentSupport>
-  agentSettings: AgentSettings
-  reactFlow: RuntimeBindings['reactFlow']
-  clearNodeSelection: RuntimeBindings['clearNodeSelection']
   onShowMessage: RuntimeBindings['onShowMessage']
   canvasState: ReturnType<typeof useWorkspaceCanvasState>
   nodePublishers: ReturnType<typeof useWorkspaceCanvasNodePublishers>
@@ -45,15 +35,6 @@ export function useWorkspaceCanvasRuntimeIntegrations({
     nodes: canvasState.flowNodes,
     setNodes: nodeStore.setNodes,
     actionRefs,
-    clearNodeSelection,
-    closeNode: taskUi.requestNodeClose,
-    resizeNode: nodeStore.resizeNode,
-    noteMutations: nodeStore,
-    updateWebsiteUrl: nodeStore.updateWebsiteUrl,
-    setWebsitePinned: nodeStore.setWebsitePinned,
-    setWebsiteSession: nodeStore.setWebsiteSession,
-    setWebsiteMode: nodeStore.setWebsiteMode,
-    setWebsiteFullscreen: nodeStore.setWebsiteFullscreen,
     updateNodeScrollback: nodeStore.updateNodeScrollback,
     updateTerminalTitle: nodeStore.updateTerminalTitle,
     clearTerminalAgentOverlay: nodeStore.clearTerminalAgentOverlay,
@@ -61,9 +42,6 @@ export function useWorkspaceCanvasRuntimeIntegrations({
     reloadAgentSession: agentSupport.reloadAgentNode,
     listAgentSessions: agentSupport.listAgentSessionsForNode,
     switchAgentSession: agentSupport.switchAgentNodeSession,
-    focusNodeOnClick: agentSettings.focusNodeOnClick,
-    focusNodeTargetZoom: agentSettings.focusNodeTargetZoom,
-    reactFlow,
     onShowMessage,
   })
   const applyChanges = useWorkspaceCanvasApplyNodeChanges({

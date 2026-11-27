@@ -1,39 +1,20 @@
-import type { MutableRefObject, ReactElement } from 'react'
+import type { ReactElement } from 'react'
 import { NoteNode } from '../NoteNode'
-import type { NodeFrame, TerminalNodeData } from '../../types'
-import type { LabelColor, NodeLabelColorOverride } from '@shared/types/labelColor'
+import type { TerminalNodeData } from '../../types'
+import type { LabelColor } from '@shared/types/labelColor'
+import { useCanvasNodeCommands } from './nodeTypes.context'
 import { useNodePosition } from './nodePosition'
 
 export function WorkspaceCanvasNoteNodeType({
   data,
   id,
-  selectNode,
-  clearNodeSelectionRef,
-  closeNodeRef,
-  resizeNodeRef,
-  updateNoteTextRef,
-  renameNoteTitleRef,
-  convertNoteToTask,
-  setNodeLabelColorOverride,
-  normalizeViewportForTerminalInteractionRef,
   onShowMessage,
 }: {
   data: TerminalNodeData
   id: string
-  selectNode: (nodeId: string, options?: { toggle?: boolean }) => void
-  clearNodeSelectionRef: MutableRefObject<() => void>
-  closeNodeRef: MutableRefObject<(nodeId: string) => Promise<void>>
-  resizeNodeRef: MutableRefObject<(nodeId: string, desiredFrame: NodeFrame) => void>
-  updateNoteTextRef: MutableRefObject<(nodeId: string, text: string) => void>
-  renameNoteTitleRef: MutableRefObject<(nodeId: string, title: string) => void>
-  convertNoteToTask: (nodeId: string) => boolean
-  setNodeLabelColorOverride: (
-    nodeIds: readonly string[],
-    labelColorOverride: NodeLabelColorOverride,
-  ) => void
-  normalizeViewportForTerminalInteractionRef: MutableRefObject<(nodeId: string) => void>
   onShowMessage?: (message: string, tone?: 'info' | 'warning' | 'error') => void
 }): ReactElement | null {
+  const { window: windowCommands, note } = useCanvasNodeCommands()
   const nodePosition = useNodePosition(id)
   const labelColor =
     (data as TerminalNodeData & { effectiveLabelColor?: LabelColor | null }).effectiveLabelColor ??
@@ -54,42 +35,42 @@ export function WorkspaceCanvasNoteNodeType({
       height={data.height}
       onShowMessage={onShowMessage}
       onClose={() => {
-        void closeNodeRef.current(id)
+        void windowCommands.close(id)
       }}
-      onResize={frame => resizeNodeRef.current(id, frame)}
+      onResize={frame => windowCommands.resize(id, frame)}
       onTextChange={text => {
-        updateNoteTextRef.current(id, text)
+        note.updateText(id, text)
       }}
       onTitleChange={title => {
-        renameNoteTitleRef.current(id, title)
+        note.renameTitle(id, title)
       }}
       onConvertToTask={() => {
-        convertNoteToTask(id)
+        note.convertToTask(id)
       }}
       onSetLabelColorOverride={labelColorOverride => {
-        setNodeLabelColorOverride([id], labelColorOverride)
+        windowCommands.setLabelColorOverride([id], labelColorOverride)
       }}
       onInteractionStart={options => {
         if (options?.clearSelection === true) {
           window.setTimeout(() => {
-            clearNodeSelectionRef.current()
+            windowCommands.clearSelection()
           }, 0)
         }
 
         if (options?.selectNode !== false) {
           if (options?.shiftKey === true) {
-            selectNode(id, { toggle: true })
+            windowCommands.select(id, { toggle: true })
             return
           }
 
-          selectNode(id)
+          windowCommands.select(id)
         }
 
         if (options?.normalizeViewport === false) {
           return
         }
 
-        normalizeViewportForTerminalInteractionRef.current(id)
+        windowCommands.focusForInteraction(id)
       }}
     />
   )

@@ -1,6 +1,6 @@
-import { useEffect, type MutableRefObject } from 'react'
+import { useEffect } from 'react'
 import type { WorkspaceCanvasNodeTypeProps } from './nodeTypes.types'
-import type { NodeFrame } from '../../types'
+import { useCanvasNodeCommands } from './nodeTypes.context'
 import { useNodePosition } from './nodePosition'
 import { usePluginEnabled } from '@contexts/plugins/presentation/renderer/usePluginEnabled'
 import { usePluginManifest } from '@contexts/plugins/presentation/renderer/usePluginRegistry'
@@ -12,19 +12,8 @@ import {
 import { PluginUnavailableNode } from '../PluginUnavailableNode'
 import { CanvasNodeWindow, type CanvasNodeWindowProps } from '../shared/CanvasNodeWindow'
 
-export function WorkspaceCanvasPluginNodeType({
-  data,
-  id,
-  closeNodeRef,
-  resizeNodeRef,
-  selectNode,
-  normalizeViewportForTerminalInteractionRef,
-}: WorkspaceCanvasNodeTypeProps & {
-  closeNodeRef: MutableRefObject<(nodeId: string) => Promise<void>>
-  resizeNodeRef: MutableRefObject<(nodeId: string, frame: NodeFrame) => void>
-  selectNode: (nodeId: string, options?: { toggle?: boolean }) => void
-  normalizeViewportForTerminalInteractionRef: MutableRefObject<(nodeId: string) => void>
-}) {
+export function WorkspaceCanvasPluginNodeType({ data, id }: WorkspaceCanvasNodeTypeProps) {
+  const windowCommands = useCanvasNodeCommands().window
   const nodePosition = useNodePosition(id)
   const enabled = usePluginEnabled(data.plugin?.pluginId ?? '')
   const manifest = usePluginManifest(data.plugin?.pluginId ?? '')
@@ -41,13 +30,13 @@ export function WorkspaceCanvasPluginNodeType({
     width: data.width,
     height: data.height,
     onClose: () => {
-      void closeNodeRef.current(id)
+      void windowCommands.close(id)
     },
-    onResize: frame => resizeNodeRef.current(id, frame),
+    onResize: frame => windowCommands.resize(id, frame),
     onInteractionStart: ({ shiftKey }) => {
-      selectNode(id, shiftKey ? { toggle: true } : undefined)
+      windowCommands.select(id, shiftKey ? { toggle: true } : undefined)
       if (!shiftKey) {
-        normalizeViewportForTerminalInteractionRef.current(id)
+        windowCommands.focusForInteraction(id)
       }
     },
   }

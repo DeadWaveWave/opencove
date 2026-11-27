@@ -3,12 +3,9 @@ import type { BrowserMode, WebsiteWindowSessionMode } from '@shared/contracts/dt
 import type { NodeFrame } from '../../../types'
 import { createWebsiteNodeData } from '../../../utils/websiteNodeData'
 import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
+import { useCanvasNodeWriter } from './useCanvasNodeWriter'
 
-export function useWorkspaceCanvasWebsiteNodeMutations({
-  setNodes,
-}: {
-  setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']
-}): Pick<
+export function useWorkspaceCanvasWebsiteNodeMutations(): Pick<
   UseWorkspaceCanvasNodesStoreResult,
   | 'updateWebsiteUrl'
   | 'setWebsitePinned'
@@ -16,6 +13,7 @@ export function useWorkspaceCanvasWebsiteNodeMutations({
   | 'setWebsiteMode'
   | 'setWebsiteFullscreen'
 > {
+  const { updateNodes } = useCanvasNodeWriter()
   const updateWebsiteUrl = useCallback(
     (nodeId: string, url: string) => {
       const normalizedNodeId = nodeId.trim()
@@ -25,7 +23,7 @@ export function useWorkspaceCanvasWebsiteNodeMutations({
 
       const normalizedUrl = url.trim()
 
-      setNodes(
+      updateNodes(
         prevNodes => {
           let hasChanged = false
 
@@ -57,7 +55,7 @@ export function useWorkspaceCanvasWebsiteNodeMutations({
         { syncLayout: false, flush: true },
       )
     },
-    [setNodes],
+    [updateNodes],
   )
 
   const setWebsitePinned = useCallback(
@@ -67,7 +65,7 @@ export function useWorkspaceCanvasWebsiteNodeMutations({
         return
       }
 
-      setNodes(
+      updateNodes(
         prevNodes => {
           let hasChanged = false
 
@@ -99,7 +97,7 @@ export function useWorkspaceCanvasWebsiteNodeMutations({
         { syncLayout: false, flush: true },
       )
     },
-    [setNodes],
+    [updateNodes],
   )
 
   const setWebsiteSession = useCallback(
@@ -109,7 +107,7 @@ export function useWorkspaceCanvasWebsiteNodeMutations({
         return
       }
 
-      setNodes(
+      updateNodes(
         prevNodes => {
           let hasChanged = false
 
@@ -145,7 +143,7 @@ export function useWorkspaceCanvasWebsiteNodeMutations({
         { syncLayout: false, flush: true },
       )
     },
-    [setNodes],
+    [updateNodes],
   )
 
   const setWebsiteMode = useCallback(
@@ -155,7 +153,7 @@ export function useWorkspaceCanvasWebsiteNodeMutations({
         return
       }
 
-      setNodes(
+      updateNodes(
         prevNodes => {
           let hasChanged = false
           const nextNodes = prevNodes.map(node => {
@@ -183,7 +181,7 @@ export function useWorkspaceCanvasWebsiteNodeMutations({
         { syncLayout: false, flush: true },
       )
     },
-    [setNodes],
+    [updateNodes],
   )
 
   const setWebsiteFullscreen = useCallback(
@@ -193,7 +191,7 @@ export function useWorkspaceCanvasWebsiteNodeMutations({
         return
       }
 
-      setNodes(
+      updateNodes(
         prevNodes => {
           let hasChanged = false
           const nextNodes = prevNodes.map(node => {
@@ -224,7 +222,7 @@ export function useWorkspaceCanvasWebsiteNodeMutations({
         { flush: true },
       )
     },
-    [setNodes],
+    [updateNodes],
   )
 
   return {

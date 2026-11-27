@@ -386,7 +386,6 @@
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasInputMode.ts": 1,
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasLifecycleBindings.ts": 1,
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodeTypes.ts": 1,
-    "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasRuntimeIntegrations.ts": 1,
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasShortcutActions.ts": 1,
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasSpaceExplorer.ts": 1,
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasSpaceMenuState.ts": 1,

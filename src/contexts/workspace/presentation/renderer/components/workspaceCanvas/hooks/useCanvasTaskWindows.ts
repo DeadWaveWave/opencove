@@ -53,10 +53,8 @@ export function useWorkspaceCanvasTaskWindows({
     openTaskEditorRef: actionRefs.openTaskEditorRef,
   })
 
-  const { confirmNodeDelete, requestNodeClose } = useWorkspaceCanvasNodeDeleteConfirmation({
-    closeNode,
-    requestNodeDeleteRef: actionRefs.requestNodeDeleteRef,
-  })
+  const { confirmNodeDelete, requestNodeClose, requestNodeDelete } =
+    useWorkspaceCanvasNodeDeleteConfirmation({ closeNode })
 
   return {
     createTaskAtPoint,
@@ -66,5 +64,6 @@ export function useWorkspaceCanvasTaskWindows({
     saveTaskEdits,
     confirmNodeDelete,
     requestNodeClose,
+    requestNodeDelete,
   }
 }

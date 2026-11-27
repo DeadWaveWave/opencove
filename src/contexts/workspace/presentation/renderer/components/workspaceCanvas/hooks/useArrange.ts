@@ -7,10 +7,7 @@ import {
   type ReactFlowInstance,
 } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
-import type {
-  FocusNodeTargetZoom,
-  StandardWindowSizeBucket,
-} from '@contexts/settings/domain/agentSettings'
+import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
 import type { TerminalNodeData } from '../../../types'
 import { useCanvasDocumentCommands, useReadCanvasDocument } from '../../../store/canvasStoreContext'
 import {
@@ -23,7 +20,7 @@ import {
 } from '../../../utils/workspaceArrange'
 import { resolveWorkspaceCanvasAnimationDuration } from '../helpers'
 import type { ShowWorkspaceCanvasMessage } from '../types'
-import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
+import { useCanvasNodeWriter } from './useCanvasNodeWriter'
 import { bindWorkspaceCanvasArrangeInSpaceTestAction } from '../testHarness'
 
 const DEFAULT_VIEWPORT_WIDTH = 1440
@@ -68,16 +65,13 @@ function summarizeWarnings(warnings: WorkspaceArrangeWarning[]): { skippedSpaceC
 
 export function useWorkspaceCanvasArrange({
   reactFlow,
-  focusNodeTargetZoom,
-  updateCanvasDocument,
+  readAgentSettings,
   onShowMessage,
-  standardWindowSizeBucket,
 }: {
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
-  focusNodeTargetZoom: FocusNodeTargetZoom
-  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
+  /** The app's settings as they are when an arrange runs: the actions do not close over them. */
+  readAgentSettings: () => AgentSettings
   onShowMessage?: ShowWorkspaceCanvasMessage
-  standardWindowSizeBucket: StandardWindowSizeBucket
 }): {
   arrangeAll: (style?: WorkspaceArrangeStyle) => void
   arrangeCanvas: (style?: WorkspaceArrangeStyle) => void
@@ -86,6 +80,7 @@ export function useWorkspaceCanvasArrange({
   const { t } = useTranslation()
   const readDocument = useReadCanvasDocument()
   const { requestPersistFlush } = useCanvasDocumentCommands()
+  const { updateCanvasDocument } = useCanvasNodeWriter()
   const viewportWidth = useStore(state => state.width)
   const viewportHeight = useStore(state => state.height)
   const viewportMinZoom = useStore(state => state.minZoom)
@@ -100,6 +95,7 @@ export function useWorkspaceCanvasArrange({
       plan: (input: Pick<WorkspaceArrangeResult, 'nodes' | 'spaces'>) => WorkspaceArrangeResult,
       options?: { focusSpaceId?: string },
     ): WorkspaceArrangeResult | null => {
+      const { focusNodeTargetZoom } = readAgentSettings()
       const outcome: { result: WorkspaceArrangeResult | null } = { result: null }
       updateCanvasDocument(
         ({ nodes, spaces }) => {
@@ -161,7 +157,7 @@ export function useWorkspaceCanvasArrange({
       return result
     },
     [
-      focusNodeTargetZoom,
+      readAgentSettings,
       readDocument,
       reactFlow,
       requestPersistFlush,
@@ -177,6 +173,7 @@ export function useWorkspaceCanvasArrange({
     (style?: WorkspaceArrangeStyle) => {
       const viewport = resolveViewportSize()
       const wrapWidth = resolveArrangeWrapWidth(viewport)
+      const { standardWindowSizeBucket } = readAgentSettings()
       const result = commitArrange(({ nodes, spaces }) =>
         arrangeWorkspaceAll({
           nodes,
@@ -196,13 +193,14 @@ export function useWorkspaceCanvasArrange({
         )
       }
     },
-    [commitArrange, onShowMessage, standardWindowSizeBucket, t],
+    [commitArrange, onShowMessage, readAgentSettings, t],
   )
 
   const arrangeCanvas = useCallback(
     (style?: WorkspaceArrangeStyle) => {
       const viewport = resolveViewportSize()
       const wrapWidth = resolveArrangeWrapWidth(viewport)
+      const { standardWindowSizeBucket } = readAgentSettings()
       commitArrange(({ nodes, spaces }) =>
         arrangeWorkspaceCanvas({
           nodes,
@@ -214,12 +212,13 @@ export function useWorkspaceCanvasArrange({
         }),
       )
     },
-    [commitArrange, standardWindowSizeBucket],
+    [commitArrange, readAgentSettings],
   )
 
   const arrangeInSpace = useCallback(
     (spaceId: string, style?: WorkspaceArrangeStyle) => {
       const viewport = resolveViewportSize()
+      const { standardWindowSizeBucket } = readAgentSettings()
       const result = commitArrange(
         ({ nodes, spaces }) =>
           arrangeWorkspaceInSpace({
@@ -237,7 +236,7 @@ export function useWorkspaceCanvasArrange({
         onShowMessage?.(t('messages.arrangeSpaceNoRoom'), 'warning')
       }
     },
-    [commitArrange, onShowMessage, standardWindowSizeBucket, t],
+    [commitArrange, onShowMessage, readAgentSettings, t],
   )
 
   useLayoutEffect(() => {

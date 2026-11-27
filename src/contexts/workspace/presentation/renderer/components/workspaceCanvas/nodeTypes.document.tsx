@@ -1,30 +1,22 @@
-import { useContext, type MutableRefObject, type ReactElement } from 'react'
+import { useContext, type ReactElement } from 'react'
 import { DocumentNode } from '../DocumentNode'
-import type { NodeFrame, TerminalNodeData } from '../../types'
+import type { TerminalNodeData } from '../../types'
 import type { LabelColor } from '@shared/types/labelColor'
 import { WorkspaceDocumentNavigationContext } from './WorkspaceDocumentNavigationContext'
+import { useCanvasNodeCommands } from './nodeTypes.context'
 
 export function WorkspaceCanvasDocumentNodeType({
   data,
   id,
   nodePosition,
   mountId,
-  selectNode,
-  clearNodeSelectionRef,
-  closeNodeRef,
-  resizeNodeRef,
-  normalizeViewportForTerminalInteractionRef,
 }: {
   data: TerminalNodeData
   id: string
   nodePosition: { x: number; y: number }
   mountId: string | null | undefined
-  selectNode: (nodeId: string, options?: { toggle?: boolean }) => void
-  clearNodeSelectionRef: MutableRefObject<() => void>
-  closeNodeRef: MutableRefObject<(nodeId: string) => Promise<void>>
-  resizeNodeRef: MutableRefObject<(nodeId: string, desiredFrame: NodeFrame) => void>
-  normalizeViewportForTerminalInteractionRef: MutableRefObject<(nodeId: string) => void>
 }): ReactElement | null {
+  const windowCommands = useCanvasNodeCommands().window
   const navigation = useContext(WorkspaceDocumentNavigationContext)
   const labelColor =
     (data as TerminalNodeData & { effectiveLabelColor?: LabelColor | null }).effectiveLabelColor ??
@@ -46,30 +38,30 @@ export function WorkspaceCanvasDocumentNodeType({
       width={data.width}
       height={data.height}
       onClose={() => {
-        void closeNodeRef.current(id)
+        void windowCommands.close(id)
       }}
-      onResize={frame => resizeNodeRef.current(id, frame)}
+      onResize={frame => windowCommands.resize(id, frame)}
       onInteractionStart={options => {
         if (options?.clearSelection === true) {
           window.setTimeout(() => {
-            clearNodeSelectionRef.current()
+            windowCommands.clearSelection()
           }, 0)
         }
 
         if (options?.selectNode !== false) {
           if (options?.shiftKey === true) {
-            selectNode(id, { toggle: true })
+            windowCommands.select(id, { toggle: true })
             return
           }
 
-          selectNode(id)
+          windowCommands.select(id)
         }
 
         if (options?.normalizeViewport === false) {
           return
         }
 
-        normalizeViewportForTerminalInteractionRef.current(id)
+        windowCommands.focusForInteraction(id)
       }}
     />
   )

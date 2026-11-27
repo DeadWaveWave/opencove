@@ -2,21 +2,18 @@ import type { MutableRefObject, ReactElement } from 'react'
 import { useStore, type Node } from '@xyflow/react'
 import { TaskNode } from '../TaskNode'
 import { resolveTaskExecutionContext } from '@contexts/session/application/resolveTaskExecutionContext'
-import type { NodeFrame, TerminalNodeData } from '../../types'
+import type { TerminalNodeData } from '../../types'
 import { useReadCanvasDocument } from '../../store/canvasStoreContext'
 import type { LabelColor } from '@shared/types/labelColor'
 import type { QuickUpdateTaskRequirement, QuickUpdateTaskTitle, UpdateTaskStatus } from './types'
 import { resolveAgentDisplayTitle } from '../../utils/agentTitle'
+import { useCanvasNodeCommands } from './nodeTypes.context'
 
 export function WorkspaceCanvasTaskNodeType({
   data,
   id,
   nodePosition,
   workspacePath,
-  selectNode,
-  resizeNodeRef,
-  normalizeViewportForTerminalInteractionRef,
-  requestNodeDeleteRef,
   openTaskEditorRef,
   quickUpdateTaskTitleRef,
   quickUpdateTaskRequirementRef,
@@ -29,10 +26,6 @@ export function WorkspaceCanvasTaskNodeType({
   id: string
   nodePosition: { x: number; y: number }
   workspacePath: string
-  selectNode: (nodeId: string, options?: { toggle?: boolean }) => void
-  resizeNodeRef: MutableRefObject<(nodeId: string, desiredFrame: NodeFrame) => void>
-  normalizeViewportForTerminalInteractionRef: MutableRefObject<(nodeId: string) => void>
-  requestNodeDeleteRef: MutableRefObject<(nodeIds: readonly string[]) => void>
   openTaskEditorRef: MutableRefObject<(nodeId: string) => void>
   quickUpdateTaskTitleRef: MutableRefObject<QuickUpdateTaskTitle>
   quickUpdateTaskRequirementRef: MutableRefObject<QuickUpdateTaskRequirement>
@@ -44,6 +37,7 @@ export function WorkspaceCanvasTaskNodeType({
   updateTaskStatusRef: MutableRefObject<UpdateTaskStatus>
 }): ReactElement | null {
   const readDocument = useReadCanvasDocument()
+  const windowCommands = useCanvasNodeCommands().window
   const linkedAgentNodeId = data.task?.linkedAgentNodeId ?? null
   const labelColor =
     (data as TerminalNodeData & { effectiveLabelColor?: LabelColor | null }).effectiveLabelColor ??
@@ -113,7 +107,7 @@ export function WorkspaceCanvasTaskNodeType({
       width={data.width}
       height={data.height}
       onClose={() => {
-        requestNodeDeleteRef.current([id])
+        windowCommands.requestDelete([id])
       }}
       onOpenEditor={() => {
         openTaskEditorRef.current(id)
@@ -127,7 +121,7 @@ export function WorkspaceCanvasTaskNodeType({
       onRunAgent={() => {
         void runTaskAgentRef.current(id)
       }}
-      onResize={frame => resizeNodeRef.current(id, frame)}
+      onResize={frame => windowCommands.resize(id, frame)}
       onStatusChange={status => {
         updateTaskStatusRef.current(id, status)
       }}
@@ -140,18 +134,18 @@ export function WorkspaceCanvasTaskNodeType({
       onInteractionStart={options => {
         if (options?.selectNode !== false) {
           if (options?.shiftKey === true) {
-            selectNode(id, { toggle: true })
+            windowCommands.select(id, { toggle: true })
             return
           }
 
-          selectNode(id)
+          windowCommands.select(id)
         }
 
         if (options?.normalizeViewport === false) {
           return
         }
 
-        normalizeViewportForTerminalInteractionRef.current(id)
+        windowCommands.focusForInteraction(id)
       }}
     />
   )

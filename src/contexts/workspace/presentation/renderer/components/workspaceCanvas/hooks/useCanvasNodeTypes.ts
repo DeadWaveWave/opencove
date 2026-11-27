@@ -1,29 +1,24 @@
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
+import type { WiredCanvasNodeCommands } from '../nodeCommands'
 import type { WorkspaceCanvasActionRefs } from './useActionRefs'
-import { useWorkspaceCanvasSelectNode } from './useSelectNode'
 import { useWorkspaceCanvasNodeTypes } from '../nodeTypes'
 
 export function useWorkspaceCanvasComposedNodeTypes({
-  nodeStore,
   workspacePath,
   onShowMessage,
   agentSettings,
   actionRefs,
-  convertNoteToTask,
+  commands,
 }: {
-  nodeStore: Pick<
-    import('./useNodesStore.types').UseWorkspaceCanvasNodesStoreResult,
-    'setNodeLabelColorOverride'
-  >
   workspacePath: string
   onShowMessage?: Parameters<typeof useWorkspaceCanvasNodeTypes>[0]['onShowMessage']
-  agentSettings: AgentSettings
+  agentSettings: Pick<
+    AgentSettings,
+    'agentProviderOrder' | 'defaultProvider' | 'browserDefaultMode' | 'browserSearchEngine'
+  >
   actionRefs: WorkspaceCanvasActionRefs
-  convertNoteToTask: (nodeId: string) => boolean
+  commands: WiredCanvasNodeCommands
 }) {
-  const { setNodeLabelColorOverride } = nodeStore
-  const selectNode = useWorkspaceCanvasSelectNode()
-
   return useWorkspaceCanvasNodeTypes({
     workspacePath,
     onShowMessage,
@@ -31,9 +26,7 @@ export function useWorkspaceCanvasComposedNodeTypes({
     defaultProvider: agentSettings.defaultProvider,
     browserDefaultMode: agentSettings.browserDefaultMode,
     browserSearchEngine: agentSettings.browserSearchEngine,
-    selectNode,
-    convertNoteToTask,
-    setNodeLabelColorOverride,
+    commands,
     ...actionRefs,
   })
 }

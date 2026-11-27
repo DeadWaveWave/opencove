@@ -23,7 +23,7 @@ interface UseWorkspaceCanvasLifecycleParams {
   setDetectedCanvasInputMode: React.Dispatch<React.SetStateAction<DetectedCanvasInputMode>>
   isShiftPressedRef: React.MutableRefObject<boolean>
   setIsShiftPressed: React.Dispatch<React.SetStateAction<boolean>>
-  requestNodeDeleteRef: React.MutableRefObject<(nodeIds: readonly string[]) => void>
+  requestNodeDelete: (nodeIds: readonly string[]) => void
   focusNodeTargetZoom: number
   isFocusNodeTargetZoomPreviewing: boolean
 }
@@ -41,7 +41,7 @@ export function useWorkspaceCanvasLifecycle({
   setDetectedCanvasInputMode,
   isShiftPressedRef,
   setIsShiftPressed,
-  requestNodeDeleteRef,
+  requestNodeDelete,
   focusNodeTargetZoom,
   isFocusNodeTargetZoomPreviewing,
 }: UseWorkspaceCanvasLifecycleParams): void {
@@ -108,7 +108,7 @@ export function useWorkspaceCanvasLifecycle({
         if (selectedNodeIds.length > 0) {
           event.preventDefault()
           event.stopPropagation()
-          requestNodeDeleteRef.current(selectedNodeIds)
+          requestNodeDelete(selectedNodeIds)
           return
         }
       }
@@ -147,7 +147,7 @@ export function useWorkspaceCanvasLifecycle({
         window.removeEventListener('blur', handleBlur)
       }
     }
-  }, [isShiftPressedRef, readSelection, requestNodeDeleteRef, setIsShiftPressed])
+  }, [isShiftPressedRef, readSelection, requestNodeDelete, setIsShiftPressed])
 
   useEffect(() => {
     if (canvasInputModeSetting === 'auto') {

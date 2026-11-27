@@ -4,37 +4,28 @@ import { useWorkspaceCanvasNoteToTaskConversion } from './useNoteToTaskConversio
 export function useWorkspaceCanvasMenuActions({
   selectedNodeIds,
   flowNodes,
-  updateCanvasDocument,
   onShowMessage,
   reactFlow,
-  standardWindowSizeBucket,
-  focusNodeTargetZoom,
+  readAgentSettings,
 }: {
   selectedNodeIds: Parameters<typeof useWorkspaceCanvasNoteToTaskConversion>[0]['selectedNodeIds']
   flowNodes: Parameters<typeof useWorkspaceCanvasNoteToTaskConversion>[0]['flowNodes']
-  updateCanvasDocument: Parameters<typeof useWorkspaceCanvasArrange>[0]['updateCanvasDocument']
   onShowMessage?: Parameters<typeof useWorkspaceCanvasNoteToTaskConversion>[0]['onShowMessage']
   reactFlow: Parameters<typeof useWorkspaceCanvasArrange>[0]['reactFlow']
-  standardWindowSizeBucket: Parameters<
-    typeof useWorkspaceCanvasArrange
-  >[0]['standardWindowSizeBucket']
-  focusNodeTargetZoom: Parameters<typeof useWorkspaceCanvasArrange>[0]['focusNodeTargetZoom']
+  readAgentSettings: Parameters<typeof useWorkspaceCanvasArrange>[0]['readAgentSettings']
 }): ReturnType<typeof useWorkspaceCanvasNoteToTaskConversion> &
   ReturnType<typeof useWorkspaceCanvasArrange> {
   const noteToTask = useWorkspaceCanvasNoteToTaskConversion({
     selectedNodeIds,
     flowNodes,
-    updateCanvasDocument,
     onShowMessage,
-    standardWindowSizeBucket,
+    readAgentSettings,
   })
 
   const arrange = useWorkspaceCanvasArrange({
     reactFlow,
-    focusNodeTargetZoom,
-    updateCanvasDocument,
+    readAgentSettings,
     onShowMessage,
-    standardWindowSizeBucket,
   })
 
   return {

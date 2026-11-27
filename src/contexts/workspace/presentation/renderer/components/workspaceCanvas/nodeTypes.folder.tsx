@@ -3,19 +3,16 @@ import type { LabelColor } from '@shared/types/labelColor'
 import { FolderNode } from '../FolderNode'
 import type { WorkspaceCanvasDocumentNodeType } from './nodeTypes.document'
 import { useFilesystemNodesActions } from './FilesystemNodesContext'
+import { useCanvasNodeCommands } from './nodeTypes.context'
 
 export function WorkspaceCanvasFolderNodeType({
   id,
   data,
   nodePosition,
   mountId,
-  selectNode,
-  clearNodeSelectionRef,
-  closeNodeRef,
-  resizeNodeRef,
-  normalizeViewportForTerminalInteractionRef,
 }: ComponentProps<typeof WorkspaceCanvasDocumentNodeType>) {
   const actions = useFilesystemNodesActions()
+  const windowCommands = useCanvasNodeCommands().window
   if (!data.folder || !actions) {
     return null
   }
@@ -34,21 +31,21 @@ export function WorkspaceCanvasFolderNodeType({
       findBlockingOpenDocument={uri => actions.findBlockingOpenDocument(id, uri)}
       onShowMessage={actions.onShowMessage}
       onClose={() => {
-        void closeNodeRef.current(id)
+        void windowCommands.close(id)
       }}
-      onResize={frame => resizeNodeRef.current(id, frame)}
+      onResize={frame => windowCommands.resize(id, frame)}
       onInteractionStart={options => {
         if (options?.clearSelection) {
-          clearNodeSelectionRef.current()
+          windowCommands.clearSelection()
         }
         if (options?.selectNode !== false) {
-          selectNode(id, { toggle: options?.shiftKey === true })
+          windowCommands.select(id, { toggle: options?.shiftKey === true })
           if (options?.shiftKey) {
             return
           }
         }
         if (options?.normalizeViewport !== false) {
-          normalizeViewportForTerminalInteractionRef.current(id)
+          windowCommands.focusForInteraction(id)
         }
       }}
     />
