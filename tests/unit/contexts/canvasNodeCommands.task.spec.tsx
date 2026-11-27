@@ -181,13 +181,13 @@ describe('the task launch reads the settings when the action starts', () => {
   ]
   const cases = ACTIONS.flatMap(([action, call]) =>
     rows.map(
-      ([name, patch, read, expected]) => [action, call, name, patch, read, expected] as const,
+      ([name, patch, read, expected]) => [action, name, call, patch, read, expected] as const,
     ),
   )
 
   it.each(cases)(
     '%s launches with the %s of the settings at the call, on the command made before they changed',
-    async (_action, call, _name, patch, read, expected) => {
+    async (_action, _name, call, patch, read, expected) => {
       const launch = stubLaunch()
       await mount()
       const before = latest()
@@ -373,12 +373,12 @@ describe('a task window that is closed while its action waits for the launch', (
   // The launch that completes still creates its agent window (as before): one write, flushed by
   // the creator. Nothing else is written, notified or flushed for the window that is gone.
   const cases = ACTIONS.flatMap(([action, call]) => [
-    [action, call, 'succeeds', false, 1, 1] as const,
-    [action, call, 'is refused', true, 0, 0] as const,
+    [action, 'succeeds', call, false, 1, 1] as const,
+    [action, 'is refused', call, true, 0, 0] as const,
   ])
   it.each(cases)(
     '%s writes nothing about the window when the launch %s',
-    async (_action, call, _name, fail, writes, flushCount) => {
+    async (_action, _outcome, call, fail, writes, flushCount) => {
       const launch = stubLaunch({ hold: true, fail })
       await mount()
       let running!: Promise<void>
@@ -561,5 +561,59 @@ describe('each task command has the effect of the function it is named for', () 
 
     expect(launch.payloads()).toEqual([])
     expect(agentsOf(A)).toEqual([])
+  })
+})
+
+describe('a task with a stale agent link, closed while the run resolves its launch binding', () => {
+  // The stale-link clear that follows the binding must write nothing about the closed task: only
+  // the agent window of the completed launch is written and flushed.
+  it('writes and flushes only the agent window of the completed launch', async () => {
+    const staleTask = taskWindow('t', 2400, { title: 'stale' })
+    staleTask.data.task!.linkedAgentNodeId = 'ghost-agent'
+    setDocumentNodes(A, [...documentOfA(), staleTask])
+    let releaseMounts: () => void = () => undefined
+    const mountsHeld = new Promise<void>(resolve => {
+      releaseMounts = resolve
+    })
+    let mountListCalls = 0
+    stubLaunch()
+    const launchAnswer = ipc.invoke.getMockImplementation()!
+    ipc.invoke.mockImplementation(async (request: { id: string }) => {
+      if (request.id === 'mount.list') {
+        mountListCalls += 1
+        if (mountListCalls === 1) {
+          await mountsHeld
+        }
+        return { mounts: [] }
+      }
+      return launchAnswer(request)
+    })
+    await mount()
+    let running!: Promise<void>
+    act(() => {
+      running = commandsOf().task.runAgent('t')
+    })
+    await vi.waitFor(() => expect(mountListCalls).toBe(1))
+    act(() => {
+      commitCanvasDocument(A, document => ({
+        ...document,
+        nodes: document.nodes.filter(node => node.id !== 't'),
+      }))
+    })
+    const notifications = vi.fn()
+    const flushes = vi.fn()
+    const unsubscribe = useAppStore.subscribe(notifications)
+    const unregister = registerWorkspaceDocumentPersistFlush(flushes)
+
+    await act(async () => {
+      releaseMounts()
+      await running
+    })
+    unsubscribe()
+    unregister()
+
+    expect(agentsOf(A)).toHaveLength(1)
+    expect(notifications).toHaveBeenCalledTimes(1)
+    expect(flushes).toHaveBeenCalledTimes(1)
   })
 })

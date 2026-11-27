@@ -9,6 +9,7 @@ import {
   useReadCanvasUi,
 } from '../../../store/canvasStoreContext'
 import { useCanvasNodeWriter } from './useCanvasNodeWriter'
+import { mapNodesKeepingIdentity } from './useTaskActions.agentSession.shared'
 
 interface UseTaskEditorParams {
   suggestTaskTitle: (
@@ -167,9 +168,10 @@ export function useWorkspaceCanvasTaskEditor({
 
       const now = new Date().toISOString()
 
+      // A task window deleted while the editor was open is not written: the recipe returns its input.
       updateNodes(
         prevNodes =>
-          prevNodes.map(node => {
+          mapNodesKeepingIdentity(prevNodes, node => {
             if (node.id !== taskEditor.nodeId || node.data.kind !== 'task' || !node.data.task) {
               return node
             }
