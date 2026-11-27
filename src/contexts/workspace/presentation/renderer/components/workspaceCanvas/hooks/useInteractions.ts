@@ -38,7 +38,6 @@ export function useWorkspaceCanvasInteractions({
   isShiftPressedRef,
   selectionDraftRef,
   reactFlow,
-  setNodes,
   updateCanvasDocument,
   workspaceId,
   workspacePath,
@@ -60,36 +59,15 @@ export function useWorkspaceCanvasInteractions({
   const readDocument = useReadCanvasDocument()
 
   const reactFlowStore = useStoreApi()
-  const selectNode = useWorkspaceCanvasSelectNode({
-    setNodes,
-  })
+  const selectNode = useWorkspaceCanvasSelectNode()
 
   const clearNodeSelection = useCallback(() => {
-    setNodes(
-      prevNodes => {
-        let hasSelection = false
-        const nextNodes = prevNodes.map(node => {
-          if (!node.selected) {
-            return node
-          }
-
-          hasSelection = true
-          return {
-            ...node,
-            selected: false,
-          }
-        })
-
-        return hasSelection ? nextNodes : prevNodes
-      },
-      { syncLayout: false },
-    )
     selection.clear()
     reactFlowStore.setState({
       nodesSelectionActive: false,
       coveDragSurfaceSelectionMode: false,
     } as unknown as Parameters<typeof reactFlowStore.setState>[0])
-  }, [reactFlowStore, selection, setNodes])
+  }, [reactFlowStore, selection])
 
   const openSelectionContextMenu = useCallback(
     (x: number, y: number, nodeId?: string) => {
@@ -193,7 +171,6 @@ export function useWorkspaceCanvasInteractions({
     isShiftPressedRef,
     selectionDraftRef,
     reactFlow,
-    setNodes,
   })
 
   const paneDragRef = useRef<{ startX: number; startY: number; didMove: boolean } | null>(null)

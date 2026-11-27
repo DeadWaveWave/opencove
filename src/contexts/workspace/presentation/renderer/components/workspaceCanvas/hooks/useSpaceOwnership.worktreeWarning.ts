@@ -4,13 +4,10 @@ import type { TranslateFn } from '@app/renderer/i18n'
 import { resolveSpaceWorkingDirectory } from '@contexts/space/application/resolveSpaceWorkingDirectory'
 import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
 import type { SpaceWorktreeMismatchDropWarningState } from '../types'
-import {
-  computeBoundingRect,
-  restoreSelectionAfterDrop,
-  type SetNodes,
-} from './useSpaceOwnership.helpers'
+import { computeBoundingRect } from './useSpaceOwnership.helpers'
 import { resolveSpaceAtPoint as resolveSpaceAtPointFromHelpers } from './useSpaceOwnership.drop.helpers'
 import { useReadCanvasDocument } from '../../../store/canvasStoreContext'
+import { useCanvasNodeWriter } from './useCanvasNodeWriter'
 
 function normalizeComparablePath(pathValue: string): string {
   return pathValue.trim().replace(/[\\/]+$/, '')
@@ -34,7 +31,6 @@ export function useWorkspaceCanvasSpaceOwnershipWorktreeWarning({
   applyOwnershipForDrop,
   reactFlow,
   resolveDropTargetSpaceAtPoint,
-  setNodes,
   hideWorktreeMismatchDropWarning,
   workspacePath,
   t,
@@ -45,7 +41,6 @@ export function useWorkspaceCanvasSpaceOwnershipWorktreeWarning({
   ) => void
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
   resolveDropTargetSpaceAtPoint: (point: { x: number; y: number }) => WorkspaceSpaceState | null
-  setNodes: SetNodes
   hideWorktreeMismatchDropWarning: boolean
   workspacePath: string
   t: TranslateFn
@@ -56,6 +51,7 @@ export function useWorkspaceCanvasSpaceOwnershipWorktreeWarning({
   continueSpaceWorktreeMismatchDropWarning: () => void
 } {
   const readDocument = useReadCanvasDocument()
+  const { updateNodes } = useCanvasNodeWriter()
   const pendingWorktreeMismatchDropRef = useRef<SpaceOwnershipDropInput | null>(null)
   const [spaceWorktreeMismatchDropWarning, setSpaceWorktreeMismatchDropWarning] =
     useState<SpaceWorktreeMismatchDropWarningState | null>(null)
@@ -201,7 +197,7 @@ export function useWorkspaceCanvasSpaceOwnershipWorktreeWarning({
       })
 
       const nodeIdSet = new Set(draggedNodeIds)
-      setNodes(
+      updateNodes(
         prevNodes => {
           let hasChanged = false
 
@@ -230,7 +226,6 @@ export function useWorkspaceCanvasSpaceOwnershipWorktreeWarning({
         { syncLayout: false },
       )
 
-      restoreSelectionAfterDrop({ selectedNodeIds: draggedNodeIds, setNodes })
       return true
     },
     [
@@ -238,8 +233,8 @@ export function useWorkspaceCanvasSpaceOwnershipWorktreeWarning({
       reactFlow,
       readDocument,
       resolveDropTargetSpaceAtPoint,
-      setNodes,
       t,
+      updateNodes,
       workspacePath,
     ],
   )

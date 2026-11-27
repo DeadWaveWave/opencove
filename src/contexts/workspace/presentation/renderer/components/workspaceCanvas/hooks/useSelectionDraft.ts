@@ -23,10 +23,6 @@ interface UseSelectionDraftParams {
   isShiftPressedRef: MutableRefObject<boolean>
   selectionDraftRef: MutableRefObject<SelectionDraftState | null>
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
-  setNodes: (
-    updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-    options?: { syncLayout?: boolean },
-  ) => void
 }
 
 export function useWorkspaceCanvasSelectionDraft({
@@ -35,7 +31,6 @@ export function useWorkspaceCanvasSelectionDraft({
   isShiftPressedRef,
   selectionDraftRef,
   reactFlow,
-  setNodes,
 }: UseSelectionDraftParams): {
   handleCanvasPointerDownCapture: (event: React.PointerEvent<HTMLDivElement>) => void
   handleCanvasPointerMoveCapture: (event: React.PointerEvent<HTMLDivElement>) => void
@@ -56,18 +51,18 @@ export function useWorkspaceCanvasSelectionDraft({
   const reactFlowStore = useStoreApi()
 
   const applyDraftSelection = useCallback(
-    (draft: SelectionDraftState, options?: { forceDeselectIntersectingNodes?: boolean }) => {
+    (draft: SelectionDraftState) => {
+      const { nodes, spaces } = readDocument()
       applySelectionDraft({
         draft,
         reactFlow,
-        spaces: readDocument().spaces,
+        nodes,
+        spaces,
         collapseState: readCanvasInteractionState(workspaceId),
         selection,
-        setNodes,
-        forceDeselectIntersectingNodes: options?.forceDeselectIntersectingNodes === true,
       })
     },
-    [reactFlow, readDocument, selection, setNodes, workspaceId],
+    [reactFlow, readDocument, selection, workspaceId],
   )
 
   const detachGlobalPointerListeners = useCallback(() => {
@@ -112,25 +107,6 @@ export function useWorkspaceCanvasSelectionDraft({
           (draft.selectedNodeIdsAtStart.length > 0 || draft.selectedSpaceIdsAtStart.length > 0)
 
         if (shouldClearSelection) {
-          setNodes(
-            prevNodes => {
-              let hasChanged = false
-              const nextNodes = prevNodes.map(node => {
-                if (!node.selected) {
-                  return node
-                }
-
-                hasChanged = true
-                return {
-                  ...node,
-                  selected: false,
-                }
-              })
-
-              return hasChanged ? nextNodes : prevNodes
-            },
-            { syncLayout: false },
-          )
           selection.clear()
           reactFlowStore.setState({
             nodesSelectionActive: false,
@@ -142,7 +118,7 @@ export function useWorkspaceCanvasSelectionDraft({
       }
 
       draft.phase = 'settling'
-      applyDraftSelection(draft, { forceDeselectIntersectingNodes: true })
+      applyDraftSelection(draft)
       const { nodeIds, spaceIds } = readSelection()
       const hasSelectedNodes = nodeIds.length > 0
       const hasSelectedSpaces = spaceIds.length > 0
@@ -155,7 +131,7 @@ export function useWorkspaceCanvasSelectionDraft({
 
       window.requestAnimationFrame(() => {
         if (selectionDraftRef.current === draft) {
-          applyDraftSelection(draft, { forceDeselectIntersectingNodes: true })
+          applyDraftSelection(draft)
         }
 
         window.requestAnimationFrame(() => {
@@ -175,7 +151,6 @@ export function useWorkspaceCanvasSelectionDraft({
       readSelection,
       selection,
       setSelectionDraft,
-      setNodes,
     ],
   )
 

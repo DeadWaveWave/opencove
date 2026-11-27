@@ -17,11 +17,6 @@ import type {
 } from '../types'
 import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 
-export type SetNodes = (
-  updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-  options?: { syncLayout?: boolean },
-) => void
-
 export interface UseWorkspaceCanvasInteractionsParams {
   canvasRef: React.RefObject<HTMLDivElement | null>
   isTrackpadCanvasMode: boolean
@@ -32,7 +27,6 @@ export interface UseWorkspaceCanvasInteractionsParams {
   isShiftPressedRef: React.MutableRefObject<boolean>
   selectionDraftRef: React.MutableRefObject<SelectionDraftState | null>
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
-  setNodes: SetNodes
   updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
   workspaceId: string
   workspacePath: string

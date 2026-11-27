@@ -2,11 +2,7 @@ import type { Node } from '@xyflow/react'
 import { resolveSpaceWorkingDirectory } from '@contexts/space/application/resolveSpaceWorkingDirectory'
 import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
 import { pushAwayLayout, type LayoutItem } from '../../../utils/spaceLayout'
-
-export type SetNodes = (
-  updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-  options?: { syncLayout?: boolean; flush?: boolean },
-) => void
+import type { CanvasNodeWriter } from './useCanvasNodeWriter'
 
 export interface Rect {
   x: number
@@ -350,13 +346,13 @@ export function applyDirectoryExpectationForDrop({
   nodeIds,
   targetSpace,
   workspacePath,
-  setNodes,
+  updateNodes,
   flush,
 }: {
   nodeIds: string[]
   targetSpace: WorkspaceSpaceState | null
   workspacePath: string
-  setNodes: SetNodes
+  updateNodes: CanvasNodeWriter['updateNodes']
   /** Asks the persistence flush on this write, which is the last synchronous write of a drop. */
   flush?: boolean
 }): void {
@@ -367,7 +363,7 @@ export function applyDirectoryExpectationForDrop({
   const nodeIdSet = new Set(nodeIds)
   const targetDirectory = resolveSpaceWorkingDirectory(targetSpace, workspacePath)
 
-  setNodes(
+  updateNodes(
     prevNodes => {
       let hasChanged = false
 
@@ -430,41 +426,4 @@ export function applyDirectoryExpectationForDrop({
     },
     { syncLayout: false, flush },
   )
-}
-
-export function restoreSelectionAfterDrop({
-  selectedNodeIds,
-  setNodes,
-}: {
-  selectedNodeIds: string[]
-  setNodes: SetNodes
-}): void {
-  if (selectedNodeIds.length === 0) {
-    return
-  }
-
-  const selectedIdSet = new Set(selectedNodeIds)
-
-  window.requestAnimationFrame(() => {
-    setNodes(
-      prevNodes => {
-        let hasChanged = false
-        const nextNodes = prevNodes.map(node => {
-          const shouldSelect = selectedIdSet.has(node.id)
-          if (node.selected === shouldSelect) {
-            return node
-          }
-
-          hasChanged = true
-          return {
-            ...node,
-            selected: shouldSelect,
-          }
-        })
-
-        return hasChanged ? nextNodes : prevNodes
-      },
-      { syncLayout: false },
-    )
-  })
 }

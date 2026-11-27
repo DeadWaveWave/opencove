@@ -27,11 +27,6 @@ import {
   useReadCanvasSelection,
 } from '../../../store/canvasStoreContext'
 
-type SetNodes = (
-  updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-  options?: { syncLayout?: boolean },
-) => void
-
 const DEFAULT_VIEWPORT_WIDTH = 1440
 const DEFAULT_VIEWPORT_HEIGHT = 900
 
@@ -124,7 +119,6 @@ export function useWorkspaceCanvasShortcutActions({
   canvasRef,
   reactFlow,
   spaceNavigationAnchorIdRef,
-  setNodes,
   updateCanvasDocument,
   nodeCreation: { createNodeForSession, createNoteNode },
   launchAgentAtFlowPosition,
@@ -153,7 +147,6 @@ export function useWorkspaceCanvasShortcutActions({
   canvasRef: React.RefObject<HTMLDivElement | null>
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
   spaceNavigationAnchorIdRef: React.MutableRefObject<string | null>
-  setNodes: SetNodes
   updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
   nodeCreation: {
     createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
@@ -178,9 +171,7 @@ export function useWorkspaceCanvasShortcutActions({
     closeNode,
     onShowMessage,
   })
-  const selectNode = useWorkspaceCanvasSelectNode({
-    setNodes,
-  })
+  const selectNode = useWorkspaceCanvasSelectNode()
 
   const createNoteAtViewportCenter = useCallback((): void => {
     const canvas = canvasRef.current
