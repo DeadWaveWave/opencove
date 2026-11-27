@@ -505,3 +505,56 @@ describe('useWorkspaceCanvasSpaceDrag reads the committed document', () => {
     })
   })
 })
+
+// Decision 10 for the handles where the base's click wrote something. The base finalized a zero
+// move: on a resize edge that resolved the Space to its minimum size (or to its content) and
+// pushed its neighbours, and on a move handle it pulled a child Space back into its parent. A click
+// now writes nothing, so it resizes and moves nothing (the first of these is red on the base: one
+// notification and one flush).
+describe('a click on a Space handle that the base would have resolved', () => {
+  it('leaves a Space smaller than the minimum and its neighbour where they are after a click on its edge', () => {
+    const harness = createCanvasDocumentHarness({
+      nodes: [nodeAt('a', 5000, 5000)],
+      spaces: [
+        createSpace('s', { x: 2000, y: 0, width: 100, height: 80 }, []),
+        createSpace('t', { x: 2110, y: 0, width: 400, height: 300 }, []),
+      ],
+    })
+    const view = renderDrag(harness)
+    act(() => view.result.current.selection.select({ nodeIds: [], spaceIds: ['s'] }))
+    const before = harness.readStoreDocument()
+    harness.notifications.mockClear()
+    harness.flush.mockClear()
+
+    press(view, 's', { x: 2098, y: 40 })
+    release({ x: 2098, y: 40 })
+
+    expect(harness.notifications).not.toHaveBeenCalled()
+    expect(harness.flush).not.toHaveBeenCalled()
+    expect(harness.readStoreDocument().spaces).toBe(before.spaces)
+  })
+
+  it('leaves a child Space that sticks out of its parent where it is after a click', () => {
+    const harness = createCanvasDocumentHarness({
+      nodes: [nodeAt('a', 2000, 2000), nodeAt('b', 905, 140)],
+      spaces: [
+        createSpace('p', { x: 0, y: 0, width: 1000, height: 600 }, []),
+        {
+          ...createSpace('c', { x: 900, y: 100, width: 300, height: 260 }, ['b']),
+          parentSpaceId: 'p',
+        },
+      ],
+    })
+    const view = renderDrag(harness)
+    act(() => view.result.current.selection.select({ nodeIds: [], spaceIds: ['c'] }))
+    const before = harness.readStoreDocument()
+    harness.notifications.mockClear()
+
+    press(view, 'c', { x: 1050, y: 300 })
+    release({ x: 1050, y: 300 })
+
+    expect(harness.notifications).not.toHaveBeenCalled()
+    expect(harness.readStoreDocument().nodes).toBe(before.nodes)
+    expect(harness.readStoreDocument().spaces).toBe(before.spaces)
+  })
+})

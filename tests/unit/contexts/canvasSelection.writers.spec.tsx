@@ -33,7 +33,10 @@ import {
   createSpace,
 } from '../../support/canvasSelectionFixtures'
 import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
-import { readWorkspaceDocument } from '@contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+import {
+  readWorkspaceDocument,
+  replaceWorkspaceNodes,
+} from '@contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 
 // Each writer of the node selection writes the canvas store's `selection` slice with one command
 // and the two React Flow store flags in the same call, and writes nothing else: not the document
@@ -834,5 +837,95 @@ describe('the Spaces the selection hooks read (#702, PR 7)', () => {
     marquee('workspace-b', 's-b')
     expect(view.result.current.readSelection()).toMatchObject({ spaceIds: ['s-b'] })
     document.body.innerHTML = ''
+  })
+})
+
+describe('the selection writers read the document when they run', () => {
+  // A window the store gained after the hook rendered: the hooks subscribe to nothing, so only a
+  // read at call time sees it.
+  function addWindowAfterRender(harness: CanvasDocumentHarness): void {
+    act(() => {
+      replaceWorkspaceNodes(harness.workspaceId, [
+        ...harness.readStoreDocument().nodes,
+        { ...documentRow(['n'])[0], position: { x: 800, y: 0 } },
+      ])
+    })
+  }
+
+  it('scopes a toggle of a window the store gained after the render', () => {
+    const harness = createCanvasDocumentHarness({
+      nodes: documentRow(['a', 'b']),
+      spaces: [createSpace('s', { x: -50, y: -50, width: 1400, height: 400 }, ['a', 'b'])],
+    })
+    const view = renderInCanvasDocument(() => ({
+      select: useWorkspaceCanvasSelectNode(),
+      ...useStoreProbe(),
+    }))
+    act(() => view.result.current.selection.select({ nodeIds: ['a'], spaceIds: [] }))
+    addWindowAfterRender(harness)
+
+    act(() => view.result.current.select('n', { toggle: true }))
+
+    expect(view.result.current.readSelection().nodeIds).toEqual(['a', 'n'])
+  })
+
+  it('selects with the marquee a window the store gained after the render', () => {
+    // The release schedules frames that re-apply the marquee; this case reads the release only.
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation(() => 0)
+    const harness = createCanvasDocumentHarness({ nodes: documentRow(['a']) })
+    const pane = document.createElement('div')
+    pane.className = 'react-flow__pane'
+    document.body.append(pane)
+    const reactFlow = {
+      screenToFlowPosition: ({ x, y }: { x: number; y: number }) => ({ x, y }),
+      getNodes: () => harness.readStoreDocument().nodes,
+    } as unknown as ReactFlowInstance<Node<TerminalNodeData>>
+    const view = renderInCanvasDocument(() => ({
+      draft: useWorkspaceCanvasSelectionDraft({
+        workspaceId: harness.workspaceId,
+        isTrackpadCanvasMode: true,
+        isShiftPressedRef: { current: false },
+        selectionDraftRef: { current: null },
+        reactFlow,
+      }),
+      ...useStoreProbe(),
+    }))
+    addWindowAfterRender(harness)
+
+    act(() =>
+      view.result.current.draft.handleCanvasPointerDownCapture({
+        button: 0,
+        shiftKey: false,
+        target: pane,
+        clientX: 700,
+        clientY: -50,
+        pointerId: 1,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      } as unknown as React.PointerEvent<HTMLDivElement>),
+    )
+    act(() => {
+      view.result.current.draft.handleCanvasPointerUpCapture({ clientX: 1200, clientY: 250 })
+    })
+
+    expect(view.result.current.readSelection().nodeIds).toEqual(['n'])
+  })
+
+  // The scope of a toggle is the Space whose rect holds the window's centre, not the Space's member
+  // list: b sits inside s but is not one of its members.
+  it('scopes a toggle by the Space rect that holds the window, not by its member list', () => {
+    createCanvasDocumentHarness({
+      nodes: documentRow(['a', 'b', 'c']),
+      spaces: [createSpace('s', { x: -50, y: -50, width: 750, height: 400 }, ['a'])],
+    })
+    const view = renderInCanvasDocument(() => ({
+      select: useWorkspaceCanvasSelectNode(),
+      ...useStoreProbe(),
+    }))
+    act(() => view.result.current.selection.select({ nodeIds: ['a'], spaceIds: [] }))
+
+    act(() => view.result.current.select('b', { toggle: true }))
+
+    expect(view.result.current.readSelection().nodeIds).toEqual(['a', 'b'])
   })
 })
