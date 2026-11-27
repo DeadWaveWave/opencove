@@ -129,7 +129,7 @@ describe('agent relaunch session binding', () => {
               terminalFontSize: 13,
               agentEnvByProvider: DEFAULT_AGENT_ENV_BY_PROVIDER,
             }),
-            terminalDisplayCalibration: null,
+            readTerminalDisplayCalibration: () => null,
           }),
         { wrapper: CanvasStoreTestProvider },
       )

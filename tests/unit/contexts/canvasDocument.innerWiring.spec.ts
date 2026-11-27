@@ -66,10 +66,15 @@ describe('Inner hands the document writer of its node store to the hooks that ne
   it('passes the agent support the settings reader and the calibration, and no writer or setting', () => {
     const call = callOf('useWorkspaceCanvasAgentSupport')
     expect(call).toMatch(/\breadAgentSettings\b/)
-    expect(call).toMatch(/\bterminalDisplayCalibration\b/)
+    expect(call).toMatch(/\breadTerminalDisplayCalibration\b/)
     expect(call).not.toMatch(
-      /\b(setNodes|agentSettings|standardWindowSizeBucket|terminalDisplayMetrics)\b/,
+      /\b(setNodes|agentSettings|standardWindowSizeBucket|terminalDisplayMetrics|terminalDisplayCalibration)\b/,
     )
+  })
+
+  // The last message copy says what it did through the host's callback: without it, it is silent.
+  it('hands the last message copy the host message callback', () => {
+    expect(callOf('useWorkspaceCanvasAgentLastMessageCopy')).toMatch(/onShowMessage/)
   })
 
   it('passes the runtime integrations no action ref, message callback or writer', () => {

@@ -57,7 +57,7 @@ export async function rendererSnapshot(f: SnapshotFixture, operation: Operation)
             terminalFontSize: 13,
             agentEnvByProvider: DEFAULT_AGENT_ENV_BY_PROVIDER,
           }),
-          terminalDisplayCalibration: null,
+          readTerminalDisplayCalibration: () => null,
         }),
       { wrapper: CanvasStoreTestProvider },
     )

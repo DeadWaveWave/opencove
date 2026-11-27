@@ -26,6 +26,7 @@ import type {
   WorkspaceState,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
+import { terminalCalibration } from '../../support/terminalCalibration'
 import { setDocumentNodes } from '../../support/documentNodes'
 import {
   seedWorkspaceCanvasStore,
@@ -218,21 +219,29 @@ const PREFERENCE_KEYS = [
 
 const onShowMessage = vi.fn()
 const readAgentSettings = () => useAppStore.getState().agentSettings
+let appliedCalibration: TerminalClientDisplayCalibration | null = null
+const readCalibration = () => appliedCalibration
 
 let controls: {
   showWorkspace: (id: string) => void
   setCalibration: (calibration: TerminalClientDisplayCalibration | null) => void
+  setEnv: (env: Record<string, string>) => void
 }
 
 function CanvasHarness() {
   const [workspaceId, setWorkspaceId] = useState(A)
-  const [calibration, setCalibration] = useState<TerminalClientDisplayCalibration | null>(null)
+  const [calibrationValue, setCalibration] = useState<TerminalClientDisplayCalibration | null>(null)
+  const [env, setEnv] = useState<Record<string, string> | undefined>(undefined)
   controls = {
     showWorkspace: id => {
       useAppStore.setState({ activeWorkspaceId: id })
       setWorkspaceId(id)
     },
-    setCalibration,
+    setCalibration: next => {
+      appliedCalibration = next
+      setCalibration(next)
+    },
+    setEnv,
   }
   const agentSettings = useAppStore(state => state.agentSettings)
   const nodes = useWorkspaceCanvasStoreNodes(workspaceId)
@@ -252,15 +261,16 @@ function CanvasHarness() {
       onMinimapVisibilityChange={() => undefined}
       agentSettings={agentSettings}
       readAgentSettings={readAgentSettings}
-      terminalDisplayCalibration={calibration}
+      environmentVariables={env}
+      terminalDisplayCalibration={calibrationValue}
+      readTerminalDisplayCalibration={readCalibration}
       onAppendSpaceArchiveRecord={() => undefined}
       onChangePreserveWindowSizesOnArrange={() => undefined}
     />
   )
 }
 
-// No `type`: the React Flow mock renders no window for these, so the spec reads the commands and
-// not a node.
+// No `type`: the React Flow mock renders no window; the spec reads the commands.
 const noteNode = (id: string, text: string, x: number): Node<TerminalNodeData> => ({
   ...pixelNode({ kind: 'note', sessionId: '', title: id, note: { text } }),
   id,
@@ -331,8 +341,7 @@ async function observe(action: () => void | Promise<void>): Promise<Seen[]> {
   return seen.slice(mark)
 }
 
-// What a terminal command could reach outside the document. The closed-node table pins that none
-// of it is touched for a window the document no longer holds.
+// What a terminal command reaches outside the document; the closed-node table pins it untouched.
 const ipc = {
   launch: vi.fn(),
   kill: vi.fn(async () => undefined),
@@ -372,6 +381,7 @@ function stubOpencoveApi(): void {
 }
 
 beforeEach(() => {
+  appliedCalibration = null
   stubOpencoveApi()
   scheduledScrollbacks.length = 0
   useScrollbackStore.getState().clearAllScrollbacks()
@@ -517,25 +527,26 @@ describe('the identity of the node commands and of the params value (Decision 3,
     expect(after.browserSearchEngine).toBe(before.browserSearchEngine)
   })
 
-  // The terminal commands bind the display calibration (a monitor move, a font load): rare.
-  it('changes the terminal family and the object, and no other family, with the terminal calibration', async () => {
+  // The calibration is read when a command runs: the owner flips it through `null` on each re-check.
+  it('keeps the commands and the params value across a calibration flip, through null and back', async () => {
+    await mount()
+    const before = latest()
+    for (const next of [terminalCalibration(9), null, terminalCalibration(12), null]) {
+      const renders = await observe(() => controls.setCalibration(next))
+      for (const snapshot of renders) {
+        expect(snapshot.params).toBe(before.params)
+        expect(snapshot.params.commands).toBe(before.params.commands)
+      }
+    }
+    expect(commandsOf().terminal).toBe(before.params.commands.terminal)
+  })
+
+  // The path and the environment are bound by the render (the launch's mount and env): rare.
+  it('changes the terminal family and the object, and no other family, with an environment edit', async () => {
     await mount()
     const before = commandsOf()
-    const measured = { cols: 80, rows: 24, cssCellWidth: 9, cssCellHeight: 20, effectiveDpr: 1 }
 
-    await observe(() =>
-      controls.setCalibration({
-        version: 1,
-        profileKey: 'profile',
-        fontSize: 13,
-        lineHeight: 1,
-        letterSpacing: 0,
-        target: measured,
-        measured,
-        score: 1,
-        measuredAt: '2026-01-01T00:00:00.000Z',
-      }),
-    )
+    await observe(() => controls.setEnv({ EDITED: '1' }))
 
     expect(commandsOf()).not.toBe(before)
     expect(commandsOf().terminal).not.toBe(before.terminal)
@@ -785,17 +796,7 @@ describe('a command called with an id the document no longer holds writes nothin
     ['terminal.listAgentSessions', c => c.terminal.listAgentSessions('gone', 5)],
     [
       'terminal.switchAgentSession',
-      c =>
-        c.terminal.switchAgentSession('gone', {
-          sessionId: 'resume-1',
-          provider: 'codex',
-          cwd: '/repo',
-          title: null,
-          preview: null,
-          startedAt: null,
-          updatedAt: null,
-          source: 'codex-file',
-        }),
+      c => c.terminal.switchAgentSession('gone', { sessionId: 'r', provider: 'codex' } as never),
     ],
     ['note.updateText', c => c.note.updateText('gone', 'text')],
     ['note.renameTitle', c => c.note.renameTitle('gone', 'title')],

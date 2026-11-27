@@ -16,6 +16,7 @@ import {
   useWorkspaceCanvasStoreNodes,
 } from '../../support/workspaceCanvasStoreHarness'
 import { agentNode, taskNode } from '../../support/agentRuntimeHarness'
+import { terminalCalibration } from '../../support/terminalCalibration'
 import { pixelNode } from './workspacePixelLayer.fixtures'
 
 // S7 of #647 (review of PR 4): what a node component consumes, in a mounted canvas. The React Flow
@@ -346,6 +347,8 @@ let controls: {
   setOnShowMessage: (fn: () => void) => void
 }
 const firstOnShowMessage = () => undefined
+let appliedCalibration: unknown = null
+const readCalibration = () => appliedCalibration as never
 
 function CanvasHarness() {
   const [workspaceId, setWorkspaceId] = useState(A)
@@ -360,7 +363,10 @@ function CanvasHarness() {
     },
     setPath,
     setEnv,
-    setCalibration,
+    setCalibration: next => {
+      appliedCalibration = next
+      setCalibration(next)
+    },
     setOnShowMessage: fn => setOnShowMessage(() => fn),
   }
   const agentSettings = useAppStore(state => state.agentSettings)
@@ -383,6 +389,7 @@ function CanvasHarness() {
       agentSettings={agentSettings}
       readAgentSettings={readAgentSettings}
       terminalDisplayCalibration={calibration as never}
+      readTerminalDisplayCalibration={readCalibration}
       onAppendSpaceArchiveRecord={() => undefined}
       onChangePreserveWindowSizesOnArrange={() => undefined}
     />
@@ -529,20 +536,50 @@ describe('what node components consume keeps its identity (Decision 14)', () => 
     expect(Object.keys(counts.leaf).filter(key => !readers.includes(key))).toEqual([])
   })
 
-  // The terminal commands bind the workspace path (the mount they launch into, the environment they
-  // launch with), so an edit of the path renews the commands (Decision 3: "an edit of its path or
-  // environment"). Every body that reads them renders once for it, and the folder's actions too.
-  it('renders every body that reads the commands, once, when the workspace path is edited', async () => {
+  // The terminal commands bind the workspace path and the environment (the mount they launch into,
+  // the env they launch with), so an edit renews the commands (Decision 3): every body that reads
+  // them renders once, and the folder's actions too.
+  const everyBody = [
+    'A-term',
+    'A-note',
+    'A-web',
+    'A-doc',
+    'A-folder',
+    'ImageNode',
+    'A-plugin',
+    'A-task',
+    'A-role',
+  ]
+  it.each([
+    ['the workspace path', () => controls.setPath('/tmp/edited')],
+    ['the environment', () => controls.setEnv({ EDITED: '1' })],
+  ])('renders each of the 9 bodies once when %s is edited', async (_name, edit) => {
     await mountCanvas()
     const before = (seenParams[seenParams.length - 1] as { commands: unknown }).commands
 
     await act(async () => {
-      controls.setPath('/tmp/edited')
+      edit()
     })
 
     expect((seenParams[seenParams.length - 1] as { commands: unknown }).commands).not.toBe(before)
-    for (const key of ['A-term', 'A-note', 'A-web', 'A-doc', 'A-folder', 'ImageNode']) {
-      expect(counts.leaf[key], key).toBeGreaterThan(0)
+    for (const key of everyBody) {
+      expect(counts.leaf[key], key).toBe(1)
     }
+  })
+
+  // The calibration is drawn by the terminal alone (through its alignment context) and read by the
+  // commands when they run: a flip, through `null` and back as on every re-check, renders only it.
+  it('renders only the terminal body for a calibration flip', async () => {
+    await mountCanvas()
+    const before = seenParams[seenParams.length - 1]
+
+    for (const next of [terminalCalibration(9), null]) {
+      await act(async () => {
+        controls.setCalibration(next)
+      })
+    }
+
+    expect(seenParams[seenParams.length - 1]).toBe(before)
+    expect(Object.keys(counts.leaf)).toEqual(['A-term'])
   })
 })

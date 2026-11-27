@@ -211,7 +211,7 @@ describe('agent relaunch mount repair', () => {
           bumpAgentLaunchToken: () => 1,
           isAgentLaunchTokenCurrent: () => true,
           readAgentSettings,
-          terminalDisplayCalibration: null,
+          readTerminalDisplayCalibration: () => null,
         }),
       { workspaceId: () => shown },
     )

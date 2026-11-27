@@ -125,7 +125,7 @@ describe('agent terminal layout sync', () => {
           defaultTerminalProfileId: 'wsl:Ubuntu',
           agentEnvByProvider: DEFAULT_AGENT_ENV_BY_PROVIDER,
         }),
-        terminalDisplayCalibration: null,
+        readTerminalDisplayCalibration: () => null,
       })
 
       useEffect(() => {

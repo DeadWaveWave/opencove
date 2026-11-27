@@ -942,7 +942,7 @@ describe('the push-away through the carriers of the canvas', () => {
           bumpAgentLaunchToken: () => 1,
           isAgentLaunchTokenCurrent: () => true,
           readAgentSettings,
-          terminalDisplayCalibration: null,
+          readTerminalDisplayCalibration: () => null,
           workspaceId: 'workspace',
           workspacePath: '/repo',
           updateCanvasDocument,

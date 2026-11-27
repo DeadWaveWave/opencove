@@ -240,7 +240,7 @@ describeWithElectronNativeModules('UI Claude relaunch during normal persistence'
               terminalFontSize: 13,
               agentEnvByProvider: DEFAULT_AGENT_ENV_BY_PROVIDER,
             }),
-            terminalDisplayCalibration: null,
+            readTerminalDisplayCalibration: () => null,
           })
           return {
             ...lifecycle,

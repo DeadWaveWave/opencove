@@ -19,6 +19,7 @@ import {
 } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import { useScrollbackStore } from '../../../src/contexts/workspace/presentation/renderer/store/useScrollbackStore'
 import type { WorkspaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
+import { terminalCalibration } from '../../support/terminalCalibration'
 import { agentNode } from '../../support/agentRuntimeHarness'
 import {
   seedWorkspaceCanvasStore,
@@ -183,6 +184,8 @@ const commandsOf = (): WiredCanvasNodeCommands => seen[seen.length - 1]!.command
 
 const onShowMessage = vi.fn()
 const readAgentSettings = () => useAppStore.getState().agentSettings
+let appliedCalibration: TerminalClientDisplayCalibration | null = null
+const readCalibration = () => appliedCalibration
 
 let controls: {
   showWorkspace: (id: string) => void
@@ -197,7 +200,10 @@ function CanvasHarness() {
       useAppStore.setState({ activeWorkspaceId: id })
       setWorkspaceId(id)
     },
-    setCalibration,
+    setCalibration: next => {
+      appliedCalibration = next
+      setCalibration(next)
+    },
   }
   const agentSettings = useAppStore(state => state.agentSettings)
   const nodes = useWorkspaceCanvasStoreNodes(workspaceId)
@@ -218,6 +224,7 @@ function CanvasHarness() {
       agentSettings={agentSettings}
       readAgentSettings={readAgentSettings}
       terminalDisplayCalibration={calibration}
+      readTerminalDisplayCalibration={readCalibration}
       onAppendSpaceArchiveRecord={() => undefined}
       onChangePreserveWindowSizesOnArrange={() => undefined}
     />
@@ -336,6 +343,7 @@ const settingsWith = (patch: Partial<AgentSettings>) =>
   })
 
 beforeEach(() => {
+  appliedCalibration = null
   stubOpencoveApi()
   scheduled.writes.length = 0
   useScrollbackStore.getState().clearAllScrollbacks()
@@ -484,27 +492,17 @@ describe('the launch fields are read from the settings when a reload starts', ()
   })
 })
 
-describe('the terminal display calibration, which the terminal commands bind by the render', () => {
-  // The identity spec pins that a calibration change renews the terminal family and the object and
-  // no other family; this pins what the renewed command launches with.
-  const calibration = (cssCellWidth: number): TerminalClientDisplayCalibration => ({
-    version: 1,
-    profileKey: 'profile',
-    fontSize: 13,
-    lineHeight: 1,
-    letterSpacing: 0,
-    target: { cols: 80, rows: 24, cssCellWidth, cssCellHeight: 20, effectiveDpr: 1 },
-    measured: { cols: 80, rows: 24, cssCellWidth, cssCellHeight: 20, effectiveDpr: 1 },
-    score: 1,
-    measuredAt: '2026-01-01T00:00:00.000Z',
-  })
-
-  it('launches with the geometry of the calibration of the command that is called', async () => {
+describe('the terminal display calibration is read when a launch starts', () => {
+  // The identity spec pins that a flip keeps the command object; this pins that the object made
+  // before the flip launches with the calibration of the call.
+  it('launches with the geometry of the calibration at the call, on the command made before it', async () => {
     const api = stubOpencoveApi()
     await mount()
-    await act(async () => commandsOf().terminal.reloadAgentSession('ag'))
-    await act(async () => controls.setCalibration(calibration(24)))
-    await act(async () => commandsOf().terminal.reloadAgentSession('ag'))
+    const commands = commandsOf()
+    await act(async () => commands.terminal.reloadAgentSession('ag'))
+    await act(async () => controls.setCalibration(terminalCalibration(24)))
+    expect(commandsOf()).toBe(commands)
+    await act(async () => commands.terminal.reloadAgentSession('ag'))
 
     const [plain, calibrated] = api.launch.mock.calls.map(call => call[0] as { cols: number })
     expect(calibrated!.cols).toBeLessThan(plain!.cols)
@@ -571,7 +569,7 @@ describe('a reload or a session switch that is waiting for the launch when the u
     expect(readWorkspaceDocument(B)!.nodes).toBe(documentOfBBefore.nodes)
     expect(nodeOf(B, 'ag')?.data.agent?.executionDirectory).toBe('/repo-b')
     // The switch flushes once, at its end, whatever its last write did (not the flush of a write).
-    expect(flushes).toHaveBeenCalled()
+    expect(flushes).toHaveBeenCalledTimes(1)
   })
 })
 
@@ -669,5 +667,36 @@ describe('each terminal command has the effect of the function it is named for',
     await act(async () => commandsOf().terminal.reloadAgentSession('ag'))
     expect(api.launch).toHaveBeenCalledTimes(1)
     expect(reexecAgent).toHaveBeenCalledTimes(1)
+  })
+
+  it('switchAgentSession of an agent that runs in a terminal re-executes it with the chosen session, launching nothing', async () => {
+    const reexecAgent = vi.fn(async (input: { sessionId: string }) => ({
+      sessionId: input.sessionId,
+      operationId: 'op',
+      status: 'reexecuted' as const,
+    }))
+    const api = stubOpencoveApi()
+    ;(window.opencoveApi as unknown as { pty: Record<string, unknown> }).pty.reexecAgent =
+      reexecAgent
+    await mount()
+
+    await act(async () =>
+      commandsOf().terminal.switchAgentSession('ov', {
+        sessionId: 'resume-chosen',
+        provider: 'codex',
+        cwd: '/repo-ov',
+        title: null,
+        preview: null,
+        startedAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: null,
+        source: 'codex-file',
+      }),
+    )
+
+    expect(reexecAgent).toHaveBeenCalledWith(
+      expect.objectContaining({ sessionId: 'pty-ov', resumeSessionId: 'resume-chosen' }),
+    )
+    expect(api.launch).not.toHaveBeenCalled()
+    expect(nodeOf(A, 'ov')?.data.terminalAgentBinding?.resumeSessionId).toBe('resume-chosen')
   })
 })

@@ -116,7 +116,10 @@ describe('WorkspaceMain canvas props', () => {
       onActiveSpaceChange: vi.fn(),
       onOpenProjectContextMenu: vi.fn(),
     }
-    type CanvasProps = { readAgentSettings: () => typeof DEFAULT_AGENT_SETTINGS }
+    type CanvasProps = {
+      readAgentSettings: () => typeof DEFAULT_AGENT_SETTINGS
+      readTerminalDisplayCalibration: () => unknown
+    }
 
     const { rerender } = render(<WorkspaceMain {...props} />)
     const first = (workspaceCanvasRenderSpy.mock.calls[0]![0] as CanvasProps).readAgentSettings
@@ -131,6 +134,13 @@ describe('WorkspaceMain canvas props', () => {
     )
     const second = (workspaceCanvasRenderSpy.mock.lastCall![0] as CanvasProps).readAgentSettings
     expect(second).toBe(first)
+    // The calibration reader is as stable, and answers for the owner's applied calibration now.
+    const readCalibration = (workspaceCanvasRenderSpy.mock.calls[0]![0] as CanvasProps)
+      .readTerminalDisplayCalibration
+    expect(
+      (workspaceCanvasRenderSpy.mock.lastCall![0] as CanvasProps).readTerminalDisplayCalibration,
+    ).toBe(readCalibration)
+    expect(readCalibration()).toBeNull()
 
     // It answers with the store's settings at the call, not with the ones the shell rendered.
     const stored = { ...DEFAULT_AGENT_SETTINGS, focusNodeTargetZoom: 0.8 }

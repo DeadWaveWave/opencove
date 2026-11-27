@@ -86,7 +86,7 @@ function renderLifecycle(
       bumpAgentLaunchToken: nodeStore.bumpAgentLaunchToken,
       isAgentLaunchTokenCurrent: nodeStore.isAgentLaunchTokenCurrent,
       readAgentSettings,
-      terminalDisplayCalibration: null,
+      readTerminalDisplayCalibration: () => null,
     })
   }, documents)
 }
