@@ -104,7 +104,6 @@ describe('assignNodeToSpaceAndExpand as one store write', () => {
       assign(update(), {
         workspaceId: harness.workspaceId,
         createdNodeId: wide.id,
-        createdNode: wide,
         targetSpaceId: 'space-a',
       })
     })
@@ -130,7 +129,6 @@ describe('assignNodeToSpaceAndExpand as one store write', () => {
       assign(update(), {
         workspaceId: harness.workspaceId,
         createdNodeId: wide.id,
-        createdNode: wide,
         targetSpaceId: 'space-a',
       })
     })
@@ -145,20 +143,21 @@ describe('assignNodeToSpaceAndExpand as one store write', () => {
     // The second node reaches further to the right than the first, so the Space grows again.
     const wider = node('wider', { x: 1000, y: 240 }, { width: 700, height: 300 })
     const farBystander = node('bystander', { x: 1500, y: 250 }, { width: 200, height: 100 })
-    const { harness, update } = setup([seedNote, wide, wider], [space()])
+    const { harness, update } = setup([seedNote, wide], [space()])
     const assignCreated = (created: Node<TerminalNodeData>) =>
       assign(update(), {
         workspaceId: harness.workspaceId,
         createdNodeId: created.id,
-        createdNode: created,
         targetSpaceId: 'space-a',
       })
 
     act(() => {
       assignCreated(wide)
-      // Nothing was in the way of the first assignment; this node is stored after it.
+      // Nothing was in the way of the first assignment. The second node is created after it, and
+      // so is the node that it will meet.
       replaceWorkspaceNodes(harness.workspaceId, [
         ...harness.readStoreDocument().nodes,
+        wider,
         farBystander,
       ])
       assignCreated(wider)
@@ -183,7 +182,6 @@ describe('assignNodeToSpaceAndExpand as one store write', () => {
       assign(update(), {
         workspaceId: harness.workspaceId,
         createdNodeId: inside.id,
-        createdNode: inside,
         targetSpaceId: 'space-a',
       })
     })
@@ -227,7 +225,6 @@ describe('assignNodeToSpaceAndExpand as one store write', () => {
       assign(update(), {
         workspaceId: harness.workspaceId,
         createdNodeId: inside.id,
-        createdNode: inside,
         targetSpaceId: 'space-a',
       })
     })
@@ -244,7 +241,6 @@ describe('assignNodeToSpaceAndExpand as one store write', () => {
       assign(update(), {
         workspaceId: harness.workspaceId,
         createdNodeId: wide.id,
-        createdNode: wide,
         targetSpaceId: 'space-a',
       })
     })
@@ -254,22 +250,123 @@ describe('assignNodeToSpaceAndExpand as one store write', () => {
     expect(b.nodeIds).toEqual([])
   })
 
-  it('lays out the created node that the caller passes when the store holds a different one', () => {
-    // The store still holds the node where the creator placed it; the caller knows the real rect.
-    const placed = node('wide', { x: 300, y: 300 }, { width: 100, height: 100 })
-    const { harness, update } = setup([seedNote, placed, bystander], [space()])
+  it('measures the node the store holds when it moved after creation', () => {
+    // The creator placed the node small; a later write moved and grew it. The caller's object
+    // is the pre-move one. It is passed untyped, as a caller that predates #758 would: the recipe
+    // must ignore it and lay out the node the document holds.
+    const staleCallerCopy = node('wide', { x: 300, y: 300 }, { width: 100, height: 100 })
+    const { harness, update } = setup([seedNote, wide, bystander], [space()])
 
     act(() => {
       assign(update(), {
         workspaceId: harness.workspaceId,
         createdNodeId: wide.id,
-        createdNode: wide,
         targetSpaceId: 'space-a',
+        ...({ createdNode: staleCallerCopy } as object),
       })
     })
 
     const [stored] = harness.readStoreDocument().spaces
     expect(stored.rect!.x + stored.rect!.width).toBeGreaterThanOrEqual(1200)
+    expect(storedNode(harness, 'bystander').position.x).toBeGreaterThanOrEqual(
+      stored.rect!.x + stored.rect!.width,
+    )
+  })
+
+  it('lays out a node without a usable rect as the stored nodes are, and gives it membership', () => {
+    const rectless = {
+      id: 'rectless',
+      position: { x: Number.NaN, y: 0 },
+      data: {} as TerminalNodeData,
+    } as Node<TerminalNodeData>
+    const { harness, update } = setup([seedNote, rectless], [space()])
+
+    act(() => {
+      assign(update(), {
+        workspaceId: harness.workspaceId,
+        createdNodeId: rectless.id,
+        targetSpaceId: 'space-a',
+      })
+    })
+
+    expect(harness.readStoreDocument().spaces[0].nodeIds).toEqual(['seed-note', 'rectless'])
+  })
+
+  it('a node removed before the write leaves the document unchanged: no membership, no growth, no push', () => {
+    // The creator added the node, then the user closed it before the assignment ran. The Space
+    // owns a node that reaches past its rect, and a bystander stands where a growth would push, so
+    // a recipe that still ran the layout would grow the Space and move the bystander.
+    const { harness, update } = setup(
+      [seedNote, wide, bystander],
+      [space({ nodeIds: ['seed-note', 'wide'] })],
+    )
+    const before = harness.readStoreDocument()
+    harness.notifications.mockClear()
+    // A caller that predates #758 still holds the closed node and would pass it, untyped.
+    const closedNodeCopy = node('gone', { x: 300, y: 300 }, { width: 100, height: 100 })
+
+    act(() => {
+      assign(update(), {
+        workspaceId: harness.workspaceId,
+        createdNodeId: 'gone',
+        targetSpaceId: 'space-a',
+        ...({ createdNode: closedNodeCopy } as object),
+      })
+    })
+
+    const after = harness.readStoreDocument()
+    expect(after.spaces[0].nodeIds).toEqual(['seed-note', 'wide'])
+    expect(after.spaces[0].rect).toEqual(before.spaces[0].rect)
+    expect(storedNode(harness, 'bystander').position).toEqual(bystander.position)
+    expect(after.spaces).toBe(before.spaces)
+    expect(after.nodes).toBe(before.nodes)
+    expect(harness.notifications).not.toHaveBeenCalled()
+    expect(harness.flush).not.toHaveBeenCalled()
+  })
+
+  it('hands the store a recipe that returns the document as it was given when the node is missing', () => {
+    // The store drops the ids of nodes it does not hold, so only the recipe itself shows whether
+    // it assigned the missing node: it must return the very nodes and Spaces it was given.
+    const recipeInput = {
+      nodes: [seedNote, wide, bystander],
+      spaces: [space({ nodeIds: ['seed-note', 'wide'] })],
+    }
+    const updateCanvasDocument = vi.fn()
+
+    assign(updateCanvasDocument as unknown as Updater, {
+      workspaceId: 'workspace',
+      createdNodeId: 'gone',
+      targetSpaceId: 'space-a',
+      targetSpaceSnapshot: space({ id: 'target', nodeIds: [], rect: null }),
+      targetSpaceBaseline: null,
+    })
+
+    expect(updateCanvasDocument).toHaveBeenCalledTimes(1)
+    const recipe = updateCanvasDocument.mock.calls[0][0] as (input: typeof recipeInput) => {
+      nodes: unknown
+      spaces: unknown
+    }
+    const result = recipe(recipeInput)
+    expect(result.nodes).toBe(recipeInput.nodes)
+    expect(result.spaces).toBe(recipeInput.spaces)
+  })
+
+  it('a node removed before the write adds no snapshot Space either', () => {
+    const snapshot = space({ id: 'target', nodeIds: [], rect: null })
+    const { harness, update } = setup([seedNote], [space()])
+    const before = harness.readStoreDocument()
+
+    act(() => {
+      assign(update(), {
+        workspaceId: harness.workspaceId,
+        createdNodeId: 'gone',
+        targetSpaceId: 'target',
+        targetSpaceSnapshot: snapshot,
+        targetSpaceBaseline: null,
+      })
+    })
+
+    expect(harness.readStoreDocument().spaces).toEqual(before.spaces)
   })
 })
 
@@ -319,7 +416,6 @@ describe('assignNodeToSpaceAndExpand after a workspace switch', () => {
       assign(updateOfA, {
         workspaceId: 'workspace-a',
         createdNodeId: wide.id,
-        createdNode: wide,
         targetSpaceId: 'space-a',
       })
     })
@@ -350,12 +446,11 @@ describe('assignNodeToSpaceAndExpand and the Space snapshot of the caller', () =
     stored: WorkspaceSpaceState[],
     input: Partial<Omit<Assign, 'updateCanvasDocument'>>,
   ) {
-    const { harness, update } = setup([], stored)
+    const { harness, update } = setup([created], stored)
     act(() => {
       assign(update(), {
         workspaceId: harness.workspaceId,
         createdNodeId: created.id,
-        createdNode: created,
         targetSpaceId: 'target',
         ...input,
       })
@@ -439,7 +534,7 @@ describe('assignNodeToSpaceAndExpand and the Space snapshot of the caller', () =
   })
 
   it('reads the Spaces of the store when it writes, not the ones of an earlier read', () => {
-    const { harness, update } = setup([], [baseline])
+    const { harness, update } = setup([created], [baseline])
     const updater = update()
 
     act(() => {
@@ -451,7 +546,6 @@ describe('assignNodeToSpaceAndExpand and the Space snapshot of the caller', () =
       assign(updater, {
         workspaceId: harness.workspaceId,
         createdNodeId: created.id,
-        createdNode: created,
         targetSpaceId: 'target',
       })
     })

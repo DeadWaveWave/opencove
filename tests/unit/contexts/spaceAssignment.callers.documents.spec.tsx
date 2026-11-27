@@ -16,10 +16,13 @@ import { useWorkspaceCanvasSpaceExplorer } from '../../../src/contexts/workspace
 import { useWorkspaceDocumentOpening } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useWorkspaceDocumentOpening'
 import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
 import {
-  CREATED,
   TARGET,
+  assignmentRecords,
+  createdInShownDocument,
   expectsWriterOfTheRender,
   lastCall,
+  recordAssignmentsAgainst,
+  writeShownNodes,
 } from '../../support/pushAwayCallerHarness'
 
 // The callers in the explorer, the document opening and the filesystem nodes hand the push-away the
@@ -106,11 +109,12 @@ vi.mock(
 const assignMock = assignNodeToSpaceAndExpand as unknown as Mock
 const assignArgs = () => lastCall(assignMock)[0] as Record<string, unknown> | undefined
 
-const setNodes = vi.fn()
+// Writes the document of the workspace shown, so that the reposition of the explorer is in it.
+const setNodes = vi.fn(writeShownNodes)
 const onShowMessage = vi.fn()
-const createDocumentNode = vi.fn(() => CREATED)
-const createImageNode = vi.fn(() => CREATED)
-const createFolderNode = vi.fn(() => CREATED)
+const createDocumentNode = vi.fn(() => createdInShownDocument())
+const createImageNode = vi.fn(() => createdInShownDocument())
+const createFolderNode = vi.fn(() => createdInShownDocument())
 const reactFlow = {
   getZoom: () => 1,
   setCenter: vi.fn(),
@@ -122,6 +126,8 @@ const canvasRef = { current: document.createElement('div') }
 beforeEach(() => {
   vi.clearAllMocks()
   firstRender.values.clear()
+  // Each assignment records the node that the document held when it was called (#758).
+  recordAssignmentsAgainst(assignMock)
   mocks.resolveBinding.mockResolvedValue({ endpointId: 'local', mountId: null })
 })
 
@@ -186,7 +192,7 @@ describe('the push-away of the explorer', () => {
 })
 
 describe('the push-away of the explorer after the reposition moves the created node', () => {
-  it('measures the moved rect, not the pre-move one (#725)', async () => {
+  it('assigns the node where the reposition put it in the document (#725)', async () => {
     const api = window as unknown as { opencoveApi?: Record<string, unknown> }
     api.opencoveApi = { workspace: { writeCanvasImage: vi.fn(async () => undefined) } }
     mocks.resolveFilesystem.mockReturnValue({
@@ -230,9 +236,14 @@ describe('the push-away of the explorer after the reposition moves the created n
       argsOf: assignArgs,
       flush: 'document',
     })
-    expect(assignArgs()?.createdNode).toEqual(
-      expect.objectContaining({ id: 'created', position: { x: 10, y: 130 } }),
-    )
+    // The assignment ran against a document that held the node where the reposition put it: the
+    // recipe takes the node from there (#758), for both workspaces the helper rendered.
+    expect(assignmentRecords).toHaveLength(2)
+    for (const record of assignmentRecords) {
+      expect(record.nodeInDocument).toEqual(
+        expect.objectContaining({ id: 'created', position: { x: 10, y: 130 } }),
+      )
+    }
   })
 })
 

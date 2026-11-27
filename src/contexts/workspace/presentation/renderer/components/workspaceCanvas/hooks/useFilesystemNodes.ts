@@ -136,7 +136,6 @@ export function useFilesystemNodes({
           assignNodeToSpaceAndExpand({
             workspaceId,
             createdNodeId: node.id,
-            createdNode: node,
             targetSpaceId: target.id,
             updateCanvasDocument,
           })

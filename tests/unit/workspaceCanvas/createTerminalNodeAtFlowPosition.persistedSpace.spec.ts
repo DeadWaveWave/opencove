@@ -9,6 +9,7 @@ import {
   renderCanvasDocumentReader,
   renderCanvasNodeStore,
 } from '../../support/canvasDocumentHarness'
+import { createdTerminalForDocument } from '../../support/workspaceCanvasStoreHarness'
 import type { WorkspaceSpaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
 
 function regularTerminalLaunchGeometry() {
@@ -31,7 +32,16 @@ describe('createTerminalNodeAtFlowPosition persisted space launch', () => {
   // The mount repair writes through the store. None of these launches needs a repair, so the only
   // write the store sees is the push-away that assigns the node to its Space.
   function seedStore(spaces: WorkspaceSpaceState[] = []) {
-    const harness = createCanvasDocumentHarness({ spaces })
+    const harness = createCanvasDocumentHarness({
+      spaces,
+      // The node store's creator has added the terminal when the push-away runs (#758).
+      nodes: [
+        createdTerminalForDocument('00000000-0000-4000-8000-000000000001'),
+        // The nodes that the Spaces below own: the store drops the ids of nodes it does not hold.
+        { ...createdTerminalForDocument('existing-node'), position: { x: 1340, y: 40 } },
+        { ...createdTerminalForDocument('local-node'), position: { x: 1800, y: 300 } },
+      ],
+    })
     return {
       harness,
       readDocument: renderCanvasDocumentReader(harness.workspaceId),

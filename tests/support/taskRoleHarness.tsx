@@ -348,7 +348,14 @@ export function renderEditor(documents?: Documents, { stable = true }: RenderOpt
 }
 
 export function renderCreation(documents?: Documents, { stable = true }: RenderOptions = {}) {
-  const createTaskNode = vi.fn(() => taskNodeWith('created-task'))
+  const createdTask = taskNodeWith('created-task')
+  const createTaskNode = vi.fn(() => createdTask)
+  // The node store's creator adds the task to the document before it returns it, and the Space
+  // assignment takes the task from there (#758): the document of A holds it from the start.
+  const seeded: Documents = {
+    ...documents,
+    a: { ...documents?.a, nodes: [...(documents?.a?.nodes ?? []), createdTask] },
+  }
   const rendered = renderInTwoWorkspaces(
     ({ nodeStore, stableUpdateCanvasDocument }) =>
       useWorkspaceCanvasTaskNodeCreation({
@@ -357,7 +364,7 @@ export function renderCreation(documents?: Documents, { stable = true }: RenderO
         standardWindowSizeBucket: 'regular',
         createTaskNode,
       }),
-    documents,
+    seeded,
   )
   return { ...rendered, createTaskNode }
 }

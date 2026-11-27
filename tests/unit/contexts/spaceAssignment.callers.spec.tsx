@@ -37,8 +37,12 @@ import {
   OLD_CHANNELS,
   TARGET,
   expectsOneFlushAfterThePushAway,
+  createdInShownDocument,
   expectsWriterOfTheRender,
   lastCall,
+  expectsEveryAssignedNodeInTheDocument,
+  recordAssignmentsAgainst,
+  writeCreatedNode,
   type Updater,
 } from '../../support/pushAwayCallerHarness'
 import { createStoreBackedChannels } from '../../support/workspaceCanvasStoreHarness'
@@ -143,12 +147,12 @@ const setNodes = vi.fn()
 const onSpacesChange = vi.fn()
 const onShowMessage = vi.fn()
 const onRequestPersistFlush = vi.fn()
-const createNodeForSession = vi.fn(async () => CREATED)
-const createNoteNode = vi.fn(() => CREATED)
-const createWebsiteNode = vi.fn(() => CREATED)
-const createImageNode = vi.fn(() => CREATED)
-const createTaskNode = vi.fn(() => CREATED)
-const createRoleNode = vi.fn(() => CREATED)
+const createNodeForSession = vi.fn(async () => createdInShownDocument())
+const createNoteNode = vi.fn(() => createdInShownDocument())
+const createWebsiteNode = vi.fn(() => createdInShownDocument())
+const createImageNode = vi.fn(() => createdInShownDocument())
+const createTaskNode = vi.fn(() => createdInShownDocument())
+const createRoleNode = vi.fn(() => createdInShownDocument())
 const metrics = { fontSize: 13 }
 const launcherSettings = { ...DEFAULT_AGENT_SETTINGS, defaultProvider: 'codex' }
 const roleSettings = {
@@ -173,6 +177,8 @@ const terminalArgs = () => lastCall(terminalMock)[0] as Record<string, unknown> 
 beforeEach(() => {
   vi.clearAllMocks()
   firstRender.values.clear()
+  // Each assignment records the node that the document held when it was called (#758).
+  recordAssignmentsAgainst(assignMock)
 })
 
 describe('the push-away of the interactions as the canvas composes them', () => {
@@ -691,7 +697,6 @@ describe('the push-away of the task and role callers', () => {
       assignAgentNodeToTaskSpace({
         taskNodeId: 'task',
         assignedNodeId: 'agent',
-        assignedNode: CREATED,
         context: {
           workspaceId: 'workspace',
           readDocument: createStoreBackedChannels({
@@ -793,16 +798,18 @@ describe('the push-away of the task and role callers', () => {
           role: { roleId: 'role', input: 'do it', selectedProvider: null, runHistory: [] },
         },
       } as unknown as Node<TerminalNodeData>
+      const { readDocument } = createStoreBackedChannels({
+        workspaceId: 'workspace',
+        nodes: [roleNode],
+        spaces: [{ ...TARGET, nodeIds: ['role-node'] }],
+      })
+      recordAssignmentsAgainst(assignMock, readDocument)
       const context = {
         workspaceId: 'workspace',
         workspacePath: '/repo',
         agentSettings: DEFAULT_AGENT_SETTINGS,
         projectRoles: [{ id: 'role', name: 'Role', promptTemplate: 'x', outputFormat: '' }],
-        readDocument: createStoreBackedChannels({
-          workspaceId: 'workspace',
-          nodes: [roleNode],
-          spaces: [{ ...TARGET, nodeIds: ['role-node'] }],
-        }).readDocument,
+        readDocument,
         // The flush rides on the write that records the run, as the node store takes it.
         setNodes: vi.fn((_updater, options) => {
           if (options?.flush) {
@@ -811,7 +818,8 @@ describe('the push-away of the task and role callers', () => {
         }),
         updateCanvasDocument,
         updateSpaces: vi.fn(),
-        createNodeForSession,
+        // The creator of the node store adds the node to the document before it returns it.
+        createNodeForSession: vi.fn(async () => writeCreatedNode('workspace', CREATED)),
         updateRoleInput: vi.fn(),
         appendRoleRunRecord: vi.fn(),
         buildAgentNodeTitle: () => 'Role',
@@ -822,6 +830,7 @@ describe('the push-away of the task and role callers', () => {
       // The run flushes once, after the push-away.
       expectsOneFlushAfterThePushAway(onRequestPersistFlush, 1, assignMock)
       expect(assignMock).toHaveBeenCalledTimes(1)
+      expectsEveryAssignedNodeInTheDocument(assignMock)
       const args = assignArgs()!
       expect(args.updateCanvasDocument).toBe(updateCanvasDocument)
       for (const channel of OLD_CHANNELS) {

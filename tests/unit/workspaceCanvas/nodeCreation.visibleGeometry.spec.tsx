@@ -125,7 +125,6 @@ describe('creation uses the visible geometry of every window kind', () => {
           assignNodeToSpaceAndExpand({
             workspaceId,
             createdNodeId: added.id,
-            createdNode: added,
             targetSpaceId: target.id,
             updateCanvasDocument: result.current.nodeStore.updateCanvasDocument,
           })

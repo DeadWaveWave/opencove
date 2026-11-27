@@ -171,7 +171,6 @@ export async function resumeTaskAgentSessionAction(
     assignAgentNodeToTaskSpace({
       taskNodeId,
       assignedNodeId: createdAgentNode.id,
-      assignedNode: createdAgentNode,
       context,
     })
 

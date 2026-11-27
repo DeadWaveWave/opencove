@@ -9,6 +9,7 @@ import {
   renderCanvasDocumentReader,
   renderCanvasNodeStore,
 } from '../../support/canvasDocumentHarness'
+import { createdTerminalForDocument } from '../../support/workspaceCanvasStoreHarness'
 
 function regularTerminalLaunchGeometry() {
   return resolveTerminalPtyGeometryForNodeFrame({
@@ -30,7 +31,11 @@ describe('createTerminalNodeAtFlowPosition', () => {
   // The mount repair writes through the store: none of these launches needs one, so the store
   // sees no write but the push-away of a created node into its target Space.
   function seedStore(workspaceId: string) {
-    const harness = createCanvasDocumentHarness({ workspaceId })
+    const harness = createCanvasDocumentHarness({
+      workspaceId,
+      // The node store's creator has added the terminal when the push-away runs (#758).
+      nodes: [createdTerminalForDocument('00000000-0000-4000-8000-000000000001')],
+    })
     return {
       harness,
       readDocument: renderCanvasDocumentReader(workspaceId),

@@ -65,12 +65,10 @@ export function findTaskSpace(
 export function assignAgentNodeToTaskSpace({
   taskNodeId,
   assignedNodeId,
-  assignedNode,
   context,
 }: {
   taskNodeId: string
   assignedNodeId: string
-  assignedNode: Node<TerminalNodeData>
   context: Pick<
     TaskActionContext | ResumeTaskAgentSessionContext,
     'workspaceId' | 'readDocument' | 'updateCanvasDocument'
@@ -84,7 +82,6 @@ export function assignAgentNodeToTaskSpace({
   assignNodeToSpaceAndExpand({
     workspaceId: context.workspaceId,
     createdNodeId: assignedNodeId,
-    createdNode: assignedNode,
     targetSpaceId: taskSpaceId,
     updateCanvasDocument: context.updateCanvasDocument,
   })
