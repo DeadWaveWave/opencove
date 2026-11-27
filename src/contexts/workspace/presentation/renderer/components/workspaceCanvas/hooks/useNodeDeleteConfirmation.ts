@@ -1,4 +1,4 @@
-import { useCallback, useEffect, type MutableRefObject } from 'react'
+import { useCallback } from 'react'
 import type { Node } from '@xyflow/react'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type { NodeDeleteConfirmationState } from '../types'
@@ -10,7 +10,6 @@ import {
 
 interface UseNodeDeleteConfirmationParams {
   closeNode: (nodeId: string) => Promise<void>
-  requestNodeDeleteRef: MutableRefObject<(nodeIds: readonly string[]) => void>
 }
 
 function uniqNodeIds(nodeIds: readonly string[]): string[] {
@@ -64,10 +63,10 @@ function resolveNodeDeleteConfirmationState({
 
 export function useWorkspaceCanvasNodeDeleteConfirmation({
   closeNode,
-  requestNodeDeleteRef,
 }: UseNodeDeleteConfirmationParams): {
   confirmNodeDelete: () => Promise<void>
   requestNodeClose: (nodeId: string) => Promise<void>
+  requestNodeDelete: (nodeIds: readonly string[]) => void
 } {
   const ui = useCanvasUiCommands()
   const readUi = useReadCanvasUi()
@@ -119,14 +118,9 @@ export function useWorkspaceCanvasNodeDeleteConfirmation({
     [closeNode, readDocument],
   )
 
-  useEffect(() => {
-    requestNodeDeleteRef.current = nodeIds => {
-      requestNodeDelete(nodeIds)
-    }
-  }, [requestNodeDelete, requestNodeDeleteRef])
-
   return {
     confirmNodeDelete,
     requestNodeClose,
+    requestNodeDelete,
   }
 }

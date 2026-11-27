@@ -15,6 +15,7 @@ import {
   seedWorkspaceCanvasStore,
   useWorkspaceCanvasStoreNodes,
 } from '../../support/workspaceCanvasStoreHarness'
+import { agentSettingsProps } from '../../support/agentSettingsReader'
 
 vi.mock('@xyflow/react', () => {
   let currentNodes: Array<{ id: string; type: string; data: unknown }> = []
@@ -169,11 +170,11 @@ describe('WorkspaceCanvas create terminal standard sizing', () => {
           isMinimapVisible={false}
           onViewportChange={() => undefined}
           onMinimapVisibilityChange={() => undefined}
-          agentSettings={{
+          {...agentSettingsProps({
             ...DEFAULT_AGENT_SETTINGS,
             defaultTerminalWindowScalePercent: 120,
             standardWindowSizeBucket: 'large',
-          }}
+          })}
         />
       )
     }
@@ -252,10 +253,10 @@ describe('WorkspaceCanvas create terminal standard sizing', () => {
           isMinimapVisible={false}
           onViewportChange={() => undefined}
           onMinimapVisibilityChange={() => undefined}
-          agentSettings={{
+          {...agentSettingsProps({
             ...DEFAULT_AGENT_SETTINGS,
             projectRolesByWorkspaceId: { 'workspace-1': [role] },
-          }}
+          })}
         />
       )
     }

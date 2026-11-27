@@ -28,6 +28,7 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
     onViewportChange,
     onMinimapVisibilityChange,
     agentSettings,
+    readAgentSettings,
     terminalDisplayCalibration = null,
     terminalDisplayMetrics,
     onChangePreserveWindowSizesOnArrange,
@@ -136,18 +137,9 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
   // prettier-ignore
   const collapse = useCanvasCollapse({ workspaceId, canvasRef: canvasState.canvasRef, nodes, spaces, updateCanvasDocument: nodeStore.updateCanvasDocument, reactFlow, focusNodeTargetZoom: agentSettings.focusNodeTargetZoom, nodeExpandBehavior: agentSettings.nodeExpandBehavior })
   // prettier-ignore
-  workspaceCanvasHooks.useWorkspaceCanvasLifecycleBindings({ workspaceId, canvasState, reactFlow, viewport, agentSettings, focusSpaceId, focusNodeId, focusNodeInput, focusSequence, expandNode: collapse.expandNode, focusSpaceInViewport: spacesApi.focusSpaceInViewport, nodes: canvasState.flowNodes, isFocusNodeTargetZoomPreviewing, requestNodeDeleteRef: actionRefs.requestNodeDeleteRef })
+  workspaceCanvasHooks.useWorkspaceCanvasLifecycleBindings({ workspaceId, canvasState, reactFlow, viewport, agentSettings, focusSpaceId, focusNodeId, focusNodeInput, focusSequence, expandNode: collapse.expandNode, focusSpaceInViewport: spacesApi.focusSpaceInViewport, nodes: canvasState.flowNodes, isFocusNodeTargetZoomPreviewing, requestNodeDelete: taskUi.requestNodeDelete })
   // prettier-ignore
-  const { canConvertSelectedNoteToTask, isConvertSelectedNoteToTaskDisabled, convertSelectedNoteToTask, convertNoteToTask, arrangeAll, arrangeCanvas, arrangeInSpace } = workspaceCanvasHooks.useWorkspaceCanvasMenuActions({ selectedNodeIds: canvasState.selectedNodeIds, flowNodes: canvasState.flowNodes, updateCanvasDocument: nodeStore.updateCanvasDocument, onShowMessage, reactFlow, standardWindowSizeBucket: agentSettings.standardWindowSizeBucket, focusNodeTargetZoom: agentSettings.focusNodeTargetZoom })
-  const { nodeTypes, nodeTypesParameters } =
-    workspaceCanvasHooks.useWorkspaceCanvasComposedNodeTypes({
-      nodeStore,
-      workspacePath,
-      onShowMessage,
-      agentSettings,
-      actionRefs,
-      convertNoteToTask,
-    })
+  const { canConvertSelectedNoteToTask, isConvertSelectedNoteToTaskDisabled, convertSelectedNoteToTask, convertNoteToTask, arrangeAll, arrangeCanvas, arrangeInSpace } = workspaceCanvasHooks.useWorkspaceCanvasMenuActions({ selectedNodeIds: canvasState.selectedNodeIds, flowNodes: canvasState.flowNodes, onShowMessage, reactFlow, readAgentSettings })
   const {
     clearNodeSelection,
     handleNodeClick,
@@ -195,6 +187,33 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
     createImageNode: nodeStore.createImageNode,
     createWebsiteNode: nodeStore.createWebsiteNode,
   })
+  const selectNode = workspaceCanvasHooks.useWorkspaceCanvasSelectNode()
+  const commands = workspaceCanvasHooks.useComposedCanvasNodeCommands({
+    reactFlow,
+    readAgentSettings,
+    selectNode,
+    clearNodeSelection,
+    requestNodeClose: taskUi.requestNodeClose,
+    requestNodeDelete: taskUi.requestNodeDelete,
+    resizeNode: nodeStore.resizeNode,
+    setNodeLabelColorOverride: nodeStore.setNodeLabelColorOverride,
+    updateNoteText: nodeStore.updateNoteText,
+    renameNoteTitle: nodeStore.renameNoteTitle,
+    convertNoteToTask,
+    updateWebsiteUrl: nodeStore.updateWebsiteUrl,
+    setWebsitePinned: nodeStore.setWebsitePinned,
+    setWebsiteSession: nodeStore.setWebsiteSession,
+    setWebsiteMode: nodeStore.setWebsiteMode,
+    setWebsiteFullscreen: nodeStore.setWebsiteFullscreen,
+  })
+  const { nodeTypes, nodeTypesParameters } =
+    workspaceCanvasHooks.useWorkspaceCanvasComposedNodeTypes({
+      workspacePath,
+      onShowMessage,
+      agentSettings,
+      actionRefs,
+      commands,
+    })
   const actionBarActions = useWorkspaceCanvasActionBar({
     canvasRef: canvasState.canvasRef,
     reactFlow,
@@ -236,11 +255,7 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
     workspaceId,
     actionRefs,
     nodeStore,
-    taskUi,
     agentSupport,
-    agentSettings,
-    reactFlow,
-    clearNodeSelection,
     onShowMessage,
     canvasState,
     nodePublishers,

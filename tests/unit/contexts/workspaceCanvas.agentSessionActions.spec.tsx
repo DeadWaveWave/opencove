@@ -13,6 +13,7 @@ import {
   seedWorkspaceCanvasStore,
   useWorkspaceCanvasStoreNodes,
 } from '../../support/workspaceCanvasStoreHarness'
+import { agentSettingsProps } from '../../support/agentSettingsReader'
 
 vi.mock('@xyflow/react', () => {
   let currentNodes: Array<{ id: string; type: string; data: unknown }> = []
@@ -263,7 +264,7 @@ describe('WorkspaceCanvas agent session actions', () => {
             isMinimapVisible={false}
             onViewportChange={() => undefined}
             onMinimapVisibilityChange={() => undefined}
-            agentSettings={DEFAULT_AGENT_SETTINGS}
+            {...agentSettingsProps(DEFAULT_AGENT_SETTINGS)}
           />
         </>
       )
@@ -344,7 +345,7 @@ describe('WorkspaceCanvas agent session actions', () => {
           isMinimapVisible={false}
           onViewportChange={() => undefined}
           onMinimapVisibilityChange={() => undefined}
-          agentSettings={DEFAULT_AGENT_SETTINGS}
+          {...agentSettingsProps(DEFAULT_AGENT_SETTINGS)}
         />
       )
     }

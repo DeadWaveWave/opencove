@@ -1,3 +1,4 @@
+import { useLayoutEffect } from 'react'
 import type { Node } from '@xyflow/react'
 import type { UpdateTaskStatus } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/types'
 import { vi } from 'vitest'
@@ -372,16 +373,15 @@ export function renderCreation(documents?: Documents, { stable = true }: RenderO
 export function renderConfirmation(documents?: Documents) {
   const requestNodeDelete = recordingRef<(nodeIds: readonly string[]) => void>()
   const closeNode = vi.fn(async () => undefined)
-  const rendered = renderInTwoWorkspaces(
-    () => ({
-      readUi: useReadCanvasUi(),
-      confirmation: useWorkspaceCanvasNodeDeleteConfirmation({
-        closeNode,
-        requestNodeDeleteRef: requestNodeDelete.ref,
-      }),
-    }),
-    documents,
-  )
+  const rendered = renderInTwoWorkspaces(() => {
+    const confirmation = useWorkspaceCanvasNodeDeleteConfirmation({ closeNode })
+    // What the canvas hands to its commands (S7, PR 4): the function of each render is recorded,
+    // so a case can call the one a render of workspace A made after a switch.
+    useLayoutEffect(() => {
+      requestNodeDelete.ref.current = confirmation.requestNodeDelete
+    }, [confirmation.requestNodeDelete])
+    return { readUi: useReadCanvasUi(), confirmation }
+  }, documents)
   return { ...rendered, requestNodeDelete, closeNode }
 }
 

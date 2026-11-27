@@ -10,6 +10,7 @@ import type {
   WorkspaceViewport,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { seedWorkspaceCanvasStore } from '../../support/workspaceCanvasStoreHarness'
+import { agentSettingsProps } from '../../support/agentSettingsReader'
 
 let latestReactFlowProps: Record<string, unknown> = {}
 
@@ -102,7 +103,7 @@ describe('WorkspaceCanvas keyboard focus behavior', () => {
         isMinimapVisible={false}
         onViewportChange={() => undefined}
         onMinimapVisibilityChange={() => undefined}
-        agentSettings={DEFAULT_AGENT_SETTINGS}
+        {...agentSettingsProps(DEFAULT_AGENT_SETTINGS)}
       />,
     )
 

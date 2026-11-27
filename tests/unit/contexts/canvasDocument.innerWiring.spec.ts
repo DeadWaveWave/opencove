@@ -39,18 +39,25 @@ describe('Inner hands the document writer of its node store to the hooks that ne
     )
   })
 
-  // The collapse actions and the menu actions (arrange, note to task) write the nodes and the
-  // Spaces in one update and read the document themselves (#702, PR 9).
-  it.each(['useCanvasCollapse', 'useWorkspaceCanvasMenuActions'])(
-    'passes the writer to %s and none of the retired channels',
-    name => {
-      const call = callOf(name)
-      expect(call).toMatch(/\bupdateCanvasDocument:\s*nodeStore\.updateCanvasDocument\b/)
-      expect(call).not.toMatch(
-        /\b(nodesRef|spacesRef|setNodes|onSpacesChange|onRequestPersistFlush)\b/,
-      )
-    },
-  )
+  // The collapse actions write the nodes and the Spaces in one update and read the document
+  // themselves (#702, PR 9).
+  it('passes the writer to useCanvasCollapse and none of the retired channels', () => {
+    const call = callOf('useCanvasCollapse')
+    expect(call).toMatch(/\bupdateCanvasDocument:\s*nodeStore\.updateCanvasDocument\b/)
+    expect(call).not.toMatch(
+      /\b(nodesRef|spacesRef|setNodes|onSpacesChange|onRequestPersistFlush)\b/,
+    )
+  })
+
+  // The menu actions (arrange, note to task) get the writer from the context and the settings
+  // through the reader, so Inner passes neither (S7, PR 4).
+  it('passes the menu actions the settings reader and no writer, setting or retired channel', () => {
+    const call = callOf('useWorkspaceCanvasMenuActions')
+    expect(call).toMatch(/\breadAgentSettings\b/)
+    expect(call).not.toMatch(
+      /\b(updateCanvasDocument|standardWindowSizeBucket|focusNodeTargetZoom|nodesRef|spacesRef|setNodes|onSpacesChange|onRequestPersistFlush)\b/,
+    )
+  })
 
   // The agent support and the runtime integrations read the document through their own readers
   // and flush through the document commands (#702, PR 10). Inner keeps `setNodes` for the writes.

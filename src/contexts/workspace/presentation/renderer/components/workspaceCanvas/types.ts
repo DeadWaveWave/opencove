@@ -46,6 +46,11 @@ export interface WorkspaceCanvasProps {
   onViewportChange: (viewport: WorkspaceViewport) => void
   onMinimapVisibilityChange: (isVisible: boolean) => void
   agentSettings: AgentSettings
+  /**
+   * The app's settings as they are when it is called. Commands read through it when they run,
+   * so a settings change reaches them without renewing them. Stable: a canvas takes it once.
+   */
+  readAgentSettings: () => AgentSettings
   terminalDisplayCalibration?: TerminalClientDisplayCalibration | null
   onChangePreserveWindowSizesOnArrange: (enabled: boolean) => void
   isFocusNodeTargetZoomPreviewing?: boolean

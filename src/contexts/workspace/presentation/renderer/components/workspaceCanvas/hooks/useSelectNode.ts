@@ -77,7 +77,8 @@ function resolveNextSelectedNodeIds({
 /**
  * Selects a window, or toggles it within its Space scope. It writes the selection slice and React
  * Flow's two selection flags, and nothing else: the document does not carry the selection (S7,
- * PR 2). It computes from the slice and the document when it runs.
+ * PR 2). It computes from the slice and the document when it runs, and writes nothing for a
+ * window the document no longer holds.
  */
 export function useWorkspaceCanvasSelectNode(): (
   nodeId: string,
@@ -94,6 +95,11 @@ export function useWorkspaceCanvasSelectNode(): (
       // `before` is the selection the click found, read before this call writes it.
       const before = readSelection()
       const { nodes, spaces } = readDocument()
+      // Invariant 2 of S7: a window the document no longer holds writes nothing, so a late
+      // callback of a closed window leaves no dangling id and keeps the selection of the others.
+      if (!nodes.some(node => node.id === nodeId)) {
+        return
+      }
       const nextSelectedNodeIds = resolveNextSelectedNodeIds({
         nodeId,
         toggle: shouldToggle,

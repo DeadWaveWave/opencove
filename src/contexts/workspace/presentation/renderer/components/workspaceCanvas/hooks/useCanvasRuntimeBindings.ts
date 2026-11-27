@@ -7,15 +7,6 @@ export function useWorkspaceCanvasRuntimeBindings({
   nodes,
   setNodes,
   actionRefs,
-  clearNodeSelection,
-  closeNode,
-  resizeNode,
-  noteMutations,
-  updateWebsiteUrl,
-  setWebsitePinned,
-  setWebsiteSession,
-  setWebsiteMode,
-  setWebsiteFullscreen,
   updateNodeScrollback,
   updateTerminalTitle,
   clearTerminalAgentOverlay,
@@ -23,29 +14,12 @@ export function useWorkspaceCanvasRuntimeBindings({
   reloadAgentSession,
   listAgentSessions,
   switchAgentSession,
-  focusNodeOnClick,
-  focusNodeTargetZoom,
-  reactFlow,
   onShowMessage,
 }: {
   workspaceId: string
   nodes: Parameters<typeof useWorkspaceCanvasPtyTaskCompletion>[0]['nodes']
   setNodes: Parameters<typeof useWorkspaceCanvasPtyTaskCompletion>[0]['setNodes']
   actionRefs: WorkspaceCanvasActionRefs
-  clearNodeSelection: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['clearNodeSelection']
-  closeNode: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['closeNode']
-  resizeNode: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['resizeNode']
-  noteMutations: Pick<
-    Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0],
-    'updateNoteText' | 'renameNoteTitle'
-  >
-  updateWebsiteUrl: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['updateWebsiteUrl']
-  setWebsitePinned: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['setWebsitePinned']
-  setWebsiteSession: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['setWebsiteSession']
-  setWebsiteMode: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['setWebsiteMode']
-  setWebsiteFullscreen: Parameters<
-    typeof useWorkspaceCanvasSyncActionRefs
-  >[0]['setWebsiteFullscreen']
   updateNodeScrollback: Parameters<
     typeof useWorkspaceCanvasSyncActionRefs
   >[0]['updateNodeScrollback']
@@ -57,9 +31,6 @@ export function useWorkspaceCanvasRuntimeBindings({
   reloadAgentSession: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['reloadAgentSession']
   listAgentSessions: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['listAgentSessions']
   switchAgentSession: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['switchAgentSession']
-  focusNodeOnClick: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['focusNodeOnClick']
-  focusNodeTargetZoom: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['focusNodeTargetZoom']
-  reactFlow: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['reactFlow']
   onShowMessage?: Parameters<typeof useWorkspaceCanvasAgentLastMessageCopy>[0]['onShowMessage']
 }): void {
   useWorkspaceCanvasPtyTaskCompletion({
@@ -73,26 +44,13 @@ export function useWorkspaceCanvasRuntimeBindings({
 
   useWorkspaceCanvasSyncActionRefs({
     actionRefs,
-    clearNodeSelection,
-    closeNode,
-    resizeNode,
     copyAgentLastMessage,
     reloadAgentSession,
     listAgentSessions,
     switchAgentSession,
-    updateNoteText: noteMutations.updateNoteText,
-    renameNoteTitle: noteMutations.renameNoteTitle,
-    updateWebsiteUrl,
-    setWebsitePinned,
-    setWebsiteSession,
-    setWebsiteMode,
-    setWebsiteFullscreen,
     updateNodeScrollback,
     updateTerminalTitle,
     clearTerminalAgentOverlay,
     renameTerminalTitle,
-    focusNodeOnClick,
-    focusNodeTargetZoom,
-    reactFlow,
   })
 }

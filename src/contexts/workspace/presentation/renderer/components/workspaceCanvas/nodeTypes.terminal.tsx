@@ -5,11 +5,12 @@ import type { LabelColor } from '@shared/types/labelColor'
 import { TerminalNode } from '../TerminalNode'
 import { WorkspaceDocumentNavigationContext } from './WorkspaceDocumentNavigationContext'
 import { useScrollbackStore } from '../../store/useScrollbackStore'
-import type { NodeFrame, TerminalNodeData } from '../../types'
+import type { TerminalNodeData } from '../../types'
 import { isResumeSessionBindingVerified } from '../../utils/agentResumeBinding'
 import { resolveAgentPresentation } from '../../utils/agentPresentation'
 import { findLinkedTaskTitleForAgent, resolveAgentDisplayLabel } from '../../utils/agentTitle'
 import { readNodePositionFromStoreState } from './nodePosition'
+import { useCanvasNodeCommands } from './nodeTypes.context'
 import type { UpdateNodeScrollback } from './types'
 
 function WorkspaceCanvasTerminalNodeTypeComponent({
@@ -21,15 +22,11 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
   terminalFontFamily,
   terminalDisplayCalibration,
   terminalTransparentBackground,
-  selectNode,
-  closeNodeRef,
-  resizeNodeRef,
   copyAgentLastMessageRef,
   reloadAgentSessionRef,
   listAgentSessionsRef,
   switchAgentSessionRef,
   updateNodeScrollbackRef,
-  normalizeViewportForTerminalInteractionRef,
   updateTerminalTitleRef,
   clearTerminalAgentOverlayRef,
   renameTerminalTitleRef,
@@ -42,9 +39,6 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
   terminalFontFamily: string | null
   terminalDisplayCalibration: TerminalClientDisplayCalibration | null
   terminalTransparentBackground: boolean
-  selectNode: (nodeId: string, options?: { toggle?: boolean }) => void
-  closeNodeRef: MutableRefObject<(nodeId: string) => Promise<void>>
-  resizeNodeRef: MutableRefObject<(nodeId: string, desiredFrame: NodeFrame) => void>
   copyAgentLastMessageRef: MutableRefObject<(nodeId: string) => Promise<void>>
   reloadAgentSessionRef: MutableRefObject<(nodeId: string) => Promise<void>>
   listAgentSessionsRef: MutableRefObject<
@@ -57,7 +51,6 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
     (nodeId: string, summary: import('@shared/contracts/dto').AgentSessionSummary) => Promise<void>
   >
   updateNodeScrollbackRef: MutableRefObject<UpdateNodeScrollback>
-  normalizeViewportForTerminalInteractionRef: MutableRefObject<(nodeId: string) => void>
   updateTerminalTitleRef: MutableRefObject<
     (nodeId: string, title: string, startedAtMs?: number) => void
   >
@@ -67,6 +60,7 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
   renameTerminalTitleRef: MutableRefObject<(nodeId: string, title: string) => void>
 }): ReactElement {
   const documentNavigation = React.useContext(WorkspaceDocumentNavigationContext)
+  const windowCommands = useCanvasNodeCommands().window
   const storeApi = useStoreApi()
   const scrollback = useScrollbackStore(state =>
     data.kind === 'agent' ? null : (state.scrollbackByNodeId[id] ?? data.scrollback ?? null),
@@ -208,7 +202,7 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
       terminalTransparentBackground={terminalTransparentBackground}
       scrollback={scrollback}
       onClose={() => {
-        void closeNodeRef.current(id)
+        void windowCommands.close(id)
       }}
       onCopyLastMessage={
         isAgentTreated
@@ -238,7 +232,7 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
             }
           : undefined
       }
-      onResize={frame => resizeNodeRef.current(id, frame)}
+      onResize={frame => windowCommands.resize(id, frame)}
       onScrollbackChange={
         data.kind === 'terminal'
           ? nextScrollback => updateNodeScrollbackRef.current(id, nextScrollback)
@@ -262,18 +256,18 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
       onInteractionStart={options => {
         if (options?.selectNode !== false) {
           if (options?.shiftKey === true) {
-            selectNode(id, { toggle: true })
+            windowCommands.select(id, { toggle: true })
             return
           }
 
-          selectNode(id)
+          windowCommands.select(id)
         }
 
         if (options?.normalizeViewport === false) {
           return
         }
 
-        normalizeViewportForTerminalInteractionRef.current(id)
+        windowCommands.focusForInteraction(id)
       }}
     />
   )

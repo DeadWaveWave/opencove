@@ -183,14 +183,20 @@ describe('selectNode', () => {
     expect(result.current.readSelection()).toMatchObject({ nodeIds: ['a'], spaceIds: [] })
   })
 
-  it('does not count a window the store names but the document no longer holds', () => {
-    // `gone` is not "already selected": the click selects it alone, as it did when the base
-    // was the document's nodes.
+  it('writes nothing for a window the document no longer holds', () => {
+    // Invariant 2 of #761: a command whose target the document no longer holds writes nothing
+    // about it. `gone` is a dangling id (a late callback of a closed window): selecting it would
+    // leave it in the slice and clear the selection of the windows that are there.
     const { result } = setup({ nodeIds: ['a', 'gone'] })
+    const flagsBefore = result.current.readFlowFlags()
+    const spies = spyOnCommands(result.current.selection)
 
     act(() => result.current.select('gone'))
+    act(() => result.current.select('gone', { toggle: true }))
 
-    expect(result.current.readSelection().nodeIds).toEqual(['gone'])
+    expect(result.current.readSelection().nodeIds).toEqual(['a', 'gone'])
+    expect(result.current.readFlowFlags()).toEqual(flagsBefore)
+    expect(spies.select).not.toHaveBeenCalled()
   })
 
   it('toggles within the scope, keeps the Spaces and turns the drag surface mode on', () => {

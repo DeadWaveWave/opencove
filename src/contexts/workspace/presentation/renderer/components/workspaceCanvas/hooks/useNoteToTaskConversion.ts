@@ -1,12 +1,12 @@
 import { useCallback, useMemo } from 'react'
 import type { Node } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
-import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
+import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
 import type { TerminalNodeData } from '../../../types'
 import { resolveDefaultTaskWindowSize } from '../constants'
 import type { ShowWorkspaceCanvasMessage } from '../types'
 import { resolveWorkspaceLayoutAfterNodeResize } from './useNodesStore.resolveResizeLayout'
-import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
+import { useCanvasNodeWriter } from './useCanvasNodeWriter'
 import {
   useCanvasDocumentCommands,
   useCanvasUiCommands,
@@ -70,15 +70,14 @@ function resolveFallbackTaskTitle(requirement: string, fallbackTitle: string): s
 export function useWorkspaceCanvasNoteToTaskConversion({
   selectedNodeIds,
   flowNodes,
-  updateCanvasDocument,
   onShowMessage,
-  standardWindowSizeBucket,
+  readAgentSettings,
 }: {
   selectedNodeIds: readonly string[]
   flowNodes: Node<TerminalNodeData>[]
-  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
   onShowMessage?: ShowWorkspaceCanvasMessage
-  standardWindowSizeBucket: StandardWindowSizeBucket
+  /** The app's settings as they are when it is called: a command does not close over them. */
+  readAgentSettings: () => AgentSettings
 }): {
   canConvertSelectedNoteToTask: boolean
   isConvertSelectedNoteToTaskDisabled: boolean
@@ -89,6 +88,7 @@ export function useWorkspaceCanvasNoteToTaskConversion({
   const readSelection = useReadCanvasSelection()
   const readDocument = useReadCanvasDocument()
   const { requestPersistFlush } = useCanvasDocumentCommands()
+  const { updateCanvasDocument } = useCanvasNodeWriter()
 
   const { t } = useTranslation()
   const selectedNoteMeta = useMemo(() => {
@@ -129,7 +129,9 @@ export function useWorkspaceCanvasNoteToTaskConversion({
       }
 
       const fallbackTitle = t('taskWindow.defaultTaskTitle')
-      const defaultTaskSize = resolveDefaultTaskWindowSize(standardWindowSizeBucket)
+      const defaultTaskSize = resolveDefaultTaskWindowSize(
+        readAgentSettings().standardWindowSizeBucket,
+      )
       const now = new Date().toISOString()
       let didConvert = false
 
@@ -168,14 +170,7 @@ export function useWorkspaceCanvasNoteToTaskConversion({
 
       return didConvert
     },
-    [
-      onShowMessage,
-      readDocument,
-      requestPersistFlush,
-      standardWindowSizeBucket,
-      t,
-      updateCanvasDocument,
-    ],
+    [onShowMessage, readAgentSettings, readDocument, requestPersistFlush, t, updateCanvasDocument],
   )
 
   const convertSelectedNoteToTask = useCallback(() => {

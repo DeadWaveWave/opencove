@@ -2,10 +2,8 @@ import { act } from '@testing-library/react'
 import type { Node } from '@xyflow/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AgentSessionSummary } from '../../../src/shared/contracts/dto'
-import {
-  useWorkspaceCanvasActionRefs,
-  useWorkspaceCanvasSyncActionRefs,
-} from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useActionRefs'
+import { useCanvasFocusForInteraction } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasFocusForInteraction'
+import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
 import { useWorkspaceCanvasAgentLastMessageCopy } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useAgentLastMessageToNote'
 import { useAgentNodeSessionControls } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useAgentNodeSessionControls'
 import { useAgentNodeSessionSwitch } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useAgentNodeSessionSwitch'
@@ -423,8 +421,6 @@ describe('the terminal agent session actions', () => {
   })
 })
 
-const noopCallback = vi.fn()
-
 function renderViewportRefs(
   setCenter: () => void,
   documents?: Parameters<typeof renderInTwoWorkspaces>[1],
@@ -432,34 +428,15 @@ function renderViewportRefs(
   // React Flow's instance keeps its identity, as in the app, so that only the reader can rebuild
   // the viewport callback on a switch.
   const reactFlow = { setCenter } as never
-  return renderInTwoWorkspaces(() => {
-    const actionRefs = useWorkspaceCanvasActionRefs()
-    useWorkspaceCanvasSyncActionRefs({
-      actionRefs,
-      clearNodeSelection: noopCallback,
-      closeNode: noopCallback,
-      resizeNode: noopCallback,
-      copyAgentLastMessage: noopCallback,
-      reloadAgentSession: noopCallback,
-      listAgentSessions: noopCallback,
-      switchAgentSession: noopCallback,
-      updateNoteText: noopCallback,
-      renameNoteTitle: noopCallback,
-      updateWebsiteUrl: noopCallback,
-      setWebsitePinned: noopCallback,
-      setWebsiteSession: noopCallback,
-      setWebsiteMode: noopCallback,
-      setWebsiteFullscreen: noopCallback,
-      updateNodeScrollback: noopCallback,
-      updateTerminalTitle: noopCallback,
-      clearTerminalAgentOverlay: noopCallback,
-      renameTerminalTitle: noopCallback,
-      focusNodeOnClick: true,
-      focusNodeTargetZoom: 1,
-      reactFlow,
-    } as never)
-    return actionRefs
-  }, documents)
+  const readAgentSettings = () => ({
+    ...DEFAULT_AGENT_SETTINGS,
+    focusNodeOnClick: true,
+    focusNodeTargetZoom: 1,
+  })
+  return renderInTwoWorkspaces(
+    () => ({ focusForInteraction: useCanvasFocusForInteraction({ reactFlow, readAgentSettings }) }),
+    documents,
+  )
 }
 
 describe('the viewport normalisation of a terminal interaction', () => {
@@ -471,14 +448,14 @@ describe('the viewport normalisation of a terminal interaction', () => {
 
     act(() => {
       setDocumentNodes(A, [at(100, 200)])
-      view.result.current.normalizeViewportForTerminalInteractionRef.current('agent')
+      view.result.current.focusForInteraction('agent')
     })
     expect(setCenter).toHaveBeenLastCalledWith(100 + 260, 200 + 180, expect.anything())
 
     showB()
     act(() => {
       setDocumentNodes(B, [at(1000, 2000)])
-      view.result.current.normalizeViewportForTerminalInteractionRef.current('agent')
+      view.result.current.focusForInteraction('agent')
     })
     expect(setCenter).toHaveBeenLastCalledWith(1000 + 260, 2000 + 180, expect.anything())
     expect(setCenter).toHaveBeenCalledTimes(2)
@@ -490,7 +467,7 @@ describe('the viewport normalisation of a terminal interaction', () => {
     act(() => useAppStore.setState({ activeWorkspaceId: B }))
 
     act(() => {
-      view.result.current.normalizeViewportForTerminalInteractionRef.current('agent')
+      view.result.current.focusForInteraction('agent')
     })
 
     expect(setCenter).toHaveBeenCalledWith(100 + 260, 200 + 180, expect.anything())

@@ -2,13 +2,14 @@ import { useCallback } from 'react'
 import { useCanvasDocumentCommands } from '../../../store/canvasStoreContext'
 import { guardNodeFromSyncOverwrite } from '../../../utils/syncNodeGuards'
 import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
+import { useCanvasNodeWriter } from './useCanvasNodeWriter'
 
-export function useWorkspaceCanvasNoteNodeMutations({
-  setNodes,
-}: {
-  setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']
-}): Pick<UseWorkspaceCanvasNodesStoreResult, 'updateNoteText' | 'renameNoteTitle'> {
+export function useWorkspaceCanvasNoteNodeMutations(): Pick<
+  UseWorkspaceCanvasNodesStoreResult,
+  'updateNoteText' | 'renameNoteTitle'
+> {
   const { requestPersistFlush } = useCanvasDocumentCommands()
+  const { updateNodes } = useCanvasNodeWriter()
   const updateNoteText = useCallback(
     (nodeId: string, text: string) => {
       const normalizedNodeId = nodeId.trim()
@@ -17,7 +18,7 @@ export function useWorkspaceCanvasNoteNodeMutations({
       }
 
       guardNodeFromSyncOverwrite(normalizedNodeId)
-      setNodes(
+      updateNodes(
         prevNodes => {
           let hasChanged = false
 
@@ -48,7 +49,7 @@ export function useWorkspaceCanvasNoteNodeMutations({
         { syncLayout: false },
       )
     },
-    [setNodes],
+    [updateNodes],
   )
 
   const renameNoteTitle = useCallback(
@@ -62,7 +63,7 @@ export function useWorkspaceCanvasNoteNodeMutations({
       guardNodeFromSyncOverwrite(normalizedNodeId)
       let didChange = false
 
-      setNodes(
+      updateNodes(
         prevNodes => {
           let hasChanged = false
 
@@ -98,7 +99,7 @@ export function useWorkspaceCanvasNoteNodeMutations({
         requestPersistFlush()
       }
     },
-    [requestPersistFlush, setNodes],
+    [requestPersistFlush, updateNodes],
   )
 
   return { updateNoteText, renameNoteTitle }

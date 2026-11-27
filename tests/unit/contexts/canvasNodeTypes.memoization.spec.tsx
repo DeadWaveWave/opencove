@@ -1,11 +1,12 @@
 import React, { useState } from 'react'
 import { act, cleanup, fireEvent, render, renderHook, screen } from '@testing-library/react'
-import { ReactFlowProvider, useStoreApi, useViewport, type Node } from '@xyflow/react'
+import { ReactFlowProvider, useReactFlow, useStoreApi, useViewport, type Node } from '@xyflow/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
 import { DEFAULT_AGENT_SETTINGS } from '@contexts/settings/domain/agentSettings'
 import type { TerminalNodeData } from '@contexts/workspace/presentation/renderer/types'
 import { useWorkspaceCanvasActionRefs } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useActionRefs'
+import { useComposedCanvasNodeCommands } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodeCommands'
 import { useWorkspaceCanvasComposedNodeTypes } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodeTypes'
 import { useWorkspaceCanvasNodeTypes } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeTypes'
 import { WorkspaceCanvasNodeTypesProvider } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeTypes.context'
@@ -93,11 +94,26 @@ const nodes: Node<TerminalNodeData>[] = [
   position: { x: 0, y: 0 },
   data: { ...base, kind: kind as TerminalNodeData['kind'] },
 }))
-const commands = {
+// The functions that implement the commands, stable as they are in the app: the commands are made
+// of them and renew only when one of them does.
+const implementations = {
+  selectNode: vi.fn(),
+  clearNodeSelection: vi.fn(),
+  requestNodeClose: vi.fn(async () => undefined),
+  requestNodeDelete: vi.fn(),
+  resizeNode: vi.fn(),
   setNodeLabelColorOverride: vi.fn(),
+  updateNoteText: vi.fn(),
+  renameNoteTitle: vi.fn(),
   convertNoteToTask: () => false,
-  onShowMessage: vi.fn(),
+  updateWebsiteUrl: vi.fn(),
+  setWebsitePinned: vi.fn(),
+  setWebsiteSession: vi.fn(),
+  setWebsiteMode: vi.fn(),
+  setWebsiteFullscreen: vi.fn(),
 }
+const onShowMessage = vi.fn()
+const readAgentSettings = () => DEFAULT_AGENT_SETTINGS
 const alignment = {
   terminalFontSize: 13,
   terminalFontFamily: null,
@@ -116,13 +132,18 @@ function Canvas() {
   const viewport = useViewport()
   const [tick, setTick] = useState(0)
   const actionRefs = useWorkspaceCanvasActionRefs()
+  const reactFlow = useReactFlow<Node<TerminalNodeData>>()
+  const commands = useComposedCanvasNodeCommands({
+    reactFlow,
+    readAgentSettings,
+    ...implementations,
+  })
   const composed = useWorkspaceCanvasComposedNodeTypes({
-    nodeStore: { ...commands },
     actionRefs,
     workspacePath: '/tmp/canvas-memoization',
     agentSettings: { ...DEFAULT_AGENT_SETTINGS },
-    convertNoteToTask: commands.convertNoteToTask,
-    onShowMessage: commands.onShowMessage,
+    commands,
+    onShowMessage,
   })
   parameters = composed.nodeTypesParameters
   nodeTypes = composed.nodeTypes
@@ -168,6 +189,7 @@ it.each(['unchanged parent', 'viewport pan', 'viewport zoom'])(
       </CanvasStoreTestProvider>,
     )
     const initialParameters = parameters
+    const initialCommands = parameters.commands
     const initialTypes = nodeTypes
     const iframe = container.querySelector('iframe.website-node__iframe')
     expect(iframe).not.toBeNull()
@@ -198,6 +220,8 @@ it.each(['unchanged parent', 'viewport pan', 'viewport zoom'])(
     expect(readWindowCommitCounts()).toEqual({})
     expect(readWindowPresentationCommitCounts()).toEqual({})
     expect(parameters).toBe(initialParameters)
+    // The commands are composed again on every parent render and keep their identity.
+    expect(parameters.commands).toBe(initialCommands)
     expect(nodeTypes).toBe(initialTypes)
     expect(container.querySelector('iframe.website-node__iframe')).toBe(iframe)
   },

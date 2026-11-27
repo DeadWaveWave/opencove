@@ -8,8 +8,8 @@ import type {
   WorkspaceSpaceState,
   WorkspaceState,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
-import { commitCanvasDocument } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
+import { createAgentSettingsReader } from '../../support/agentSettingsReader'
 import { useWorkspaceCanvasArrange } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useArrange'
 import { useWorkspaceCanvasSpaces } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaces'
 
@@ -209,24 +209,13 @@ describe('workspace canvas space location zoom', () => {
         ],
         activeWorkspaceId: 'workspace-1',
       })
-      const updateCanvasDocument = (
-        recipe: (document: { nodes: Node<TerminalNodeData>[]; spaces: WorkspaceSpaceState[] }) => {
-          nodes: Node<TerminalNodeData>[]
-          spaces: WorkspaceSpaceState[]
-        },
-      ) => {
-        commitCanvasDocument('workspace-1', document => ({
-          ...document,
-          ...recipe({ nodes: document.nodes, spaces: document.spaces }),
-        }))
-      }
-
       function Harness(): React.JSX.Element {
         const { arrangeInSpace } = useWorkspaceCanvasArrange({
           reactFlow: reactFlow as never,
-          focusNodeTargetZoom: 1,
-          updateCanvasDocument,
-          standardWindowSizeBucket: 'regular',
+          readAgentSettings: createAgentSettingsReader({
+            focusNodeTargetZoom: 1,
+            standardWindowSizeBucket: 'regular',
+          }),
         })
 
         return (

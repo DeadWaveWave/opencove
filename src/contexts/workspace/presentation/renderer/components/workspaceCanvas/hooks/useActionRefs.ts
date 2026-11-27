@@ -1,19 +1,9 @@
 import { useLayoutEffect, useRef } from 'react'
-import type { Node, ReactFlowInstance } from '@xyflow/react'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
-import type { NodeFrame, TaskRuntimeStatus, TerminalNodeData } from '../../../types'
-import { focusNodeInViewport } from '../helpers'
-import { useReadCanvasDocument } from '../../../store/canvasStoreContext'
-import type {
-  AgentSessionSummary,
-  BrowserMode,
-  WebsiteWindowSessionMode,
-} from '@shared/contracts/dto'
+import type { TaskRuntimeStatus } from '../../../types'
+import type { AgentSessionSummary } from '@shared/contracts/dto'
 
 export interface WorkspaceCanvasActionRefs {
-  clearNodeSelectionRef: React.MutableRefObject<() => void>
-  closeNodeRef: React.MutableRefObject<(nodeId: string) => Promise<void>>
-  resizeNodeRef: React.MutableRefObject<(nodeId: string, desiredFrame: NodeFrame) => void>
   copyAgentLastMessageRef: React.MutableRefObject<(nodeId: string) => Promise<void>>
   reloadAgentSessionRef: React.MutableRefObject<(nodeId: string) => Promise<void>>
   listAgentSessionsRef: React.MutableRefObject<
@@ -22,25 +12,9 @@ export interface WorkspaceCanvasActionRefs {
   switchAgentSessionRef: React.MutableRefObject<
     (nodeId: string, summary: AgentSessionSummary) => Promise<void>
   >
-  updateNoteTextRef: React.MutableRefObject<(nodeId: string, text: string) => void>
-  renameNoteTitleRef: React.MutableRefObject<(nodeId: string, title: string) => void>
-  updateWebsiteUrlRef: React.MutableRefObject<(nodeId: string, url: string) => void>
   updateRoleInputRef: React.MutableRefObject<(nodeId: string, input: string) => void>
   updateRoleProviderRef: React.MutableRefObject<(nodeId: string, provider: AgentProvider) => void>
   runRoleRef: React.MutableRefObject<(nodeId: string, inputOverride?: string) => Promise<void>>
-  setWebsitePinnedRef: React.MutableRefObject<(nodeId: string, pinned: boolean) => void>
-  setWebsiteSessionRef: React.MutableRefObject<
-    (nodeId: string, sessionMode: WebsiteWindowSessionMode, profileId: string | null) => void
-  >
-  setWebsiteModeRef: React.MutableRefObject<(nodeId: string, browserMode: BrowserMode) => void>
-  setWebsiteFullscreenRef: React.MutableRefObject<
-    (
-      nodeId: string,
-      frame: NodeFrame,
-      previousFrame: NodeFrame | null,
-      isFullscreen: boolean,
-    ) => void
-  >
   runTaskAgentRef: React.MutableRefObject<(nodeId: string) => Promise<void>>
   resumeTaskAgentSessionRef: React.MutableRefObject<
     (taskNodeId: string, recordId: string) => Promise<void>
@@ -53,7 +27,6 @@ export interface WorkspaceCanvasActionRefs {
   quickUpdateTaskRequirementRef: React.MutableRefObject<
     (nodeId: string, requirement: string) => void
   >
-  requestNodeDeleteRef: React.MutableRefObject<(nodeIds: readonly string[]) => void>
   updateTaskStatusRef: React.MutableRefObject<(nodeId: string, status: TaskRuntimeStatus) => void>
   updateNodeScrollbackRef: React.MutableRefObject<(nodeId: string, scrollback: string) => void>
   updateTerminalTitleRef: React.MutableRefObject<
@@ -63,17 +36,9 @@ export interface WorkspaceCanvasActionRefs {
     (nodeId: string, expectedStartedAtMs?: number) => void
   >
   renameTerminalTitleRef: React.MutableRefObject<(nodeId: string, title: string) => void>
-  normalizeViewportForTerminalInteractionRef: React.MutableRefObject<(nodeId: string) => void>
 }
 
 export function useWorkspaceCanvasActionRefs(): WorkspaceCanvasActionRefs {
-  const clearNodeSelectionRef = useRef<() => void>(() => undefined)
-  const closeNodeRef = useRef<(nodeId: string) => Promise<void>>(
-    async (_nodeId: string) => undefined,
-  )
-  const resizeNodeRef = useRef<(nodeId: string, desiredFrame: NodeFrame) => void>(
-    (_nodeId: string, _desiredFrame: NodeFrame) => undefined,
-  )
   const copyAgentLastMessageRef = useRef<(nodeId: string) => Promise<void>>(
     async (_nodeId: string) => undefined,
   )
@@ -86,15 +51,6 @@ export function useWorkspaceCanvasActionRefs(): WorkspaceCanvasActionRefs {
   const switchAgentSessionRef = useRef<
     (nodeId: string, summary: AgentSessionSummary) => Promise<void>
   >(async (_nodeId: string, _summary: AgentSessionSummary) => undefined)
-  const updateNoteTextRef = useRef<(nodeId: string, text: string) => void>(
-    (_nodeId: string, _text: string) => undefined,
-  )
-  const renameNoteTitleRef = useRef<(nodeId: string, title: string) => void>(
-    (_nodeId: string, _title: string) => undefined,
-  )
-  const updateWebsiteUrlRef = useRef<(nodeId: string, url: string) => void>(
-    (_nodeId: string, _url: string) => undefined,
-  )
   const updateRoleInputRef = useRef<(nodeId: string, input: string) => void>(
     (_nodeId: string, _input: string) => undefined,
   )
@@ -103,33 +59,6 @@ export function useWorkspaceCanvasActionRefs(): WorkspaceCanvasActionRefs {
   )
   const runRoleRef = useRef<(nodeId: string, inputOverride?: string) => Promise<void>>(
     async (_nodeId: string, _inputOverride?: string) => undefined,
-  )
-  const setWebsitePinnedRef = useRef<(nodeId: string, pinned: boolean) => void>(
-    (_nodeId: string, _pinned: boolean) => undefined,
-  )
-  const setWebsiteSessionRef = useRef<
-    (nodeId: string, sessionMode: WebsiteWindowSessionMode, profileId: string | null) => void
-  >(
-    (_nodeId: string, _sessionMode: WebsiteWindowSessionMode, _profileId: string | null) =>
-      undefined,
-  )
-  const setWebsiteModeRef = useRef<(nodeId: string, browserMode: BrowserMode) => void>(
-    (_nodeId: string, _browserMode: BrowserMode) => undefined,
-  )
-  const setWebsiteFullscreenRef = useRef<
-    (
-      nodeId: string,
-      frame: NodeFrame,
-      previousFrame: NodeFrame | null,
-      isFullscreen: boolean,
-    ) => void
-  >(
-    (
-      _nodeId: string,
-      _frame: NodeFrame,
-      _previousFrame: NodeFrame | null,
-      _isFullscreen: boolean,
-    ) => undefined,
   )
   const runTaskAgentRef = useRef<(nodeId: string) => Promise<void>>(
     async (_nodeId: string) => undefined,
@@ -147,7 +76,6 @@ export function useWorkspaceCanvasActionRefs(): WorkspaceCanvasActionRefs {
   const quickUpdateTaskRequirementRef = useRef<(nodeId: string, requirement: string) => void>(
     (_nodeId: string, _requirement: string) => undefined,
   )
-  const requestNodeDeleteRef = useRef<(nodeIds: readonly string[]) => void>(() => undefined)
   const updateTaskStatusRef = useRef<(nodeId: string, status: TaskRuntimeStatus) => void>(
     (_nodeId: string, _status: TaskRuntimeStatus) => undefined,
   )
@@ -163,116 +91,51 @@ export function useWorkspaceCanvasActionRefs(): WorkspaceCanvasActionRefs {
   const renameTerminalTitleRef = useRef<(nodeId: string, title: string) => void>(
     (_nodeId: string, _title: string) => undefined,
   )
-  const normalizeViewportForTerminalInteractionRef = useRef<(nodeId: string) => void>(
-    (_nodeId: string) => undefined,
-  )
-
   return {
-    clearNodeSelectionRef,
-    closeNodeRef,
-    resizeNodeRef,
     copyAgentLastMessageRef,
     reloadAgentSessionRef,
     listAgentSessionsRef,
     switchAgentSessionRef,
-    updateNoteTextRef,
-    renameNoteTitleRef,
-    updateWebsiteUrlRef,
     updateRoleInputRef,
     updateRoleProviderRef,
     runRoleRef,
-    setWebsitePinnedRef,
-    setWebsiteSessionRef,
-    setWebsiteModeRef,
-    setWebsiteFullscreenRef,
     runTaskAgentRef,
     resumeTaskAgentSessionRef,
     removeTaskAgentSessionRecordRef,
     openTaskEditorRef,
     quickUpdateTaskTitleRef,
     quickUpdateTaskRequirementRef,
-    requestNodeDeleteRef,
     updateTaskStatusRef,
     updateNodeScrollbackRef,
     updateTerminalTitleRef,
     clearTerminalAgentOverlayRef,
     renameTerminalTitleRef,
-    normalizeViewportForTerminalInteractionRef,
   }
 }
 
 interface SyncActionRefsParams {
   actionRefs: WorkspaceCanvasActionRefs
-  clearNodeSelection: () => void
-  closeNode: (nodeId: string) => Promise<void>
-  resizeNode: (nodeId: string, desiredFrame: NodeFrame) => void
   copyAgentLastMessage: (nodeId: string) => Promise<void>
   reloadAgentSession: (nodeId: string) => Promise<void>
   listAgentSessions: (nodeId: string, limit?: number) => Promise<AgentSessionSummary[]>
   switchAgentSession: (nodeId: string, summary: AgentSessionSummary) => Promise<void>
-  updateNoteText: (nodeId: string, text: string) => void
-  renameNoteTitle: (nodeId: string, title: string) => void
-  updateWebsiteUrl: (nodeId: string, url: string) => void
-  setWebsitePinned: (nodeId: string, pinned: boolean) => void
-  setWebsiteSession: (
-    nodeId: string,
-    sessionMode: WebsiteWindowSessionMode,
-    profileId: string | null,
-  ) => void
-  setWebsiteMode: (nodeId: string, browserMode: BrowserMode) => void
-  setWebsiteFullscreen: (
-    nodeId: string,
-    frame: NodeFrame,
-    previousFrame: NodeFrame | null,
-    isFullscreen: boolean,
-  ) => void
   updateNodeScrollback: (nodeId: string, scrollback: string) => void
   updateTerminalTitle: (nodeId: string, title: string, startedAtMs?: number) => void
   clearTerminalAgentOverlay: (nodeId: string, expectedStartedAtMs?: number) => void
   renameTerminalTitle: (nodeId: string, title: string) => void
-  focusNodeOnClick: boolean
-  focusNodeTargetZoom: number
-  reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
 }
 
 export function useWorkspaceCanvasSyncActionRefs({
   actionRefs,
-  clearNodeSelection,
-  closeNode,
-  resizeNode,
   copyAgentLastMessage,
   reloadAgentSession,
   listAgentSessions,
   switchAgentSession,
-  updateNoteText,
-  renameNoteTitle,
-  updateWebsiteUrl,
-  setWebsitePinned,
-  setWebsiteSession,
-  setWebsiteMode,
-  setWebsiteFullscreen,
   updateNodeScrollback,
   updateTerminalTitle,
   clearTerminalAgentOverlay,
   renameTerminalTitle,
-  focusNodeOnClick,
-  focusNodeTargetZoom,
-  reactFlow,
 }: SyncActionRefsParams): void {
-  const readDocument = useReadCanvasDocument()
-
-  useLayoutEffect(() => {
-    actionRefs.clearNodeSelectionRef.current = clearNodeSelection
-  }, [actionRefs.clearNodeSelectionRef, clearNodeSelection])
-
-  useLayoutEffect(() => {
-    actionRefs.closeNodeRef.current = closeNode
-  }, [actionRefs.closeNodeRef, closeNode])
-
-  useLayoutEffect(() => {
-    actionRefs.resizeNodeRef.current = resizeNode
-  }, [actionRefs.resizeNodeRef, resizeNode])
-
   useLayoutEffect(() => {
     actionRefs.copyAgentLastMessageRef.current = copyAgentLastMessage
   }, [actionRefs.copyAgentLastMessageRef, copyAgentLastMessage])
@@ -288,48 +151,6 @@ export function useWorkspaceCanvasSyncActionRefs({
   useLayoutEffect(() => {
     actionRefs.switchAgentSessionRef.current = switchAgentSession
   }, [actionRefs.switchAgentSessionRef, switchAgentSession])
-
-  useLayoutEffect(() => {
-    actionRefs.updateNoteTextRef.current = (nodeId, text) => {
-      updateNoteText(nodeId, text)
-    }
-  }, [actionRefs.updateNoteTextRef, updateNoteText])
-
-  useLayoutEffect(() => {
-    actionRefs.renameNoteTitleRef.current = (nodeId, title) => {
-      renameNoteTitle(nodeId, title)
-    }
-  }, [actionRefs.renameNoteTitleRef, renameNoteTitle])
-
-  useLayoutEffect(() => {
-    actionRefs.updateWebsiteUrlRef.current = (nodeId, url) => {
-      updateWebsiteUrl(nodeId, url)
-    }
-  }, [actionRefs.updateWebsiteUrlRef, updateWebsiteUrl])
-
-  useLayoutEffect(() => {
-    actionRefs.setWebsitePinnedRef.current = (nodeId, pinned) => {
-      setWebsitePinned(nodeId, pinned)
-    }
-  }, [actionRefs.setWebsitePinnedRef, setWebsitePinned])
-
-  useLayoutEffect(() => {
-    actionRefs.setWebsiteSessionRef.current = (nodeId, sessionMode, profileId) => {
-      setWebsiteSession(nodeId, sessionMode, profileId)
-    }
-  }, [actionRefs.setWebsiteSessionRef, setWebsiteSession])
-
-  useLayoutEffect(() => {
-    actionRefs.setWebsiteModeRef.current = (nodeId, browserMode) => {
-      setWebsiteMode(nodeId, browserMode)
-    }
-  }, [actionRefs.setWebsiteModeRef, setWebsiteMode])
-
-  useLayoutEffect(() => {
-    actionRefs.setWebsiteFullscreenRef.current = (nodeId, frame, previousFrame, isFullscreen) => {
-      setWebsiteFullscreen(nodeId, frame, previousFrame, isFullscreen)
-    }
-  }, [actionRefs.setWebsiteFullscreenRef, setWebsiteFullscreen])
 
   useLayoutEffect(() => {
     actionRefs.updateNodeScrollbackRef.current = (nodeId, scrollback) => {
@@ -352,25 +173,4 @@ export function useWorkspaceCanvasSyncActionRefs({
       renameTerminalTitle(nodeId, title)
     }
   }, [actionRefs.renameTerminalTitleRef, renameTerminalTitle])
-
-  useLayoutEffect(() => {
-    actionRefs.normalizeViewportForTerminalInteractionRef.current = (nodeId: string) => {
-      if (!focusNodeOnClick) {
-        return
-      }
-
-      const targetNode = readDocument().nodes.find(node => node.id === nodeId)
-      if (!targetNode) {
-        return
-      }
-
-      focusNodeInViewport(reactFlow, targetNode, { duration: 120, zoom: focusNodeTargetZoom })
-    }
-  }, [
-    actionRefs.normalizeViewportForTerminalInteractionRef,
-    focusNodeOnClick,
-    focusNodeTargetZoom,
-    readDocument,
-    reactFlow,
-  ])
 }

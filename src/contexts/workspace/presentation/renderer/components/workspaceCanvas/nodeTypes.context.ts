@@ -1,10 +1,9 @@
-import { createContext, useContext } from 'react'
+import { createContext, createElement, useContext, type ReactNode } from 'react'
 import type { MutableRefObject } from 'react'
-import type { BrowserMode, WebsiteWindowSessionMode } from '@shared/contracts/dto'
+import type { AgentSessionSummary, BrowserMode } from '@shared/contracts/dto'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { BrowserSearchEngineId } from '@contexts/settings/domain/browserSettings'
-import type { NodeLabelColorOverride } from '@shared/types/labelColor'
-import type { NodeFrame } from '../../types'
+import type { WiredCanvasNodeCommands } from './nodeCommands'
 import type {
   QuickUpdateTaskRequirement,
   QuickUpdateTaskTitle,
@@ -12,41 +11,25 @@ import type {
   UpdateNodeScrollback,
   UpdateTaskStatus,
 } from './types'
-export interface WorkspaceCanvasNodeTypesParams {
-  workspacePath: string
-  onShowMessage?: ShowWorkspaceCanvasMessage
-  agentProviderOrder: AgentProvider[]
-  defaultProvider: AgentProvider
-  browserDefaultMode: BrowserMode
-  browserSearchEngine: BrowserSearchEngineId
-  selectNode: (nodeId: string, options?: { toggle?: boolean }) => void
-  convertNoteToTask: (nodeId: string) => boolean
-  setNodeLabelColorOverride: (
-    nodeIds: readonly string[],
-    labelColorOverride: NodeLabelColorOverride,
-  ) => void
-  clearNodeSelectionRef: MutableRefObject<() => void>
-  closeNodeRef: MutableRefObject<(nodeId: string) => Promise<void>>
-  resizeNodeRef: MutableRefObject<(nodeId: string, desiredFrame: NodeFrame) => void>
+
+/**
+ * The action refs of the terminal, role and task families, until PRs 5 to 7 turn each family into
+ * commands (S7 of #647). The window, note and website refs are gone: node components read those
+ * from `commands`. `nodeTypes.context.spec.ts` pins this set, so a ref cannot return elsewhere.
+ */
+export interface TransitionalNodeActionRefs {
   copyAgentLastMessageRef: MutableRefObject<(nodeId: string) => Promise<void>>
   reloadAgentSessionRef: MutableRefObject<(nodeId: string) => Promise<void>>
   listAgentSessionsRef: MutableRefObject<
-    (
-      nodeId: string,
-      limit?: number,
-    ) => Promise<import('@shared/contracts/dto').AgentSessionSummary[]>
+    (nodeId: string, limit?: number) => Promise<AgentSessionSummary[]>
   >
   switchAgentSessionRef: MutableRefObject<
-    (nodeId: string, summary: import('@shared/contracts/dto').AgentSessionSummary) => Promise<void>
+    (nodeId: string, summary: AgentSessionSummary) => Promise<void>
   >
-  updateNoteTextRef: MutableRefObject<(nodeId: string, text: string) => void>
-  renameNoteTitleRef: MutableRefObject<(nodeId: string, title: string) => void>
   updateRoleProviderRef: MutableRefObject<(nodeId: string, provider: AgentProvider) => void>
   updateRoleInputRef: MutableRefObject<(nodeId: string, input: string) => void>
   runRoleRef: MutableRefObject<(nodeId: string, inputOverride?: string) => Promise<void>>
   updateNodeScrollbackRef: MutableRefObject<UpdateNodeScrollback>
-  normalizeViewportForTerminalInteractionRef: MutableRefObject<(nodeId: string) => void>
-  requestNodeDeleteRef: MutableRefObject<(nodeIds: readonly string[]) => void>
   openTaskEditorRef: MutableRefObject<(nodeId: string) => void>
   quickUpdateTaskTitleRef: MutableRefObject<QuickUpdateTaskTitle>
   quickUpdateTaskRequirementRef: MutableRefObject<QuickUpdateTaskRequirement>
@@ -63,28 +46,56 @@ export interface WorkspaceCanvasNodeTypesParams {
     (nodeId: string, expectedStartedAtMs?: number) => void
   >
   renameTerminalTitleRef: MutableRefObject<(nodeId: string, title: string) => void>
-  updateWebsiteUrlRef: MutableRefObject<(nodeId: string, url: string) => void>
-  setWebsitePinnedRef: MutableRefObject<(nodeId: string, pinned: boolean) => void>
-  setWebsiteSessionRef: MutableRefObject<
-    (nodeId: string, sessionMode: WebsiteWindowSessionMode, profileId: string | null) => void
-  >
-  setWebsiteModeRef: MutableRefObject<(nodeId: string, browserMode: BrowserMode) => void>
-  setWebsiteFullscreenRef: MutableRefObject<
-    (
-      nodeId: string,
-      frame: NodeFrame,
-      previousFrame: NodeFrame | null,
-      isFullscreen: boolean,
-    ) => void
-  >
+}
+
+/**
+ * What every node component of a canvas reads from context: six presentation preferences and the
+ * commands. The value keeps its identity until a preference or the commands change, so a node
+ * renders for its own React Flow props and for nothing else (S7 of #647, Decision 3).
+ */
+export interface WorkspaceCanvasNodeTypesParams extends TransitionalNodeActionRefs {
+  readonly workspacePath: string
+  readonly onShowMessage?: ShowWorkspaceCanvasMessage
+  readonly agentProviderOrder: AgentProvider[]
+  readonly defaultProvider: AgentProvider
+  readonly browserDefaultMode: BrowserMode
+  readonly browserSearchEngine: BrowserSearchEngineId
+  readonly commands: WiredCanvasNodeCommands
 }
 
 const Context = createContext<WorkspaceCanvasNodeTypesParams | null>(null)
-export const WorkspaceCanvasNodeTypesProvider = Context.Provider
+const CommandsContext = createContext<WiredCanvasNodeCommands | null>(null)
+/**
+ * Provides the params, and the commands in a context of their own. A context consumer renders on
+ * every change of the value it reads, whatever field it uses, so a memoised window body that reads
+ * only commands must not consume the params: they also hold the preferences, which change.
+ */
+export function WorkspaceCanvasNodeTypesProvider({
+  value,
+  children,
+}: {
+  value: WorkspaceCanvasNodeTypesParams
+  children?: ReactNode
+}) {
+  return createElement(
+    Context.Provider,
+    { value },
+    createElement(CommandsContext.Provider, { value: value.commands }, children),
+  )
+}
 export function useWorkspaceCanvasNodeTypeParameters(): WorkspaceCanvasNodeTypesParams {
   const parameters = useContext(Context)
   if (!parameters) {
     throw new Error('Workspace canvas node parameters are missing.')
   }
   return parameters
+}
+
+/** The canvas's commands. A node binds its own id where it renders a child. */
+export function useCanvasNodeCommands(): WiredCanvasNodeCommands {
+  const commands = useContext(CommandsContext)
+  if (!commands) {
+    throw new Error('Workspace canvas node commands are missing.')
+  }
+  return commands
 }

@@ -17,6 +17,12 @@ import {
 } from '../../support/canvasDocumentHarness'
 import { createRowNodes, createSpace } from '../../support/canvasSelectionFixtures'
 import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
+import { createAgentSettingsReader } from '../../support/agentSettingsReader'
+
+const readAgentSettings = createAgentSettingsReader({
+  standardWindowSizeBucket: 'regular',
+  focusNodeTargetZoom: 1,
+})
 
 // `t` is stable, as it is in the app: a callback that lists it must not be rebuilt on every render,
 // or it could hide a writer or a reader that is missing from the same list.
@@ -210,14 +216,12 @@ describe('the menu actions in two workspaces', () => {
 
   function renderMenuActions(documents: Parameters<typeof renderInTwoWorkspaces>[1]) {
     return renderInTwoWorkspaces(
-      ({ updateCanvasDocument }) =>
+      () =>
         useWorkspaceCanvasMenuActions({
           selectedNodeIds: [],
           flowNodes: [],
           reactFlow,
-          standardWindowSizeBucket: 'regular',
-          focusNodeTargetZoom: 1,
-          updateCanvasDocument,
+          readAgentSettings,
         }),
       documents,
     )

@@ -25,6 +25,7 @@ import {
   createSpace,
 } from '../../support/canvasSelectionFixtures'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
+import { createAgentSettingsReader } from '../../support/agentSettingsReader'
 
 vi.mock('@app/renderer/i18n', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -66,7 +67,7 @@ describe('Delete key in useWorkspaceCanvasLifecycle', () => {
           setDetectedCanvasInputMode: vi.fn(),
           isShiftPressedRef: { current: false },
           setIsShiftPressed: vi.fn(),
-          requestNodeDeleteRef: { current: requestNodeDelete },
+          requestNodeDelete,
           focusNodeTargetZoom: 1,
           isFocusNodeTargetZoomPreviewing: false,
         })
@@ -109,14 +110,13 @@ describe('convertSelectedNoteToTask in useWorkspaceCanvasNoteToTaskConversion', 
       nodes: createRowNodes(['a', 'b']),
     })
     const hook = renderCanvasNodeStore(harness, {
-      extend: function useConversionUnderTest({ nodes, nodeStore }) {
+      extend: function useConversionUnderTest({ nodes }) {
         return {
           conversion: useWorkspaceCanvasNoteToTaskConversion({
             // Differs from the store on purpose: the conversion must read the store at call time.
             selectedNodeIds: [],
             flowNodes: nodes,
-            updateCanvasDocument: nodeStore.updateCanvasDocument,
-            standardWindowSizeBucket: 'regular',
+            readAgentSettings: createAgentSettingsReader({ standardWindowSizeBucket: 'regular' }),
           }),
           ...useSelectionProbe(),
         }

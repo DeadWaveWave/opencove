@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react'
+import React, { useState } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { Node } from '@xyflow/react'
@@ -45,11 +45,8 @@ function createNoteNode(id: string, title: string): Node<TerminalNodeData> {
 }
 
 function Harness({ closeNode }: { closeNode: (nodeId: string) => Promise<void> }) {
-  const requestNodeDeleteRef = useRef<(nodeIds: string[]) => void>(() => undefined)
-  const { confirmNodeDelete, requestNodeClose } = useWorkspaceCanvasNodeDeleteConfirmation({
-    closeNode,
-    requestNodeDeleteRef,
-  })
+  const { confirmNodeDelete, requestNodeClose, requestNodeDelete } =
+    useWorkspaceCanvasNodeDeleteConfirmation({ closeNode })
   const nodeDeleteConfirmation = useCanvasUi(ui => ui.nodeDeleteConfirmation)
 
   return (
@@ -67,7 +64,7 @@ function Harness({ closeNode }: { closeNode: (nodeId: string) => Promise<void> }
         type="button"
         data-testid="request-delete"
         onClick={() => {
-          requestNodeDeleteRef.current(['note-1', 'note-2'])
+          requestNodeDelete(['note-1', 'note-2'])
         }}
       >
         delete

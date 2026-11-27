@@ -1,7 +1,6 @@
 import type { Edge, Node, ReactFlowInstance, Viewport } from '@xyflow/react'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
 import type { TerminalNodeData } from '../../../types'
-import type { WorkspaceCanvasActionRefs } from './useActionRefs'
 import { useWorkspaceCanvasLifecycle } from './useLifecycle'
 import { useWorkspaceCanvasState } from './useCanvasState'
 import { useWorkspaceCanvasViewportNavigation } from './useViewportNavigation'
@@ -21,7 +20,7 @@ export function useWorkspaceCanvasLifecycleBindings({
   focusSpaceInViewport,
   nodes,
   isFocusNodeTargetZoomPreviewing,
-  requestNodeDeleteRef,
+  requestNodeDelete,
 }: {
   workspaceId: string
   canvasState: ReturnType<typeof useWorkspaceCanvasState>
@@ -36,7 +35,7 @@ export function useWorkspaceCanvasLifecycleBindings({
   focusSpaceInViewport: (spaceId: string) => boolean
   nodes: Node<TerminalNodeData>[]
   isFocusNodeTargetZoomPreviewing: boolean
-  requestNodeDeleteRef: WorkspaceCanvasActionRefs['requestNodeDeleteRef']
+  requestNodeDelete: (nodeIds: readonly string[]) => void
 }): void {
   useWorkspaceCanvasCreationActivation({ workspaceId, canvasRef: canvasState.canvasRef })
   useWorkspaceCanvasViewportNavigation({
@@ -68,7 +67,7 @@ export function useWorkspaceCanvasLifecycleBindings({
     setDetectedCanvasInputMode: canvasState.setDetectedCanvasInputMode,
     isShiftPressedRef: canvasState.isShiftPressedRef,
     setIsShiftPressed: canvasState.setIsShiftPressed,
-    requestNodeDeleteRef,
+    requestNodeDelete,
     focusNodeTargetZoom: agentSettings.focusNodeTargetZoom,
     isFocusNodeTargetZoomPreviewing,
   })

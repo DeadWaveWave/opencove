@@ -1,5 +1,6 @@
 import { memo, useMemo, type FunctionComponent } from 'react'
 import {
+  useCanvasNodeCommands,
   useWorkspaceCanvasNodeTypeParameters,
   type WorkspaceCanvasNodeTypesParams,
 } from './nodeTypes.context'
@@ -31,12 +32,6 @@ function createNodeTypes(): Record<string, FunctionComponent<WorkspaceCanvasNode
         id={id}
         nodePosition={nodePosition}
         workspacePath={parameters.workspacePath}
-        selectNode={parameters.selectNode}
-        resizeNodeRef={parameters.resizeNodeRef}
-        normalizeViewportForTerminalInteractionRef={
-          parameters.normalizeViewportForTerminalInteractionRef
-        }
-        requestNodeDeleteRef={parameters.requestNodeDeleteRef}
         openTaskEditorRef={parameters.openTaskEditorRef}
         quickUpdateTaskTitleRef={parameters.quickUpdateTaskTitleRef}
         quickUpdateTaskRequirementRef={parameters.quickUpdateTaskRequirementRef}
@@ -49,46 +44,18 @@ function createNodeTypes(): Record<string, FunctionComponent<WorkspaceCanvasNode
   }
 
   const ImageNodeType = ({ data, id }: WorkspaceCanvasNodeTypeProps) => {
-    const parameters = useWorkspaceCanvasNodeTypeParameters()
     const nodePosition = useNodePosition(id)
-    return (
-      <WorkspaceCanvasImageNodeType
-        data={data}
-        id={id}
-        nodePosition={nodePosition}
-        selectNode={parameters.selectNode}
-        closeNodeRef={parameters.closeNodeRef}
-        resizeNodeRef={parameters.resizeNodeRef}
-        normalizeViewportForTerminalInteractionRef={
-          parameters.normalizeViewportForTerminalInteractionRef
-        }
-      />
-    )
+    return <WorkspaceCanvasImageNodeType data={data} id={id} nodePosition={nodePosition} />
   }
 
   const FilesystemNodeType = ({ data, id }: WorkspaceCanvasNodeTypeProps) => {
-    const parameters = useWorkspaceCanvasNodeTypeParameters()
     const nodePosition = useNodePosition(id)
     const readDocument = useReadCanvasDocument()
     // Read when this renders, not subscribed: the Spaces of the store as they are now.
     const targetMountId = resolveFilesystemNodeMountId(id, data, readDocument().spaces)
     const Component =
       data.kind === 'folder' ? WorkspaceCanvasFolderNodeType : WorkspaceCanvasDocumentNodeType
-    return (
-      <Component
-        data={data}
-        id={id}
-        nodePosition={nodePosition}
-        mountId={targetMountId}
-        selectNode={parameters.selectNode}
-        clearNodeSelectionRef={parameters.clearNodeSelectionRef}
-        closeNodeRef={parameters.closeNodeRef}
-        resizeNodeRef={parameters.resizeNodeRef}
-        normalizeViewportForTerminalInteractionRef={
-          parameters.normalizeViewportForTerminalInteractionRef
-        }
-      />
-    )
+    return <Component data={data} id={id} nodePosition={nodePosition} mountId={targetMountId} />
   }
 
   const WebsiteNodeType = ({ data, id }: WorkspaceCanvasNodeTypeProps) => {
@@ -99,17 +66,6 @@ function createNodeTypes(): Record<string, FunctionComponent<WorkspaceCanvasNode
         data={data}
         id={id}
         nodePosition={nodePosition}
-        selectNode={parameters.selectNode}
-        closeNodeRef={parameters.closeNodeRef}
-        resizeNodeRef={parameters.resizeNodeRef}
-        normalizeViewportForTerminalInteractionRef={
-          parameters.normalizeViewportForTerminalInteractionRef
-        }
-        updateWebsiteUrlRef={parameters.updateWebsiteUrlRef}
-        setWebsitePinnedRef={parameters.setWebsitePinnedRef}
-        setWebsiteSessionRef={parameters.setWebsiteSessionRef}
-        setWebsiteModeRef={parameters.setWebsiteModeRef}
-        setWebsiteFullscreenRef={parameters.setWebsiteFullscreenRef}
         browserDefaultMode={parameters.browserDefaultMode}
         browserSearchEngine={parameters.browserSearchEngine}
       />
@@ -129,17 +85,11 @@ function createNodeTypes(): Record<string, FunctionComponent<WorkspaceCanvasNode
         terminalFontFamily={displayAlignment.terminalFontFamily}
         terminalTransparentBackground={displayAlignment.terminalTransparentBackground}
         terminalDisplayCalibration={displayAlignment.terminalDisplayCalibration}
-        selectNode={parameters.selectNode}
-        closeNodeRef={parameters.closeNodeRef}
-        resizeNodeRef={parameters.resizeNodeRef}
         copyAgentLastMessageRef={parameters.copyAgentLastMessageRef}
         reloadAgentSessionRef={parameters.reloadAgentSessionRef}
         listAgentSessionsRef={parameters.listAgentSessionsRef}
         switchAgentSessionRef={parameters.switchAgentSessionRef}
         updateNodeScrollbackRef={parameters.updateNodeScrollbackRef}
-        normalizeViewportForTerminalInteractionRef={
-          parameters.normalizeViewportForTerminalInteractionRef
-        }
         updateTerminalTitleRef={parameters.updateTerminalTitleRef}
         clearTerminalAgentOverlayRef={parameters.clearTerminalAgentOverlayRef}
         renameTerminalTitleRef={parameters.renameTerminalTitleRef}
@@ -152,41 +102,14 @@ function createNodeTypes(): Record<string, FunctionComponent<WorkspaceCanvasNode
     noteNode: function NoteNodeType({ data, id }: WorkspaceCanvasNodeTypeProps) {
       const parameters = useWorkspaceCanvasNodeTypeParameters()
       return (
-        <WorkspaceCanvasNoteNodeType
-          data={data}
-          id={id}
-          selectNode={parameters.selectNode}
-          clearNodeSelectionRef={parameters.clearNodeSelectionRef}
-          closeNodeRef={parameters.closeNodeRef}
-          resizeNodeRef={parameters.resizeNodeRef}
-          updateNoteTextRef={parameters.updateNoteTextRef}
-          renameNoteTitleRef={parameters.renameNoteTitleRef}
-          convertNoteToTask={parameters.convertNoteToTask}
-          setNodeLabelColorOverride={parameters.setNodeLabelColorOverride}
-          normalizeViewportForTerminalInteractionRef={
-            parameters.normalizeViewportForTerminalInteractionRef
-          }
-          onShowMessage={parameters.onShowMessage}
-        />
+        <WorkspaceCanvasNoteNodeType data={data} id={id} onShowMessage={parameters.onShowMessage} />
       )
     },
     documentNode: FilesystemNodeType,
     folderNode: FilesystemNodeType,
     websiteNode: WebsiteNodeType,
     pluginNode: function PluginNodeType({ data, id }: WorkspaceCanvasNodeTypeProps) {
-      const parameters = useWorkspaceCanvasNodeTypeParameters()
-      return (
-        <WorkspaceCanvasPluginNodeType
-          data={data}
-          id={id}
-          closeNodeRef={parameters.closeNodeRef}
-          resizeNodeRef={parameters.resizeNodeRef}
-          selectNode={parameters.selectNode}
-          normalizeViewportForTerminalInteractionRef={
-            parameters.normalizeViewportForTerminalInteractionRef
-          }
-        />
-      )
+      return <WorkspaceCanvasPluginNodeType data={data} id={id} />
     },
     imageNode: ImageNodeType,
     roleNode: function RoleNodeType({ data, id }: WorkspaceCanvasNodeTypeProps) {
@@ -195,15 +118,9 @@ function createNodeTypes(): Record<string, FunctionComponent<WorkspaceCanvasNode
         <WorkspaceCanvasRoleNodeType
           data={data}
           id={id}
-          selectNode={parameters.selectNode}
-          requestNodeDeleteRef={parameters.requestNodeDeleteRef}
-          resizeNodeRef={parameters.resizeNodeRef}
           updateRoleProviderRef={parameters.updateRoleProviderRef}
           updateRoleInputRef={parameters.updateRoleInputRef}
           runRoleRef={parameters.runRoleRef}
-          normalizeViewportForTerminalInteractionRef={
-            parameters.normalizeViewportForTerminalInteractionRef
-          }
           agentProviderOrder={parameters.agentProviderOrder}
           defaultProvider={parameters.defaultProvider}
         />
@@ -215,14 +132,14 @@ function createNodeTypes(): Record<string, FunctionComponent<WorkspaceCanvasNode
     Object.entries(nodeTypes).map(([type, NodeComponent]) => [
       type,
       memo((props: WorkspaceCanvasNodeTypeProps) => {
-        const parameters = useWorkspaceCanvasNodeTypeParameters()
+        const windowCommands = useCanvasNodeCommands().window
         useWindowNodeCommitProbe(props)
         return (
           <WindowCollapsePresentation
             id={props.id}
             data={props.data}
-            onToggleSelection={() => parameters.selectNode(props.id, { toggle: true })}
-            onSelect={() => parameters.selectNode(props.id)}
+            onToggleSelection={() => windowCommands.select(props.id, { toggle: true })}
+            onSelect={() => windowCommands.select(props.id)}
           >
             <NodeComponent {...props} />
           </WindowCollapsePresentation>
@@ -240,24 +157,15 @@ export function useWorkspaceCanvasNodeTypes({
   defaultProvider,
   browserDefaultMode,
   browserSearchEngine,
-  selectNode,
-  convertNoteToTask,
-  setNodeLabelColorOverride,
-  clearNodeSelectionRef,
-  closeNodeRef,
-  resizeNodeRef,
+  commands,
   copyAgentLastMessageRef,
   reloadAgentSessionRef,
   listAgentSessionsRef,
   switchAgentSessionRef,
-  updateNoteTextRef,
-  renameNoteTitleRef,
   updateRoleProviderRef,
   updateRoleInputRef,
   runRoleRef,
   updateNodeScrollbackRef,
-  normalizeViewportForTerminalInteractionRef,
-  requestNodeDeleteRef,
   openTaskEditorRef,
   quickUpdateTaskTitleRef,
   quickUpdateTaskRequirementRef,
@@ -268,11 +176,6 @@ export function useWorkspaceCanvasNodeTypes({
   updateTerminalTitleRef,
   clearTerminalAgentOverlayRef,
   renameTerminalTitleRef,
-  updateWebsiteUrlRef,
-  setWebsitePinnedRef,
-  setWebsiteSessionRef,
-  setWebsiteModeRef,
-  setWebsiteFullscreenRef,
 }: WorkspaceCanvasNodeTypesParams) {
   // Callers compose fresh containers on viewport renders; only the individual inputs
   // should notify node consumers. Component types remain stable independently of this cache.
@@ -284,24 +187,15 @@ export function useWorkspaceCanvasNodeTypes({
       defaultProvider,
       browserDefaultMode,
       browserSearchEngine,
-      selectNode,
-      convertNoteToTask,
-      setNodeLabelColorOverride,
-      clearNodeSelectionRef,
-      closeNodeRef,
-      resizeNodeRef,
+      commands,
       copyAgentLastMessageRef,
       reloadAgentSessionRef,
       listAgentSessionsRef,
       switchAgentSessionRef,
-      updateNoteTextRef,
-      renameNoteTitleRef,
       updateRoleProviderRef,
       updateRoleInputRef,
       runRoleRef,
       updateNodeScrollbackRef,
-      normalizeViewportForTerminalInteractionRef,
-      requestNodeDeleteRef,
       openTaskEditorRef,
       quickUpdateTaskTitleRef,
       quickUpdateTaskRequirementRef,
@@ -312,11 +206,6 @@ export function useWorkspaceCanvasNodeTypes({
       updateTerminalTitleRef,
       clearTerminalAgentOverlayRef,
       renameTerminalTitleRef,
-      updateWebsiteUrlRef,
-      setWebsitePinnedRef,
-      setWebsiteSessionRef,
-      setWebsiteModeRef,
-      setWebsiteFullscreenRef,
     }),
     [
       workspacePath,
@@ -325,24 +214,15 @@ export function useWorkspaceCanvasNodeTypes({
       defaultProvider,
       browserDefaultMode,
       browserSearchEngine,
-      selectNode,
-      convertNoteToTask,
-      setNodeLabelColorOverride,
-      clearNodeSelectionRef,
-      closeNodeRef,
-      resizeNodeRef,
+      commands,
       copyAgentLastMessageRef,
       reloadAgentSessionRef,
       listAgentSessionsRef,
       switchAgentSessionRef,
-      updateNoteTextRef,
-      renameNoteTitleRef,
       updateRoleProviderRef,
       updateRoleInputRef,
       runRoleRef,
       updateNodeScrollbackRef,
-      normalizeViewportForTerminalInteractionRef,
-      requestNodeDeleteRef,
       openTaskEditorRef,
       quickUpdateTaskTitleRef,
       quickUpdateTaskRequirementRef,
@@ -353,11 +233,6 @@ export function useWorkspaceCanvasNodeTypes({
       updateTerminalTitleRef,
       clearTerminalAgentOverlayRef,
       renameTerminalTitleRef,
-      updateWebsiteUrlRef,
-      setWebsitePinnedRef,
-      setWebsiteSessionRef,
-      setWebsiteModeRef,
-      setWebsiteFullscreenRef,
     ],
   )
   return { nodeTypes, nodeTypesParameters }

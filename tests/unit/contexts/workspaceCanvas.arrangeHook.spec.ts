@@ -12,10 +12,15 @@ import type { TerminalNodeData } from '../../../src/contexts/workspace/presentat
 import {
   createCanvasDocumentHarness,
   renderCanvasNodeStore,
-  type CanvasNodeStoreContext,
 } from '../../support/canvasDocumentHarness'
 import { createRowNodes, createSpace } from '../../support/canvasSelectionFixtures'
 import { setDocumentNodes } from '../../support/documentNodes'
+import { createAgentSettingsReader } from '../../support/agentSettingsReader'
+
+const readAgentSettings = createAgentSettingsReader({
+  focusNodeTargetZoom: 1,
+  standardWindowSizeBucket: 'regular',
+})
 
 vi.mock('@app/renderer/i18n', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -28,15 +33,13 @@ const reactFlow = {
 
 const onShowMessage = vi.fn()
 
-function useArrangeUnderTest({ nodeStore }: CanvasNodeStoreContext) {
+function useArrangeUnderTest() {
   return {
     selection: useCanvasSelectionCommands(),
     arrange: useWorkspaceCanvasArrange({
       reactFlow,
-      focusNodeTargetZoom: 1,
-      updateCanvasDocument: nodeStore.updateCanvasDocument,
+      readAgentSettings,
       onShowMessage,
-      standardWindowSizeBucket: 'regular',
     }),
   }
 }

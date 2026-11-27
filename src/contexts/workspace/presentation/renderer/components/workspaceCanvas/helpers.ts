@@ -45,7 +45,7 @@ export function resolveWorkspaceCanvasViewportAnimation(duration: number): {
 }
 
 export function focusNodeInViewport(
-  reactFlow: ReactFlowInstance<Node<TerminalNodeData>>,
+  reactFlow: Pick<ReactFlowInstance<Node<TerminalNodeData>>, 'setViewport' | 'setCenter'>,
   node: Pick<Node<TerminalNodeData>, 'position' | 'data'>,
   options: { duration?: number; zoom?: number; useVisibleCanvasCenter?: boolean } = {},
 ): void {

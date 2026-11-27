@@ -13,6 +13,9 @@ import {
 } from '../../support/canvasDocumentHarness'
 import { createRowNodes, createSpace } from '../../support/canvasSelectionFixtures'
 import { setDocumentNodes } from '../../support/documentNodes'
+import { createAgentSettingsReader } from '../../support/agentSettingsReader'
+
+const readAgentSettings = createAgentSettingsReader({ standardWindowSizeBucket: 'regular' })
 
 vi.mock('@app/renderer/i18n', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -23,15 +26,14 @@ vi.mock('@app/renderer/i18n', () => ({
 
 const onShowMessage = vi.fn()
 
-function useConversion({ nodes, nodeStore }: CanvasNodeStoreContext) {
+function useConversion({ nodes }: CanvasNodeStoreContext) {
   return {
     selection: useCanvasSelectionCommands(),
     conversion: useWorkspaceCanvasNoteToTaskConversion({
       selectedNodeIds: [],
       flowNodes: nodes,
-      updateCanvasDocument: nodeStore.updateCanvasDocument,
       onShowMessage,
-      standardWindowSizeBucket: 'regular',
+      readAgentSettings,
     }),
   }
 }

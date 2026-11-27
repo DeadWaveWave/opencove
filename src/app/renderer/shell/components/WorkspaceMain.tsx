@@ -10,7 +10,13 @@ import type {
   WorkspaceViewport,
 } from '@contexts/workspace/presentation/renderer/types'
 import type { FocusRequest, ProjectContextMenuState } from '../types'
+import { useAppStore } from '../store/useAppStore'
 import { WorkspaceEmptyState } from './WorkspaceEmptyState'
+
+// Module scope, so the memoized canvas gets the same function on every render of the shell.
+function readAgentSettings(): AgentSettings {
+  return useAppStore.getState().agentSettings
+}
 
 function WorkspaceMainComponent({
   activeWorkspace,
@@ -111,6 +117,7 @@ function WorkspaceMainComponent({
         onOpenSpaceContextMenu={handleOpenSpaceContextMenu}
         shortcutsEnabled={shortcutsEnabled}
         agentSettings={agentSettings}
+        readAgentSettings={readAgentSettings}
         terminalDisplayCalibration={terminalDisplayCalibration}
         isFocusNodeTargetZoomPreviewing={isFocusNodeTargetZoomPreviewing}
         focusNodeId={focusNodeId}

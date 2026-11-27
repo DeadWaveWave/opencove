@@ -8,6 +8,7 @@ import type { TaskActionContext } from '../../../src/contexts/workspace/presenta
 import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
 import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
+import { NodeCommandsProvider } from '../../support/nodeCommandsFixture'
 import { createStoreBackedChannels } from '../../support/workspaceCanvasStoreHarness'
 
 const flow = vi.hoisted(() => ({ nodes: [] as Node<TerminalNodeData>[] }))
@@ -115,10 +116,6 @@ it('shows a refused Pi config run in the actual canvas task card while preservin
         data={nodes[0].data}
         nodePosition={nodes[0].position}
         workspacePath="/repo"
-        selectNode={() => {}}
-        resizeNodeRef={{ current: () => {} }}
-        normalizeViewportForTerminalInteractionRef={{ current: () => {} }}
-        requestNodeDeleteRef={{ current: () => {} }}
         openTaskEditorRef={{ current: () => {} }}
         quickUpdateTaskTitleRef={{ current: () => {} }}
         quickUpdateTaskRequirementRef={{ current: () => {} }}
@@ -131,7 +128,9 @@ it('shows a refused Pi config run in the actual canvas task card while preservin
   }
   render(
     <CanvasStoreTestProvider workspaceId="workspace">
-      <Harness />
+      <NodeCommandsProvider>
+        <Harness />
+      </NodeCommandsProvider>
     </CanvasStoreTestProvider>,
   )
   expect(screen.queryByRole('alert')).toBeNull()
