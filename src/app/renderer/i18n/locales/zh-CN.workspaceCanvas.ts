@@ -13,6 +13,7 @@ export const zhCNWorkspaceCanvas = {
     arrange: '整理',
     arrangeBy: '整理方式',
     createSpaceWithSelected: '用所选节点创建 Space',
+    createSpaceWithNodeDirectory: '用此目录创建 Space',
     convertToTask: '转换为任务',
     clearSelection: '清除选择',
   },

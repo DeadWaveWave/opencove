@@ -55,6 +55,7 @@ export interface WorkspaceContextMenuProps {
   arrangeCanvas: (style?: WorkspaceArrangeStyle) => void
   arrangeInSpace: (spaceId: string, style?: WorkspaceArrangeStyle) => void
   createSpaceFromSelectedNodes: () => void
+  createSpaceFromNodeDirectory: (nodeId: string) => void
   createChildSpaceInParent: (
     parentSpaceId: string,
     options?: { anchor?: { x: number; y: number } | null; nodeIds?: string[] },

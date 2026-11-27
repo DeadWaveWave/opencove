@@ -35,6 +35,7 @@ Space 有两类不同事实：
 - 在画布空白处右键，显示 `Create Space`，创建 top-level Space。
 - 在某个 Space 内右键，显示 `Create Space`，内部创建 child Space。
 - Space 的 `...` 菜单不提供 `Create Child Space`。位置敏感的右键菜单已经能表达创建意图，`...` 菜单继续承载当前 Space 自身的操作。
+- 在**文件夹节点**上右键，选择 `Create Space from This Directory`，以该文件夹目录创建 top-level Space。文档节点不显示该项；已被某个 Space 拥有的节点也不显示（在 Space 内创建属于 child Space，由位置敏感的 `Create Space` 表达）。
 
 用户不需要看到 `child space` 文案。只有在 archive / worktree guard 这类需要解释影响范围的地方，UI 才可以用“inside this Space”、“contained Spaces”一类范围描述，而不是把实现类型暴露为主要动作。
 
@@ -44,6 +45,7 @@ Create:
 
 - Blank canvas create 产生 top-level Space。提交前先解析项目默认 mount，把其 `mountId` 和工作目录一起保存；远程项目的本机元数据目录不是 Space 执行目录。缺少有效位置时创建失败，不降级到本机；异步解析期间切换项目或卸载画布后不再写回。
 - Inside Space create 产生 child Space，并把 `parentSpaceId` 指向被命中的最内层 Space。
+- Node directory create 产生 top-level Space，绑定被右键**文件夹节点**的目录；已被 Space 拥有的节点不走此路径。目录路径复用菜单的 `getFilesystemNodeUri` 解析器，mount 选择复用 `resolveBestMount`（最长包含根，domain 规范化处理 Windows 大小写——含盘符根 `D:\`——与 macOS `/private` 别名），mount 列表复用只读 `listProjectMounts`（`mount.list` 查询）。把命中的 `mountId` 与 `directoryPath` 一起保存。节点没有可用目录、或目录不在任何 mount 范围内时，给出警告并中止，不写 Space；mount 解析是查询，绝不改写 mount 拓扑。`mount.list` 返回后按 `lifetime.active` 校验画布生命周期，查询期间切换项目或卸载画布则不写回，与 blank-canvas create 一致。
 - 新建 child Space 初始使用父 Space 的视觉上下文；执行上下文必须通过 shared Space scope resolver 得到，调用方不能自己用 parent 链猜目录。
 
 Move / resize / arrange:
@@ -135,10 +137,11 @@ Settings defaults may preselect deletion checkboxes, but they do not replace exp
 4. Sibling child Spaces may each become independent Space Worktrees.
 5. Archive records for new subtree archives include all archived Spaces and nodes.
 6. Runtime close / cleanup failures must not leave durable Space deletion and archive snapshot creation inconsistent.
+7. Node directory create applies to folder nodes that no Space owns yet, and writes a Space only when the folder directory resolves inside an existing project mount; otherwise it aborts with a warning and never falls back to a local location. A project switch or unmount while `mount.list` resolves writes nothing. The folder / owner / directory decision is a single pure function (`resolveTopLevelSpaceDirectoryFromNode`) shared by the menu, the pre-query warning and a post-query re-check on the current document, so a second click, a move into a Space, or a folder navigation during the wait writes nothing. The context menu closes on click, before the query.
 
 ## Verification Anchors
 
-- Unit: Space tree helpers, innermost hit resolution, `canCreateSpaceWorktree`, archive scope calculation, archive record normalization, scoped worktree cleanup choices.
+- Unit: Space tree helpers, innermost hit resolution, `canCreateSpaceWorktree`, archive scope calculation, archive record normalization, scoped worktree cleanup choices, node-directory create invariants (mount hit writes `mountId` + directory, outside-mount abort, lifetime abort, in-Space / non-folder guard).
 - Integration: persistence compatibility for old archive records and new subtree archive records, including archive review rendering and node ownership colors.
 - E2E: `Create Space` from blank canvas vs inside Space, absence of `Create Child Space` from `...`, sibling child Space Worktree creation, blocked ancestor/descendant Worktree conversion, ordinary child archive, child Worktree archive, parent archive with descendant Worktrees.
 
@@ -152,3 +155,5 @@ Current targeted checks:
 - `tests/unit/contexts/spaceWorktreeWindow.archive.spec.tsx`
 - `tests/unit/contexts/spaceWorktreeWindow.flow.spec.tsx`
 - `tests/unit/contexts/workspaceSpaceActionMenu.spec.tsx`
+- `tests/unit/contexts/useSpaces.createSpaceFromNodeDirectory.spec.tsx`
+- `tests/unit/contexts/resolveSpaceMountContext.spec.ts`

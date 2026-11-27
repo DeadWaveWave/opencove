@@ -53,11 +53,12 @@ export function useFilesystemNodes({
   const { setNodes, updateCanvasDocument, createDocumentNode, createFolderNode } = nodeStore
   const readDocument = useReadCanvasDocument()
   const { requestPersistFlush } = useCanvasDocumentCommands()
-  const { getNodePathUri, copyNodePath } = useFilesystemNodePaths({
-    workspaceId,
-    workspacePath,
-    onShowMessage,
-  })
+  const { getNodePathUri, copyNodePath, isTopLevelSpaceDirectoryCandidate } =
+    useFilesystemNodePaths({
+      workspaceId,
+      workspacePath,
+      onShowMessage,
+    })
   const lifetime = useRef<object | null>(null)
   useLayoutEffect(() => {
     lifetime.current = {}
@@ -281,9 +282,18 @@ export function useFilesystemNodes({
       findBlockingOpenDocument,
       onShowMessage,
       getNodePathUri,
+      isTopLevelSpaceDirectoryCandidate,
       copyNodePath,
     }),
-    [updateFolder, openFile, findBlockingOpenDocument, onShowMessage, getNodePathUri, copyNodePath],
+    [
+      updateFolder,
+      openFile,
+      findBlockingOpenDocument,
+      onShowMessage,
+      getNodePathUri,
+      isTopLevelSpaceDirectoryCandidate,
+      copyNodePath,
+    ],
   )
   const nativeDrop = useNativeFilesystemDrop({ workspaceId, materialize, onShowMessage })
   return { actions, handleDragOver, handleDrop, ...nativeDrop }

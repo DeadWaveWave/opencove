@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useLayoutEffect, useMemo } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
 import type { Node, ReactFlowInstance } from '@xyflow/react'
@@ -6,6 +6,8 @@ import { resolveSpaceWorkingDirectory } from '@contexts/space/application/resolv
 import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
 import type { ShowWorkspaceCanvasMessage } from '../types'
 import { sanitizeSpaces, validateSpaceTransfer } from '../helpers'
+import { resolveTopLevelSpaceDirectoryFromNode } from './useFilesystemNodePaths'
+import { listProjectMounts, resolveBestMount } from './spaceMountLaunchContext'
 import { useCreateEmptySpace } from './useSpaces.createEmptySpace'
 import { createSpaceFromSelectedNodesWithMounts } from './useSpaces.createSpaceSelection'
 import { resolveSelectedChildSpaceParent } from './useSpaces.createChildSpace'
@@ -42,6 +44,7 @@ export function useWorkspaceCanvasCreateSpace({
   ) => string | null
 }): {
   createSpaceFromSelectedNodes: () => void
+  createSpaceFromNodeDirectory: (nodeId: string) => void
   createEmptySpaceAtPoint: (point: { x: number; y: number }) => Promise<string | null>
   createSpaceWithTargetMount: (payload: {
     nodeIds: readonly string[]
@@ -55,6 +58,16 @@ export function useWorkspaceCanvasCreateSpace({
   const readDocument = useReadCanvasDocument()
 
   const { t } = useTranslation()
+  const lifetime = useMemo(
+    () => ({ workspaceId, workspacePath, active: true }),
+    [workspaceId, workspacePath],
+  )
+  useLayoutEffect(() => {
+    lifetime.active = true
+    return () => {
+      lifetime.active = false
+    }
+  }, [lifetime])
   const resolveDefaultSpaceName = useCallback((): string => {
     const { spaces } = readDocument()
     const usedNames = new Set(spaces.map(space => space.name.toLowerCase()))
@@ -383,6 +396,65 @@ export function useWorkspaceCanvasCreateSpace({
     workspacePath,
   ])
 
+  const createSpaceFromNodeDirectory = useCallback(
+    (nodeId: string) => {
+      // Close the menu on click, before the query, like copyPath and blank-canvas create: a second
+      // click is no longer possible from the UI. The post-query re-check below still keeps the
+      // invariant if the document changes while mount.list is pending.
+      ui.closeContextMenu()
+      ui.cancelSpaceRename()
+      const directoryPath = resolveTopLevelSpaceDirectoryFromNode(readDocument(), nodeId)
+      if (!directoryPath) {
+        onShowMessage?.(t('messages.spaceNodeHasNoDirectory'), 'warning')
+        return
+      }
+
+      void (async () => {
+        let mounts: Awaited<ReturnType<typeof listProjectMounts>>
+        try {
+          mounts = await listProjectMounts(workspaceId)
+        } catch (error) {
+          if (lifetime.active) {
+            const message = error instanceof Error ? error.message : String(error)
+            onShowMessage?.(t('messages.mountListFailed', { message }), 'error')
+          }
+          return
+        }
+        // A project switch or unmount during the query writes nothing, like blank-canvas create.
+        if (!lifetime.active) {
+          return
+        }
+        if (!mounts) {
+          onShowMessage?.(
+            t('messages.mountListFailed', {
+              message: 'Control surface unavailable while resolving mounts.',
+            }),
+            'error',
+          )
+          return
+        }
+        // Re-run the same decision on the current document: a second call, a move into a Space, or
+        // a folder navigation during the wait must not overwrite the newer state.
+        const currentDirectory = resolveTopLevelSpaceDirectoryFromNode(readDocument(), nodeId)
+        if (!currentDirectory) {
+          return
+        }
+        const mount = resolveBestMount(mounts, currentDirectory)
+        if (!mount) {
+          onShowMessage?.(t('messages.spaceDirectoryOutsideMounts'), 'warning')
+          return
+        }
+        createSpace({
+          nodeIds: [nodeId],
+          rect: null,
+          targetMountId: mount.mountId,
+          directoryPath: currentDirectory,
+        })
+      })()
+    },
+    [createSpace, lifetime, onShowMessage, readDocument, t, ui, workspaceId],
+  )
+
   const createEmptySpaceAtPoint = useCreateEmptySpace({
     workspaceId,
     workspacePath,
@@ -393,6 +465,7 @@ export function useWorkspaceCanvasCreateSpace({
 
   return {
     createSpaceFromSelectedNodes,
+    createSpaceFromNodeDirectory,
     createEmptySpaceAtPoint,
     createSpaceWithTargetMount: createSpace,
   }

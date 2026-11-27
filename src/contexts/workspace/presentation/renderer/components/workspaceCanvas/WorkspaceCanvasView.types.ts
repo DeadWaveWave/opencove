@@ -135,6 +135,7 @@ export interface WorkspaceCanvasViewProps {
   insertQuickPhrase: (phrase: QuickPhrase) => void
   openQuickMenuSettings: () => void
   createSpaceFromSelectedNodes: () => void
+  createSpaceFromNodeDirectory: (nodeId: string) => void
   createChildSpaceInParent: (
     parentSpaceId: string,
     options?: { anchor?: { x: number; y: number } | null; nodeIds?: string[] },

@@ -38,7 +38,7 @@ function isPathInside(rootPath: string, targetPath: string): boolean {
   return isPathInsideOrEqual(rootPath, targetPath)
 }
 
-function resolveBestMount(mounts: MountDto[], directoryPath: string): MountDto | null {
+export function resolveBestMount(mounts: MountDto[], directoryPath: string): MountDto | null {
   const normalizedDirectoryPath = normalizeComparablePath(directoryPath)
   if (normalizedDirectoryPath.length === 0) {
     return mounts[0] ?? null

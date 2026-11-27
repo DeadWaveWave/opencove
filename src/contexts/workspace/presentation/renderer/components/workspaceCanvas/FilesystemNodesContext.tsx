@@ -9,6 +9,7 @@ export interface FilesystemNodesActions {
   findBlockingOpenDocument: (folderId: string, uri: string) => SpaceExplorerOpenDocumentBlock | null
   onShowMessage?: ShowWorkspaceCanvasMessage
   getNodePathUri?: (id: string) => string | null
+  isTopLevelSpaceDirectoryCandidate?: (id: string) => boolean
   copyNodePath?: (id: string, relative: boolean) => Promise<void>
 }
 

@@ -20,7 +20,9 @@ export function normalizeComparablePath(pathValue: string): string {
     .replace(/\\/g, '/')
   const aliasNormalized = normalizeMacPrivateAlias(normalized)
 
-  return /^[a-zA-Z]:\//.test(aliasNormalized) || aliasNormalized.startsWith('//')
+  // A drive root such as `D:\` loses its trailing separator above and becomes `D:`; lowercase it
+  // too so it compares equal to the lowercased paths inside it (`d:/...`).
+  return /^[a-zA-Z]:(\/|$)/.test(aliasNormalized) || aliasNormalized.startsWith('//')
     ? aliasNormalized.toLowerCase()
     : aliasNormalized
 }

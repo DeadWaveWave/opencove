@@ -57,6 +57,7 @@ export function WorkspaceContextMenu({
   arrangeCanvas,
   arrangeInSpace,
   createSpaceFromSelectedNodes,
+  createSpaceFromNodeDirectory,
   createChildSpaceInParent,
   createEmptySpaceAtPoint,
   clearNodeSelection,
@@ -417,6 +418,7 @@ export function WorkspaceContextMenu({
           <WorkspaceContextSelectionMenuContent
             createSpaceShortcut={shortcuts.createSpace}
             createSpaceFromSelectedNodes={createSpaceFromSelectedNodes}
+            createSpaceFromNodeDirectory={createSpaceFromNodeDirectory}
             openLabelColorSubmenu={openLabelColorSubmenu}
             isLabelColorSubmenuOpen={openSubmenu === 'label-color'}
             labelColorButtonRef={labelColorButtonRef}
