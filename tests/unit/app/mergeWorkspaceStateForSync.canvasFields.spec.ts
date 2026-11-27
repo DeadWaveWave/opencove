@@ -7,8 +7,13 @@ import type {
 
 // S7, PR 3 (Invariant 1): the document holds no canvas-only field, so the merge of a Worker sync
 // snapshot has nothing to carry. An incoming node takes no `selected`, `dragHandle` or `dragging`
-// from the node in memory, and an in-memory node never holds its position against the snapshot:
-// `dragging: true` was last written to the document before S6 moved drag frames to the overlay.
+// from the node in memory, and an in-memory node never holds its position against the snapshot.
+// On the base the merge kept every local position of a workspace while a node was marked
+// `dragging: true`. S6 moved drag frames to the overlay, but a select or remove batch that arrived
+// in the middle of a drag was a release whose entries still stored `dragging: true`, so a Worker sync
+// before React Flow's own release kept the workspace's positions. The release now writes positions
+// only and a write that carries the flag throws in development, so the branch is removed on purpose:
+// that sync applies other clients' moves.
 
 const persisted = (title: string, x = 0): PersistedWorkspaceState =>
   ({

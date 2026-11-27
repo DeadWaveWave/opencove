@@ -380,8 +380,10 @@ describe('a release with no position change, in the middle of a drag', () => {
 
     expect(yOf.stored('a')).toBe(200)
     expect(yOf.shown('a')).toBe(200)
-    // The batch in the middle wrote `dragging: true`; a document node left so makes Worker sync
-    // keep every local position of the workspace (`toShellWorkspaceStateForSync`).
+    // On the base the batch in the middle stored `dragging: true` (the release applied the live
+    // view's entries with `applyLiveNodes`), and a document node left so made every Worker sync
+    // keep all local positions of the workspace until React Flow's own release. The release now
+    // writes positions only (S7, PR 3), so none is left.
     expect(
       context.harness.readStoreDocument().nodes.filter(node => node.dragging === true),
     ).toEqual([])
@@ -489,5 +491,31 @@ describe('a window created during the drag where the dragged window is', () => {
     expect(yOf.stored('a')).toBe(320)
     // The note (200 high) no longer overlaps the window dropped at 320 (200 high).
     expect(yOf.stored(id)).toBeGreaterThanOrEqual(520)
+  })
+})
+
+// The same batches, by their own assertion: the dragged window is stored at its live position and
+// no canvas-only field is (on the base it was stored with `dragging: true`).
+describe('a select or remove batch in the middle of a drag', () => {
+  it.each([
+    ['an unselect batch', [{ type: 'select', id: 'c', selected: false }]],
+    ['a select batch of another window', [{ type: 'select', id: 'a', selected: true }]],
+    ['a remove batch of another window', [{ type: 'remove', id: 'a' }]],
+  ])('%s stores the dragged window at its live position and no flag', (_name, batch) => {
+    const context = setup()
+    const { harness, view, runFrames } = context
+    act(() => view.result.current.selection.select({ nodeIds: ['c'], spaceIds: [] }))
+    act(() => view.result.current.apply(drag('c', 803, 40)))
+    runFrames()
+
+    act(() => view.result.current.apply(batch as never))
+
+    const stored = harness.readStoreDocument().nodes
+    expect(stored.find(node => node.id === 'c')?.position).toEqual({ x: 803, y: 40 })
+    stored.forEach(node => {
+      expect(node.selected, `${node.id}.selected`).toBeUndefined()
+      expect(node.dragHandle, `${node.id}.dragHandle`).toBeUndefined()
+      expect(node.dragging, `${node.id}.dragging`).toBeUndefined()
+    })
   })
 })

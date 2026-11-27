@@ -3,7 +3,20 @@ import type { Node } from '@xyflow/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { createRowNodes } from '../../support/canvasSelectionFixtures'
-import { drag, drop, ROW, setupNodeDrag as setup, sizedNode } from '../../support/nodeDragHarness'
+import { useStoreApi } from '@xyflow/react'
+import {
+  createCanvasDocumentHarness,
+  renderCanvasNodeStore,
+  type CanvasNodeStoreContext,
+} from '../../support/canvasDocumentHarness'
+import {
+  drag,
+  drop,
+  ROW,
+  setupNodeDrag as setup,
+  sizedNode,
+  useDragUnderTest,
+} from '../../support/nodeDragHarness'
 
 // S7, PR 3: React Flow's change path writes the document only for what a batch really does to it:
 // a removal, and a settled move. A select batch publishes the selection to the canvas store and
@@ -206,5 +219,59 @@ describe('a remove batch', () => {
     expect(harness.readStoreDocument().nodes.map(node => node.id)).toEqual(['b', 'c'])
     expect(view.result.current.canvasState.selectedNodeIds).toEqual(['c'])
     harness.readStoreDocument().nodes.forEach(expectNoCanvasOnlyField)
+  })
+})
+
+describe('a batch that selects, removes and settles a move at once (no drag)', () => {
+  it('is one write: the removal, the normalized position, and no flag', () => {
+    const context = setup()
+    const { harness, view } = context
+    harness.notifications.mockClear()
+
+    act(() =>
+      view.result.current.apply([
+        { type: 'select', id: 'a', selected: true },
+        { type: 'remove', id: 'b' },
+        { type: 'position', id: 'a', position: { x: 800, y: 0 }, dragging: false },
+      ] as never),
+    )
+
+    expect(harness.notifications).toHaveBeenCalledTimes(1)
+    const stored = harness.readStoreDocument().nodes
+    expect(stored.map(node => node.id)).toEqual(['a', 'c'])
+    // `c` stands where `a` was dropped, so the stored position is the one the node store resolved.
+    expect(stored[0].position).not.toEqual({ x: 800, y: 0 })
+    expect(stored[0].position).not.toEqual({ x: 0, y: 0 })
+    expect(view.result.current.canvasState.selectedNodeIds).toEqual(['a'])
+    stored.forEach(expectNoCanvasOnlyField)
+  })
+})
+
+function useDragWithFlowStore(context: CanvasNodeStoreContext) {
+  return { ...useDragUnderTest(context), flowStore: useStoreApi() }
+}
+
+describe('the change path and the render share one view per committed node', () => {
+  // The handler's decoration (`useDecorateCommittedNodes`) and the render's (`flowNodes`) share the
+  // cache, which holds one view per committed node. They must derive the same flags, or every write
+  // gives the selected windows a new view object.
+  it('keeps the view object of a selected window across a write in the drag-surface mode', () => {
+    const harness = createCanvasDocumentHarness({ nodes: ROW() })
+    const view = renderCanvasNodeStore(harness, { extend: useDragWithFlowStore })
+    act(() => view.result.current.selection.select({ nodeIds: ['c'], spaceIds: [] }))
+    act(() =>
+      view.result.current.flowStore.setState({ coveDragSurfaceSelectionMode: true } as never),
+    )
+    const before = view.result.current.shown.find(node => node.id === 'c')!
+    expect(before.dragHandle).toBeUndefined()
+
+    // A settled move of another window: the change path decorates, then the store write renders.
+    act(() =>
+      view.result.current.apply([
+        { type: 'position', id: 'a', position: { x: 1300, y: 400 }, dragging: false },
+      ] as never),
+    )
+
+    expect(view.result.current.shown.find(node => node.id === 'c')).toBe(before)
   })
 })

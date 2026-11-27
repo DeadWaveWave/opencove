@@ -68,7 +68,6 @@ const reactFlowStoreApi = vi.hoisted(() => {
 vi.mock('@xyflow/react', async importOriginal => {
   const actual = await importOriginal<typeof import('@xyflow/react')>()
   const { useSyncExternalStore, useRef } = await import('react')
-  let currentNodes: Array<{ id: string; type: string; data: unknown }> = []
 
   return {
     ReactFlowProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -100,7 +99,6 @@ vi.mock('@xyflow/react', async importOriginal => {
       nodeTypes?: Record<string, React.ComponentType<{ id: string; data: unknown }>>
       onNodesChange?: (changes: unknown[]) => void
     }) => {
-      currentNodes = nodes
       reactFlowStoreApi.state.nodes = nodes
       return (
         <div>
