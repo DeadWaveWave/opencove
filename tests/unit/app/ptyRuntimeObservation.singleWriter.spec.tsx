@@ -11,7 +11,6 @@ import type {
 } from '../../../src/shared/contracts/dto'
 import { usePtyWorkspaceRuntimeSync } from '../../../src/app/renderer/shell/hooks/usePtyWorkspaceRuntimeSync'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
-import { useWorkspaceCanvasNodesStore } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore'
 import { useWorkspaceCanvasPtyTaskCompletion } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/usePtyTaskCompletion'
 import type { WorkspaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { pixelNode } from '../contexts/workspacePixelLayer.fixtures'
@@ -97,18 +96,10 @@ function renderObservers() {
   return renderHook(
     () => {
       const nodes = useAppStore(state => state.workspaces[0].nodes)
-      const store = useWorkspaceCanvasNodesStore({
-        workspaceId: 'workspace-1',
-        workspacePath: '/tmp/workspace-1',
-        nodes,
-        standardWindowSizeBucket: 'regular',
-        browserDefaultMode: 'iframe',
-      })
       usePtyWorkspaceRuntimeSync()
       useWorkspaceCanvasPtyTaskCompletion({
         workspaceId: 'workspace-1',
         nodes,
-        setNodes: store.setNodes,
       })
     },
     {

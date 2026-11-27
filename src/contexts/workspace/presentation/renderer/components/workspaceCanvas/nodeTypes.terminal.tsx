@@ -1,4 +1,4 @@
-import React, { useCallback, type MutableRefObject, type ReactElement } from 'react'
+import React, { useCallback, type ReactElement } from 'react'
 import { useStore, useStoreApi, type Node } from '@xyflow/react'
 import type { TerminalClientDisplayCalibration } from '@contexts/settings/domain/terminalDisplayCalibration'
 import type { LabelColor } from '@shared/types/labelColor'
@@ -11,7 +11,6 @@ import { resolveAgentPresentation } from '../../utils/agentPresentation'
 import { findLinkedTaskTitleForAgent, resolveAgentDisplayLabel } from '../../utils/agentTitle'
 import { readNodePositionFromStoreState } from './nodePosition'
 import { useCanvasNodeCommands } from './nodeTypes.context'
-import type { UpdateNodeScrollback } from './types'
 
 function WorkspaceCanvasTerminalNodeTypeComponent({
   data,
@@ -22,14 +21,6 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
   terminalFontFamily,
   terminalDisplayCalibration,
   terminalTransparentBackground,
-  copyAgentLastMessageRef,
-  reloadAgentSessionRef,
-  listAgentSessionsRef,
-  switchAgentSessionRef,
-  updateNodeScrollbackRef,
-  updateTerminalTitleRef,
-  clearTerminalAgentOverlayRef,
-  renameTerminalTitleRef,
 }: {
   data: TerminalNodeData
   id: string
@@ -39,28 +30,14 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
   terminalFontFamily: string | null
   terminalDisplayCalibration: TerminalClientDisplayCalibration | null
   terminalTransparentBackground: boolean
-  copyAgentLastMessageRef: MutableRefObject<(nodeId: string) => Promise<void>>
-  reloadAgentSessionRef: MutableRefObject<(nodeId: string) => Promise<void>>
-  listAgentSessionsRef: MutableRefObject<
-    (
-      nodeId: string,
-      limit?: number,
-    ) => Promise<import('@shared/contracts/dto').AgentSessionSummary[]>
-  >
-  switchAgentSessionRef: MutableRefObject<
-    (nodeId: string, summary: import('@shared/contracts/dto').AgentSessionSummary) => Promise<void>
-  >
-  updateNodeScrollbackRef: MutableRefObject<UpdateNodeScrollback>
-  updateTerminalTitleRef: MutableRefObject<
-    (nodeId: string, title: string, startedAtMs?: number) => void
-  >
-  clearTerminalAgentOverlayRef: MutableRefObject<
-    (nodeId: string, expectedStartedAtMs?: number) => void
-  >
-  renameTerminalTitleRef: MutableRefObject<(nodeId: string, title: string) => void>
 }): ReactElement {
   const documentNavigation = React.useContext(WorkspaceDocumentNavigationContext)
-  const windowCommands = useCanvasNodeCommands().window
+  const commands = useCanvasNodeCommands()
+  const windowCommands = commands.window
+  const terminalCommands = commands.terminal
+  // The overlay-exit callback keeps its identity while the overlay does: the input bridge compares
+  // it by identity after a Ctrl+C, so it depends on the one command it calls, not on the family.
+  const { clearAgentOverlay } = terminalCommands
   const storeApi = useStoreApi()
   const scrollback = useScrollbackStore(state =>
     data.kind === 'agent' ? null : (state.scrollbackByNodeId[id] ?? data.scrollback ?? null),
@@ -77,8 +54,8 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
     if (overlayStartedAtMs === null || gatewayOwnsOverlayLifecycle) {
       return
     }
-    clearTerminalAgentOverlayRef.current(id, overlayStartedAtMs)
-  }, [clearTerminalAgentOverlayRef, gatewayOwnsOverlayLifecycle, id, overlayStartedAtMs])
+    clearAgentOverlay(id, overlayStartedAtMs)
+  }, [clearAgentOverlay, gatewayOwnsOverlayLifecycle, id, overlayStartedAtMs])
   const labelColor =
     (data as TerminalNodeData & { effectiveLabelColor?: LabelColor | null }).effectiveLabelColor ??
     null
@@ -207,41 +184,41 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
       onCopyLastMessage={
         isAgentTreated
           ? async () => {
-              await copyAgentLastMessageRef.current(id)
+              await terminalCommands.copyLastAgentMessage(id)
             }
           : undefined
       }
       onReloadSession={
         isAgentTreated
           ? async () => {
-              await reloadAgentSessionRef.current(id)
+              await terminalCommands.reloadAgentSession(id)
             }
           : undefined
       }
       onListSessions={
         isAgentTreated
           ? async limit => {
-              return await listAgentSessionsRef.current(id, limit)
+              return await terminalCommands.listAgentSessions(id, limit)
             }
           : undefined
       }
       onSwitchSession={
         isAgentTreated
           ? async summary => {
-              await switchAgentSessionRef.current(id, summary)
+              await terminalCommands.switchAgentSession(id, summary)
             }
           : undefined
       }
       onResize={frame => windowCommands.resize(id, frame)}
       onScrollbackChange={
         data.kind === 'terminal'
-          ? nextScrollback => updateNodeScrollbackRef.current(id, nextScrollback)
+          ? nextScrollback => terminalCommands.updateScrollback(id, nextScrollback)
           : undefined
       }
       onCommandRun={
         data.kind === 'terminal'
           ? (command, startedAtMs) => {
-              updateTerminalTitleRef.current(id, command, startedAtMs)
+              terminalCommands.recordCommandRun(id, command, startedAtMs)
             }
           : undefined
       }
@@ -249,7 +226,7 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
       onTitleCommit={
         data.kind === 'terminal' || data.kind === 'agent'
           ? nextTitle => {
-              renameTerminalTitleRef.current(id, nextTitle)
+              terminalCommands.renameTitle(id, nextTitle)
             }
           : undefined
       }

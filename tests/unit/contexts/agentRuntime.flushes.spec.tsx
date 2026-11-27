@@ -79,9 +79,8 @@ describe('the session switch flush', () => {
 
   function renderSwitch(relaunch: () => Promise<unknown>, nodes: Node<TerminalNodeData>[]) {
     const rendered = renderInTwoWorkspaces(
-      ({ nodeStore }) =>
+      () =>
         useAgentNodeSessionSwitch({
-          setNodes: nodeStore.setNodes,
           relaunchAgentNode: relaunch as never,
         }),
       { a: { nodes } },
@@ -188,10 +187,9 @@ describe('the terminal session action flush', () => {
 
   function renderActions(reexecAgent: (input: { sessionId: string }) => Promise<unknown>) {
     stubOpencoveApi({ pty: { reexecAgent }, agent: { listSessions: vi.fn() } })
-    const rendered = renderInTwoWorkspaces(
-      ({ nodeStore }) => useTerminalAgentSessionActions({ setNodes: nodeStore.setNodes }),
-      { a: { nodes: [overlayNode('pty-1')] } },
-    )
+    const rendered = renderInTwoWorkspaces(() => useTerminalAgentSessionActions({}), {
+      a: { nodes: [overlayNode('pty-1')] },
+    })
     rendered.harness.notifications.mockClear()
     return rendered
   }
@@ -272,10 +270,9 @@ describe('the PTY task completion flush', () => {
     listAgentSessions?: (nodeId: string, limit?: number) => Promise<AgentSessionSummary[]>,
   ) {
     const rendered = renderInTwoWorkspaces(
-      ({ canvasState, nodeStore }) => {
+      ({ canvasState }) => {
         useWorkspaceCanvasPtyTaskCompletion({
           nodes: canvasState.flowNodes,
-          setNodes: nodeStore.setNodes,
           listAgentSessions,
         })
       },
@@ -340,10 +337,9 @@ describe('the PTY task completion flush', () => {
       },
     ])
     const { flushes, harness } = renderInTwoWorkspaces(
-      ({ canvasState, nodeStore }) => {
+      ({ canvasState }) => {
         useWorkspaceCanvasPtyTaskCompletion({
           nodes: canvasState.flowNodes,
-          setNodes: nodeStore.setNodes,
           listAgentSessions: query,
         })
       },

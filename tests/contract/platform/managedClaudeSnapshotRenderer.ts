@@ -1,3 +1,4 @@
+import { createAgentSettingsReader } from '../../support/agentSettingsReader'
 import { act, renderHook } from '@testing-library/react'
 import {
   CANVAS_STORE_TEST_WORKSPACE_ID,
@@ -30,7 +31,7 @@ export async function rendererSnapshot(f: SnapshotFixture, operation: Operation)
     f.state.workspaces[0] as unknown as PersistedWorkspaceState,
   )
   const settings = normalizeAgentSettings(f.state.settings)
-  const { nodesRef, setNodes } = createStoreBackedChannels({
+  const { nodesRef } = createStoreBackedChannels({
     workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID,
     nodes: workspace.nodes,
     spaces: workspace.spaces,
@@ -47,15 +48,16 @@ export async function rendererSnapshot(f: SnapshotFixture, operation: Operation)
         useWorkspaceCanvasAgentNodeLifecycle({
           workspaceId: workspace.id,
           workspacePath: workspace.path,
-          setNodes,
           bumpAgentLaunchToken: () => 1,
           isAgentLaunchTokenCurrent: () => true,
-          agentFullAccess: false,
-          codexReuseRunningAppServer: false,
-          defaultTerminalProfileId: null,
-          terminalFontSize: 13,
-          terminalDisplayMetrics: { fontSize: 13 },
-          agentEnvByProvider: DEFAULT_AGENT_ENV_BY_PROVIDER,
+          readAgentSettings: createAgentSettingsReader({
+            agentFullAccess: false,
+            codexReuseRunningAppServer: false,
+            defaultTerminalProfileId: null,
+            terminalFontSize: 13,
+            agentEnvByProvider: DEFAULT_AGENT_ENV_BY_PROVIDER,
+          }),
+          readTerminalDisplayCalibration: () => null,
         }),
       { wrapper: CanvasStoreTestProvider },
     )

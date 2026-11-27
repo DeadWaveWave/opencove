@@ -1,6 +1,6 @@
 import { createContext, createElement, useContext, type ReactNode } from 'react'
 import type { MutableRefObject } from 'react'
-import type { AgentSessionSummary, BrowserMode } from '@shared/contracts/dto'
+import type { BrowserMode } from '@shared/contracts/dto'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { BrowserSearchEngineId } from '@contexts/settings/domain/browserSettings'
 import type { WiredCanvasNodeCommands } from './nodeCommands'
@@ -8,28 +8,18 @@ import type {
   QuickUpdateTaskRequirement,
   QuickUpdateTaskTitle,
   ShowWorkspaceCanvasMessage,
-  UpdateNodeScrollback,
   UpdateTaskStatus,
 } from './types'
 
 /**
- * The action refs of the terminal, role and task families, until PRs 5 to 7 turn each family into
- * commands (S7 of #647). The window, note and website refs are gone: node components read those
+ * The action refs of the role and task families, until PRs 6 and 7 turn each family into commands
+ * (S7 of #647). The window, terminal, note and website refs are gone: node components read those
  * from `commands`. `nodeTypes.context.spec.ts` pins this set, so a ref cannot return elsewhere.
  */
 export interface TransitionalNodeActionRefs {
-  copyAgentLastMessageRef: MutableRefObject<(nodeId: string) => Promise<void>>
-  reloadAgentSessionRef: MutableRefObject<(nodeId: string) => Promise<void>>
-  listAgentSessionsRef: MutableRefObject<
-    (nodeId: string, limit?: number) => Promise<AgentSessionSummary[]>
-  >
-  switchAgentSessionRef: MutableRefObject<
-    (nodeId: string, summary: AgentSessionSummary) => Promise<void>
-  >
   updateRoleProviderRef: MutableRefObject<(nodeId: string, provider: AgentProvider) => void>
   updateRoleInputRef: MutableRefObject<(nodeId: string, input: string) => void>
   runRoleRef: MutableRefObject<(nodeId: string, inputOverride?: string) => Promise<void>>
-  updateNodeScrollbackRef: MutableRefObject<UpdateNodeScrollback>
   openTaskEditorRef: MutableRefObject<(nodeId: string) => void>
   quickUpdateTaskTitleRef: MutableRefObject<QuickUpdateTaskTitle>
   quickUpdateTaskRequirementRef: MutableRefObject<QuickUpdateTaskRequirement>
@@ -39,13 +29,6 @@ export interface TransitionalNodeActionRefs {
   >
   removeTaskAgentSessionRecordRef: MutableRefObject<(taskNodeId: string, recordId: string) => void>
   updateTaskStatusRef: MutableRefObject<UpdateTaskStatus>
-  updateTerminalTitleRef: MutableRefObject<
-    (nodeId: string, title: string, startedAtMs?: number) => void
-  >
-  clearTerminalAgentOverlayRef: MutableRefObject<
-    (nodeId: string, expectedStartedAtMs?: number) => void
-  >
-  renameTerminalTitleRef: MutableRefObject<(nodeId: string, title: string) => void>
 }
 
 /**

@@ -4,6 +4,7 @@ import type { TerminalNodeData } from '../../../types'
 import type { WorkspaceCanvasProps } from '../types'
 import type {
   CanvasNoteCommands,
+  CanvasTerminalCommands,
   CanvasWebsiteCommands,
   CanvasWindowCommands,
   WiredCanvasNodeCommands,
@@ -13,8 +14,9 @@ import { useCanvasFocusForInteraction } from './useCanvasFocusForInteraction'
 /**
  * Composes the canvas's node commands (S7 of #647) from the functions that implement them, taken by
  * name. Each family is memoised on its functions and the whole object on its families, so a node
- * component that reads it renders again only when a command is made again: with the workspace,
- * the language, the host's message callback, or once when React Flow's viewport initializes.
+ * component that reads it renders again only when a command is made again: with the workspace
+ * (its path or environment), the language, the host's message callback, or the terminal display
+ * calibration. React Flow's viewport initializing is not one of them.
  * Nothing here closes over the document, the selection, the app settings or a node: each
  * implementation reads its owner when it runs.
  */
@@ -27,6 +29,14 @@ export function useComposedCanvasNodeCommands({
   requestNodeDelete,
   resizeNode,
   setNodeLabelColorOverride,
+  updateScrollback,
+  recordCommandRun,
+  clearAgentOverlay,
+  renameTerminalTitle,
+  copyLastAgentMessage,
+  reloadAgentSession,
+  listAgentSessions,
+  switchAgentSession,
   updateNoteText,
   renameNoteTitle,
   convertNoteToTask,
@@ -44,6 +54,14 @@ export function useComposedCanvasNodeCommands({
   requestNodeDelete: CanvasWindowCommands['requestDelete']
   resizeNode: CanvasWindowCommands['resize']
   setNodeLabelColorOverride: CanvasWindowCommands['setLabelColorOverride']
+  updateScrollback: CanvasTerminalCommands['updateScrollback']
+  recordCommandRun: CanvasTerminalCommands['recordCommandRun']
+  clearAgentOverlay: CanvasTerminalCommands['clearAgentOverlay']
+  renameTerminalTitle: CanvasTerminalCommands['renameTitle']
+  copyLastAgentMessage: CanvasTerminalCommands['copyLastAgentMessage']
+  reloadAgentSession: CanvasTerminalCommands['reloadAgentSession']
+  listAgentSessions: CanvasTerminalCommands['listAgentSessions']
+  switchAgentSession: CanvasTerminalCommands['switchAgentSession']
   updateNoteText: CanvasNoteCommands['updateText']
   renameNoteTitle: CanvasNoteCommands['renameTitle']
   convertNoteToTask: CanvasNoteCommands['convertToTask']
@@ -75,6 +93,28 @@ export function useComposedCanvasNodeCommands({
       setNodeLabelColorOverride,
     ],
   )
+  const terminal = useMemo<CanvasTerminalCommands>(
+    () => ({
+      updateScrollback,
+      recordCommandRun,
+      clearAgentOverlay,
+      renameTitle: renameTerminalTitle,
+      copyLastAgentMessage,
+      reloadAgentSession,
+      listAgentSessions,
+      switchAgentSession,
+    }),
+    [
+      clearAgentOverlay,
+      copyLastAgentMessage,
+      listAgentSessions,
+      recordCommandRun,
+      reloadAgentSession,
+      renameTerminalTitle,
+      switchAgentSession,
+      updateScrollback,
+    ],
+  )
   const note = useMemo<CanvasNoteCommands>(
     () => ({
       updateText: updateNoteText,
@@ -94,5 +134,8 @@ export function useComposedCanvasNodeCommands({
     [setWebsiteFullscreen, setWebsiteMode, setWebsitePinned, setWebsiteSession, updateWebsiteUrl],
   )
 
-  return useMemo(() => ({ window: windowCommands, note, website }), [note, website, windowCommands])
+  return useMemo(
+    () => ({ window: windowCommands, terminal, note, website }),
+    [note, terminal, website, windowCommands],
+  )
 }

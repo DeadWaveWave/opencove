@@ -1,16 +1,21 @@
 import { act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
 import {
   CANVAS_STORE_TEST_WORKSPACE_ID,
   renderHookWithCanvasStore,
 } from '../../support/canvasStoreTestHarness'
 import { createCanvasDocumentHarness } from '../../support/canvasDocumentHarness'
+import { createAgentSettingsReader } from '../../support/agentSettingsReader'
 import { useWorkspaceCanvasAgentLauncher } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useAgentLauncher'
 import {
   launchWorkspaceAgentSession,
   resolveWorkspaceAgentLaunchBinding,
 } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useWorkspaceAgentLaunch.shared'
+import {
+  DEFAULT_AGENT_SETTINGS,
+  type AgentSettings,
+} from '../../../src/contexts/settings/domain/agentSettings'
+import { useCanvasUiCommands } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import { assignNodeToSpaceAndExpand } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useInteractions.spaceAssignment'
 import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
@@ -46,7 +51,7 @@ const SPACE = {
 
 function fixture(): LauncherParams {
   return {
-    agentSettings: { ...DEFAULT_AGENT_SETTINGS, defaultProvider: 'codex' },
+    readAgentSettings: createAgentSettingsReader({ defaultProvider: 'codex' }),
     workspaceId: 'project-a',
     workspacePath: '/repo',
     updateCanvasDocument: vi.fn(),
@@ -74,7 +79,6 @@ function fixture(): LauncherParams {
         website: null,
       },
     })),
-    standardWindowSizeBucket: DEFAULT_AGENT_SETTINGS.standardWindowSizeBucket,
     buildAgentNodeTitle: vi.fn(provider => `${provider} · new`),
   }
 }
@@ -347,4 +351,80 @@ describe('shared Agent launcher entrypoints', () => {
       )
     },
   )
+})
+
+// S7 of #647, PR 5 (review round): the launcher reads the settings when a launch starts. A reader
+// whose answer changes after the render, with no render between, must be honoured (R01, R02).
+describe('the agent launcher reads the settings when a launch starts', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    createCanvasDocumentHarness({ workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID, spaces: [SPACE] })
+    vi.mocked(resolveWorkspaceAgentLaunchBinding).mockResolvedValue({
+      mountId: 'mount-a',
+      executionDirectory: '/repo/worktree',
+    })
+    vi.mocked(launchWorkspaceAgentSession).mockResolvedValue({
+      sessionId: 'session-a',
+      resumeSessionId: null,
+      profileId: 'profile-a',
+      runtimeKind: 'posix',
+      effectiveModel: null,
+      executionDirectory: '/repo/worktree',
+      workerBinding: { endpointId: 'local', mountId: 'mount-a' },
+    })
+  })
+
+  function mutableReader(initial: Partial<AgentSettings>) {
+    let settings: AgentSettings = { ...DEFAULT_AGENT_SETTINGS, ...initial }
+    return {
+      read: () => settings,
+      set: (patch: Partial<AgentSettings>) => {
+        settings = { ...settings, ...patch }
+      },
+    }
+  }
+
+  it('launches the default provider and window size of the settings at the call', async () => {
+    const reader = mutableReader({ defaultProvider: 'codex', standardWindowSizeBucket: 'regular' })
+    const params = { ...fixture(), readAgentSettings: reader.read }
+    const { result } = renderHookWithCanvasStore(() => useWorkspaceCanvasAgentLauncher(params))
+    await act(() => result.current.launchAgentAtFlowPosition({ x: 400, y: 300 }))
+    const first = vi.mocked(launchWorkspaceAgentSession).mock.calls[0]![0] as {
+      launchGeometry: { frameSize: { width: number } }
+    }
+
+    reader.set({ defaultProvider: 'claude-code', standardWindowSizeBucket: 'large' })
+    await act(() => result.current.launchAgentAtFlowPosition({ x: 400, y: 300 }))
+
+    const second = vi.mocked(launchWorkspaceAgentSession).mock.calls[1]![0] as {
+      provider: string
+      launchGeometry: { frameSize: { width: number } }
+    }
+    expect(second.provider).toBe('claude-code')
+    expect(second.launchGeometry.frameSize.width).toBeGreaterThan(
+      first.launchGeometry.frameSize.width,
+    )
+  })
+
+  it('opens the launcher for the default provider of the settings at the call', async () => {
+    const reader = mutableReader({ defaultProvider: 'codex' })
+    const params = { ...fixture(), readAgentSettings: reader.read }
+    const { result } = renderHookWithCanvasStore(() => ({
+      launcher: useWorkspaceCanvasAgentLauncher(params),
+      ui: useCanvasUiCommands(),
+    }))
+
+    reader.set({ defaultProvider: 'claude-code' })
+    act(() =>
+      result.current.ui.openContextMenu({ kind: 'pane', x: 20, y: 20, flowX: 400, flowY: 300 }),
+    )
+    await act(async () => {
+      result.current.launcher.openAgentLauncher()
+      await new Promise(resolve => setTimeout(resolve, 0))
+    })
+
+    expect(vi.mocked(launchWorkspaceAgentSession)).toHaveBeenCalledWith(
+      expect.objectContaining({ provider: 'claude-code' }),
+    )
+  })
 })

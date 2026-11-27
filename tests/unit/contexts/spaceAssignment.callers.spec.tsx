@@ -155,6 +155,7 @@ const createTaskNode = vi.fn(() => createdInShownDocument())
 const createRoleNode = vi.fn(() => createdInShownDocument())
 const metrics = { fontSize: 13 }
 const launcherSettings = { ...DEFAULT_AGENT_SETTINGS, defaultProvider: 'codex' }
+const readAgentSettings = () => launcherSettings
 const roleSettings = {
   ...DEFAULT_AGENT_SETTINGS,
   projectRolesByWorkspaceId: { workspace: [{ id: 'role', name: 'Role', promptTemplate: 'x' }] },
@@ -938,17 +939,15 @@ describe('the push-away through the carriers of the canvas', () => {
       assign: assignMock,
       useHook: updateCanvasDocument =>
         useWorkspaceCanvasAgentSupport({
-          setNodes,
           bumpAgentLaunchToken: () => 1,
           isAgentLaunchTokenCurrent: () => true,
-          agentSettings: launcherSettings,
+          readAgentSettings,
+          readTerminalDisplayCalibration: () => null,
           workspaceId: 'workspace',
           workspacePath: '/repo',
           updateCanvasDocument,
           onShowMessage,
           createNodeForSession,
-          standardWindowSizeBucket: 'regular',
-          terminalDisplayMetrics: metrics,
         } as never),
       invoke: ({ hook }) => hook.launchAgentAtFlowPosition({ x: 400, y: 300 }),
       argsOf: assignArgs,
@@ -963,12 +962,11 @@ describe('the push-away of the agent launcher', () => {
       assign: assignMock,
       useHook: updateCanvasDocument =>
         useWorkspaceCanvasAgentLauncher({
-          agentSettings: launcherSettings,
+          readAgentSettings,
           workspaceId: 'workspace',
           workspacePath: '/repo',
           onShowMessage,
           createNodeForSession,
-          standardWindowSizeBucket: 'regular',
           buildAgentNodeTitle,
           updateCanvasDocument,
         } as never),

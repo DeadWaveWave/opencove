@@ -24,8 +24,9 @@ export interface CanvasWindowCommands {
   setLabelColorOverride(nodeIds: readonly string[], override: NodeLabelColorOverride): void
 }
 
-interface CanvasTerminalCommands {
+export interface CanvasTerminalCommands {
   updateScrollback(nodeId: string, scrollback: string): void
+  /** A command the shell ran in a terminal: it titles the window unless the user pinned a title. */
   recordCommandRun(nodeId: string, command: string, startedAtMs?: number): void
   clearAgentOverlay(nodeId: string, expectedStartedAtMs?: number): void
   renameTitle(nodeId: string, title: string): void
@@ -81,8 +82,11 @@ export interface CanvasNodeCommands {
 }
 
 /**
- * The families that are wired so far: window, note and website (PR 4). The terminal, role and task
- * families join in PRs 5 to 7, each one removing its refs from the node types params; this alias
- * is replaced by `CanvasNodeCommands` in PR 7.
+ * The families that are wired so far: window, note and website (PR 4), and terminal (PR 5). The
+ * role and task families join in PRs 6 and 7, each one removing its refs from the node types
+ * params; this alias is replaced by `CanvasNodeCommands` in PR 7.
  */
-export type WiredCanvasNodeCommands = Pick<CanvasNodeCommands, 'window' | 'note' | 'website'>
+export type WiredCanvasNodeCommands = Pick<
+  CanvasNodeCommands,
+  'window' | 'terminal' | 'note' | 'website'
+>

@@ -1,29 +1,30 @@
+import { useCallback } from 'react'
 import { useWorkspaceCanvasAgentLauncher } from './useAgentLauncher'
 import { useWorkspaceCanvasAgentNodeLifecycle } from './useAgentNodeLifecycle'
 import { useTerminalAgentSessionActions } from './useTerminalAgentSessionActions'
 
 export function useWorkspaceCanvasAgentSupport({
-  setNodes,
   bumpAgentLaunchToken,
   isAgentLaunchTokenCurrent,
-  agentSettings,
+  readAgentSettings,
+  readTerminalDisplayCalibration,
   workspaceId,
   workspacePath,
   environmentVariables,
   updateCanvasDocument,
   onShowMessage,
   createNodeForSession,
-  standardWindowSizeBucket,
-  terminalDisplayMetrics,
 }: {
-  setNodes: Parameters<typeof useWorkspaceCanvasAgentNodeLifecycle>[0]['setNodes']
   bumpAgentLaunchToken: Parameters<
     typeof useWorkspaceCanvasAgentNodeLifecycle
   >[0]['bumpAgentLaunchToken']
   isAgentLaunchTokenCurrent: Parameters<
     typeof useWorkspaceCanvasAgentNodeLifecycle
   >[0]['isAgentLaunchTokenCurrent']
-  agentSettings: Parameters<typeof useWorkspaceCanvasAgentLauncher>[0]['agentSettings']
+  readAgentSettings: Parameters<typeof useWorkspaceCanvasAgentLauncher>[0]['readAgentSettings']
+  readTerminalDisplayCalibration: Parameters<
+    typeof useWorkspaceCanvasAgentNodeLifecycle
+  >[0]['readTerminalDisplayCalibration']
   workspaceId: Parameters<typeof useWorkspaceCanvasAgentLauncher>[0]['workspaceId']
   workspacePath: Parameters<typeof useWorkspaceCanvasAgentLauncher>[0]['workspacePath']
   environmentVariables?: Record<string, string>
@@ -34,12 +35,6 @@ export function useWorkspaceCanvasAgentSupport({
   createNodeForSession: Parameters<
     typeof useWorkspaceCanvasAgentLauncher
   >[0]['createNodeForSession']
-  standardWindowSizeBucket: Parameters<
-    typeof useWorkspaceCanvasAgentLauncher
-  >[0]['standardWindowSizeBucket']
-  terminalDisplayMetrics: Parameters<
-    typeof useWorkspaceCanvasAgentNodeLifecycle
-  >[0]['terminalDisplayMetrics']
 }): ReturnType<typeof useWorkspaceCanvasAgentNodeLifecycle> &
   Pick<
     ReturnType<typeof useWorkspaceCanvasAgentLauncher>,
@@ -48,51 +43,67 @@ export function useWorkspaceCanvasAgentSupport({
   const lifecycle = useWorkspaceCanvasAgentNodeLifecycle({
     workspaceId,
     workspacePath,
-    setNodes,
     bumpAgentLaunchToken,
     isAgentLaunchTokenCurrent,
-    agentFullAccess: agentSettings.agentFullAccess,
-    codexReuseRunningAppServer: agentSettings.codexReuseRunningAppServer,
-    defaultTerminalProfileId: agentSettings.defaultTerminalProfileId,
-    terminalFontSize: agentSettings.terminalFontSize,
-    terminalDisplayMetrics,
-    agentEnvByProvider: agentSettings.agentEnvByProvider,
-    agentExecutablePathOverrideByProvider: agentSettings.agentExecutablePathOverrideByProvider,
+    readAgentSettings,
+    readTerminalDisplayCalibration,
     environmentVariables,
   })
-  const overlayActions = useTerminalAgentSessionActions({ setNodes, onShowMessage })
-  const { buildAgentNodeTitle, launchAgentInNode, stopAgentNode } = lifecycle
+  const overlayActions = useTerminalAgentSessionActions({ onShowMessage })
+  const {
+    buildAgentNodeTitle,
+    launchAgentInNode,
+    stopAgentNode,
+    reloadAgentNode: reloadLifecycleAgent,
+    listAgentSessionsForNode: listLifecycleAgentSessions,
+    switchAgentNodeSession: switchLifecycleAgentSession,
+  } = lifecycle
+  const { reloadOverlayAgent, listOverlayAgentSessions, switchOverlayAgentSession } = overlayActions
 
   const { openAgentLauncher, openAgentLauncherForProvider, launchAgentAtFlowPosition } =
     useWorkspaceCanvasAgentLauncher({
-      agentSettings,
+      readAgentSettings,
       workspaceId,
       workspacePath,
       environmentVariables,
       updateCanvasDocument,
       onShowMessage,
       createNodeForSession,
-      standardWindowSizeBucket,
       buildAgentNodeTitle,
     })
+
+  // Each is one function for as long as its parts are, so the terminal commands built from them
+  // keep their identity across renders.
+  const reloadAgentNode = useCallback(
+    async (nodeId: string) => {
+      if (!(await reloadOverlayAgent(nodeId))) {
+        await reloadLifecycleAgent(nodeId)
+      }
+    },
+    [reloadLifecycleAgent, reloadOverlayAgent],
+  )
+  const listAgentSessionsForNode = useCallback(
+    async (nodeId: string, limit?: number) => {
+      const sessions = await listOverlayAgentSessions(nodeId, limit)
+      return sessions ?? (await listLifecycleAgentSessions(nodeId, limit))
+    },
+    [listLifecycleAgentSessions, listOverlayAgentSessions],
+  )
+  const switchAgentNodeSession = useCallback(
+    async (nodeId: string, summary: Parameters<typeof switchLifecycleAgentSession>[1]) => {
+      if (!(await switchOverlayAgentSession(nodeId, summary))) {
+        await switchLifecycleAgentSession(nodeId, summary)
+      }
+    },
+    [switchLifecycleAgentSession, switchOverlayAgentSession],
+  )
 
   return {
     buildAgentNodeTitle,
     launchAgentInNode,
-    reloadAgentNode: async nodeId => {
-      if (!(await overlayActions.reloadOverlayAgent(nodeId))) {
-        await lifecycle.reloadAgentNode(nodeId)
-      }
-    },
-    listAgentSessionsForNode: async (nodeId, limit) => {
-      const sessions = await overlayActions.listOverlayAgentSessions(nodeId, limit)
-      return sessions ?? (await lifecycle.listAgentSessionsForNode(nodeId, limit))
-    },
-    switchAgentNodeSession: async (nodeId, summary) => {
-      if (!(await overlayActions.switchOverlayAgentSession(nodeId, summary))) {
-        await lifecycle.switchAgentNodeSession(nodeId, summary)
-      }
-    },
+    reloadAgentNode,
+    listAgentSessionsForNode,
+    switchAgentNodeSession,
     stopAgentNode,
     openAgentLauncher,
     openAgentLauncherForProvider,

@@ -11,11 +11,17 @@ import type {
 } from '@contexts/workspace/presentation/renderer/types'
 import type { FocusRequest, ProjectContextMenuState } from '../types'
 import { useAppStore } from '../store/useAppStore'
+import { readAppliedTerminalDisplayCalibration } from '../hooks/useTerminalDisplayAlignmentLifecycle'
 import { WorkspaceEmptyState } from './WorkspaceEmptyState'
 
 // Module scope, so the memoized canvas gets the same function on every render of the shell.
 function readAgentSettings(): AgentSettings {
   return useAppStore.getState().agentSettings
+}
+
+// Module scope for the same reason: the owner's applied calibration as the settings now allow it.
+function readTerminalDisplayCalibration(): TerminalClientDisplayCalibration | null {
+  return readAppliedTerminalDisplayCalibration(useAppStore.getState().agentSettings)
 }
 
 function WorkspaceMainComponent({
@@ -119,6 +125,7 @@ function WorkspaceMainComponent({
         agentSettings={agentSettings}
         readAgentSettings={readAgentSettings}
         terminalDisplayCalibration={terminalDisplayCalibration}
+        readTerminalDisplayCalibration={readTerminalDisplayCalibration}
         isFocusNodeTargetZoomPreviewing={isFocusNodeTargetZoomPreviewing}
         focusNodeId={focusNodeId}
         focusNodeInput={focusNodeInput}

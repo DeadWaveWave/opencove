@@ -2,11 +2,7 @@ export { useWorkspaceCanvasAgentNodeLifecycle } from './useAgentNodeLifecycle'
 export { useWorkspaceCanvasAgentSupport } from './useCanvasAgentSupport'
 export { useWorkspaceCanvasAgentLauncher } from './useAgentLauncher'
 export { useWorkspaceCanvasAgentLastMessageCopy } from './useAgentLastMessageToNote'
-export {
-  useWorkspaceCanvasActionRefs,
-  useWorkspaceCanvasSyncActionRefs,
-  type WorkspaceCanvasActionRefs,
-} from './useActionRefs'
+export { useWorkspaceCanvasActionRefs, type WorkspaceCanvasActionRefs } from './useActionRefs'
 export { useWorkspaceCanvasApplyNodeChanges } from './useApplyNodeChanges'
 export { useWorkspaceCanvasArrange } from './useArrange'
 export { useWorkspaceCanvasDerivedConfig } from './useCanvasDerivedConfig'

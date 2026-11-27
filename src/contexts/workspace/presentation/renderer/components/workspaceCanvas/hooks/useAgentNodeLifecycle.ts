@@ -14,10 +14,6 @@ import type {
 import { useCallback } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import { resolveEnabledEnvForAgent } from '@contexts/settings/domain/agentEnv'
-import type {
-  AgentEnvByProvider,
-  AgentExecutablePathOverrideByProvider,
-} from '@contexts/settings/domain/agentSettings'
 import type { AgentNodeData } from '../../../types'
 import { resolveInitialAgentRuntimeStatus } from '../../../utils/agentRuntimeStatus'
 import {
@@ -27,15 +23,16 @@ import {
 } from '../../../utils/agentResumeBinding'
 import { invalidateCachedTerminalScreenState } from '../../terminalNode/screenStateCache'
 import { toErrorMessage } from '../helpers'
-import type { TerminalPtyGeometryDisplayMetrics } from '@contexts/workspace/domain/terminalPtyGeometry'
 import { resolveSpaceMountLaunchContext } from './spaceMountLaunchContext'
 import {
   buildAgentNodeTitle as formatAgentNodeTitle,
   findLinkedTaskTitleForAgent,
 } from '../../../utils/agentTitle'
 import { useAgentNodeSessionSwitch } from './useAgentNodeSessionSwitch'
-import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
+import type { WorkspaceCanvasProps } from '../types'
 import { useCanvasDocumentCommands, useReadCanvasDocument } from '../../../store/canvasStoreContext'
+import { useCanvasNodeWriter } from './useCanvasNodeWriter'
+import { resolveTerminalDisplayMetrics } from './useTerminalDisplayMetrics'
 import {
   preflightAgentRelaunch,
   findAgentNode,
@@ -49,35 +46,32 @@ import {
 interface UseAgentNodeLifecycleParams {
   workspaceId: string
   workspacePath: string
-  setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']
   bumpAgentLaunchToken: (nodeId: string) => number
   isAgentLaunchTokenCurrent: (nodeId: string, token: number) => boolean
-  agentFullAccess: boolean
-  codexReuseRunningAppServer: boolean
-  defaultTerminalProfileId: string | null
-  terminalFontSize: number
-  terminalDisplayMetrics: TerminalPtyGeometryDisplayMetrics
-  agentEnvByProvider: AgentEnvByProvider
-  agentExecutablePathOverrideByProvider?: AgentExecutablePathOverrideByProvider
+  /**
+   * The launch fields (`agentFullAccess`, `codexReuseRunningAppServer`, `defaultTerminalProfileId`,
+   * `terminalFontSize`, `agentEnvByProvider`, `agentExecutablePathOverrideByProvider`) are read
+   * from the app's settings when a launch starts, not when this hook renders.
+   */
+  readAgentSettings: WorkspaceCanvasProps['readAgentSettings']
+  /** What the terminal's measured display adds to the launch geometry, read when a launch starts. */
+  readTerminalDisplayCalibration: NonNullable<
+    WorkspaceCanvasProps['readTerminalDisplayCalibration']
+  >
   environmentVariables?: Record<string, string>
 }
 
 export function useWorkspaceCanvasAgentNodeLifecycle({
   workspaceId,
   workspacePath,
-  setNodes,
   bumpAgentLaunchToken,
   isAgentLaunchTokenCurrent,
-  agentFullAccess,
-  codexReuseRunningAppServer,
-  defaultTerminalProfileId,
-  terminalFontSize,
-  agentEnvByProvider,
-  agentExecutablePathOverrideByProvider,
+  readAgentSettings,
+  readTerminalDisplayCalibration,
   environmentVariables,
-  terminalDisplayMetrics,
 }: UseAgentNodeLifecycleParams) {
   const { t } = useTranslation()
+  const { updateNodes } = useCanvasNodeWriter()
   const documentCommands = useCanvasDocumentCommands()
   const readDocument = useReadCanvasDocument()
 
@@ -90,7 +84,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
 
   const setAgentNodeFailure = useCallback(
     (nodeId: string, message: string) => {
-      setNodes(
+      updateNodes(
         prevNodes =>
           prevNodes.map(item => {
             if (item.id !== nodeId) {
@@ -110,7 +104,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
         { syncLayout: false },
       )
     },
-    [setNodes],
+    [updateNodes],
   )
 
   const resolveMountId = useCallback(
@@ -151,8 +145,11 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
       if (!node) {
         return undefined
       }
+      // The launch is the user's settings as they were when it started, whatever an await lets
+      // them become: one read, here, never a copy made when this hook rendered.
+      const settings = readAgentSettings()
       const launchData = prompt === undefined ? node.data.agent : { ...node.data.agent, prompt }
-      if (!preflightAgentRelaunch(nodeId, mode, launchData, setNodes)) {
+      if (!preflightAgentRelaunch(nodeId, mode, launchData, updateNodes)) {
         return undefined
       }
       let binding
@@ -198,9 +195,11 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
       if (mountId === undefined) {
         return undefined
       }
-      const env = resolveEnabledEnvForAgent({ rows: agentEnvByProvider[launchData.provider] ?? [] })
+      const env = resolveEnabledEnvForAgent({
+        rows: settings.agentEnvByProvider[launchData.provider] ?? [],
+      })
       const normalizedExecutablePathOverride =
-        agentExecutablePathOverrideByProvider?.[launchData.provider]?.trim() ?? ''
+        settings.agentExecutablePathOverrideByProvider?.[launchData.provider]?.trim() ?? ''
       const executablePathOverride =
         normalizedExecutablePathOverride.length > 0 ? normalizedExecutablePathOverride : null
       const mergedEnv =
@@ -229,7 +228,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
       if (!isAgentLaunchTokenCurrent(nodeId, launchToken)) {
         return undefined
       }
-      setNodes(
+      updateNodes(
         prevNodes =>
           prevNodes.map(item => {
             if (item.id !== nodeId) {
@@ -271,12 +270,15 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
           executionDirectory: requestedExecutionDirectory,
           prompt: launchData.prompt,
           resumeSessionId: requestedResumeSessionId,
-          agentFullAccess,
-          codexReuseRunningAppServer,
-          defaultTerminalProfileId,
+          agentFullAccess: settings.agentFullAccess,
+          codexReuseRunningAppServer: settings.codexReuseRunningAppServer,
+          defaultTerminalProfileId: settings.defaultTerminalProfileId,
           executablePathOverride,
-          terminalFontSize,
-          terminalDisplayMetrics,
+          terminalFontSize: settings.terminalFontSize,
+          terminalDisplayMetrics: resolveTerminalDisplayMetrics({
+            terminalFontSize: settings.terminalFontSize,
+            terminalDisplayCalibration: readTerminalDisplayCalibration(),
+          }),
         })
 
         if (binding && !launched.managedClaudeLifecycle) {
@@ -316,7 +318,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
           return undefined
         }
 
-        setNodes(
+        updateNodes(
           prevNodes =>
             prevNodes.map(item => {
               if (item.id !== nodeId) {
@@ -411,22 +413,17 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
       }
     },
     [
-      agentEnvByProvider,
       buildAgentNodeTitle,
       bumpAgentLaunchToken,
       environmentVariables,
       isAgentLaunchTokenCurrent,
+      readAgentSettings,
       readDocument,
       resolveMountId,
       setAgentNodeFailure,
-      setNodes,
       t,
-      agentExecutablePathOverrideByProvider,
-      agentFullAccess,
-      codexReuseRunningAppServer,
-      defaultTerminalProfileId,
-      terminalDisplayMetrics,
-      terminalFontSize,
+      readTerminalDisplayCalibration,
+      updateNodes,
     ],
   )
 
@@ -458,10 +455,9 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
     [readDocument, relaunchAgentNode, setAgentNodeFailure],
   )
 
-  const switchAgentNodeSession = useAgentNodeSessionSwitch({ setNodes, relaunchAgentNode })
+  const switchAgentNodeSession = useAgentNodeSessionSwitch({ relaunchAgentNode })
 
   const { listAgentSessionsForNode, stopAgentNode } = useAgentNodeSessionControls({
-    setNodes,
     bumpAgentLaunchToken,
   })
 

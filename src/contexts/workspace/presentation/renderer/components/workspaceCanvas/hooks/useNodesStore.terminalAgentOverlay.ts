@@ -1,14 +1,14 @@
 import { useCallback } from 'react'
 import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
+import { useCanvasNodeWriter } from './useCanvasNodeWriter'
 import { resolveTerminalProviderHintFromCommand } from './useNodesStore.terminalProviderHint'
 import { clearTerminalAgentOverlay, isAgentTreatedNode } from '../../../utils/terminalAgentOverlay'
 
-type SetNodes = UseWorkspaceCanvasNodesStoreResult['setNodes']
-
-export function useTerminalAgentOverlayMutations(setNodes: SetNodes): {
+export function useTerminalAgentOverlayMutations(): {
   updateTerminalTitle: UseWorkspaceCanvasNodesStoreResult['updateTerminalTitle']
   clearTerminalAgentOverlay: UseWorkspaceCanvasNodesStoreResult['clearTerminalAgentOverlay']
 } {
+  const { updateNodes } = useCanvasNodeWriter()
   const updateTerminalTitle = useCallback(
     (nodeId: string, title: string, _startedAtMs?: number) => {
       const normalizedTitle = title.trim()
@@ -17,7 +17,7 @@ export function useTerminalAgentOverlayMutations(setNodes: SetNodes): {
       }
       const provider = resolveTerminalProviderHintFromCommand(normalizedTitle)
 
-      setNodes(
+      updateNodes(
         previousNodes => {
           let didChange = false
           const nextNodes = previousNodes.map(node => {
@@ -54,12 +54,12 @@ export function useTerminalAgentOverlayMutations(setNodes: SetNodes): {
         { syncLayout: false },
       )
     },
-    [setNodes],
+    [updateNodes],
   )
 
   const clearOverlay = useCallback(
     (nodeId: string, expectedStartedAtMs?: number) => {
-      setNodes(
+      updateNodes(
         previousNodes => {
           let didChange = false
           const nextNodes = previousNodes.map(node => {
@@ -75,7 +75,7 @@ export function useTerminalAgentOverlayMutations(setNodes: SetNodes): {
         { syncLayout: false },
       )
     },
-    [setNodes],
+    [updateNodes],
   )
 
   return { updateTerminalTitle, clearTerminalAgentOverlay: clearOverlay }

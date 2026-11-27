@@ -73,7 +73,6 @@ function createNodeTypes(): Record<string, FunctionComponent<WorkspaceCanvasNode
   }
 
   const TerminalNodeType = ({ data, id, selected, dragging }: WorkspaceCanvasNodeTypeProps) => {
-    const parameters = useWorkspaceCanvasNodeTypeParameters()
     const displayAlignment = useTerminalDisplayAlignment()
     return (
       <WorkspaceCanvasTerminalNodeType
@@ -85,14 +84,6 @@ function createNodeTypes(): Record<string, FunctionComponent<WorkspaceCanvasNode
         terminalFontFamily={displayAlignment.terminalFontFamily}
         terminalTransparentBackground={displayAlignment.terminalTransparentBackground}
         terminalDisplayCalibration={displayAlignment.terminalDisplayCalibration}
-        copyAgentLastMessageRef={parameters.copyAgentLastMessageRef}
-        reloadAgentSessionRef={parameters.reloadAgentSessionRef}
-        listAgentSessionsRef={parameters.listAgentSessionsRef}
-        switchAgentSessionRef={parameters.switchAgentSessionRef}
-        updateNodeScrollbackRef={parameters.updateNodeScrollbackRef}
-        updateTerminalTitleRef={parameters.updateTerminalTitleRef}
-        clearTerminalAgentOverlayRef={parameters.clearTerminalAgentOverlayRef}
-        renameTerminalTitleRef={parameters.renameTerminalTitleRef}
       />
     )
   }
@@ -158,14 +149,9 @@ export function useWorkspaceCanvasNodeTypes({
   browserDefaultMode,
   browserSearchEngine,
   commands,
-  copyAgentLastMessageRef,
-  reloadAgentSessionRef,
-  listAgentSessionsRef,
-  switchAgentSessionRef,
   updateRoleProviderRef,
   updateRoleInputRef,
   runRoleRef,
-  updateNodeScrollbackRef,
   openTaskEditorRef,
   quickUpdateTaskTitleRef,
   quickUpdateTaskRequirementRef,
@@ -173,9 +159,6 @@ export function useWorkspaceCanvasNodeTypes({
   resumeTaskAgentSessionRef,
   removeTaskAgentSessionRecordRef,
   updateTaskStatusRef,
-  updateTerminalTitleRef,
-  clearTerminalAgentOverlayRef,
-  renameTerminalTitleRef,
 }: WorkspaceCanvasNodeTypesParams) {
   // Callers compose fresh containers on viewport renders; only the individual inputs
   // should notify node consumers. Component types remain stable independently of this cache.
@@ -188,14 +171,9 @@ export function useWorkspaceCanvasNodeTypes({
       browserDefaultMode,
       browserSearchEngine,
       commands,
-      copyAgentLastMessageRef,
-      reloadAgentSessionRef,
-      listAgentSessionsRef,
-      switchAgentSessionRef,
       updateRoleProviderRef,
       updateRoleInputRef,
       runRoleRef,
-      updateNodeScrollbackRef,
       openTaskEditorRef,
       quickUpdateTaskTitleRef,
       quickUpdateTaskRequirementRef,
@@ -203,9 +181,6 @@ export function useWorkspaceCanvasNodeTypes({
       resumeTaskAgentSessionRef,
       removeTaskAgentSessionRecordRef,
       updateTaskStatusRef,
-      updateTerminalTitleRef,
-      clearTerminalAgentOverlayRef,
-      renameTerminalTitleRef,
     }),
     [
       workspacePath,
@@ -215,14 +190,9 @@ export function useWorkspaceCanvasNodeTypes({
       browserDefaultMode,
       browserSearchEngine,
       commands,
-      copyAgentLastMessageRef,
-      reloadAgentSessionRef,
-      listAgentSessionsRef,
-      switchAgentSessionRef,
       updateRoleProviderRef,
       updateRoleInputRef,
       runRoleRef,
-      updateNodeScrollbackRef,
       openTaskEditorRef,
       quickUpdateTaskTitleRef,
       quickUpdateTaskRequirementRef,
@@ -230,9 +200,6 @@ export function useWorkspaceCanvasNodeTypes({
       resumeTaskAgentSessionRef,
       removeTaskAgentSessionRecordRef,
       updateTaskStatusRef,
-      updateTerminalTitleRef,
-      clearTerminalAgentOverlayRef,
-      renameTerminalTitleRef,
     ],
   )
   return { nodeTypes, nodeTypesParameters }

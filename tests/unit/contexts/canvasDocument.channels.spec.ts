@@ -332,16 +332,10 @@ function hooksDeclaringWriterParameters(source: string, fileName = 'source.ts'):
 const HOOKS_WITH_WRITER_PARAMETERS: readonly string[] = [
   '~/collapse/useCanvasCollapse.ts#useCanvasCollapse:updateCanvasDocument',
   '~/hooks/useAgentLauncher.ts#useWorkspaceCanvasAgentLauncher:updateCanvasDocument',
-  '~/hooks/useAgentNodeLifecycle.ts#useWorkspaceCanvasAgentNodeLifecycle:setNodes',
-  '~/hooks/useAgentNodeSessionControls.ts#useAgentNodeSessionControls:setNodes',
-  '~/hooks/useAgentNodeSessionSwitch.ts#useAgentNodeSessionSwitch:setNodes',
-  '~/hooks/useCanvasAgentSupport.ts#useWorkspaceCanvasAgentSupport:setNodes',
   '~/hooks/useCanvasAgentSupport.ts#useWorkspaceCanvasAgentSupport:updateCanvasDocument',
   '~/hooks/useCanvasImageImport.ts#useWorkspaceCanvasImageImport:updateCanvasDocument',
   '~/hooks/useCanvasRoleUi.ts#useWorkspaceCanvasRoleUi:setNodes',
   '~/hooks/useCanvasRoleUi.ts#useWorkspaceCanvasRoleUi:updateCanvasDocument',
-  '~/hooks/useCanvasRuntimeBindings.ts#useWorkspaceCanvasRuntimeBindings:setNodes',
-  '~/hooks/useCanvasRuntimeIntegrations.ts#useWorkspaceCanvasRuntimeIntegrations:setNodes',
   '~/hooks/useCanvasShortcutActions.ts#useWorkspaceCanvasShortcutActions:updateCanvasDocument',
   '~/hooks/useCanvasSpaceExplorer.ts#useCanvasSpaceExplorer:setNodes',
   '~/hooks/useCanvasSpaceExplorer.ts#useCanvasSpaceExplorer:updateCanvasDocument',
@@ -365,8 +359,6 @@ const HOOKS_WITH_WRITER_PARAMETERS: readonly string[] = [
   '~/hooks/useNodesStore.createRoleNode.ts#useWorkspaceCanvasRoleNodeCreation:setNodes',
   '~/hooks/useNodesStore.createWebsiteNode.ts#useWorkspaceCanvasWebsiteNodeCreation:setNodes',
   '~/hooks/useNodesStore.roleMutations.ts#useWorkspaceCanvasRoleNodeMutations:setNodes',
-  '~/hooks/useNodesStore.terminalAgentOverlay.ts#useTerminalAgentOverlayMutations:setNodes',
-  '~/hooks/usePtyTaskCompletion.ts#useWorkspaceCanvasPtyTaskCompletion:setNodes',
   '~/hooks/useRoleActions.ts#useWorkspaceCanvasRoleActions:setNodes',
   '~/hooks/useRoleActions.ts#useWorkspaceCanvasRoleActions:updateCanvasDocument',
   '~/hooks/useSpaceDirectoryOps.ts#useWorkspaceCanvasSpaceDirectoryOps:updateCanvasDocument',
@@ -383,7 +375,6 @@ const HOOKS_WITH_WRITER_PARAMETERS: readonly string[] = [
   '~/hooks/useTaskActions.ts#useWorkspaceCanvasTaskActions:updateCanvasDocument',
   '~/hooks/useTaskEditor.ts#useWorkspaceCanvasTaskEditor:setNodes',
   '~/hooks/useTaskNodeCreation.ts#useWorkspaceCanvasTaskNodeCreation:updateCanvasDocument',
-  '~/hooks/useTerminalAgentSessionActions.ts#useTerminalAgentSessionActions:setNodes',
   '~/hooks/useWebsiteWindowOpenUrlNodeCreation.ts#useWebsiteWindowOpenUrlNodeCreation:updateCanvasDocument',
   '~/hooks/useWorkspaceDocumentOpening.ts#useWorkspaceDocumentOpening:setNodes',
   '~/hooks/useWorkspaceDocumentOpening.ts#useWorkspaceDocumentOpening:updateCanvasDocument',
@@ -456,14 +447,13 @@ describe('hooks do not take the node writer as a parameter', () => {
     ])
   })
 
-  // The five hooks that receive the writer inside a `nodeStore` or an options object, which the
-  // first version of the check did not see (found in review). They are in the list because later
-  // pull requests remove them.
+  // The four hooks that still receive the writer inside a `nodeStore` or an options object, which
+  // the first version of the check did not see (found in review). They are in the list because
+  // later pull requests remove them. `useWorkspaceCanvasRuntimeIntegrations` left it in PR 5.
   it.each([
     ['hooks/useFilesystemNodes.ts', 'useFilesystemNodes'],
     ['hooks/useCanvasRoleUi.ts', 'useWorkspaceCanvasRoleUi'],
     ['hooks/useCanvasSpaceExplorer.ts', 'useCanvasSpaceExplorer'],
-    ['hooks/useCanvasRuntimeIntegrations.ts', 'useWorkspaceCanvasRuntimeIntegrations'],
     ['hooks/useInteractions.quickMenuActions.ts', 'useWorkspaceCanvasQuickMenuActions'],
   ])('finds the writer that %s receives inside an object parameter', (file, hook) => {
     const found = hooksDeclaringWriterParameters(readFileSync(CANVAS_DIR + file, 'utf8'), file)

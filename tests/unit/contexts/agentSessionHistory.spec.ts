@@ -106,13 +106,9 @@ describe('agent session history', () => {
           : node,
       )
     })
-    const setNodes = vi.fn(updater => {
-      nodesRef.current = updater(nodesRef.current)
+    const { result } = renderHook(() => useAgentNodeSessionSwitch({ relaunchAgentNode }), {
+      wrapper: CanvasStoreTestProvider,
     })
-    const { result } = renderHook(
-      () => useAgentNodeSessionSwitch({ setNodes, relaunchAgentNode }),
-      { wrapper: CanvasStoreTestProvider },
-    )
 
     let switchPromise: Promise<void> | null = null
     act(() => {
@@ -126,8 +122,8 @@ describe('agent session history', () => {
         source: 'codex-file',
       })
     })
+    // Nothing is recorded while the relaunch is pending.
     expect(nodesRef.current[0]?.data.task?.agentSessions).toEqual([])
-    expect(setNodes).not.toHaveBeenCalled()
 
     releaseRelaunch?.()
     await act(async () => await switchPromise)

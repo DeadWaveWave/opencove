@@ -222,7 +222,7 @@ export function preflightAgentRelaunch(
   nodeId: string,
   mode: 'new' | 'resume',
   launchData: AgentNodeData,
-  setNodes: (
+  updateNodes: (
     updater: (nodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
     options?: { syncLayout?: boolean },
   ) => void,
@@ -234,7 +234,7 @@ export function preflightAgentRelaunch(
     assertProviderInitialPrompt(launchData.provider, launchData.prompt)
     return true
   } catch (error) {
-    setNodes(
+    updateNodes(
       previous =>
         previous.map(item =>
           item.id === nodeId

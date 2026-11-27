@@ -2,7 +2,7 @@ import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { TerminalNodeProps } from '../../../src/contexts/workspace/presentation/renderer/components/TerminalNode.types'
-import { NodeCommandsProvider } from '../../support/nodeCommandsFixture'
+import { NodeCommandsProvider, withTerminalCommands } from '../../support/nodeCommandsFixture'
 import { WorkspaceCanvasTerminalNodeType } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeTypes.terminal'
 import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
 
@@ -60,21 +60,15 @@ function createOverlayData(): TerminalNodeData {
 
 function renderOverlayExit(data: TerminalNodeData, clearTerminalAgentOverlay: () => void): void {
   render(
-    <NodeCommandsProvider>
+    <NodeCommandsProvider
+      commands={withTerminalCommands({ clearAgentOverlay: clearTerminalAgentOverlay })}
+    >
       <WorkspaceCanvasTerminalNodeType
         id="terminal-1"
         data={data}
         terminalFontSize={14}
         terminalFontFamily={null}
         terminalDisplayCalibration={null}
-        copyAgentLastMessageRef={{ current: vi.fn(async () => undefined) }}
-        reloadAgentSessionRef={{ current: vi.fn(async () => undefined) }}
-        listAgentSessionsRef={{ current: vi.fn(async () => []) }}
-        switchAgentSessionRef={{ current: vi.fn(async () => undefined) }}
-        updateNodeScrollbackRef={{ current: vi.fn() }}
-        updateTerminalTitleRef={{ current: vi.fn() }}
-        clearTerminalAgentOverlayRef={{ current: clearTerminalAgentOverlay }}
-        renameTerminalTitleRef={{ current: vi.fn() }}
       />
     </NodeCommandsProvider>,
   )
@@ -83,7 +77,6 @@ function renderOverlayExit(data: TerminalNodeData, clearTerminalAgentOverlay: ()
 
 describe('WorkspaceCanvas terminal agent overlay actions', () => {
   it('wires all four agent actions from the overlay and terminal binding', () => {
-    const noop = vi.fn()
     render(
       <NodeCommandsProvider>
         <WorkspaceCanvasTerminalNodeType
@@ -92,14 +85,6 @@ describe('WorkspaceCanvas terminal agent overlay actions', () => {
           terminalFontSize={14}
           terminalFontFamily={null}
           terminalDisplayCalibration={null}
-          copyAgentLastMessageRef={{ current: vi.fn(async () => undefined) }}
-          reloadAgentSessionRef={{ current: vi.fn(async () => undefined) }}
-          listAgentSessionsRef={{ current: vi.fn(async () => []) }}
-          switchAgentSessionRef={{ current: vi.fn(async () => undefined) }}
-          updateNodeScrollbackRef={{ current: noop }}
-          updateTerminalTitleRef={{ current: noop }}
-          clearTerminalAgentOverlayRef={{ current: noop }}
-          renameTerminalTitleRef={{ current: noop }}
         />
       </NodeCommandsProvider>,
     )

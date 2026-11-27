@@ -1,23 +1,18 @@
 import { readManagedClaudeBinding } from '../../../utils/managedClaudeLifecycle'
 import { useCallback } from 'react'
-import type { Node } from '@xyflow/react'
 import type { AgentSessionSummary } from '@shared/contracts/dto'
-import type { TerminalNodeData } from '../../../types'
 import { invalidateCachedTerminalScreenState } from '../../terminalNode/screenStateCache'
 import { useReadCanvasDocument } from '../../../store/canvasStoreContext'
+import { useCanvasNodeWriter } from './useCanvasNodeWriter'
 import { findAgentNode } from './useAgentNodeLifecycle.support'
 
 export function useAgentNodeSessionControls({
-  setNodes,
   bumpAgentLaunchToken,
 }: {
-  setNodes: (
-    updater: (previous: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-    options?: { syncLayout?: boolean },
-  ) => void
   bumpAgentLaunchToken: (nodeId: string) => number
 }) {
   const readDocument = useReadCanvasDocument()
+  const { updateNodes } = useCanvasNodeWriter()
 
   const listAgentSessionsForNode = useCallback(
     async (nodeId: string, limit = 20): Promise<AgentSessionSummary[]> => {
@@ -66,7 +61,7 @@ export function useAgentNodeSessionControls({
         }
       }
 
-      setNodes(
+      updateNodes(
         prevNodes =>
           prevNodes.map(item => {
             if (item.id !== nodeId) {
@@ -86,7 +81,7 @@ export function useAgentNodeSessionControls({
         { syncLayout: false },
       )
     },
-    [bumpAgentLaunchToken, readDocument, setNodes],
+    [bumpAgentLaunchToken, readDocument, updateNodes],
   )
 
   return { listAgentSessionsForNode, stopAgentNode }

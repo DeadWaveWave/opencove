@@ -16,6 +16,7 @@ import {
   useWorkspaceCanvasStoreNodes,
 } from '../../support/workspaceCanvasStoreHarness'
 import { agentNode, taskNode } from '../../support/agentRuntimeHarness'
+import { terminalCalibration } from '../../support/terminalCalibration'
 import { pixelNode } from './workspacePixelLayer.fixtures'
 
 // S7 of #647 (review of PR 4): what a node component consumes, in a mounted canvas. The React Flow
@@ -346,6 +347,8 @@ let controls: {
   setOnShowMessage: (fn: () => void) => void
 }
 const firstOnShowMessage = () => undefined
+let appliedCalibration: unknown = null
+const readCalibration = () => appliedCalibration as never
 
 function CanvasHarness() {
   const [workspaceId, setWorkspaceId] = useState(A)
@@ -360,7 +363,10 @@ function CanvasHarness() {
     },
     setPath,
     setEnv,
-    setCalibration,
+    setCalibration: next => {
+      appliedCalibration = next
+      setCalibration(next)
+    },
     setOnShowMessage: fn => setOnShowMessage(() => fn),
   }
   const agentSettings = useAppStore(state => state.agentSettings)
@@ -383,6 +389,7 @@ function CanvasHarness() {
       agentSettings={agentSettings}
       readAgentSettings={readAgentSettings}
       terminalDisplayCalibration={calibration as never}
+      readTerminalDisplayCalibration={readCalibration}
       onAppendSpaceArchiveRecord={() => undefined}
       onChangePreserveWindowSizesOnArrange={() => undefined}
     />
@@ -486,7 +493,6 @@ describe('what node components consume keeps its identity (Decision 14)', () => 
           },
         })),
     ],
-    ['the workspace path', () => controls.setPath('/tmp/edited')],
   ])(
     'does not render the terminal body, which reads none of the preferences, when %s changes',
     async (_name, change) => {
@@ -514,24 +520,66 @@ describe('what node components consume keeps its identity (Decision 14)', () => 
           DEFAULT_AGENT_SETTINGS.browserDefaultMode === 'native' ? 'iframe' : 'native',
       }),
     ],
-    // The folder body also reads the filesystem actions, which are made for the workspace path.
-    ['the workspace path', () => controls.setPath('/tmp/edited'), ['A-folder']],
     [
       'agentProviderOrder',
       settings({ agentProviderOrder: [...DEFAULT_AGENT_SETTINGS.agentProviderOrder].reverse() }),
     ],
-  ])(
-    'renders no body that reads no preference when %s changes',
-    async (_name, change, also = []) => {
-      await mountCanvas()
+  ])('renders no body that reads no preference when %s changes', async (_name, change) => {
+    await mountCanvas()
 
+    await act(async () => {
+      change()
+    })
+
+    const readers = ['A-note', 'A-web', 'A-task', 'A-role']
+    expect(Object.keys(counts.leaf).length).toBeGreaterThan(0)
+    expect(Object.keys(counts.leaf).filter(key => !readers.includes(key))).toEqual([])
+  })
+
+  // The terminal commands bind the workspace path and the environment (the mount they launch into,
+  // the env they launch with), so an edit renews the commands (Decision 3): every body that reads
+  // them renders once, and the folder's actions too.
+  const everyBody = [
+    'A-term',
+    'A-note',
+    'A-web',
+    'A-doc',
+    'A-folder',
+    'ImageNode',
+    'A-plugin',
+    'A-task',
+    'A-role',
+  ]
+  it.each([
+    ['the workspace path', () => controls.setPath('/tmp/edited')],
+    ['the environment', () => controls.setEnv({ EDITED: '1' })],
+  ])('renders each of the 9 bodies once when %s is edited', async (_name, edit) => {
+    await mountCanvas()
+    const before = (seenParams[seenParams.length - 1] as { commands: unknown }).commands
+
+    await act(async () => {
+      edit()
+    })
+
+    expect((seenParams[seenParams.length - 1] as { commands: unknown }).commands).not.toBe(before)
+    for (const key of everyBody) {
+      expect(counts.leaf[key], key).toBe(1)
+    }
+  })
+
+  // The calibration is drawn by the terminal alone (through its alignment context) and read by the
+  // commands when they run: a flip, through `null` and back as on every re-check, renders only it.
+  it('renders only the terminal body for a calibration flip', async () => {
+    await mountCanvas()
+    const before = seenParams[seenParams.length - 1]
+
+    for (const next of [terminalCalibration(9), null]) {
       await act(async () => {
-        change()
+        controls.setCalibration(next)
       })
+    }
 
-      const readers = ['A-note', 'A-web', 'A-task', 'A-role', ...also]
-      expect(Object.keys(counts.leaf).length).toBeGreaterThan(0)
-      expect(Object.keys(counts.leaf).filter(key => !readers.includes(key))).toEqual([])
-    },
-  )
+    expect(seenParams[seenParams.length - 1]).toBe(before)
+    expect(Object.keys(counts.leaf)).toEqual(['A-term'])
+  })
 })

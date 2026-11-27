@@ -5,14 +5,12 @@ import { useTranslation } from '@app/renderer/i18n'
 import {
   resolveAgentModel,
   resolveSelectableAgentProvider,
-  type AgentSettings,
-  type StandardWindowSizeBucket,
 } from '@contexts/settings/domain/agentSettings'
 import { resolveSpaceWorkingDirectory } from '@contexts/space/application/resolveSpaceWorkingDirectory'
 import type { AgentNodeData, Point, TerminalNodeData } from '../../../types'
 import { resolveLaunchedAgentResumeBinding } from '../../../utils/agentResumeBinding'
 import { resolveNodePlacementAnchorFromViewportCenter, toErrorMessage } from '../helpers'
-import type { CreateNodeInput, ShowWorkspaceCanvasMessage } from '../types'
+import type { CreateNodeInput, ShowWorkspaceCanvasMessage, WorkspaceCanvasProps } from '../types'
 import {
   assignNodeToSpaceAndExpand,
   findContainingSpaceByAnchor,
@@ -33,14 +31,14 @@ import {
 } from '../../../store/canvasStoreContext'
 
 interface UseAgentLauncherParams {
-  agentSettings: AgentSettings
+  /** The settings a launch uses are read when it starts, never copied when this hook renders. */
+  readAgentSettings: WorkspaceCanvasProps['readAgentSettings']
   workspaceId: string
   workspacePath: string
   environmentVariables?: Record<string, string>
   updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
   onShowMessage?: ShowWorkspaceCanvasMessage
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
-  standardWindowSizeBucket: StandardWindowSizeBucket
   buildAgentNodeTitle: (
     provider: AgentNodeData['provider'],
     effectiveModel: string | null,
@@ -48,14 +46,13 @@ interface UseAgentLauncherParams {
 }
 
 export function useWorkspaceCanvasAgentLauncher({
-  agentSettings,
+  readAgentSettings,
   workspaceId,
   workspacePath,
   environmentVariables,
   updateCanvasDocument,
   onShowMessage,
   createNodeForSession,
-  standardWindowSizeBucket,
   buildAgentNodeTitle,
 }: UseAgentLauncherParams): {
   openAgentLauncher: () => void
@@ -73,10 +70,7 @@ export function useWorkspaceCanvasAgentLauncher({
   const launching = useRef(false)
 
   const launchAgentAtFlowPosition = useCallback(
-    async (
-      cursorAnchor: Point,
-      requestedProvider = agentSettings.defaultProvider,
-    ): Promise<void> => {
+    async (cursorAnchor: Point, requestedProvider?: AgentNodeData['provider']): Promise<void> => {
       // The keyboard and menu share one launch transaction. Repeated input while
       // resolving a mount or starting its session must not create extra Agents.
       if (launching.current) {
@@ -84,9 +78,12 @@ export function useWorkspaceCanvasAgentLauncher({
       }
       launching.current = true
       try {
-        const provider = resolveSelectableAgentProvider(requestedProvider)
+        const agentSettings = readAgentSettings()
+        const provider = resolveSelectableAgentProvider(
+          requestedProvider ?? agentSettings.defaultProvider,
+        )
         const launchGeometry = resolveDefaultAgentLaunchGeometry({
-          bucket: standardWindowSizeBucket,
+          bucket: agentSettings.standardWindowSizeBucket,
           provider,
           terminalFontSize: agentSettings.terminalFontSize,
         })
@@ -208,14 +205,13 @@ export function useWorkspaceCanvasAgentLauncher({
       }
     },
     [
-      agentSettings,
       buildAgentNodeTitle,
       createNodeForSession,
       documentCommands,
       environmentVariables,
       onShowMessage,
+      readAgentSettings,
       readDocument,
-      standardWindowSizeBucket,
       t,
       updateCanvasDocument,
       workspaceId,
@@ -237,8 +233,10 @@ export function useWorkspaceCanvasAgentLauncher({
   )
 
   const openAgentLauncher = useCallback(() => {
-    openAgentLauncherForProvider(resolveSelectableAgentProvider(agentSettings.defaultProvider))
-  }, [agentSettings.defaultProvider, openAgentLauncherForProvider])
+    openAgentLauncherForProvider(
+      resolveSelectableAgentProvider(readAgentSettings().defaultProvider),
+    )
+  }, [openAgentLauncherForProvider, readAgentSettings])
 
   return {
     openAgentLauncher,

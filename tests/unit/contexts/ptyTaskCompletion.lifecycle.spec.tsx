@@ -17,6 +17,15 @@ import { storeBackedChannelsOf } from '../../support/workspaceCanvasStoreHarness
 import { useWorkspaceCanvasPtyTaskCompletion } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/usePtyTaskCompletion'
 
 const shared = vi.hoisted(() => ({ hub: null as PtyEventHub | null }))
+// The hook takes its node writer from context. These rows pin what it does with the function it
+// is given on each render, so the writer is the case's own: a spy that a row can replace.
+const writer = vi.hoisted(() => ({ updateNodes: (() => undefined) as (...args: never[]) => void }))
+vi.mock(
+  '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodeWriter',
+  () => ({
+    useCanvasNodeWriter: () => ({ updateNodes: writer.updateNodes, updateCanvasDocument: vi.fn() }),
+  }),
+)
 vi.mock('@app/renderer/shell/utils/ptyEventHub', async importOriginal => ({
   ...(await importOriginal<typeof import('@app/renderer/shell/utils/ptyEventHub')>()),
   getPtyEventHub: () => shared.hub!,
@@ -82,6 +91,7 @@ function setup() {
       }
     },
   )
+  writer.updateNodes = update
   const summary: AgentSessionSummary = {
     sessionId: 'resume-1',
     provider: 'codex',
@@ -118,15 +128,14 @@ describe('PTY title subscription lifetime', () => {
       initialProps: {
         nodes: state.nodesRef.current,
         listAgentSessions: state.query,
-        setNodes: state.update,
       },
     })
     const latestUpdate = vi.fn(state.update)
+    writer.updateNodes = latestUpdate
     for (let index = 0; index < 10; index++) {
       rerender({
         nodes: [...state.nodesRef.current],
         listAgentSessions: vi.fn(state.query),
-        setNodes: latestUpdate,
       })
     }
     const requests = state.query.mock.calls.length
@@ -145,7 +154,6 @@ describe('PTY title subscription lifetime', () => {
       () =>
         useWorkspaceCanvasPtyTaskCompletion({
           listAgentSessions: state.query,
-          setNodes: state.update,
         }),
       { wrapper: CanvasStoreTestProvider },
     )
@@ -178,7 +186,6 @@ describe('PTY title subscription lifetime', () => {
         () =>
           useWorkspaceCanvasPtyTaskCompletion({
             listAgentSessions: query,
-            setNodes: state.update,
           }),
         { wrapper: CanvasStoreTestProvider },
       )
@@ -205,7 +212,6 @@ describe('PTY title subscription lifetime', () => {
     const state = setup()
     const props = {
       listAgentSessions: state.query,
-      setNodes: state.update,
     }
     const { rerender } = renderHook(useWorkspaceCanvasPtyTaskCompletion, {
       wrapper: CanvasStoreTestProvider,
@@ -230,7 +236,6 @@ describe('PTY title subscription lifetime', () => {
       state.nodesRef.current = []
       const props = {
         nodes: state.nodesRef.current,
-        setNodes: state.update,
         listAgentSessions: state.query,
       }
       const { rerender } = renderHook(useWorkspaceCanvasPtyTaskCompletion, {
@@ -246,7 +251,8 @@ describe('PTY title subscription lifetime', () => {
         }),
       )
       state.nodesRef.current = originalNodes
-      rerender({ ...props, nodes: originalNodes, setNodes: vi.fn(state.update) })
+      writer.updateNodes = vi.fn(state.update)
+      rerender({ ...props, nodes: originalNodes })
       expect(state.nodesRef.current[0].data.agentRuntimeObservation).toMatchObject({
         status: 'standby',
         source,

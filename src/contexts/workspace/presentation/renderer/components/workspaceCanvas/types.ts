@@ -51,7 +51,13 @@ export interface WorkspaceCanvasProps {
    * so a settings change reaches them without renewing them. Stable: a canvas takes it once.
    */
   readAgentSettings: () => AgentSettings
+  /** For rendering (the terminal windows draw with it). */
   terminalDisplayCalibration?: TerminalClientDisplayCalibration | null
+  /**
+   * The calibration when a command runs (a launch's geometry). It flips through `null` on every
+   * re-check, so no command may be bound to the value of a render. Absent: none applies.
+   */
+  readTerminalDisplayCalibration?: () => TerminalClientDisplayCalibration | null
   onChangePreserveWindowSizesOnArrange: (enabled: boolean) => void
   isFocusNodeTargetZoomPreviewing?: boolean
   focusNodeId?: string | null
@@ -268,4 +274,3 @@ export interface WorkspaceCanvasQuickPreviewState {
 export type QuickUpdateTaskTitle = (nodeId: string, title: string) => void
 export type QuickUpdateTaskRequirement = (nodeId: string, requirement: string) => void
 export type UpdateTaskStatus = (nodeId: string, status: TaskRuntimeStatus) => void
-export type UpdateNodeScrollback = (nodeId: string, scrollback: string) => void

@@ -58,6 +58,23 @@ vi.mock(
     }
   },
 )
+// The writer is the provider's, and it changes with the workspace. Unless a case turns it off, the
+// hooks get one writer for the whole test (`stable`), which writes through the writer of the latest
+// render, so that a switch cannot rebuild a callback through it and hide a reader that is missing
+// from a dependency list.
+const writerPin = vi.hoisted(() => ({ stable: true }))
+vi.mock(
+  '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodeWriter',
+  async importOriginal => {
+    const { mockStableNodeWriter } = await import('../../support/stableNodeWriter')
+    return mockStableNodeWriter(
+      await importOriginal<
+        typeof import('../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodeWriter')
+      >(),
+      () => writerPin.stable,
+    )
+  },
+)
 // `t` keeps its identity, as in the app: a new one on every render would rebuild a callback that
 // lists it and hide a reader that is missing from the same list.
 const translation = vi.hoisted(() => ({ t: (key: string) => key }))
@@ -65,6 +82,7 @@ vi.mock('@app/renderer/i18n', () => ({ useTranslation: () => translation }))
 
 beforeEach(() => {
   firstRender.values.clear()
+  writerPin.stable = true
 })
 
 afterEach(() => {
@@ -74,9 +92,9 @@ afterEach(() => {
 describe('the agent session controls', () => {
   // `stable` pins the reader's place in the dependency list: the writer then keeps its identity.
   function renderControls({ stable = true } = {}) {
-    return renderInTwoWorkspaces(({ nodeStore, stableSetNodes }) =>
+    writerPin.stable = stable
+    return renderInTwoWorkspaces(({ nodeStore }) =>
       useAgentNodeSessionControls({
-        setNodes: stable ? stableSetNodes : nodeStore.setNodes,
         bumpAgentLaunchToken: nodeStore.bumpAgentLaunchToken,
       }),
     )
@@ -160,10 +178,10 @@ describe('the agent session switch', () => {
     documents?: Parameters<typeof renderInTwoWorkspaces>[1],
     { stable = false } = {},
   ) {
+    writerPin.stable = stable
     return renderInTwoWorkspaces(
-      ({ nodeStore, stableSetNodes }) =>
+      () =>
         useAgentNodeSessionSwitch({
-          setNodes: stable ? stableSetNodes : nodeStore.setNodes,
           relaunchAgentNode,
         }),
       documents,
@@ -335,9 +353,7 @@ describe('the terminal agent session actions', () => {
       status: 'reexecuted' as const,
     }))
     stubOpencoveApi({ pty: { reexecAgent }, agent: { listSessions: vi.fn() } })
-    const { view, showB } = renderInTwoWorkspaces(({ stableSetNodes }) =>
-      useTerminalAgentSessionActions({ setNodes: stableSetNodes }),
-    )
+    const { view, showB } = renderInTwoWorkspaces(() => useTerminalAgentSessionActions({}))
 
     await act(async () => {
       setDocumentNodes(A, [overlayNode('terminal-a', 'pty-a')])
@@ -357,9 +373,7 @@ describe('the terminal agent session actions', () => {
   it('lists the sessions of a terminal the store gained in the same call, in the shown workspace', async () => {
     const listSessions = vi.fn(async () => ({ provider: 'codex', cwd: '', sessions: [] }))
     stubOpencoveApi({ agent: { listSessions } })
-    const { view, showB } = renderInTwoWorkspaces(({ stableSetNodes }) =>
-      useTerminalAgentSessionActions({ setNodes: stableSetNodes }),
-    )
+    const { view, showB } = renderInTwoWorkspaces(() => useTerminalAgentSessionActions({}))
 
     let sessions: unknown
     await act(async () => {
@@ -395,9 +409,7 @@ describe('the terminal agent session actions', () => {
       }),
     )
     stubOpencoveApi({ pty: { reexecAgent } })
-    const { view } = renderInTwoWorkspaces(({ stableSetNodes }) =>
-      useTerminalAgentSessionActions({ setNodes: stableSetNodes }),
-    )
+    const { view } = renderInTwoWorkspaces(() => useTerminalAgentSessionActions({}))
 
     let handled = false
     await act(async () => {
@@ -484,9 +496,8 @@ describe('a render of workspace A while workspace B is displayed', () => {
     const listSessions = vi.fn(async () => ({ sessions: [] }))
     stubOpencoveApi({ agent: { listSessions } })
     const { view } = renderInTwoWorkspaces(
-      ({ nodeStore, stableSetNodes }) =>
+      ({ nodeStore }) =>
         useAgentNodeSessionControls({
-          setNodes: stableSetNodes,
           bumpAgentLaunchToken: nodeStore.bumpAgentLaunchToken,
         }),
       inA,
@@ -503,8 +514,7 @@ describe('a render of workspace A while workspace B is displayed', () => {
   it('relaunches an agent of A through the session switch', async () => {
     const relaunch = vi.fn(async () => undefined)
     const { view } = renderInTwoWorkspaces(
-      ({ stableSetNodes }) =>
-        useAgentNodeSessionSwitch({ setNodes: stableSetNodes, relaunchAgentNode: relaunch }),
+      () => useAgentNodeSessionSwitch({ relaunchAgentNode: relaunch }),
       inA,
     )
     displayB()
@@ -547,27 +557,24 @@ describe('a render of workspace A while workspace B is displayed', () => {
   it('lists the sessions of a terminal of A', async () => {
     const listSessions = vi.fn(async () => ({ provider: 'codex', cwd: '', sessions: [] }))
     stubOpencoveApi({ agent: { listSessions } })
-    const { view } = renderInTwoWorkspaces(
-      ({ stableSetNodes }) => useTerminalAgentSessionActions({ setNodes: stableSetNodes }),
-      {
-        a: {
-          nodes: [
-            sized({
-              ...pixelNode({
-                kind: 'terminal',
-                executionDirectory: '/dir-a',
-                agentOverlay: {
-                  provider: 'codex',
-                  status: 'standby',
-                  startedAtMs: Date.parse('2026-08-12T00:00:00.000Z'),
-                },
-              }),
-              id: 'terminal-a',
+    const { view } = renderInTwoWorkspaces(() => useTerminalAgentSessionActions({}), {
+      a: {
+        nodes: [
+          sized({
+            ...pixelNode({
+              kind: 'terminal',
+              executionDirectory: '/dir-a',
+              agentOverlay: {
+                provider: 'codex',
+                status: 'standby',
+                startedAtMs: Date.parse('2026-08-12T00:00:00.000Z'),
+              },
             }),
-          ],
-        },
+            id: 'terminal-a',
+          }),
+        ],
       },
-    )
+    })
     displayB()
 
     await act(async () => {
@@ -606,9 +613,8 @@ describe('a render of workspace A while workspace B is displayed', () => {
     const kill = vi.fn(async () => undefined)
     stubOpencoveApi({ pty: { kill } })
     const { view } = renderInTwoWorkspaces(
-      ({ nodeStore, stableSetNodes }) =>
+      ({ nodeStore }) =>
         useAgentNodeSessionControls({
-          setNodes: stableSetNodes,
           bumpAgentLaunchToken: nodeStore.bumpAgentLaunchToken,
         }),
       { a: { nodes: [agentNode('agent-a')] } },
@@ -624,10 +630,9 @@ describe('a render of workspace A while workspace B is displayed', () => {
   it('reloads a terminal of A', async () => {
     reexecuted.mockClear()
     stubOpencoveApi({ pty: { reexecAgent: reexecuted } })
-    const { view } = renderInTwoWorkspaces(
-      ({ stableSetNodes }) => useTerminalAgentSessionActions({ setNodes: stableSetNodes }),
-      { a: { nodes: [overlayA()] } },
-    )
+    const { view } = renderInTwoWorkspaces(() => useTerminalAgentSessionActions({}), {
+      a: { nodes: [overlayA()] },
+    })
     displayB()
     let handled = false
     await act(async () => {
@@ -640,10 +645,9 @@ describe('a render of workspace A while workspace B is displayed', () => {
   it('switches the session of a terminal of A', async () => {
     reexecuted.mockClear()
     stubOpencoveApi({ pty: { reexecAgent: reexecuted } })
-    const { view } = renderInTwoWorkspaces(
-      ({ stableSetNodes }) => useTerminalAgentSessionActions({ setNodes: stableSetNodes }),
-      { a: { nodes: [overlayA()] } },
-    )
+    const { view } = renderInTwoWorkspaces(() => useTerminalAgentSessionActions({}), {
+      a: { nodes: [overlayA()] },
+    })
     displayB()
     let handled = false
     await act(async () => {
