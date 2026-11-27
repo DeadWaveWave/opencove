@@ -154,6 +154,7 @@ export function useWorkspaceCanvasAgentLauncher({
           profileId: launched.profileId,
           runtimeKind: launched.runtimeKind as CreateNodeInput['runtimeKind'],
           terminalGeometry: launchGeometry.terminalGeometry,
+          standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
           workerBinding: launched.workerBinding,
           title: buildAgentNodeTitle(provider, modelLabel),
           anchor,

@@ -215,6 +215,7 @@ export async function createTerminalNodeAtFlowPosition({
     profileId: spawned.profileId,
     runtimeKind: spawned.runtimeKind,
     terminalGeometry: launchGeometry,
+    standardWindowSizeBucket,
     workerBinding,
     title: resolvedTitle,
     anchor: nodeAnchor,
