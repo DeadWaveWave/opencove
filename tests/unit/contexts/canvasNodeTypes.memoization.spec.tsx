@@ -94,7 +94,6 @@ const nodes: Node<TerminalNodeData>[] = [
   data: { ...base, kind: kind as TerminalNodeData['kind'] },
 }))
 const commands = {
-  setNodes: vi.fn(),
   setNodeLabelColorOverride: vi.fn(),
   convertNoteToTask: () => false,
   onShowMessage: vi.fn(),

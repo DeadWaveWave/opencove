@@ -118,10 +118,7 @@ function renderSelectionOwner() {
         isNodeDraggingRef,
         nodeDragSession: session,
       })
-      const select = useWorkspaceCanvasSelectNode({
-        setNodes,
-        spacesRef: canvas.spacesRef,
-      })
+      const select = useWorkspaceCanvasSelectNode()
       const exclusiveNodeDragAnchorIdRef = useRef<string | null>(null)
       const reactFlow = {
         screenToFlowPosition: ({ x, y }: { x: number; y: number }) => ({ x, y }),
@@ -134,7 +131,6 @@ function renderSelectionOwner() {
         reactFlow,
         nodeDragSession: session,
         exclusiveNodeDragAnchorIdRef,
-        setNodes,
         updateCanvasDocument: vi.fn(),
         hideWorktreeMismatchDropWarning: true,
       })

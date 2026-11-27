@@ -1,6 +1,6 @@
 import { act } from '@testing-library/react'
 import { useMemo } from 'react'
-import type { Edge, Node, ReactFlowInstance } from '@xyflow/react'
+import { useStoreApi, type Edge, type Node, type ReactFlowInstance } from '@xyflow/react'
 import { useWorkspaceCanvasNodeDragSession } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodeDragSession'
 import { useWorkspaceCanvasSpaceOwnership } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceOwnership'
 import type {
@@ -68,17 +68,28 @@ export function renderSpaceOwnershipInDocument(
       reactFlow,
       nodeDragSession,
       exclusiveNodeDragAnchorIdRef,
-      setNodes: nodeStore.setNodes,
       updateCanvasDocument: nodeStore.updateCanvasDocument,
       onShowMessage: options.onShowMessage,
       hideWorktreeMismatchDropWarning: options.hideWorktreeMismatchDropWarning ?? true,
       nodeDragPointerAnchorRef: nodeDragSession.nodeDragPointerAnchorRef,
     })
+    const reactFlowStore = useStoreApi()
     return {
       ownership,
       nodeDragSession,
       selection: useCanvasSelectionCommands(),
       readSelection: useReadCanvasSelection(),
+      /** The two selection flags the writers set in React Flow's store. */
+      readFlowFlags: () => {
+        const state = reactFlowStore.getState() as unknown as {
+          nodesSelectionActive: boolean
+          coveDragSurfaceSelectionMode: boolean
+        }
+        return {
+          nodesSelectionActive: state.nodesSelectionActive,
+          coveDragSurfaceSelectionMode: state.coveDragSurfaceSelectionMode,
+        }
+      },
     }
   }
 

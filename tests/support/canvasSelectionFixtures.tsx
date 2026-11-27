@@ -44,30 +44,3 @@ export function createSpace(
     rect,
   }
 }
-
-/**
- * The document nodes as the writers see them: `setNodes` applies the recipe at once, like the
- * canvas store does, and `nodesRef` always shows the result.
- */
-export function createNodeHolder(initial: Node<TerminalNodeData>[]) {
-  let nodes = initial
-  return {
-    get nodes() {
-      return nodes
-    },
-    nodesRef: {
-      get current() {
-        return nodes
-      },
-      set current(next: Node<TerminalNodeData>[]) {
-        nodes = next
-      },
-    },
-    setNodes: (updater: (previous: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[]) => {
-      nodes = updater(nodes)
-    },
-    get selectedIds() {
-      return nodes.filter(node => node.selected).map(node => node.id)
-    },
-  }
-}

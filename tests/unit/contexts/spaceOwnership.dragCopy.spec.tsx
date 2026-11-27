@@ -123,16 +123,30 @@ describe('space ownership drag start writes the node selection', () => {
     expect(harness.result.current.readSelection()).toMatchObject({ nodeIds: ['n1'], spaceIds: [] })
   })
 
-  it('keeps mirroring the selected flag onto the document nodes of a replaced selection', () => {
+  it('replaces a selection with one select and the two flow flags, and writes no document', () => {
     const other: Node<TerminalNodeData> = { ...node, id: 'other', selected: true }
     const harness = renderSpaceOwnership({ nodes: [node, other], selectedNodeIds: ['other'] })
+    const nodesBefore = harness.harness.readStoreDocument().nodes
     harness.harness.notifications.mockClear()
+    const { selection } = harness.result.current
+    const select = vi.spyOn(selection, 'select')
+    const others = [
+      vi.spyOn(selection, 'setNodeIds'),
+      vi.spyOn(selection, 'setSpaceIds'),
+      vi.spyOn(selection, 'clear'),
+    ]
 
     start(harness, { ...node, selected: false })
 
-    const stored = harness.harness.readStoreDocument().nodes
-    expect(stored.filter(item => item.selected).map(item => item.id)).toEqual(['n1'])
-    expect(harness.harness.notifications).toHaveBeenCalledTimes(1)
+    expect(select).toHaveBeenCalledExactlyOnceWith({ nodeIds: ['n1'], spaceIds: [] })
+    others.forEach(spy => expect(spy).not.toHaveBeenCalled())
+    expect(harness.result.current.readFlowFlags()).toEqual({
+      nodesSelectionActive: true,
+      coveDragSurfaceSelectionMode: false,
+    })
+    expect(harness.harness.notifications).not.toHaveBeenCalled()
+    expect(harness.harness.flush).not.toHaveBeenCalled()
+    expect(harness.harness.readStoreDocument().nodes).toBe(nodesBefore)
   })
 
   it('replaces the selection when the flag is not set although the store already names the node', () => {

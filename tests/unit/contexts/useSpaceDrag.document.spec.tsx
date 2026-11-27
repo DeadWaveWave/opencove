@@ -376,29 +376,80 @@ describe('useWorkspaceCanvasSpaceDrag reads the committed document', () => {
       expect(stored.selected).toBe(true)
     })
 
-    // On the base a click wrote the nodes (they gain `dragHandle` and their initial size from the
-    // canvas view) and then the Spaces (an equal array), two store updates, and flushed once. It is
-    // now exactly one update with both, and one flush; positions and Spaces keep their content.
-    it('changes no content and flushes once for a click', () => {
-      const harness = createCanvasDocumentHarness({
-        nodes: [nodeAt('n1', 50, 60)],
-        spaces: [spaceA()],
+    // A click on a Space writes nothing (S7, Decision 10). On the base it finalized the drag with
+    // a zero move: one store update (the nodes gained their mirror flags) and one flush. Now its
+    // selection is a select only, and it ends the overlay and the preview the pointer down set.
+    describe('a click that did not move', () => {
+      function setupClick(options: { selectedNodeIds?: string[] } = {}) {
+        const harness = createCanvasDocumentHarness({
+          nodes: [nodeAt('n1', 50, 60), nodeAt('n2', 900, 60)],
+          spaces: [spaceA(['n1'])],
+        })
+        const view = renderDrag(harness)
+        act(() =>
+          view.result.current.selection.select({
+            nodeIds: options.selectedNodeIds ?? [],
+            spaceIds: ['space-a'],
+          }),
+        )
+        press(view, 'space-a', INSIDE_A)
+        harness.notifications.mockClear()
+        harness.flush.mockClear()
+        return { harness, view, before: harness.readStoreDocument() }
+      }
+
+      it('writes no store update and no flush, and clears the preview', () => {
+        const { harness, view, before } = setupClick()
+        expect(view.result.current.readInteraction().spaceDragFramePreview).not.toBeNull()
+
+        release({ x: INSIDE_A.x + 2, y: INSIDE_A.y + 1 })
+
+        expect(harness.notifications).not.toHaveBeenCalled()
+        expect(harness.flush).not.toHaveBeenCalled()
+        expect(harness.readStoreDocument().nodes).toBe(before.nodes)
+        expect(harness.readStoreDocument().spaces).toBe(before.spaces)
+        expect(view.result.current.readInteraction().spaceDragFramePreview).toBeNull()
       })
-      const view = renderDrag(harness)
-      act(() => view.result.current.selection.select({ nodeIds: [], spaceIds: ['space-a'] }))
-      press(view, 'space-a', INSIDE_A)
-      harness.notifications.mockClear()
-      harness.flush.mockClear()
-      const before = harness.readStoreDocument()
 
-      release({ x: INSIDE_A.x + 2, y: INSIDE_A.y + 1 })
+      it('writes nothing with a window selected, and the mirror flags stay as they were', () => {
+        const { harness, view, before } = setupClick({ selectedNodeIds: ['n2'] })
 
-      expect(harness.notifications).toHaveBeenCalledTimes(1)
-      expect(harness.flush).toHaveBeenCalledTimes(1)
-      expect(harness.readStoreDocument().nodes.map(node => node.position)).toEqual(
-        before.nodes.map(node => node.position),
-      )
-      expect(harness.readStoreDocument().spaces).toEqual(before.spaces)
+        release({ x: INSIDE_A.x + 2, y: INSIDE_A.y + 1 })
+
+        expect(harness.notifications).not.toHaveBeenCalled()
+        expect(harness.flush).not.toHaveBeenCalled()
+        expect(harness.readStoreDocument().nodes).toBe(before.nodes)
+        // The click selects the Space alone: the window leaves the selection, in the slice only.
+        expect(view.result.current.readSelection().nodeIds).toEqual([])
+        expect(view.result.current.readSelection().spaceIds).toEqual(['space-a'])
+      })
+
+      it('ends the overlay a frame inside the click radius published', () => {
+        const { harness, view } = setupClick()
+        dragTo({ x: INSIDE_A.x + 3, y: INSIDE_A.y })
+        expect(view.result.current.readInteraction().liveNodes).not.toBeNull()
+
+        release({ x: INSIDE_A.x + 3, y: INSIDE_A.y })
+
+        expect(view.result.current.readInteraction().liveNodes).toBeNull()
+        expect(view.result.current.readInteraction().spaceDragFramePreview).toBeNull()
+        expect(harness.notifications).not.toHaveBeenCalled()
+        expect(harness.flush).not.toHaveBeenCalled()
+      })
+
+      it('toggles with Shift and writes nothing either', () => {
+        const { harness, view, before } = setupClick()
+        release({ x: INSIDE_A.x, y: INSIDE_A.y })
+        press(view, 'space-a', INSIDE_A, true)
+
+        release({ x: INSIDE_A.x, y: INSIDE_A.y })
+
+        expect(view.result.current.readSelection().spaceIds).toEqual([])
+        expect(harness.notifications).not.toHaveBeenCalled()
+        expect(harness.flush).not.toHaveBeenCalled()
+        expect(harness.readStoreDocument().nodes).toBe(before.nodes)
+        expect(harness.readStoreDocument().spaces).toBe(before.spaces)
+      })
     })
   })
 

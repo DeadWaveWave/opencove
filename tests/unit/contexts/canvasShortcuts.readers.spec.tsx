@@ -164,7 +164,6 @@ describe('the shortcut actions', () => {
         setViewport: vi.fn(),
       },
       spaceNavigationAnchorIdRef: { current: null },
-      setNodes: vi.fn(),
       updateCanvasDocument: vi.fn(),
       nodeCreation: { createNodeForSession: vi.fn(), createNoteNode: vi.fn() },
       launchAgentAtFlowPosition: vi.fn(),

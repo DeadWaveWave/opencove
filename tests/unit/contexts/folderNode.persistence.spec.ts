@@ -198,7 +198,7 @@ describe('folder node durable browser state', () => {
         rect: null,
       },
       workspacePath: '/local/repo',
-      setNodes: updater => {
+      updateNodes: updater => {
         nodes = updater(nodes)
       },
     })

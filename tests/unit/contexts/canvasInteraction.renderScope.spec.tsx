@@ -12,7 +12,7 @@ import {
   createCanvasDocumentHarness,
   renderInCanvasDocument,
 } from '../../support/canvasDocumentHarness'
-import { createNodeHolder, createRowNodes } from '../../support/canvasSelectionFixtures'
+import { createRowNodes } from '../../support/canvasSelectionFixtures'
 import { useWorkspaceCanvasState } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasState'
 import {
   useCanvasInteractionCommands,
@@ -119,14 +119,14 @@ describe('a marquee across a workspace switch', () => {
       return frames.length
     })
     const runFrames = () => act(() => frames.splice(0).forEach(frame => frame()))
-    const holder = createNodeHolder(createRowNodes(['a', 'b', 'c']))
+    const rowNodes = createRowNodes(['a', 'b', 'c'])
     const pane = document.createElement('div')
     pane.className = 'react-flow__pane'
     document.body.append(pane)
     const selectionDraftRef: { current: SelectionDraftState | null } = { current: null }
     const reactFlow = {
       screenToFlowPosition: ({ x, y }: { x: number; y: number }) => ({ x, y }),
-      getNodes: () => holder.nodes,
+      getNodes: () => rowNodes,
       getViewport: () => ({ x: 0, y: 0, zoom: 1 }),
       setViewport: async () => true,
       zoomTo: async () => true,
@@ -165,7 +165,6 @@ describe('a marquee across a workspace switch', () => {
             isShiftPressedRef: { current: false },
             selectionDraftRef,
             reactFlow,
-            setNodes: holder.setNodes,
           }),
           readInteraction: useReadCanvasInteraction(),
           readSelection: useReadCanvasSelection(),

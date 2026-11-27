@@ -193,7 +193,10 @@ describe('a node drop into a Space', () => {
     expect(harness.flush).toHaveBeenCalledTimes(1)
   })
 
-  it('writes the expected directory with a second update, flushes once after it, and the selection is a third', () => {
+  // The drop used to schedule a third write for the next frame, `restoreSelectionAfterDrop`, that
+  // stored the dragged windows as selected in the document (S7, PR 2): it is gone, and so is the
+  // frame's update.
+  it('writes the expected directory with a second update and flushes once after it; no frame writes a third', () => {
     const { harness, view } = setup(
       [terminal('n1', 50, 60, { execution: REPO, expected: OTHER })],
       [spaceA(), spaceC(REPO)],
@@ -210,8 +213,9 @@ describe('a node drop into a Space', () => {
     expect(expectedAtFlush).toBe(REPO)
 
     runFrames()
-    expect(harness.notifications).toHaveBeenCalledTimes(3)
-    expect(harness.readStoreDocument().nodes[0].selected).toBe(true)
+    expect(frames).toEqual([])
+    expect(harness.notifications).toHaveBeenCalledTimes(2)
+    expect(harness.readStoreDocument().nodes[0].selected).toBeFalsy()
     expect(harness.flush).toHaveBeenCalledTimes(1)
   })
 
@@ -351,6 +355,126 @@ describe('a node drop that fails the transfer check', () => {
     expect(onShowMessage).toHaveBeenCalledTimes(1)
     expect(harness.readStoreDocument().spaces[1].nodeIds).toEqual([])
     expect(harness.flush).not.toHaveBeenCalled()
+  })
+})
+
+// `restoreSelectionAfterDrop` wrote the dragged windows as `selected` into the document one frame
+// after a refused drop (S7, PR 2). What is shown never came from that write: the canvas view takes
+// `selected` from the selection slice. These cases prove the function changed nothing shown, and
+// that no frame writes the document any more.
+describe('the selection after a refused drop', () => {
+  const shown = (view: View) =>
+    view.result.current.canvasState.flowNodes.filter(node => node.selected).map(node => node.id)
+
+  /** A drag start without Shift on `t1`, as a pointer down on an unselected window makes it. */
+  function startUnselectedDrag(
+    view: View,
+    harness: ReturnType<typeof createCanvasDocumentHarness>,
+  ) {
+    const node = harness.readStoreDocument().nodes.find(item => item.id === 't1')!
+    act(() =>
+      view.result.current.ownership.handleNodeDragStart(
+        { clientX: 10, clientY: 10, shiftKey: false } as React.MouseEvent,
+        node,
+        [node],
+      ),
+    )
+  }
+
+  it('shows the dragged windows as selected before and after the next frame, and writes no document in it', () => {
+    const onShowMessage = vi.fn()
+    const { harness, view } = setup([taskDoing('t1', 50, 60)], [spaceA(['t1']), spaceC()], {
+      onShowMessage,
+    })
+    startUnselectedDrag(view, harness)
+    expect(view.result.current.readSelection().nodeIds).toEqual(['t1'])
+    const dropped = releaseAt(harness, 't1', NODE_IN_C)
+    stopAt(view, dropped, DROP_INTO_C)
+    expect(onShowMessage).toHaveBeenCalledTimes(1)
+    expect(harness.readStoreDocument().nodes[0].position).toEqual({ x: 50, y: 60 })
+    expect(shown(view)).toEqual(['t1'])
+    const nodesAfterRevert = harness.readStoreDocument().nodes
+    harness.notifications.mockClear()
+
+    runFrames()
+
+    expect(frames).toEqual([])
+    expect(harness.notifications).not.toHaveBeenCalled()
+    expect(harness.flush).not.toHaveBeenCalled()
+    expect(harness.readStoreDocument().nodes).toBe(nodesAfterRevert)
+    expect(shown(view)).toEqual(['t1'])
+    expect(view.result.current.readSelection().nodeIds).toEqual(['t1'])
+  })
+
+  // The select batch of the pointer down has not reached the slice here (Shift keeps the
+  // selection, which is empty): the shown selection is the slice's, empty, and the frame used to
+  // write the dragged window as selected into the document anyway, where nothing reads it.
+  it('shows what the slice holds, and a frame does not write the dragged windows into the document', () => {
+    const { harness, view } = setup([taskDoing('t1', 50, 60)], [spaceA(['t1']), spaceC()], {
+      onShowMessage: vi.fn(),
+    })
+    const node = startDrag(view, harness, 't1')
+    expect(view.result.current.readSelection().nodeIds).toEqual([])
+    const dropped = releaseAt(harness, node.id, NODE_IN_C)
+    stopAt(view, dropped, DROP_INTO_C)
+    harness.notifications.mockClear()
+
+    runFrames()
+
+    expect(harness.notifications).not.toHaveBeenCalled()
+    expect(harness.readStoreDocument().nodes[0].selected).toBeFalsy()
+    expect(shown(view)).toEqual([])
+  })
+
+  it('does the same after the worktree warning refused the drop', () => {
+    const { harness, view } = setup(
+      [terminal('n1', 50, 60, { execution: REPO, expected: REPO })],
+      [spaceA(), spaceC(OTHER)],
+      { hideWorktreeMismatchDropWarning: false },
+    )
+    const node = harness.readStoreDocument().nodes[0]
+    act(() =>
+      view.result.current.ownership.handleNodeDragStart(
+        { clientX: 10, clientY: 10, shiftKey: false } as React.MouseEvent,
+        node,
+        [node],
+      ),
+    )
+    const dropped = releaseAt(harness, 'n1', NODE_IN_C)
+    stopAt(view, dropped, DROP_INTO_C)
+    expect(view.result.current.ownership.spaceWorktreeMismatchDropWarning).not.toBeNull()
+    expect(shown(view)).toEqual(['n1'])
+    const nodesAfterRevert = harness.readStoreDocument().nodes
+    harness.notifications.mockClear()
+
+    runFrames()
+
+    expect(harness.notifications).not.toHaveBeenCalled()
+    expect(harness.readStoreDocument().nodes).toBe(nodesAfterRevert)
+    expect(shown(view)).toEqual(['n1'])
+  })
+
+  it('does the same after a drop that was accepted', () => {
+    const { harness, view } = setup([note('n1', 50, 60)])
+    const node = harness.readStoreDocument().nodes[0]
+    act(() =>
+      view.result.current.ownership.handleNodeDragStart(
+        { clientX: 10, clientY: 10, shiftKey: false } as React.MouseEvent,
+        node,
+        [node],
+      ),
+    )
+    const dropped = releaseAt(harness, 'n1', NODE_IN_C)
+    stopAt(view, dropped, DROP_INTO_C)
+    expect(shown(view)).toEqual(['n1'])
+    const nodesAfterDrop = harness.readStoreDocument().nodes
+    harness.notifications.mockClear()
+
+    runFrames()
+
+    expect(harness.notifications).not.toHaveBeenCalled()
+    expect(harness.readStoreDocument().nodes).toBe(nodesAfterDrop)
+    expect(shown(view)).toEqual(['n1'])
   })
 })
 
@@ -733,7 +857,6 @@ describe('the workspace of a node drop', () => {
             clearDragStartSpaceSelection: () => undefined,
           },
           exclusiveNodeDragAnchorIdRef: { current: null },
-          setNodes: vi.fn(),
           updateCanvasDocument: vi.fn(),
           hideWorktreeMismatchDropWarning: false,
         })
@@ -796,12 +919,6 @@ describe('the workspace of a node drop', () => {
             clearDragStartSpaceSelection: () => undefined,
           },
           exclusiveNodeDragAnchorIdRef: { current: null },
-          setNodes: (updater, options) =>
-            commitCanvasDocument(
-              workspaceId,
-              document => ({ ...document, nodes: updater(document.nodes) }),
-              options,
-            ),
           updateCanvasDocument: (recipe, options) =>
             commitCanvasDocument(
               workspaceId,

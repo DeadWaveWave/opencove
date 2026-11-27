@@ -23,20 +23,23 @@ import {
   createCanvasDocumentHarness,
   renderCanvasNodeStore,
   renderInCanvasDocument,
+  type CanvasDocumentHarness,
   type CanvasNodeStoreContext,
 } from '../../support/canvasDocumentHarness'
 import { CANVAS_STORE_TEST_WORKSPACE_ID } from '../../support/canvasStoreTestHarness'
 import {
   SelectionWritersWrapper,
-  createNodeHolder,
   createRowNodes,
   createSpace,
 } from '../../support/canvasSelectionFixtures'
 import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
+import { readWorkspaceDocument } from '@contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 
-// Each writer of the node selection writes the canvas store's `selection` slice with one command,
-// and keeps writing the `selected` flag on the document nodes and the two React Flow store flags
-// in the same call (Decision 3 of #692: the flag stays a mirror until S6).
+// Each writer of the node selection writes the canvas store's `selection` slice with one command
+// and the two React Flow store flags in the same call, and writes nothing else: not the document
+// (no `selected` mirror, no app store notification, no flush), S7 PR 2. Which windows a writer
+// selects is computed from the slice, the document's nodes (for the order and the positions) and
+// the document's Spaces (for the scope) when it runs; the flag of a document node is never read.
 
 function useStoreProbe() {
   const reactFlowStore = useStoreApi()
@@ -73,50 +76,101 @@ function expectOnlySelect(spies: ReturnType<typeof spyOnCommands>, times = 1): v
   spies.others.forEach(spy => expect(spy).not.toHaveBeenCalled())
 }
 
+/**
+ * The row of notes as the document holds them: sized, as the node store's first write leaves them,
+ * so that a write through the writer is never only the initial-size fix.
+ */
+function documentRow(
+  ids: readonly string[],
+  selectedIds: readonly string[] = [],
+): Node<TerminalNodeData>[] {
+  return createRowNodes(ids, selectedIds).map(node => ({
+    ...node,
+    initialWidth: node.data.width,
+    initialHeight: node.data.height,
+  }))
+}
+
+/** The document is the one the writer found: no notification, no flush, the same nodes array. */
+function expectNoDocumentWrite(
+  harness: CanvasDocumentHarness,
+  nodesBefore: Node<TerminalNodeData>[],
+): void {
+  expect(harness.notifications).not.toHaveBeenCalled()
+  expect(harness.flush).not.toHaveBeenCalled()
+  expect(harness.readStoreDocument().nodes).toBe(nodesBefore)
+}
+
 afterEach(() => {
   vi.restoreAllMocks()
 })
 
 describe('selectNode', () => {
-  function setup(options: { flagged?: string[]; nodeIds?: string[]; spaceIds?: string[] }) {
-    const holder = createNodeHolder(createRowNodes(['a', 'b', 'c'], options.flagged ?? []))
-    const hook = renderHook(
-      () => ({
-        select: useWorkspaceCanvasSelectNode({ setNodes: holder.setNodes }),
-        ...useStoreProbe(),
-      }),
-      { wrapper: SelectionWritersWrapper },
-    )
+  function setup(options: {
+    flagged?: string[]
+    nodeIds?: string[]
+    spaceIds?: string[]
+    spaces?: ReturnType<typeof createSpace>[]
+  }) {
+    const harness = createCanvasDocumentHarness({
+      nodes: documentRow(['a', 'b', 'c'], options.flagged ?? []),
+      spaces: options.spaces ?? [],
+    })
+    const hook = renderInCanvasDocument(() => ({
+      select: useWorkspaceCanvasSelectNode(),
+      ...useStoreProbe(),
+    }))
     act(() =>
       hook.result.current.selection.select({
         nodeIds: options.nodeIds ?? [],
         spaceIds: options.spaceIds ?? [],
       }),
     )
-    return { holder, ...hook }
+    const nodesBefore = harness.readStoreDocument().nodes
+    harness.notifications.mockClear()
+    return { harness, nodesBefore, ...hook }
   }
 
-  it('selects only the clicked window, clears the Spaces and mirrors the flag', () => {
-    const { result, holder } = setup({ flagged: ['b'], nodeIds: ['b'], spaceIds: ['s'] })
+  it('selects only the clicked window and clears the Spaces: one select, the flow flags, no document write', () => {
+    const { result, harness, nodesBefore } = setup({
+      flagged: ['b'],
+      nodeIds: ['b'],
+      spaceIds: ['s'],
+    })
     const spies = spyOnCommands(result.current.selection)
 
     act(() => result.current.select('a'))
 
     expect(result.current.readSelection()).toMatchObject({ nodeIds: ['a'], spaceIds: [] })
-    expect(holder.selectedIds).toEqual(['a'])
     expect(result.current.readFlowFlags()).toEqual({
       nodesSelectionActive: true,
       coveDragSurfaceSelectionMode: false,
     })
     expectOnlySelect(spies)
+    expectNoDocumentWrite(harness, nodesBefore)
   })
 
   it('keeps the selected Spaces when the only selected window is clicked again', () => {
-    const { result } = setup({ flagged: ['a'], nodeIds: ['a'], spaceIds: ['s'] })
+    const { result, harness, nodesBefore } = setup({
+      flagged: ['a'],
+      nodeIds: ['a'],
+      spaceIds: ['s'],
+    })
 
     act(() => result.current.select('a'))
 
     expect(result.current.readSelection()).toMatchObject({ nodeIds: ['a'], spaceIds: ['s'] })
+    expectNoDocumentWrite(harness, nodesBefore)
+  })
+
+  it('keeps a multi-selection when a selected window is clicked, in document order', () => {
+    const { result, harness, nodesBefore } = setup({ nodeIds: ['c', 'a'] })
+
+    act(() => result.current.select('c'))
+
+    expect(result.current.readSelection()).toMatchObject({ nodeIds: ['a', 'c'], spaceIds: [] })
+    expect(result.current.readFlowFlags()).toMatchObject({ nodesSelectionActive: true })
+    expectNoDocumentWrite(harness, nodesBefore)
   })
 
   it('decides "already selected" from the store, not from the flag on the document node', () => {
@@ -128,8 +182,22 @@ describe('selectNode', () => {
     expect(result.current.readSelection()).toMatchObject({ nodeIds: ['a'], spaceIds: [] })
   })
 
+  it('does not count a window the store names but the document no longer holds', () => {
+    // `gone` is not "already selected": the click selects it alone, as it did when the base
+    // was the document's nodes.
+    const { result } = setup({ nodeIds: ['a', 'gone'] })
+
+    act(() => result.current.select('gone'))
+
+    expect(result.current.readSelection().nodeIds).toEqual(['gone'])
+  })
+
   it('toggles within the scope, keeps the Spaces and turns the drag surface mode on', () => {
-    const { result, holder } = setup({ flagged: ['a', 'b'], nodeIds: ['a', 'b'], spaceIds: ['s'] })
+    const { result, harness, nodesBefore } = setup({
+      flagged: ['a', 'b'],
+      nodeIds: ['a', 'b'],
+      spaceIds: ['s'],
+    })
     const spies = spyOnCommands(result.current.selection)
 
     act(() => result.current.select('c', { toggle: true }))
@@ -138,7 +206,6 @@ describe('selectNode', () => {
       nodeIds: ['a', 'b', 'c'],
       spaceIds: ['s'],
     })
-    expect(holder.selectedIds).toEqual(['a', 'b', 'c'])
     expect(result.current.readFlowFlags()).toEqual({
       nodesSelectionActive: true,
       coveDragSurfaceSelectionMode: true,
@@ -147,8 +214,24 @@ describe('selectNode', () => {
     act(() => result.current.select('a', { toggle: true }))
 
     expect(result.current.readSelection()).toMatchObject({ nodeIds: ['b', 'c'], spaceIds: ['s'] })
-    expect(holder.selectedIds).toEqual(['b', 'c'])
     expectOnlySelect(spies, 2)
+    expectNoDocumentWrite(harness, nodesBefore)
+  })
+
+  it('drops the windows of other scopes from a toggle, by the Spaces of the document', () => {
+    // Space `s` holds a and b; c is outside every Space. Toggling c leaves a and b out of c's scope.
+    const { result, harness, nodesBefore } = setup({
+      nodeIds: ['a', 'b'],
+      spaces: [createSpace('s', { x: -50, y: -50, width: 700, height: 400 }, ['a', 'b'])],
+    })
+
+    act(() => result.current.select('c', { toggle: true }))
+    expect(result.current.readSelection().nodeIds).toEqual(['c'])
+
+    // And inside the Space, c is out of scope.
+    act(() => result.current.select('a', { toggle: true }))
+    expect(result.current.readSelection().nodeIds).toEqual(['a'])
+    expectNoDocumentWrite(harness, nodesBefore)
   })
 
   it('turns the drag surface mode off when a toggle empties the whole selection', () => {
@@ -178,54 +261,58 @@ describe('selectNode', () => {
 
 describe('node selection writers in useWorkspaceCanvasInteractions', () => {
   function setup(options: { flagged?: string[]; nodeIds?: string[]; spaceIds?: string[] }) {
-    const holder = createNodeHolder(createRowNodes(['a', 'b', 'c'], options.flagged ?? []))
+    const harness = createCanvasDocumentHarness({
+      nodes: documentRow(['a', 'b', 'c'], options.flagged ?? []),
+    })
     const canvas = document.createElement('div')
     const reactFlow = {
       screenToFlowPosition: ({ x, y }: { x: number; y: number }) => ({ x, y }),
-      getNodes: () => holder.nodes,
-      getNode: (id: string) => holder.nodes.find(node => node.id === id),
+      getNodes: () => harness.readStoreDocument().nodes,
+      getNode: (id: string) => harness.readStoreDocument().nodes.find(node => node.id === id),
     } as unknown as ReactFlowInstance<Node<TerminalNodeData>, Edge>
-    const hook = renderHook(
-      () => ({
-        interactions: useWorkspaceCanvasInteractions({
-          canvasRef: { current: canvas },
-          isTrackpadCanvasMode: false,
-          focusNodeOnClick: false,
-          focusNodeTargetZoom: 1,
-          websiteWindowsEnabled: false,
-          websiteWindowPasteEnabled: false,
-          isShiftPressedRef: { current: false },
-          selectionDraftRef: { current: null },
-          reactFlow,
-          setNodes: holder.setNodes,
-          workspaceId: 'writers',
-          workspacePath: '/tmp/repo',
-          defaultTerminalProfileId: null,
-          terminalFontSize: 13,
-          terminalDisplayMetrics: {} as never,
-          updateCanvasDocument: vi.fn(),
-          standardWindowSizeBucket: 'regular',
-          browserDefaultMode: 'headless' as never,
-          createNodeForSession: vi.fn(async () => null),
-          createNoteNode: vi.fn(() => null),
-          createImageNode: vi.fn(() => null),
-          createWebsiteNode: vi.fn(() => null),
-        }),
-        ...useStoreProbe(),
+    const hook = renderInCanvasDocument(() => ({
+      interactions: useWorkspaceCanvasInteractions({
+        canvasRef: { current: canvas },
+        isTrackpadCanvasMode: false,
+        focusNodeOnClick: false,
+        focusNodeTargetZoom: 1,
+        websiteWindowsEnabled: false,
+        websiteWindowPasteEnabled: false,
+        isShiftPressedRef: { current: false },
+        selectionDraftRef: { current: null },
+        reactFlow,
+        workspaceId: 'writers',
+        workspacePath: '/tmp/repo',
+        defaultTerminalProfileId: null,
+        terminalFontSize: 13,
+        terminalDisplayMetrics: {} as never,
+        updateCanvasDocument: vi.fn(),
+        standardWindowSizeBucket: 'regular',
+        browserDefaultMode: 'headless' as never,
+        createNodeForSession: vi.fn(async () => null),
+        createNoteNode: vi.fn(() => null),
+        createImageNode: vi.fn(() => null),
+        createWebsiteNode: vi.fn(() => null),
       }),
-      { wrapper: SelectionWritersWrapper },
-    )
+      ...useStoreProbe(),
+    }))
     act(() =>
       hook.result.current.selection.select({
         nodeIds: options.nodeIds ?? [],
         spaceIds: options.spaceIds ?? [],
       }),
     )
-    return { holder, ...hook }
+    const nodesBefore = harness.readStoreDocument().nodes
+    harness.notifications.mockClear()
+    return { harness, nodesBefore, ...hook }
   }
 
-  it('clears the nodes, the Spaces, the flags and both React Flow flags on a pane click', () => {
-    const { result, holder } = setup({ flagged: ['a', 'b'], nodeIds: ['a', 'b'], spaceIds: ['s'] })
+  it('clears the nodes, the Spaces and both React Flow flags on a pane click: one clear, no document write', () => {
+    const { result, harness, nodesBefore } = setup({
+      flagged: ['a', 'b'],
+      nodeIds: ['a', 'b'],
+      spaceIds: ['s'],
+    })
     const spies = { select: vi.spyOn(result.current.selection, 'clear') }
     const others = [
       vi.spyOn(result.current.selection, 'select'),
@@ -236,13 +323,13 @@ describe('node selection writers in useWorkspaceCanvasInteractions', () => {
     act(() => result.current.interactions.handlePaneClick({ button: 0 } as React.MouseEvent))
 
     expect(result.current.readSelection()).toMatchObject({ nodeIds: [], spaceIds: [] })
-    expect(holder.selectedIds).toEqual([])
     expect(result.current.readFlowFlags()).toEqual({
       nodesSelectionActive: false,
       coveDragSurfaceSelectionMode: false,
     })
     expect(spies.select).toHaveBeenCalledTimes(1)
     others.forEach(spy => expect(spy).not.toHaveBeenCalled())
+    expectNoDocumentWrite(harness, nodesBefore)
   })
 
   it('clears a selection that holds only Spaces', () => {
@@ -296,19 +383,21 @@ describe('marquee in useWorkspaceCanvasSelectionDraft', () => {
     spaceIds?: string[]
     spaces?: ReturnType<typeof createSpace>[]
   }) {
-    // The Spaces the marquee reads are the store's.
-    createCanvasDocumentHarness({
+    // The nodes and the Spaces the marquee reads are the store's.
+    const rowNodes = documentRow(['a', 'b', 'c'], options.flagged ?? [])
+    const harness = createCanvasDocumentHarness({
       workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID,
+      nodes: rowNodes,
       spaces: options.spaces ?? [],
     })
-    const holder = createNodeHolder(createRowNodes(['a', 'b', 'c'], options.flagged ?? []))
     const pane = document.createElement('div')
     pane.className = 'react-flow__pane'
     document.body.append(pane)
     const selectionDraftRef: { current: SelectionDraftState | null } = { current: null }
     const reactFlow = {
       screenToFlowPosition: ({ x, y }: { x: number; y: number }) => ({ x, y }),
-      getNodes: () => holder.nodes,
+      // React Flow's nodes: the document's, without a read of the app store.
+      getNodes: () => rowNodes,
     } as unknown as ReactFlowInstance<Node<TerminalNodeData>>
     const hook = renderHook(
       () => ({
@@ -318,7 +407,6 @@ describe('marquee in useWorkspaceCanvasSelectionDraft', () => {
           isShiftPressedRef: { current: false },
           selectionDraftRef,
           reactFlow,
-          setNodes: holder.setNodes,
         }),
         ...useStoreProbe(),
       }),
@@ -330,6 +418,8 @@ describe('marquee in useWorkspaceCanvasSelectionDraft', () => {
         spaceIds: options.spaceIds ?? [],
       }),
     )
+    const nodesBefore = harness.readStoreDocument().nodes
+    harness.notifications.mockClear()
     const pointerDown = (x: number, y: number) =>
       act(() =>
         hook.result.current.draft.handleCanvasPointerDownCapture({
@@ -353,15 +443,15 @@ describe('marquee in useWorkspaceCanvasSelectionDraft', () => {
       })
       return committed
     }
-    return { holder, pane, selectionDraftRef, pointerDown, pointerUp, ...hook }
+    return { harness, nodesBefore, pane, selectionDraftRef, pointerDown, pointerUp, ...hook }
   }
 
   afterEach(() => {
     document.body.innerHTML = ''
   })
 
-  it('writes the marquee result with one select, and mirrors the flag and the flow flags', () => {
-    const { result, holder, pointerDown, pointerUp } = setup({
+  it('writes the marquee result with one select and the flow flags, and no document write', () => {
+    const { result, harness, nodesBefore, pointerDown, pointerUp } = setup({
       flagged: ['b'],
       nodeIds: ['b'],
     })
@@ -371,16 +461,16 @@ describe('marquee in useWorkspaceCanvasSelectionDraft', () => {
     expect(pointerUp(350, 250)).toBe(true)
 
     expect(result.current.readSelection()).toMatchObject({ nodeIds: ['a'], spaceIds: [] })
-    expect(holder.selectedIds).toEqual(['a'])
     expect(result.current.readFlowFlags()).toEqual({
       nodesSelectionActive: true,
       coveDragSurfaceSelectionMode: true,
     })
     expectOnlySelect(spies)
+    expectNoDocumentWrite(harness, nodesBefore)
   })
 
   it('selects a touched Space and no window inside it with the same single command', () => {
-    const { result, holder, pointerDown, pointerUp } = setup({
+    const { result, harness, nodesBefore, pointerDown, pointerUp } = setup({
       spaces: [createSpace('s', { x: 0, y: 0, width: 360, height: 260 }, ['a'])],
     })
     const spies = spyOnCommands(result.current.selection)
@@ -389,13 +479,13 @@ describe('marquee in useWorkspaceCanvasSelectionDraft', () => {
     pointerUp(350, 250)
 
     expect(result.current.readSelection()).toMatchObject({ nodeIds: [], spaceIds: ['s'] })
-    expect(holder.selectedIds).toEqual([])
     // Nodes: none selected. A selected Space alone still turns the drag surface mode on.
     expect(result.current.readFlowFlags()).toEqual({
       nodesSelectionActive: false,
       coveDragSurfaceSelectionMode: true,
     })
     expectOnlySelect(spies)
+    expectNoDocumentWrite(harness, nodesBefore)
   })
 
   it('turns both flow flags off when the marquee selects nothing', () => {
@@ -460,7 +550,7 @@ describe('marquee in useWorkspaceCanvasSelectionDraft', () => {
   })
 
   it('clears nodes and Spaces with one clear when a click without drag ends a marquee', () => {
-    const { result, holder, pointerDown, pointerUp } = setup({
+    const { result, harness, nodesBefore, pointerDown, pointerUp } = setup({
       flagged: ['a'],
       nodeIds: ['a'],
       spaceIds: ['s'],
@@ -476,9 +566,13 @@ describe('marquee in useWorkspaceCanvasSelectionDraft', () => {
     expect(pointerUp(1002, 601)).toBe(false)
 
     expect(result.current.readSelection()).toMatchObject({ nodeIds: [], spaceIds: [] })
-    expect(holder.selectedIds).toEqual([])
+    expect(result.current.readFlowFlags()).toEqual({
+      nodesSelectionActive: false,
+      coveDragSurfaceSelectionMode: false,
+    })
     expect(clear).toHaveBeenCalledTimes(1)
     others.forEach(spy => expect(spy).not.toHaveBeenCalled())
+    expectNoDocumentWrite(harness, nodesBefore)
   })
 
   it('clears a Space-only selection when a click without drag ends a marquee', () => {
@@ -494,22 +588,16 @@ describe('marquee in useWorkspaceCanvasSelectionDraft', () => {
 describe('Space click selection in useWorkspaceCanvasSpaceDrag', () => {
   function setup(options: { flagged?: string[]; nodeIds?: string[]; spaceIds?: string[] }) {
     const harness = createCanvasDocumentHarness({
-      nodes: createRowNodes(['a', 'b', 'c', 'd'], options.flagged ?? []),
+      nodes: documentRow(['a', 'b', 'c', 'd'], options.flagged ?? []),
       spaces: [
         createSpace('s', { x: -50, y: -50, width: 400, height: 400 }, ['a']),
         createSpace('t', { x: 1500, y: 0, width: 400, height: 400 }, []),
       ],
     })
-    // The nodes as the store holds them, with the helpers the cases below read.
+    // The nodes as the store holds them, for the cases below that read positions.
     const holder = {
       get nodes() {
         return harness.readStoreDocument().nodes
-      },
-      get selectedIds() {
-        return harness
-          .readStoreDocument()
-          .nodes.filter(node => node.selected)
-          .map(node => node.id)
       },
     }
     function useDragUnderTest({ workspaceId, nodeStore }: CanvasNodeStoreContext) {
@@ -518,7 +606,6 @@ describe('Space click selection in useWorkspaceCanvasSpaceDrag', () => {
         drag: useWorkspaceCanvasSpaceDrag({
           workspaceId,
           reactFlow: { ...flow, screenToFlowPosition: point => point, getZoom: () => 1 },
-          setNodes: nodeStore.setNodes,
           updateCanvasDocument: nodeStore.updateCanvasDocument,
         }),
         ...useStoreProbe(),
@@ -550,22 +637,42 @@ describe('Space click selection in useWorkspaceCanvasSpaceDrag', () => {
       act(() => {
         window.dispatchEvent(new MouseEvent('mouseup', { clientX: point.x, clientY: point.y }))
       })
-    return { holder, down, up, ...hook }
+    const nodesBefore = harness.readStoreDocument().nodes
+    harness.notifications.mockClear()
+    return { harness, nodesBefore, holder, down, up, ...hook }
   }
 
-  it('selects the clicked Space with one select, clears the windows, flags and flow flags', () => {
-    const { result, holder, down } = setup({ flagged: ['a', 'b'], nodeIds: ['a', 'b'] })
+  it('selects the clicked Space with one select and the flow flags, and writes no document', () => {
+    const { result, harness, nodesBefore, down } = setup({
+      flagged: ['a', 'b'],
+      nodeIds: ['a', 'b'],
+    })
     const spies = spyOnCommands(result.current.selection)
 
     down('s', { x: 100, y: -40 })
 
     expect(result.current.readSelection()).toMatchObject({ nodeIds: [], spaceIds: ['s'] })
-    expect(holder.selectedIds).toEqual([])
     expect(result.current.readFlowFlags()).toEqual({
       nodesSelectionActive: false,
       coveDragSurfaceSelectionMode: false,
     })
     expectOnlySelect(spies)
+    expectNoDocumentWrite(harness, nodesBefore)
+  })
+
+  it('writes no document for a whole click either, and none for a Shift toggle', () => {
+    const { result, harness, nodesBefore, down, up } = setup({ nodeIds: ['b'], spaceIds: ['t'] })
+    const spacesBefore = harness.readStoreDocument().spaces
+
+    down('s', { x: 100, y: -40 })
+    up({ x: 100, y: -40 })
+    expect(result.current.readSelection()).toMatchObject({ nodeIds: [], spaceIds: ['s'] })
+
+    down('t', { x: 1600, y: 100 }, true)
+    up({ x: 1600, y: 100 })
+    expect(result.current.readSelection()).toMatchObject({ nodeIds: [], spaceIds: ['s', 't'] })
+    expectNoDocumentWrite(harness, nodesBefore)
+    expect(harness.readStoreDocument().spaces).toBe(spacesBefore)
   })
 
   it('does not select again when the Space is already selected', () => {
@@ -624,9 +731,15 @@ describe('the Spaces the selection hooks read (#702, PR 7)', () => {
   // run. Each case writes the Spaces in the call that reads them, or between the two calls of one
   // gesture, then shows the other workspace and does it again.
   function seedTwoWorkspaces() {
-    createCanvasDocumentHarness({ workspaceId: 'workspace-a' })
+    createCanvasDocumentHarness({
+      workspaceId: 'workspace-a',
+      nodes: createRowNodes(['a', 'b', 'c']),
+    })
     useAppStore.setState(state => ({
-      workspaces: [...state.workspaces, { ...state.workspaces[0], id: 'workspace-b' }],
+      workspaces: [
+        ...state.workspaces,
+        { ...state.workspaces[0], id: 'workspace-b', nodes: createRowNodes(['a', 'b', 'c']) },
+      ],
     }))
   }
 
@@ -646,9 +759,8 @@ describe('the Spaces the selection hooks read (#702, PR 7)', () => {
 
   it('scopes a toggle by the Spaces of the workspace of the render', () => {
     seedTwoWorkspaces()
-    const holder = createNodeHolder(createRowNodes(['a', 'b', 'c'], ['a']))
     const { view, switchTo } = switchableRender(() => ({
-      select: useWorkspaceCanvasSelectNode({ setNodes: holder.setNodes }),
+      select: useWorkspaceCanvasSelectNode(),
       ...useStoreProbe(),
     }))
     const wide = { x: -50, y: -50, width: 1400, height: 400 }
@@ -656,31 +768,31 @@ describe('the Spaces the selection hooks read (#702, PR 7)', () => {
 
     // In A one Space holds a and b, and c is outside every Space: a is out of c's scope.
     act(() => {
+      view.result.current.selection.select({ nodeIds: ['a'], spaceIds: [] })
       replaceSpacesInStore('workspace-a', [createSpace('s-a', narrow, ['a', 'b'])])
       view.result.current.select('c', { toggle: true })
     })
-    expect(holder.selectedIds).toEqual(['c'])
+    expect(view.result.current.readSelection().nodeIds).toEqual(['c'])
 
     // In B one Space holds all three, and a stays selected.
     switchTo('workspace-b')
-    holder.setNodes(nodes => nodes.map(node => ({ ...node, selected: node.id === 'a' })))
     act(() => {
+      view.result.current.selection.select({ nodeIds: ['a'], spaceIds: [] })
       replaceSpacesInStore('workspace-b', [createSpace('s-b', wide, ['a', 'b', 'c'])])
       view.result.current.select('c', { toggle: true })
     })
-    expect(holder.selectedIds).toEqual(['a', 'c'])
+    expect(view.result.current.readSelection().nodeIds).toEqual(['a', 'c'])
   })
 
   it('selects the Spaces the marquee touches in the workspace of the render, when it ends', () => {
     seedTwoWorkspaces()
-    const holder = createNodeHolder(createRowNodes(['a', 'b', 'c']))
     const pane = document.createElement('div')
     pane.className = 'react-flow__pane'
     document.body.append(pane)
     const selectionDraftRef: { current: SelectionDraftState | null } = { current: null }
     const reactFlow = {
       screenToFlowPosition: ({ x, y }: { x: number; y: number }) => ({ x, y }),
-      getNodes: () => holder.nodes,
+      getNodes: () => readWorkspaceDocument('workspace-a')?.nodes ?? [],
     } as unknown as ReactFlowInstance<Node<TerminalNodeData>>
     const { view, switchTo } = switchableRender(() => ({
       draft: useWorkspaceCanvasSelectionDraft({
@@ -689,7 +801,6 @@ describe('the Spaces the selection hooks read (#702, PR 7)', () => {
         isShiftPressedRef: { current: false },
         selectionDraftRef,
         reactFlow,
-        setNodes: holder.setNodes,
       }),
       ...useStoreProbe(),
     }))
