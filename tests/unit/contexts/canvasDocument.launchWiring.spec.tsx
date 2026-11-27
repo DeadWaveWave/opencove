@@ -105,14 +105,6 @@ const onShowMessage = vi.fn()
 const createNodeForSession = vi.fn()
 const metrics = { fontSize: 13 }
 const noopRef = () => ({ current: vi.fn() })
-const actionRefs = new Proxy(
-  {},
-  {
-    get(target: Record<string, unknown>, key: string) {
-      return (target[key] ??= { current: vi.fn() })
-    },
-  },
-) as never
 const taskRefs = {
   runTaskAgentRef: noopRef(),
   resumeTaskAgentSessionRef: noopRef(),
@@ -250,25 +242,20 @@ describe('the writer that launch callers hand to the mount repair and the bindin
       workspaceId: 'workspace',
       workspacePath: '/repo',
       agentSettings: DEFAULT_AGENT_SETTINGS,
+      readAgentSettings: () => DEFAULT_AGENT_SETTINGS,
       readDocument: vi.fn(),
-      setNodes,
       onSpacesChange,
       onShowMessage,
       standardWindowSizeBucket: 'regular',
       createRoleNode: vi.fn(),
       createNodeForSession,
-      updateRoleProvider: vi.fn(),
       updateRoleInput: vi.fn(),
       appendRoleRunRecord: vi.fn(),
-      actionRefs,
       buildAgentNodeTitle: () => 'Role',
     } as unknown as Parameters<typeof useWorkspaceCanvasRoleActions>[0]
     await expectsWriterOfTheRender({
       useHook: () => useWorkspaceCanvasRoleActions(params),
-      invoke: () =>
-        (
-          actionRefs as unknown as { runRoleRef: { current: (id: string) => Promise<void> } }
-        ).runRoleRef.current('role'),
+      invoke: ({ hook }) => hook.runRole('role'),
       writerOf: () =>
         (lastCall(runRoleNodeAction)[2] as { updateSpaces: unknown } | undefined)?.updateSpaces,
     })

@@ -22,6 +22,7 @@ import {
   replaceSpacesInStore,
 } from '../../support/workspaceCanvasStoreHarness'
 import { setDocumentNodes } from '../../support/documentNodes'
+import { readDefaultAgentSettings } from '../../support/agentSettingsReader'
 
 // The push-away that follows a node creation reads the document when it writes and writes the
 // moved nodes and the pushed Spaces in one store update (#702, PR 6). The node was already added
@@ -398,6 +399,7 @@ describe('assignNodeToSpaceAndExpand after a workspace switch', () => {
           nodes,
           standardWindowSizeBucket: 'regular',
           browserDefaultMode: 'iframe',
+          readAgentSettings: readDefaultAgentSettings,
         })
       },
       { workspaceId: () => shown },

@@ -15,6 +15,7 @@ import { createCanvasDocumentHarness, renderInCanvasDocument } from './canvasDoc
 import { CanvasStoreTestProvider } from './canvasStoreTestHarness'
 import { useWorkspaceCanvasStoreNodes } from './workspaceCanvasStoreHarness'
 import { setDocumentNodes } from './documentNodes'
+import { readDefaultAgentSettings } from './agentSettingsReader'
 
 // Shared by the specs that check what the callers of the push-away hand it (#702, PR 6). The spec
 // that uses it mocks the push-away and the canvas store's stable hooks itself: module mocks do not
@@ -132,6 +133,7 @@ export function useShownNodeStore(shown: string) {
     nodes,
     standardWindowSizeBucket: 'regular',
     browserDefaultMode: 'iframe',
+    readAgentSettings: readDefaultAgentSettings,
   })
 }
 

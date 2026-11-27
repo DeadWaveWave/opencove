@@ -334,8 +334,6 @@ const HOOKS_WITH_WRITER_PARAMETERS: readonly string[] = [
   '~/hooks/useAgentLauncher.ts#useWorkspaceCanvasAgentLauncher:updateCanvasDocument',
   '~/hooks/useCanvasAgentSupport.ts#useWorkspaceCanvasAgentSupport:updateCanvasDocument',
   '~/hooks/useCanvasImageImport.ts#useWorkspaceCanvasImageImport:updateCanvasDocument',
-  '~/hooks/useCanvasRoleUi.ts#useWorkspaceCanvasRoleUi:setNodes',
-  '~/hooks/useCanvasRoleUi.ts#useWorkspaceCanvasRoleUi:updateCanvasDocument',
   '~/hooks/useCanvasShortcutActions.ts#useWorkspaceCanvasShortcutActions:updateCanvasDocument',
   '~/hooks/useCanvasSpaceExplorer.ts#useCanvasSpaceExplorer:setNodes',
   '~/hooks/useCanvasSpaceExplorer.ts#useCanvasSpaceExplorer:updateCanvasDocument',
@@ -358,9 +356,6 @@ const HOOKS_WITH_WRITER_PARAMETERS: readonly string[] = [
   '~/hooks/useNodesStore.createNodes.ts#useWorkspaceCanvasNodeCreation:setNodes',
   '~/hooks/useNodesStore.createRoleNode.ts#useWorkspaceCanvasRoleNodeCreation:setNodes',
   '~/hooks/useNodesStore.createWebsiteNode.ts#useWorkspaceCanvasWebsiteNodeCreation:setNodes',
-  '~/hooks/useNodesStore.roleMutations.ts#useWorkspaceCanvasRoleNodeMutations:setNodes',
-  '~/hooks/useRoleActions.ts#useWorkspaceCanvasRoleActions:setNodes',
-  '~/hooks/useRoleActions.ts#useWorkspaceCanvasRoleActions:updateCanvasDocument',
   '~/hooks/useSpaceDirectoryOps.ts#useWorkspaceCanvasSpaceDirectoryOps:updateCanvasDocument',
   '~/hooks/useSpaceDrag.ts#useWorkspaceCanvasSpaceDrag:updateCanvasDocument',
   '~/hooks/useSpaceExplorer.quickPreviewActions.ts#useWorkspaceCanvasSpaceExplorerQuickPreviewActions:setNodes',
@@ -447,12 +442,12 @@ describe('hooks do not take the node writer as a parameter', () => {
     ])
   })
 
-  // The four hooks that still receive the writer inside a `nodeStore` or an options object, which
+  // The three hooks that still receive the writer inside a `nodeStore` or an options object, which
   // the first version of the check did not see (found in review). They are in the list because
-  // later pull requests remove them. `useWorkspaceCanvasRuntimeIntegrations` left it in PR 5.
+  // later pull requests remove them. `useWorkspaceCanvasRuntimeIntegrations` left it in PR 5, and
+  // `useWorkspaceCanvasRoleUi` in PR 6.
   it.each([
     ['hooks/useFilesystemNodes.ts', 'useFilesystemNodes'],
-    ['hooks/useCanvasRoleUi.ts', 'useWorkspaceCanvasRoleUi'],
     ['hooks/useCanvasSpaceExplorer.ts', 'useCanvasSpaceExplorer'],
     ['hooks/useInteractions.quickMenuActions.ts', 'useWorkspaceCanvasQuickMenuActions'],
   ])('finds the writer that %s receives inside an object parameter', (file, hook) => {

@@ -20,6 +20,7 @@ import {
   seedWorkspaceCanvasStore,
   useWorkspaceCanvasStoreNodes,
 } from '../../support/workspaceCanvasStoreHarness'
+import { readDefaultAgentSettings } from '../../support/agentSettingsReader'
 
 const mocks = vi.hoisted(() => ({ cleanup: vi.fn() }))
 vi.mock('../../../src/contexts/workspace/presentation/renderer/utils/nodeRuntimeCleanup', () => ({
@@ -44,6 +45,7 @@ function renderStore(nodes = [pixelNode()], onStoreWrite = vi.fn(), onFlush = vi
         nodes: useWorkspaceCanvasStoreNodes(),
         standardWindowSizeBucket: 'regular',
         browserDefaultMode: 'iframe',
+        readAgentSettings: readDefaultAgentSettings,
       })
       const confirmation = useWorkspaceCanvasNodeDeleteConfirmation({
         closeNode: store.closeNode,

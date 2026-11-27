@@ -32,3 +32,9 @@ export function agentSettingsProps(settings: AgentSettings): {
   }
   return { agentSettings: settings, readAgentSettings: read }
 }
+
+/**
+ * One reader of the default settings for the whole test run: a node store or creation hook under
+ * test is handed it, and it keeps its identity across renders, as the shell's reader does.
+ */
+export const readDefaultAgentSettings: () => AgentSettings = createAgentSettingsReader()

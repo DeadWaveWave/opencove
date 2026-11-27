@@ -36,7 +36,7 @@ it.each(['update', 'plugins\0 explain this project'])(
       readDocument,
       agentSettings: DEFAULT_AGENT_SETTINGS,
       projectRoles: [{ id: 'definition', promptTemplate: prompt }],
-      setNodes,
+      updateNodes: setNodes,
       updateCanvasDocument,
       updateSpaces,
       createNodeForSession,

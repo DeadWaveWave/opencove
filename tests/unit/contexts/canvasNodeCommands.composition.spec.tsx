@@ -32,6 +32,9 @@ describe('the composition of the families (useComposedCanvasNodeCommands)', () =
       setWebsiteSession: vi.fn(),
       setWebsiteMode: vi.fn(),
       setWebsiteFullscreen: vi.fn(),
+      updateRoleInput: vi.fn(),
+      updateRoleProvider: vi.fn(),
+      runRole: vi.fn(async () => undefined),
     }
   }
 
@@ -67,6 +70,7 @@ describe('the composition of the families (useComposedCanvasNodeCommands)', () =
     expect(result.current.terminal).toBe(first.terminal)
     expect(result.current.note).toBe(first.note)
     expect(result.current.website).toBe(first.website)
+    expect(result.current.role).toBe(first.role)
   })
 
   it.each([
@@ -92,6 +96,9 @@ describe('the composition of the families (useComposedCanvasNodeCommands)', () =
     ['setWebsiteSession', 'website'],
     ['setWebsiteMode', 'website'],
     ['setWebsiteFullscreen', 'website'],
+    ['updateRoleInput', 'role'],
+    ['updateRoleProvider', 'role'],
+    ['runRole', 'role'],
   ] as const)('renews %s: its family and the object, and no other family', (name, family) => {
     const { result, rerender, base } = renderCommands()
     const first = result.current
@@ -99,7 +106,7 @@ describe('the composition of the families (useComposedCanvasNodeCommands)', () =
     rerender({ ...base, [name]: vi.fn() })
 
     expect(result.current).not.toBe(first)
-    for (const other of ['window', 'terminal', 'note', 'website'] as const) {
+    for (const other of ['window', 'terminal', 'note', 'website', 'role'] as const) {
       if (other === family) {
         expect(result.current[other], other).not.toBe(first[other])
       } else {
@@ -118,6 +125,9 @@ describe('the composition of the families (useComposedCanvasNodeCommands)', () =
     commands.window.requestDelete(['x'])
     commands.note.updateText('x', 't')
     commands.website.setPinned('x', true)
+    commands.role.updateInput('x', 'in')
+    commands.role.updateProvider('x', 'opencode')
+    await commands.role.run('x', 'override')
     commands.terminal.updateScrollback('x', 'out')
     commands.terminal.recordCommandRun('x', 'ls', 7)
     commands.terminal.clearAgentOverlay('x', 8)
@@ -133,6 +143,9 @@ describe('the composition of the families (useComposedCanvasNodeCommands)', () =
     expect(base.requestNodeDelete).toHaveBeenCalledWith(['x'])
     expect(base.updateNoteText).toHaveBeenCalledWith('x', 't')
     expect(base.setWebsitePinned).toHaveBeenCalledWith('x', true)
+    expect(base.updateRoleInput).toHaveBeenCalledWith('x', 'in')
+    expect(base.updateRoleProvider).toHaveBeenCalledWith('x', 'opencode')
+    expect(base.runRole).toHaveBeenCalledWith('x', 'override')
     expect(base.updateScrollback).toHaveBeenCalledWith('x', 'out')
     expect(base.recordCommandRun).toHaveBeenCalledWith('x', 'ls', 7)
     expect(base.clearAgentOverlay).toHaveBeenCalledWith('x', 8)

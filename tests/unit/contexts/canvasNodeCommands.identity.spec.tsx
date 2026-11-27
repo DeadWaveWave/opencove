@@ -98,6 +98,31 @@ describe('the identity of the node commands and of the params value (Decision 3,
       },
     ],
     [
+      // The role run reads the definitions of the project when it starts (PR 6).
+      'a settings change of the role definitions the role commands read at call time',
+      () => {
+        useAppStore.setState(state => ({
+          agentSettings: {
+            ...state.agentSettings,
+            projectRolesByWorkspaceId: {
+              [A]: [
+                {
+                  id: 'role-1',
+                  name: 'Reviewer',
+                  description: '',
+                  promptTemplate: 'Review: {{input}}',
+                  inputHint: '',
+                  outputFormat: '',
+                  createdAt: '2026-03-15T00:00:00.000Z',
+                  updatedAt: '2026-03-15T00:00:00.000Z',
+                },
+              ],
+            },
+          },
+        }))
+      },
+    ],
+    [
       'a settings change of a field the commands read at call time (standardWindowSizeBucket)',
       () => {
         useAppStore.setState(state => ({
@@ -141,6 +166,7 @@ describe('the identity of the node commands and of the params value (Decision 3,
     expect(commandsOf().terminal).toBe(before.terminal)
     expect(commandsOf().note).toBe(before.note)
     expect(commandsOf().website).toBe(before.website)
+    expect(commandsOf().role).toBe(before.role)
   })
 
   it('changes with the workspace: the params value, every family, and the path', async () => {
@@ -157,6 +183,7 @@ describe('the identity of the node commands and of the params value (Decision 3,
     expect(after.commands.terminal).not.toBe(before.commands.terminal)
     expect(after.commands.note).not.toBe(before.commands.note)
     expect(after.commands.website).not.toBe(before.commands.website)
+    expect(after.commands.role).not.toBe(before.commands.role)
     expect(after.workspacePath).toBe(`/tmp/${B}`)
     // The other five preferences are the settings', and the settings are the app's.
     expect(after.onShowMessage).toBe(before.onShowMessage)
@@ -180,8 +207,9 @@ describe('the identity of the node commands and of the params value (Decision 3,
     expect(commandsOf().terminal).toBe(before.params.commands.terminal)
   })
 
-  // The path and the environment are bound by the render (the launch's mount and env): rare.
-  it('changes the terminal family and the object, and no other family, with an environment edit', async () => {
+  // The path and the environment are bound by the render (the launch's mount and env): rare. The
+  // terminal and role commands launch with them.
+  it('changes the terminal and role families and the object, and no other family, with an environment edit', async () => {
     await mount()
     const before = commandsOf()
 
@@ -189,6 +217,7 @@ describe('the identity of the node commands and of the params value (Decision 3,
 
     expect(commandsOf()).not.toBe(before)
     expect(commandsOf().terminal).not.toBe(before.terminal)
+    expect(commandsOf().role).not.toBe(before.role)
     expect(commandsOf().window).toBe(before.window)
     expect(commandsOf().note).toBe(before.note)
     expect(commandsOf().website).toBe(before.website)

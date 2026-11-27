@@ -8,6 +8,7 @@ import { updateWorkspacesWithTerminalGeometry } from '../../../src/app/renderer/
 import { useWorkspaceCanvasNodesStore } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore'
 import type { WorkspaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { pixelNode } from './workspacePixelLayer.fixtures'
+import { readDefaultAgentSettings } from '../../support/agentSettingsReader'
 
 function workspace(): WorkspaceState {
   return {
@@ -36,6 +37,7 @@ function renderCanvasNodesStore() {
         nodes,
         standardWindowSizeBucket: 'regular',
         browserDefaultMode: 'iframe',
+        readAgentSettings: readDefaultAgentSettings,
       })
     },
     {

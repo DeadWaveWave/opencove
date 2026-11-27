@@ -26,7 +26,7 @@ import { useScrollbackStore } from '../../../src/contexts/workspace/presentation
 installCanvasHarnessHooks()
 
 describe('a command called with an id the document no longer holds writes nothing about it', () => {
-  // The window, terminal, note and website families, one row per command. `clearSelection` has no id.
+  // The window, terminal, note, website and role families, one row per command. `clearSelection` has no id.
   // Every row also reads the selection and the React Flow flag: they stay as they were (Invariant 2).
   const table: Array<[string, (commands: WiredCanvasNodeCommands) => unknown]> = [
     ['window.select', c => c.window.select('gone')],
@@ -51,6 +51,11 @@ describe('a command called with an id the document no longer holds writes nothin
       'terminal.switchAgentSession',
       c => c.terminal.switchAgentSession('gone', { sessionId: 'r', provider: 'codex' } as never),
     ],
+    // The role family (PR 6): nothing is written, flushed or launched for the window.
+    ['role.updateInput', c => c.role.updateInput('gone', 'input')],
+    ['role.updateProvider', c => c.role.updateProvider('gone', 'opencode')],
+    ['role.run', c => c.role.run('gone')],
+    ['role.run with an input', c => c.role.run('gone', 'typed')],
     ['note.updateText', c => c.note.updateText('gone', 'text')],
     ['note.renameTitle', c => c.note.renameTitle('gone', 'title')],
     ['note.convertToTask', c => c.note.convertToTask('gone')],

@@ -25,6 +25,7 @@ import {
   seedWorkspaceCanvasStore,
   useWorkspaceCanvasStoreNodes,
 } from './workspaceCanvasStoreHarness'
+import { readDefaultAgentSettings } from './agentSettingsReader'
 
 export const CANVAS_DOCUMENT_WORKSPACE_ID = 'workspace-1'
 
@@ -189,6 +190,7 @@ export function renderCanvasNodeStore<Extra extends object = Record<never, never
         nodes: canvasState.flowNodes,
         standardWindowSizeBucket: 'regular',
         browserDefaultMode: 'iframe',
+        readAgentSettings: readDefaultAgentSettings,
         ...nodeStoreOptions,
       })
       const context = {

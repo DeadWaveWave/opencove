@@ -23,6 +23,7 @@ import {
 } from '../../src/app/main/controlSurface/remote/remotePtyRuntime.attach'
 import { writeRemotePtyThroughAttachedSocket } from '../../src/app/main/controlSurface/remote/remotePtyRuntime.socketSend'
 import { setDocumentNodes } from '../support/documentNodes'
+import { readDefaultAgentSettings } from '../support/agentSettingsReader'
 
 vi.mock('electron', () => ({ webContents: { fromId: () => null } }))
 
@@ -132,6 +133,7 @@ function setup() {
           setDocumentNodes(CANVAS_STORE_TEST_WORKSPACE_ID, updater(readNodes()))
         },
         standardWindowSizeBucket: 'regular' as const,
+        readAgentSettings: readDefaultAgentSettings,
         browserDefaultMode: 'native' as const,
         onShowMessage,
       }

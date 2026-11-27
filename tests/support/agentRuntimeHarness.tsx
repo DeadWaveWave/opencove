@@ -21,6 +21,7 @@ import {
   type CanvasDocumentHarness,
 } from './canvasDocumentHarness'
 import { useWorkspaceCanvasStoreNodes } from './workspaceCanvasStoreHarness'
+import { readDefaultAgentSettings } from './agentSettingsReader'
 
 // A selector must return the same array while the store holds none.
 const EMPTY_SPACES: WorkspaceSpaceState[] = []
@@ -206,6 +207,7 @@ export function renderInTwoWorkspaces<Result>(
         nodes: canvasState.flowNodes,
         standardWindowSizeBucket: 'regular',
         browserDefaultMode: 'iframe',
+        readAgentSettings: readDefaultAgentSettings,
       })
       const latestSetNodes = useRef(nodeStore.setNodes)
       latestSetNodes.current = nodeStore.setNodes
