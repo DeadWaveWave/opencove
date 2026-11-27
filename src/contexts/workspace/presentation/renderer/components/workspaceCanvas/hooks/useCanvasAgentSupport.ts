@@ -7,7 +7,7 @@ export function useWorkspaceCanvasAgentSupport({
   bumpAgentLaunchToken,
   isAgentLaunchTokenCurrent,
   readAgentSettings,
-  terminalDisplayCalibration,
+  readTerminalDisplayCalibration,
   workspaceId,
   workspacePath,
   environmentVariables,
@@ -22,9 +22,9 @@ export function useWorkspaceCanvasAgentSupport({
     typeof useWorkspaceCanvasAgentNodeLifecycle
   >[0]['isAgentLaunchTokenCurrent']
   readAgentSettings: Parameters<typeof useWorkspaceCanvasAgentLauncher>[0]['readAgentSettings']
-  terminalDisplayCalibration: Parameters<
+  readTerminalDisplayCalibration: Parameters<
     typeof useWorkspaceCanvasAgentNodeLifecycle
-  >[0]['terminalDisplayCalibration']
+  >[0]['readTerminalDisplayCalibration']
   workspaceId: Parameters<typeof useWorkspaceCanvasAgentLauncher>[0]['workspaceId']
   workspacePath: Parameters<typeof useWorkspaceCanvasAgentLauncher>[0]['workspacePath']
   environmentVariables?: Record<string, string>
@@ -46,7 +46,7 @@ export function useWorkspaceCanvasAgentSupport({
     bumpAgentLaunchToken,
     isAgentLaunchTokenCurrent,
     readAgentSettings,
-    terminalDisplayCalibration,
+    readTerminalDisplayCalibration,
     environmentVariables,
   })
   const overlayActions = useTerminalAgentSessionActions({ onShowMessage })

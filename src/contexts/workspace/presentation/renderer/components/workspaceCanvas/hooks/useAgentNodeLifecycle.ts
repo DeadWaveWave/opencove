@@ -14,7 +14,6 @@ import type {
 import { useCallback } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import { resolveEnabledEnvForAgent } from '@contexts/settings/domain/agentEnv'
-import type { TerminalClientDisplayCalibration } from '@contexts/settings/domain/terminalDisplayCalibration'
 import type { AgentNodeData } from '../../../types'
 import { resolveInitialAgentRuntimeStatus } from '../../../utils/agentRuntimeStatus'
 import {
@@ -55,8 +54,10 @@ interface UseAgentNodeLifecycleParams {
    * from the app's settings when a launch starts, not when this hook renders.
    */
   readAgentSettings: WorkspaceCanvasProps['readAgentSettings']
-  /** What the terminal's measured display adds to the launch geometry; bound by the render. */
-  terminalDisplayCalibration: TerminalClientDisplayCalibration | null
+  /** What the terminal's measured display adds to the launch geometry, read when a launch starts. */
+  readTerminalDisplayCalibration: NonNullable<
+    WorkspaceCanvasProps['readTerminalDisplayCalibration']
+  >
   environmentVariables?: Record<string, string>
 }
 
@@ -66,7 +67,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
   bumpAgentLaunchToken,
   isAgentLaunchTokenCurrent,
   readAgentSettings,
-  terminalDisplayCalibration,
+  readTerminalDisplayCalibration,
   environmentVariables,
 }: UseAgentNodeLifecycleParams) {
   const { t } = useTranslation()
@@ -276,7 +277,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
           terminalFontSize: settings.terminalFontSize,
           terminalDisplayMetrics: resolveTerminalDisplayMetrics({
             terminalFontSize: settings.terminalFontSize,
-            terminalDisplayCalibration,
+            terminalDisplayCalibration: readTerminalDisplayCalibration(),
           }),
         })
 
@@ -421,7 +422,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
       resolveMountId,
       setAgentNodeFailure,
       t,
-      terminalDisplayCalibration,
+      readTerminalDisplayCalibration,
       updateNodes,
     ],
   )

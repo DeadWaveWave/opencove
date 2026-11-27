@@ -2,7 +2,10 @@ import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
 import type { TerminalClientDisplayCalibration } from '@contexts/settings/domain/terminalDisplayCalibration'
 import { useTerminalClientDisplayAutoCalibration } from '@contexts/settings/presentation/renderer/useTerminalClientDisplayAutoCalibration'
 import { useTerminalDisplayReferenceAutoCapture } from '@contexts/settings/presentation/renderer/useTerminalDisplayReferenceAutoCapture'
-import { useTerminalDisplayCalibrationProjection } from '@contexts/settings/presentation/renderer/useTerminalDisplayCalibrationProjection'
+import {
+  readTerminalDisplayCalibration,
+  useTerminalDisplayCalibrationProjection,
+} from '@contexts/settings/presentation/renderer/useTerminalDisplayCalibrationProjection'
 
 export function useTerminalDisplayAlignmentLifecycle(options: {
   isPersistReady: boolean
@@ -24,4 +27,11 @@ export function useTerminalDisplayAlignmentLifecycle(options: {
     terminalFontFamily: options.agentSettings.terminalFontFamily,
     terminalDisplayReference: options.agentSettings.terminalDisplayReference,
   })
+}
+
+/** The applied calibration now, as these settings allow it: for a command that runs later. */
+export function readAppliedTerminalDisplayCalibration(
+  settings: AgentSettings,
+): TerminalClientDisplayCalibration | null {
+  return readTerminalDisplayCalibration(settings)
 }

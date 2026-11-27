@@ -35,6 +35,9 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
   const commands = useCanvasNodeCommands()
   const windowCommands = commands.window
   const terminalCommands = commands.terminal
+  // The overlay-exit callback keeps its identity while the overlay does: the input bridge compares
+  // it by identity after a Ctrl+C, so it depends on the one command it calls, not on the family.
+  const { clearAgentOverlay } = terminalCommands
   const storeApi = useStoreApi()
   const scrollback = useScrollbackStore(state =>
     data.kind === 'agent' ? null : (state.scrollbackByNodeId[id] ?? data.scrollback ?? null),
@@ -51,8 +54,8 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
     if (overlayStartedAtMs === null || gatewayOwnsOverlayLifecycle) {
       return
     }
-    terminalCommands.clearAgentOverlay(id, overlayStartedAtMs)
-  }, [gatewayOwnsOverlayLifecycle, id, overlayStartedAtMs, terminalCommands])
+    clearAgentOverlay(id, overlayStartedAtMs)
+  }, [clearAgentOverlay, gatewayOwnsOverlayLifecycle, id, overlayStartedAtMs])
   const labelColor =
     (data as TerminalNodeData & { effectiveLabelColor?: LabelColor | null }).effectiveLabelColor ??
     null

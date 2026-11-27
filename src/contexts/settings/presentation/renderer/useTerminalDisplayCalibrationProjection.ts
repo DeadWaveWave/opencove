@@ -16,17 +16,17 @@ export function useTerminalDisplayCalibrationSnapshot(): TerminalDisplayCalibrat
   )
 }
 
-export function useTerminalDisplayCalibrationProjection({
-  terminalFontSize,
-  terminalFontFamily,
-  terminalDisplayReference,
-}: {
+interface CalibrationProjectionSettings {
   terminalFontSize: number
   terminalFontFamily: string | null
   terminalDisplayReference: TerminalDisplayReference | null
-}): TerminalClientDisplayCalibration | null {
-  const snapshot = useTerminalDisplayCalibrationSnapshot()
-  const calibration = snapshot.appliedCalibration
+}
+
+/** The owner's applied calibration, if it fits the profile and reference of these settings. */
+export function projectTerminalDisplayCalibration(
+  calibration: TerminalClientDisplayCalibration | null,
+  { terminalFontSize, terminalFontFamily, terminalDisplayReference }: CalibrationProjectionSettings,
+): TerminalClientDisplayCalibration | null {
   if (
     !calibration ||
     !isTerminalDisplayReferenceForProfile(terminalDisplayReference, {
@@ -38,4 +38,23 @@ export function useTerminalDisplayCalibrationProjection({
     return null
   }
   return calibration
+}
+
+/** The projection now, for a command that runs later: nothing subscribes. */
+export function readTerminalDisplayCalibration(
+  settings: CalibrationProjectionSettings,
+): TerminalClientDisplayCalibration | null {
+  return projectTerminalDisplayCalibration(
+    terminalDisplayCalibrationOwner.getSnapshot().appliedCalibration,
+    settings,
+  )
+}
+
+export function useTerminalDisplayCalibrationProjection(
+  settings: CalibrationProjectionSettings,
+): TerminalClientDisplayCalibration | null {
+  return projectTerminalDisplayCalibration(
+    useTerminalDisplayCalibrationSnapshot().appliedCalibration,
+    settings,
+  )
 }

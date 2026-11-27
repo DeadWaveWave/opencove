@@ -9,6 +9,8 @@ import { WorkspaceCanvasProviders } from './workspaceCanvas/WorkspaceCanvasProvi
 import { useCanvasSpaceExplorer } from './workspaceCanvas/hooks/useCanvasSpaceExplorer'
 import { useWorkspaceCanvasActionBar } from './workspaceCanvas/hooks/useCanvasActionBarActions'
 import { useCanvasCommitProbe } from './shared/windowCommitProbe'
+const readNoCalibration = (): null => null
+
 export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
   const {
     workspaceId,
@@ -30,6 +32,7 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
     agentSettings,
     readAgentSettings,
     terminalDisplayCalibration = null,
+    readTerminalDisplayCalibration = readNoCalibration,
     terminalDisplayMetrics,
     onChangePreserveWindowSizesOnArrange,
     isFocusNodeTargetZoomPreviewing = false,
@@ -102,7 +105,7 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
     bumpAgentLaunchToken: nodeStore.bumpAgentLaunchToken,
     isAgentLaunchTokenCurrent: nodeStore.isAgentLaunchTokenCurrent,
     readAgentSettings,
-    terminalDisplayCalibration,
+    readTerminalDisplayCalibration,
     workspaceId,
     workspacePath,
     environmentVariables,
