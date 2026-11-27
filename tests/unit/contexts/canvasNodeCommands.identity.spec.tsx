@@ -639,10 +639,7 @@ describe('the window commands reach the confirmation, the node store and the doc
 
 describe('a command called with an id the document no longer holds writes nothing about it', () => {
   // The window, note and website families, one row per command. `clearSelection` has no id.
-  // A click on a window the document no longer holds selects that id alone (the selection slice's
-  // semantics, pinned by `canvasSelection.writers`), so its row does not read the selection; it
-  // writes no document, opens no dialog and moves no viewport like every other row.
-  const SELECTS_THE_ID_ALONE = new Set(['window.select'])
+  // Every row also reads the selection and the React Flow flag: they stay as they were (Invariant 2).
   // These ask for a persistence flush on every call, as they did before S7 (`flush: true` on the
   // write): nothing is written, so the flush persists what was already there.
   const FLUSHES_WITHOUT_A_WRITE = new Set([
@@ -712,9 +709,8 @@ describe('a command called with an id the document no longer holds writes nothin
     expect(notifications).not.toHaveBeenCalled()
     expect(flushes).toHaveBeenCalledTimes(FLUSHES_WITHOUT_A_WRITE.has(name) ? 1 : 0)
     // The canvas store: the selection, the dialog, and the viewport are as they were.
-    if (!SELECTS_THE_ID_ALONE.has(name)) {
-      expect(readSelection().nodeIds).toEqual(['a'])
-    }
+    expect(readSelection().nodeIds).toEqual(['a'])
+    expect(reactFlow.state.nodesSelectionActive).toBe(true)
     expect(readUi().nodeDeleteConfirmation).toBeNull()
     expect(reactFlow.setCenter).not.toHaveBeenCalled()
   })
