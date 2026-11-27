@@ -11,7 +11,10 @@ import {
   renderCanvasNodeStore,
   type CanvasDocumentHarness,
 } from '../../support/canvasDocumentHarness'
-import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
+import {
+  createdTerminalForDocument,
+  replaceSpacesInStore,
+} from '../../support/workspaceCanvasStoreHarness'
 
 // A launch repairs the mount of its target Space after `mount.list` answers. The repair is written
 // as a recipe over the Spaces the store holds when it runs, so a Space that changed during the
@@ -257,7 +260,10 @@ describe('the mount repair of a terminal created from the pane', () => {
       directoryPath: '/repo/docs',
       rect: { x: 2300, y: 0, width: 800, height: 600 },
     })
-    const harness = createCanvasDocumentHarness({ spaces: [local] })
+    const harness = createCanvasDocumentHarness({
+      nodes: [createdTerminalForDocument('00000000-0000-4000-8000-000000000001')],
+      spaces: [local],
+    })
     stubControlSurface().resolveMounts()
     ;(window.opencoveApi.controlSurface.invoke as ReturnType<typeof vi.fn>).mockClear()
 
@@ -284,7 +290,10 @@ describe('the mount repair of a terminal created from the pane', () => {
       name: 'Docs',
       rect: { x: 2300, y: 0, width: 800, height: 600 },
     })
-    const harness = createCanvasDocumentHarness({ spaces: [target, other] })
+    const harness = createCanvasDocumentHarness({
+      nodes: [createdTerminalForDocument('00000000-0000-4000-8000-000000000001')],
+      spaces: [target, other],
+    })
     const { resolveMounts } = stubControlSurface()
 
     const launched = launchOnPane(harness, [target, other])
@@ -323,7 +332,10 @@ describe('the mount repair of a terminal created from the pane', () => {
       name: 'Docs',
       rect: { x: 2300, y: 0, width: 800, height: 600 },
     })
-    const harness = createCanvasDocumentHarness({ spaces: [target, other] })
+    const harness = createCanvasDocumentHarness({
+      nodes: [createdTerminalForDocument('00000000-0000-4000-8000-000000000001')],
+      spaces: [target, other],
+    })
     const { resolveMounts } = stubControlSurface()
 
     const launched = launchOnPane(harness, [other])
@@ -348,7 +360,10 @@ describe('the mount repair of a terminal created from the pane', () => {
 
   it('writes nothing when the Space needs no repair', async () => {
     const target = spaceOf('space-1', { targetMountId: 'mount-1' })
-    const harness = createCanvasDocumentHarness({ spaces: [target] })
+    const harness = createCanvasDocumentHarness({
+      nodes: [createdTerminalForDocument('00000000-0000-4000-8000-000000000001')],
+      spaces: [target],
+    })
     stubControlSurface().resolveMounts()
 
     await launchOnPane(harness, [target])

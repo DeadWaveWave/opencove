@@ -27,7 +27,7 @@ function createNode(
 }
 
 describe('assignNodeToSpaceAndExpand', () => {
-  it('derives containment from the exact created node when the rendered node ref is stale', () => {
+  it('derives containment from the node the store holds when the rendered node ref is stale', () => {
     const space: WorkspaceSpaceState = {
       id: 'tiny-space',
       name: 'Tiny Space',
@@ -43,19 +43,27 @@ describe('assignNodeToSpaceAndExpand', () => {
       { x: -140, y: -40 },
       { width: 720, height: 520 },
     )
-    // Models the async launch gap: the store holds the just-created node as it was first placed,
-    // while node creation returned the exact node.
-    const placed = createNode(createdTerminal.id, { x: 300, y: 300 }, { width: 100, height: 100 })
-    const harness = createCanvasDocumentHarness({ nodes: [seedNote, placed], spaces: [space] })
+    // Models the async launch gap: the creator's first copy of the node is stale, and the store
+    // holds the node as it is now. The assignment measures the store's node (#758); a caller
+    // copy that predates #758 is passed untyped and must be ignored.
+    const staleCallerCopy = createNode(
+      createdTerminal.id,
+      { x: 300, y: 300 },
+      { width: 100, height: 100 },
+    )
+    const harness = createCanvasDocumentHarness({
+      nodes: [seedNote, createdTerminal],
+      spaces: [space],
+    })
     const view = renderCanvasNodeStore(harness)
 
     act(() => {
       assignNodeToSpaceAndExpand({
         workspaceId: harness.workspaceId,
         createdNodeId: createdTerminal.id,
-        createdNode: createdTerminal,
         targetSpaceId: space.id,
         updateCanvasDocument: view.result.current.nodeStore.updateCanvasDocument,
+        ...({ createdNode: staleCallerCopy } as object),
       })
     })
 
@@ -93,7 +101,6 @@ describe('assignNodeToSpaceAndExpand', () => {
         assignNodeToSpaceAndExpand({
           workspaceId: harness.workspaceId,
           createdNodeId: created.id,
-          createdNode: created,
           targetSpaceId: space.id,
           updateCanvasDocument: view.result.current.nodeStore.updateCanvasDocument,
         })

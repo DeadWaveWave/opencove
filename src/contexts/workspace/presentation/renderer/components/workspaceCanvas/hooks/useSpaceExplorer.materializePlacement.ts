@@ -8,8 +8,8 @@ import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 /**
  * Moves a just-created explorer node to the nearest free spot to the right of its anchor when
  * the placement asks for it, and returns the node as stored after the move (or the created node
- * itself when it did not move), so callers hand the push-away the rect the node actually
- * occupies (#725).
+ * itself when it did not move), so a caller reports the position the node occupies. The Space
+ * assignment that follows takes the node from the document and does not need it (#725, #758).
  */
 export function repositionCreatedExplorerNode({
   created,

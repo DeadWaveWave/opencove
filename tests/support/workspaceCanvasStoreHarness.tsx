@@ -24,6 +24,19 @@ afterEach(() => {
 
 const DEFAULT_WORKSPACE_ID = 'workspace-1'
 
+/**
+ * The terminal that the node store's creator leaves in the document for a launch under test: the
+ * Space assignment takes its node from the document (#758), so a spec whose mocked creator returns
+ * a node must have the document hold it. It sits where a launch from the pane at (320, 180) puts it.
+ */
+export function createdTerminalForDocument(id: string): Node<TerminalNodeData> {
+  return {
+    id,
+    position: { x: 320, y: 180 },
+    data: { kind: 'terminal', width: 100, height: 100 } as TerminalNodeData,
+  }
+}
+
 export function seedWorkspaceCanvasStore({
   workspaceId = DEFAULT_WORKSPACE_ID,
   nodes = [],

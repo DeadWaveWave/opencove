@@ -231,7 +231,6 @@ export async function runRoleNodeAction(
       assignNodeToSpaceAndExpand({
         workspaceId: context.workspaceId,
         createdNodeId: createdAgentNode.id,
-        createdNode: createdAgentNode,
         targetSpaceId: owningSpace.id,
         updateCanvasDocument: context.updateCanvasDocument,
       })

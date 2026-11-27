@@ -46,7 +46,6 @@ export function createNoteNodeAtAnchor({
   assignNodeToSpaceAndExpand({
     workspaceId,
     createdNodeId: created.id,
-    createdNode: created,
     targetSpaceId: targetSpace.id,
     updateCanvasDocument,
   })

@@ -299,8 +299,8 @@ export function useWorkspaceCanvasSpaceExplorer({
           return null
         }
 
-        // The push-away must measure the node as stored after the reposition, not the
-        // pre-move object: the reposition may have moved it (#725).
+        // The reposition writes the moved node to the document; the push-away below takes the
+        // node from there (#725, #758), and `placed` is what this action returns.
         const placed = repositionCreatedExplorerNode({
           created,
           creationAnchor,
@@ -312,7 +312,6 @@ export function useWorkspaceCanvasSpaceExplorer({
         assignNodeToSpaceAndExpand({
           workspaceId,
           createdNodeId: created.id,
-          createdNode: placed,
           targetSpaceId: space.id,
           updateCanvasDocument,
         })

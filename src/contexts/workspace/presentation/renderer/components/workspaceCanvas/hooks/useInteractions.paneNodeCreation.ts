@@ -234,7 +234,6 @@ export async function createTerminalNodeAtFlowPosition({
     assignNodeToSpaceAndExpand({
       workspaceId,
       createdNodeId: created.id,
-      createdNode: created,
       targetSpaceId: targetSpace.id,
       targetSpaceSnapshot: targetSpace,
       targetSpaceBaseline,
@@ -359,7 +358,6 @@ export function createWebsiteNodeAtFlowPosition({
   assignNodeToSpaceAndExpand({
     workspaceId,
     createdNodeId: created.id,
-    createdNode: created,
     targetSpaceId: targetSpace.id,
     updateCanvasDocument,
   })

@@ -4,7 +4,11 @@ import React, { type ReactElement } from 'react'
 import { expect, type Mock } from 'vitest'
 import { useAppStore } from '../../src/app/renderer/shell/store/useAppStore'
 import { useWorkspaceCanvasNodesStore } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore'
-import { readWorkspaceDocument } from '../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+import {
+  readWorkspaceDocument,
+  replaceWorkspaceNodes,
+} from '../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+import type { WorkspaceDocument } from '../../src/contexts/workspace/presentation/renderer/store/workspaceDocument'
 import { useCanvasUiCommands } from '../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
 import type {
   TerminalNodeData,
@@ -36,6 +40,82 @@ export const CREATED = {
   data: { width: 100, height: 100 },
 } as unknown as Node<TerminalNodeData>
 
+/** The workspace whose canvas the harness shows: where a creator of the specs writes its node. */
+let shownWorkspaceId = 'workspace-a'
+
+/**
+ * A creator that behaves as the node store's do: it adds the node to the document of the
+ * workspace shown, then returns it. A mock creator that only returned the node would let a caller
+ * assign a node that the document does not hold, and no spec would see it (#758).
+ */
+export function createdInShownDocument(node: Node<TerminalNodeData> = CREATED) {
+  return writeCreatedNode(shownWorkspaceId, node)
+}
+
+export function writeCreatedNode(workspaceId: string, node: Node<TerminalNodeData>) {
+  const document = readWorkspaceDocument(workspaceId)
+  if (!document) {
+    throw new Error(`workspace ${workspaceId} is not in the store`)
+  }
+  replaceWorkspaceNodes(workspaceId, [...document.nodes.filter(item => item.id !== node.id), node])
+  return node
+}
+
+/** The node writer of the specs: it writes the document of the workspace shown, as the store's does. */
+export function writeShownNodes(
+  updater: (nodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
+) {
+  const document = readWorkspaceDocument(shownWorkspaceId)
+  if (!document) {
+    throw new Error(`workspace ${shownWorkspaceId} is not in the store`)
+  }
+  replaceWorkspaceNodes(shownWorkspaceId, updater(document.nodes))
+}
+
+/**
+ * What the document held for the node of an assignment at the moment the assignment was called
+ * (#758: the recipe takes the node from the document, so a caller must have written it first).
+ */
+export interface AssignmentRecord {
+  createdNodeId: string
+  /** The node as the document held it then, or `undefined` when it held none. */
+  nodeInDocument: Node<TerminalNodeData> | undefined
+}
+
+export const assignmentRecords: AssignmentRecord[] = []
+
+/**
+ * Makes the mocked push-away record, for each call, the node the document holds under the id it was
+ * given, read when it is called. `readDocument` defaults to the document of the workspace shown.
+ */
+export function recordAssignmentsAgainst(
+  assign: Mock,
+  readDocument: () => WorkspaceDocument | undefined = () => readWorkspaceDocument(shownWorkspaceId),
+) {
+  assignmentRecords.length = 0
+  assign.mockImplementation((args: { createdNodeId: string }) => {
+    assignmentRecords.push({
+      createdNodeId: args.createdNodeId,
+      nodeInDocument: readDocument()?.nodes.find(node => node.id === args.createdNodeId),
+    })
+  })
+}
+
+/**
+ * The precondition of #758 for every assignment recorded so far: the document held the node when
+ * the caller called the push-away. `assign` must have had its calls recorded, so that a spec
+ * that forgot `recordAssignmentsAgainst` fails here, not silently.
+ */
+export function expectsEveryAssignedNodeInTheDocument(assign: Mock) {
+  expect(assignmentRecords).toHaveLength(assign.mock.calls.length)
+  for (const record of assignmentRecords) {
+    expect(
+      record.nodeInDocument,
+      `the document held no node ${record.createdNodeId} when it was assigned to a Space`,
+    ).toBeDefined()
+  }
+}
+
 export const spacesRef = { current: [TARGET] }
 export const nodesRef = { current: [] as Node<TerminalNodeData>[] }
 
@@ -64,6 +144,7 @@ export function useShownNodeStore(shown: string) {
  */
 export function renderCaller<Result>(useHook: (updateCanvasDocument: Updater) => Result) {
   let shown = 'workspace-a'
+  shownWorkspaceId = shown
   const view = renderInCanvasDocument(
     () => {
       const store = useShownNodeStore(shown)
@@ -76,6 +157,7 @@ export function renderCaller<Result>(useHook: (updateCanvasDocument: Updater) =>
     switchTo(workspaceId: string) {
       act(() => {
         shown = workspaceId
+        shownWorkspaceId = shown
         view.rerender()
       })
     },
@@ -96,6 +178,7 @@ function renderElementCaller<Result>(
   ) => ReactElement,
 ) {
   let shown = 'workspace-a'
+  shownWorkspaceId = shown
   const result = {
     current: undefined as unknown as { hook: Result; ui: ReturnType<typeof useCanvasUiCommands> },
   }
@@ -119,6 +202,7 @@ function renderElementCaller<Result>(
     switchTo(workspaceId: string) {
       act(() => {
         shown = workspaceId
+        shownWorkspaceId = shown
         view.rerender(<Harness />)
       })
     },
@@ -205,6 +289,7 @@ export async function expectsWriterOfTheRender<Result>({
   await act(async () => {
     await invoke(view.result.current)
   })
+  expectsEveryAssignedNodeInTheDocument(assign)
   expectsOneFlushAfterThePushAway(flushSpy, 1, assign)
   write('marker-a')
   expect(spaceIds('workspace-a')).toEqual(['marker-a'])
@@ -214,6 +299,7 @@ export async function expectsWriterOfTheRender<Result>({
   await act(async () => {
     await invoke(view.result.current)
   })
+  expectsEveryAssignedNodeInTheDocument(assign)
   expectsOneFlushAfterThePushAway(flushSpy, 2, assign)
   write('marker-b')
   expect(spaceIds('workspace-a')).toEqual(['marker-a'])

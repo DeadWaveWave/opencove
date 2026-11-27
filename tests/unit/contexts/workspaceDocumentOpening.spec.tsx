@@ -106,6 +106,15 @@ function fixture(workspaceId = 'workspace') {
   return options
 }
 
+/** The node that the document held for each assignment, read when the assignment was called. */
+function recordNodeHeldAtAssign(options: ReturnType<typeof fixture>) {
+  const held: Array<Node<TerminalNodeData> | undefined> = []
+  mocks.assign.mockImplementation((args: { createdNodeId: string }) => {
+    held.push(options.nodesRef.current.find(node => node.id === args.createdNodeId))
+  })
+  return held
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   mocks.resolveBinding.mockResolvedValue(binding)
@@ -114,6 +123,7 @@ beforeEach(() => {
 describe('shared document opening', () => {
   it('keeps the source binding and collapse-aware Space assignment instead of reusing a moved local file', async () => {
     const options = fixture()
+    const heldAtAssign = recordNodeHeldAtAssign(options)
     options.nodesRef.current.push(
       documentNode('local-document', { endpointId: 'local', mountId: null }),
     )
@@ -140,11 +150,14 @@ describe('shared document opening', () => {
     for (const channel of ['spacesRef', 'nodesRef', 'setNodes', 'onSpacesChange']) {
       expect(mocks.assign.mock.calls[0][0]).not.toHaveProperty(channel)
     }
+    // The creator wrote the node before the assignment ran (#758).
+    expect(heldAtAssign).toEqual([expect.objectContaining({ id: 'new-document' })])
     expect(options.harness.flush).toHaveBeenCalledOnce()
   })
 
-  it('hands the push-away the created node as repositioned, not as created (#725)', async () => {
+  it('assigns the node where the reposition put it in the document (#725)', async () => {
     const options = fixture()
+    const heldAtAssign = recordNodeHeldAtAssign(options)
     const { result } = renderInCanvasDocument(() => useWorkspaceDocumentOpening(options), {
       workspaceId: options.workspaceId,
     })
@@ -166,12 +179,14 @@ describe('shared document opening', () => {
       x: 10,
       y: 332,
     })
+    // The assignment takes the node from the document (#758): when it ran, the document held the
+    // node at the placed position.
     expect(mocks.assign).toHaveBeenCalledWith(
-      expect.objectContaining({
-        createdNodeId: 'new-document',
-        createdNode: expect.objectContaining({ position: { x: 10, y: 332 } }),
-      }),
+      expect.objectContaining({ createdNodeId: 'new-document' }),
     )
+    expect(heldAtAssign).toEqual([
+      expect.objectContaining({ id: 'new-document', position: { x: 10, y: 332 } }),
+    ])
   })
 
   it('rechecks the destination after resolving a mount and never falls back to local', async () => {

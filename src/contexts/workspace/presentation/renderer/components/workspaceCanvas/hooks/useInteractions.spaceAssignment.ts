@@ -1,6 +1,5 @@
-import type { Node } from '@xyflow/react'
 import { resolveInnermostSpaceAtPoint } from '@contexts/space/application/spaceContainment'
-import type { Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
+import type { Point, WorkspaceSpaceState } from '../../../types'
 import { expandSpaceToFitOwnedNodesAndPushAway } from '../../../utils/spaceAutoResize'
 import { sanitizeSpaces } from '../helpers'
 import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
@@ -25,11 +24,15 @@ export function findContainingSpaceByAnchor(
  * since, are in the layout. The collapse state is not part of the document and is read once,
  * before. It writes the Spaces always and the nodes only when a position moved, and it asks for no
  * flush and no terminal layout sync.
+ *
+ * The node is taken from the document by `createdNodeId` when the write runs, never from the
+ * caller: a node that moved or grew after its creator returned it is measured where the document
+ * holds it. A node that the document no longer holds (closed meanwhile) changes nothing: no
+ * membership, no snapshot Space, no growth, no push (#758).
  */
 export function assignNodeToSpaceAndExpand({
   workspaceId,
   createdNodeId,
-  createdNode,
   targetSpaceId,
   targetSpaceSnapshot,
   targetSpaceBaseline,
@@ -38,7 +41,6 @@ export function assignNodeToSpaceAndExpand({
 }: {
   workspaceId?: string
   createdNodeId: string
-  createdNode: Node<TerminalNodeData>
   targetSpaceId: string
   targetSpaceSnapshot?: WorkspaceSpaceState | null
   targetSpaceBaseline?: WorkspaceSpaceState | null
@@ -51,6 +53,10 @@ export function assignNodeToSpaceAndExpand({
 
   updateCanvasDocument(
     ({ nodes, spaces }) => {
+      if (!nodes.some(node => node.id === createdNodeId)) {
+        return { nodes, spaces }
+      }
+
       const baseSpaces = mergeTargetSpaceSnapshot({
         spaces,
         targetSpaceId,
@@ -70,10 +76,7 @@ export function assignNodeToSpaceAndExpand({
         }),
       )
 
-      const layoutNodes = hasUsableLayoutRect(createdNode)
-        ? [...nodes.filter(node => node.id !== createdNode.id), createdNode]
-        : nodes
-      const presented = projectCanvasInteractionLayout(layoutNodes, nextSpaces, collapse)
+      const presented = projectCanvasInteractionLayout(nodes, nextSpaces, collapse)
       const expanded = expandSpaceToFitOwnedNodesAndPushAway({
         targetSpaceId,
         spaces: presented.spaces,
@@ -91,7 +94,7 @@ export function assignNodeToSpaceAndExpand({
       const { nextSpaces: pushedSpaces, nextNodePositionById: nodePositionById } =
         restoreCanvasInteractionLayout(
           { nextSpaces: expanded.spaces, nextNodePositionById: expanded.nodePositionById },
-          layoutNodes,
+          nodes,
           nextSpaces,
           collapse,
         )
@@ -118,18 +121,6 @@ export function assignNodeToSpaceAndExpand({
       return { nodes: hasChanged ? movedNodes : nodes, spaces: pushedSpaces }
     },
     { syncLayout: false },
-  )
-}
-
-function hasUsableLayoutRect(
-  node: Node<TerminalNodeData> | null | undefined,
-): node is Node<TerminalNodeData> {
-  return Boolean(
-    node &&
-    Number.isFinite(node.position?.x) &&
-    Number.isFinite(node.position?.y) &&
-    Number.isFinite(node.data?.width) &&
-    Number.isFinite(node.data?.height),
   )
 }
 
