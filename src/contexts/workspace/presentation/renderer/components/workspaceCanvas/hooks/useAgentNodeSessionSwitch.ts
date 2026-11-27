@@ -61,8 +61,6 @@ export function useAgentNodeSessionSwitch({
           isResumeSessionBindingVerified(switchedNode.data.agent) &&
           switchedNode.data.agent.resumeSessionId === summary.sessionId &&
           switchedNode.data.agent.executionDirectory === summary.cwd
-      // The flush follows the write that records the old session on its task, and is the only one;
-      // without that write it is requested on its own.
       if (switchCommitted && previousTaskNodeId && previousSessionRecord) {
         setNodes(
           prevNodes =>
@@ -72,11 +70,13 @@ export function useAgentNodeSessionSwitch({
               agentSessionRecord: previousSessionRecord,
               now: switchedAt,
             }),
-          { syncLayout: false, flush: true },
+          { syncLayout: false },
         )
-      } else {
-        requestPersistFlush()
       }
+      // The switch flushes once, at its end, whatever the history write did: the switch itself was
+      // written by the relaunch, and the history write changes nothing when the task was deleted
+      // meanwhile. It is not the flush of one write.
+      requestPersistFlush()
     },
     [readDocument, relaunchAgentNode, requestPersistFlush, setNodes],
   )

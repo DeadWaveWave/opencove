@@ -8,7 +8,6 @@ import type { ShowWorkspaceCanvasMessage } from '../types'
 import { resolveWorkspaceLayoutAfterNodeResize } from './useNodesStore.resolveResizeLayout'
 import { useCanvasNodeWriter } from './useCanvasNodeWriter'
 import {
-  useCanvasDocumentCommands,
   useCanvasUiCommands,
   useReadCanvasDocument,
   useReadCanvasSelection,
@@ -87,7 +86,6 @@ export function useWorkspaceCanvasNoteToTaskConversion({
   const ui = useCanvasUiCommands()
   const readSelection = useReadCanvasSelection()
   const readDocument = useReadCanvasDocument()
-  const { requestPersistFlush } = useCanvasDocumentCommands()
   const { updateCanvasDocument } = useCanvasNodeWriter()
 
   const { t } = useTranslation()
@@ -135,42 +133,41 @@ export function useWorkspaceCanvasNoteToTaskConversion({
       const now = new Date().toISOString()
       let didConvert = false
 
-      updateCanvasDocument(({ nodes, spaces }) => {
-        const target = nodes.find(node => node.id === normalizedNodeId)
-        const requirement = resolveNoteText(target)?.trim() ?? ''
-        if (!target || requirement.length === 0) {
-          return { nodes, spaces }
-        }
+      updateCanvasDocument(
+        ({ nodes, spaces }) => {
+          const target = nodes.find(node => node.id === normalizedNodeId)
+          const requirement = resolveNoteText(target)?.trim() ?? ''
+          if (!target || requirement.length === 0) {
+            return { nodes, spaces }
+          }
 
-        const title = resolveFallbackTaskTitle(requirement, fallbackTitle)
-        const convertedNodes = nodes.map(node =>
-          node === target ? toTaskNode(node, requirement, title, now) : node,
-        )
-        didConvert = true
+          const title = resolveFallbackTaskTitle(requirement, fallbackTitle)
+          const convertedNodes = nodes.map(node =>
+            node === target ? toTaskNode(node, requirement, title, now) : node,
+          )
+          didConvert = true
 
-        const resolvedLayout = resolveWorkspaceLayoutAfterNodeResize({
-          nodeId: normalizedNodeId,
-          desiredFrame: {
-            position: target.position,
-            size: defaultTaskSize,
-          },
-          nodes: convertedNodes,
-          spaces,
-          gap: 0,
-        })
+          const resolvedLayout = resolveWorkspaceLayoutAfterNodeResize({
+            nodeId: normalizedNodeId,
+            desiredFrame: {
+              position: target.position,
+              size: defaultTaskSize,
+            },
+            nodes: convertedNodes,
+            spaces,
+            gap: 0,
+          })
 
-        return resolvedLayout
-          ? { nodes: resolvedLayout.nodes, spaces: resolvedLayout.spaces }
-          : { nodes: convertedNodes, spaces }
-      })
-
-      if (didConvert) {
-        requestPersistFlush()
-      }
+          return resolvedLayout
+            ? { nodes: resolvedLayout.nodes, spaces: resolvedLayout.spaces }
+            : { nodes: convertedNodes, spaces }
+        },
+        { flush: true },
+      )
 
       return didConvert
     },
-    [onShowMessage, readAgentSettings, readDocument, requestPersistFlush, t, updateCanvasDocument],
+    [onShowMessage, readAgentSettings, readDocument, t, updateCanvasDocument],
   )
 
   const convertSelectedNoteToTask = useCallback(() => {

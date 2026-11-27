@@ -3,7 +3,6 @@ import type { BrowserMode, WebsiteWindowSessionMode } from '@shared/contracts/dt
 import type { NodeFrame } from '../../../types'
 import { createWebsiteNodeData } from '../../../utils/websiteNodeData'
 import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
-import { useCanvasDocumentCommands } from '../../../store/canvasStoreContext'
 import { useCanvasNodeWriter } from './useCanvasNodeWriter'
 
 export function useWorkspaceCanvasWebsiteNodeMutations(): Pick<
@@ -15,7 +14,6 @@ export function useWorkspaceCanvasWebsiteNodeMutations(): Pick<
   | 'setWebsiteFullscreen'
 > {
   const { updateNodes } = useCanvasNodeWriter()
-  const { requestPersistFlush } = useCanvasDocumentCommands()
   const updateWebsiteUrl = useCallback(
     (nodeId: string, url: string) => {
       const normalizedNodeId = nodeId.trim()
@@ -24,8 +22,6 @@ export function useWorkspaceCanvasWebsiteNodeMutations(): Pick<
       }
 
       const normalizedUrl = url.trim()
-
-      let didChange = false
 
       updateNodes(
         prevNodes => {
@@ -42,7 +38,6 @@ export function useWorkspaceCanvasWebsiteNodeMutations(): Pick<
 
             const previousWebsite = node.data.website
             hasChanged = true
-            didChange = true
             return {
               ...node,
               data: {
@@ -57,15 +52,10 @@ export function useWorkspaceCanvasWebsiteNodeMutations(): Pick<
 
           return hasChanged ? nextNodes : prevNodes
         },
-        { syncLayout: false },
+        { syncLayout: false, flush: true },
       )
-
-      // The write decides whether there is anything to persist.
-      if (didChange) {
-        requestPersistFlush()
-      }
     },
-    [requestPersistFlush, updateNodes],
+    [updateNodes],
   )
 
   const setWebsitePinned = useCallback(
@@ -74,8 +64,6 @@ export function useWorkspaceCanvasWebsiteNodeMutations(): Pick<
       if (normalizedNodeId.length === 0) {
         return
       }
-
-      let didChange = false
 
       updateNodes(
         prevNodes => {
@@ -92,7 +80,6 @@ export function useWorkspaceCanvasWebsiteNodeMutations(): Pick<
             }
 
             hasChanged = true
-            didChange = true
             return {
               ...node,
               data: {
@@ -107,15 +94,10 @@ export function useWorkspaceCanvasWebsiteNodeMutations(): Pick<
 
           return hasChanged ? nextNodes : prevNodes
         },
-        { syncLayout: false },
+        { syncLayout: false, flush: true },
       )
-
-      // The write decides whether there is anything to persist.
-      if (didChange) {
-        requestPersistFlush()
-      }
     },
-    [requestPersistFlush, updateNodes],
+    [updateNodes],
   )
 
   const setWebsiteSession = useCallback(
@@ -124,8 +106,6 @@ export function useWorkspaceCanvasWebsiteNodeMutations(): Pick<
       if (normalizedNodeId.length === 0) {
         return
       }
-
-      let didChange = false
 
       updateNodes(
         prevNodes => {
@@ -145,7 +125,6 @@ export function useWorkspaceCanvasWebsiteNodeMutations(): Pick<
             }
 
             hasChanged = true
-            didChange = true
             return {
               ...node,
               data: {
@@ -161,15 +140,10 @@ export function useWorkspaceCanvasWebsiteNodeMutations(): Pick<
 
           return hasChanged ? nextNodes : prevNodes
         },
-        { syncLayout: false },
+        { syncLayout: false, flush: true },
       )
-
-      // The write decides whether there is anything to persist.
-      if (didChange) {
-        requestPersistFlush()
-      }
     },
-    [requestPersistFlush, updateNodes],
+    [updateNodes],
   )
 
   const setWebsiteMode = useCallback(
@@ -178,8 +152,6 @@ export function useWorkspaceCanvasWebsiteNodeMutations(): Pick<
       if (normalizedNodeId.length === 0) {
         return
       }
-
-      let didChange = false
 
       updateNodes(
         prevNodes => {
@@ -195,7 +167,6 @@ export function useWorkspaceCanvasWebsiteNodeMutations(): Pick<
             }
 
             hasChanged = true
-            didChange = true
             return {
               ...node,
               data: {
@@ -207,15 +178,10 @@ export function useWorkspaceCanvasWebsiteNodeMutations(): Pick<
 
           return hasChanged ? nextNodes : prevNodes
         },
-        { syncLayout: false },
+        { syncLayout: false, flush: true },
       )
-
-      // The write decides whether there is anything to persist.
-      if (didChange) {
-        requestPersistFlush()
-      }
     },
-    [requestPersistFlush, updateNodes],
+    [updateNodes],
   )
 
   const setWebsiteFullscreen = useCallback(
@@ -225,43 +191,38 @@ export function useWorkspaceCanvasWebsiteNodeMutations(): Pick<
         return
       }
 
-      let didChange = false
+      updateNodes(
+        prevNodes => {
+          let hasChanged = false
+          const nextNodes = prevNodes.map(node => {
+            if (node.id !== normalizedNodeId || node.data.kind !== 'website') {
+              return node
+            }
 
-      updateNodes(prevNodes => {
-        let hasChanged = false
-        const nextNodes = prevNodes.map(node => {
-          if (node.id !== normalizedNodeId || node.data.kind !== 'website') {
-            return node
-          }
+            const previousWebsite = node.data.website
+            hasChanged = true
+            return {
+              ...node,
+              position: frame.position,
+              data: {
+                ...node.data,
+                width: frame.size.width,
+                height: frame.size.height,
+                website: createWebsiteNodeData({
+                  ...previousWebsite,
+                  isFullscreen,
+                  previousFrame,
+                }),
+              },
+            }
+          })
 
-          const previousWebsite = node.data.website
-          hasChanged = true
-          didChange = true
-          return {
-            ...node,
-            position: frame.position,
-            data: {
-              ...node.data,
-              width: frame.size.width,
-              height: frame.size.height,
-              website: createWebsiteNodeData({
-                ...previousWebsite,
-                isFullscreen,
-                previousFrame,
-              }),
-            },
-          }
-        })
-
-        return hasChanged ? nextNodes : prevNodes
-      })
-
-      // The write decides whether there is anything to persist.
-      if (didChange) {
-        requestPersistFlush()
-      }
+          return hasChanged ? nextNodes : prevNodes
+        },
+        { flush: true },
+      )
     },
-    [requestPersistFlush, updateNodes],
+    [updateNodes],
   )
 
   return {

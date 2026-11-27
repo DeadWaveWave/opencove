@@ -39,6 +39,28 @@ vi.mock(
   () => ({ useCollapseLayoutMotion: () => ({ prepare: motion.prepare, getDelay: () => 0 }) }),
 )
 
+// A re-plan inside the write that finds nothing to arrange returns its input, which the write
+// leaves as it is. `skipReplan` makes the next planning of the write do that.
+const replan = vi.hoisted(() => ({ skip: false, calls: 0 }))
+vi.mock(
+  '@contexts/workspace/presentation/renderer/utils/canvasCollapseArrange',
+  async importOriginal => {
+    const actual =
+      await importOriginal<
+        typeof import('@contexts/workspace/presentation/renderer/utils/canvasCollapseArrange')
+      >()
+    return {
+      ...actual,
+      planCollapsedArrangement: (...args: Parameters<typeof actual.planCollapsedArrangement>) => {
+        replan.calls += 1
+        return replan.skip && replan.calls % 2 === 0
+          ? null
+          : actual.planCollapsedArrangement(...args)
+      },
+    }
+  },
+)
+
 function createNode(id: string, x = 0, y = 0): Node<TerminalNodeData> {
   return {
     id,
@@ -143,6 +165,8 @@ const layoutSyncs = vi.fn()
 
 beforeEach(() => {
   vi.clearAllMocks()
+  replan.skip = false
+  replan.calls = 0
   window.addEventListener(TERMINAL_LAYOUT_SYNC_EVENT, layoutSyncs)
 })
 
@@ -385,6 +409,21 @@ describe('collapse and arrange, and its undo', () => {
     expect(actions.harness.notifications).toHaveBeenCalledTimes(1)
     expect(actions.harness.flush).toHaveBeenCalledTimes(1)
     expect(layoutSyncs).not.toHaveBeenCalled()
+    expect(
+      Object.keys(useCanvasCollapseStore.getState().workspaces[WORKSPACE].collapsedNodeIds).sort(),
+    ).toEqual(['peer', 'target'])
+  })
+
+  // The flush ends the operation, explicitly, because the collapse state it stores is persisted next
+  // to the document: the write that follows may change nothing.
+  it('flushes once, after the collapse state is stored, when the re-plan in the write returns its input', () => {
+    const actions = arrangedSpace()
+    replan.skip = true
+
+    act(() => actions.collapse().collapseAndArrange('space-1'))
+
+    expect(actions.harness.notifications).not.toHaveBeenCalled()
+    expect(actions.harness.flush).toHaveBeenCalledTimes(1)
     expect(
       Object.keys(useCanvasCollapseStore.getState().workspaces[WORKSPACE].collapsedNodeIds).sort(),
     ).toEqual(['peer', 'target'])

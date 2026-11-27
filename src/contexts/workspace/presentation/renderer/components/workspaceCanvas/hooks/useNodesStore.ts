@@ -198,63 +198,59 @@ export function useWorkspaceCanvasNodesStore({
 
   const resizeNode = useCallback(
     (nodeId: string, desiredFrame: NodeFrame) => {
-      let didResolve = false
-      updateCanvasDocument(({ nodes: documentNodes, spaces: documentSpaces }) => {
-        const node = documentNodes.find(item => item.id === nodeId)
-        if (!node) {
-          return { nodes: documentNodes, spaces: documentSpaces }
-        }
+      updateCanvasDocument(
+        ({ nodes: documentNodes, spaces: documentSpaces }) => {
+          const node = documentNodes.find(item => item.id === nodeId)
+          if (!node) {
+            return { nodes: documentNodes, spaces: documentSpaces }
+          }
 
-        const pluginView =
-          node.data.kind === 'plugin' && node.data.plugin
-            ? getPluginManifest(node.data.plugin.pluginId)?.view
-            : undefined
-        const minSize = pluginView
-          ? { width: pluginView.minWidth, height: pluginView.minHeight }
-          : node.data.kind === 'agent'
-            ? resolveAgentNodeMinSize(node.data.agent?.provider)
-            : resolveCanonicalNodeMinSize(node.data.kind)
-        const resolveDimension = (value: number, fallback: number): number =>
-          typeof value === 'number' && Number.isFinite(value) ? Math.round(value) : fallback
-        const normalizedFrame: NodeFrame = {
-          position: {
-            x: resolveDimension(desiredFrame.position.x, node.position.x),
-            y: resolveDimension(desiredFrame.position.y, node.position.y),
-          },
-          size: {
-            width: Math.max(
-              minSize.width,
-              resolveDimension(desiredFrame.size.width, node.data.width),
-            ),
-            height: Math.max(
-              minSize.height,
-              resolveDimension(desiredFrame.size.height, node.data.height),
-            ),
-          },
-        }
+          const pluginView =
+            node.data.kind === 'plugin' && node.data.plugin
+              ? getPluginManifest(node.data.plugin.pluginId)?.view
+              : undefined
+          const minSize = pluginView
+            ? { width: pluginView.minWidth, height: pluginView.minHeight }
+            : node.data.kind === 'agent'
+              ? resolveAgentNodeMinSize(node.data.agent?.provider)
+              : resolveCanonicalNodeMinSize(node.data.kind)
+          const resolveDimension = (value: number, fallback: number): number =>
+            typeof value === 'number' && Number.isFinite(value) ? Math.round(value) : fallback
+          const normalizedFrame: NodeFrame = {
+            position: {
+              x: resolveDimension(desiredFrame.position.x, node.position.x),
+              y: resolveDimension(desiredFrame.position.y, node.position.y),
+            },
+            size: {
+              width: Math.max(
+                minSize.width,
+                resolveDimension(desiredFrame.size.width, node.data.width),
+              ),
+              height: Math.max(
+                minSize.height,
+                resolveDimension(desiredFrame.size.height, node.data.height),
+              ),
+            },
+          }
 
-        const resolved = resolveWorkspaceLayoutAfterNodeResize({
-          nodeId,
-          desiredFrame: normalizedFrame,
-          nodes: documentNodes,
-          spaces: documentSpaces,
-          gap: 0,
-        })
+          const resolved = resolveWorkspaceLayoutAfterNodeResize({
+            nodeId,
+            desiredFrame: normalizedFrame,
+            nodes: documentNodes,
+            spaces: documentSpaces,
+            gap: 0,
+          })
 
-        if (!resolved) {
-          return { nodes: documentNodes, spaces: documentSpaces }
-        }
+          if (!resolved) {
+            return { nodes: documentNodes, spaces: documentSpaces }
+          }
 
-        didResolve = true
-        return { nodes: resolved.nodes, spaces: resolved.spaces }
-      })
-
-      // The write decides whether there is anything to persist.
-      if (didResolve) {
-        requestPersistFlush()
-      }
+          return { nodes: resolved.nodes, spaces: resolved.spaces }
+        },
+        { flush: true },
+      )
     },
-    [requestPersistFlush, updateCanvasDocument],
+    [updateCanvasDocument],
   )
 
   const applyPendingScrollbacks = useCallback(
@@ -355,7 +351,6 @@ export function useWorkspaceCanvasNodesStore({
       }
 
       const idSet = new Set(normalizedIds)
-      let didChange = false
       updateNodes(
         prevNodes => {
           let hasChanged = false
@@ -371,7 +366,6 @@ export function useWorkspaceCanvasNodesStore({
             }
 
             hasChanged = true
-            didChange = true
             return {
               ...node,
               data: {
@@ -383,15 +377,10 @@ export function useWorkspaceCanvasNodesStore({
 
           return hasChanged ? nextNodes : prevNodes
         },
-        { syncLayout: false },
+        { syncLayout: false, flush: true },
       )
-
-      // The write decides whether there is anything to persist.
-      if (didChange) {
-        requestPersistFlush()
-      }
     },
-    [requestPersistFlush, updateNodes],
+    [updateNodes],
   )
 
   const publishCreatedNodes = useCreatedNodePublisher(updateNodes)

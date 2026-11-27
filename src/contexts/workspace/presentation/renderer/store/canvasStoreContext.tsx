@@ -193,7 +193,7 @@ export interface CanvasDocumentCommands {
   /**
    * Replaces the Spaces with the recipe's result, computed from the store's Spaces as they are
    * when this runs. A recipe that returns the same array writes nothing. `flush` requests the
-   * persistence flush after the write, also when nothing changed.
+   * persistence flush after a write that applied, and none when nothing changed.
    */
   updateSpaces(
     recipe: (spaces: WorkspaceSpaceState[]) => WorkspaceSpaceState[],

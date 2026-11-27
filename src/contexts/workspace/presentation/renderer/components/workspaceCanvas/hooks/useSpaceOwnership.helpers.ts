@@ -347,14 +347,11 @@ export function applyDirectoryExpectationForDrop({
   targetSpace,
   workspacePath,
   updateNodes,
-  flush,
 }: {
   nodeIds: string[]
   targetSpace: WorkspaceSpaceState | null
   workspacePath: string
   updateNodes: CanvasNodeWriter['updateNodes']
-  /** Asks the persistence flush on this write, which is the last synchronous write of a drop. */
-  flush?: boolean
 }): void {
   if (nodeIds.length === 0) {
     return
@@ -424,6 +421,6 @@ export function applyDirectoryExpectationForDrop({
 
       return hasChanged ? nextNodes : prevNodes
     },
-    { syncLayout: false, flush },
+    { syncLayout: false },
   )
 }

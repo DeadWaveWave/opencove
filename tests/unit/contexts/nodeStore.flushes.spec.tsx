@@ -21,8 +21,10 @@ import { pixelNode } from './workspacePixelLayer.fixtures'
 // The persistence flushes of the node store and its creators (#702, PR 13): each is requested once,
 // after the write it follows, and as often as before. A flush is counted with the number of store
 // writes that came before it and the document it saw, so one that is dropped, doubled or requested
-// before its write fails. The store flushes also when a mutation changed nothing, except where the
-// base flushed only on a change; those cases are pinned the other way round.
+// before its write fails. A flush persists the write it accompanies (S7), so a mutation that
+// changes nothing, a repeated change or a node that is not there requests none. The close is the
+// one that flushes without a change: it follows the announcement of the closure, whatever the
+// write did.
 
 vi.mock('@app/renderer/i18n', () => ({ useTranslation: () => translation }))
 const translation = vi.hoisted(() => ({ t: (key: string) => key }))
@@ -205,8 +207,6 @@ interface Mutation {
   changed: (node: Node<TerminalNodeData>) => boolean
   /** Whether the same change a second time leaves the document as it is. */
   idempotent: boolean
-  /** Whether the base flushed when nothing changed. */
-  flushesWithoutChange: boolean
   /** Addresses a node that is not there. */
   missing: (store: Store) => void
 }
@@ -220,7 +220,6 @@ const MUTATIONS: Mutation[] = [
     nodes: () => [terminal()],
     change: store => store.renameTerminalTitle('terminal-1', 'Renamed'),
     changed: node => node.data.title === 'Renamed' && node.data.titlePinnedByUser === true,
-    flushesWithoutChange: true,
     missing: store => store.renameTerminalTitle('missing', 'Renamed'),
   },
   {
@@ -229,7 +228,6 @@ const MUTATIONS: Mutation[] = [
     nodes: () => [terminal()],
     change: store => store.setNodeLabelColorOverride(['terminal-1'], 'blue'),
     changed: node => node.data.labelColorOverride === 'blue',
-    flushesWithoutChange: false,
     missing: store => store.setNodeLabelColorOverride(['missing'], 'blue'),
   },
   {
@@ -238,7 +236,6 @@ const MUTATIONS: Mutation[] = [
     nodes: () => [noteNode()],
     change: store => store.renameNoteTitle('note-1', 'Renamed'),
     changed: node => node.data.title === 'Renamed',
-    flushesWithoutChange: false,
     missing: store => store.renameNoteTitle('missing', 'Renamed'),
   },
   {
@@ -247,7 +244,6 @@ const MUTATIONS: Mutation[] = [
     nodes: () => [roleNode()],
     change: store => store.updateRoleProvider('role-1', 'claude-code'),
     changed: node => node.data.role?.selectedProvider === 'claude-code',
-    flushesWithoutChange: true,
     missing: store => store.updateRoleProvider('missing', 'codex'),
   },
   {
@@ -256,7 +252,6 @@ const MUTATIONS: Mutation[] = [
     nodes: () => [roleNode()],
     change: store => store.updateRoleInput('role-1', 'new input'),
     changed: node => node.data.role?.input === 'new input',
-    flushesWithoutChange: true,
     missing: store => store.updateRoleInput('missing', 'new input'),
   },
   {
@@ -269,7 +264,6 @@ const MUTATIONS: Mutation[] = [
         record: { id: 'run-1' } as never,
       }),
     changed: node => node.data.role?.runHistory.length === 1,
-    flushesWithoutChange: true,
     missing: store =>
       store.appendRoleRunRecord('missing', { linkedAgentNodeId: null, record: {} as never }),
   },
@@ -279,7 +273,6 @@ const MUTATIONS: Mutation[] = [
     nodes: () => [websiteNode()],
     change: store => store.updateWebsiteUrl('website-1', 'https://b.example'),
     changed: node => node.data.website?.url === 'https://b.example',
-    flushesWithoutChange: false,
     missing: store => store.updateWebsiteUrl('missing', 'https://b.example'),
   },
   {
@@ -288,7 +281,6 @@ const MUTATIONS: Mutation[] = [
     nodes: () => [websiteNode()],
     change: store => store.setWebsitePinned('website-1', true),
     changed: node => node.data.website?.pinned === true,
-    flushesWithoutChange: false,
     missing: store => store.setWebsitePinned('missing', true),
   },
   {
@@ -297,7 +289,6 @@ const MUTATIONS: Mutation[] = [
     nodes: () => [websiteNode()],
     change: store => store.setWebsiteSession('website-1', 'incognito', null),
     changed: node => node.data.website?.sessionMode === 'incognito',
-    flushesWithoutChange: false,
     missing: store => store.setWebsiteSession('missing', 'incognito', null),
   },
   {
@@ -306,7 +297,6 @@ const MUTATIONS: Mutation[] = [
     nodes: () => [websiteNode()],
     change: store => store.setWebsiteMode('website-1', 'native'),
     changed: node => node.data.website?.browserMode === 'native',
-    flushesWithoutChange: false,
     missing: store => store.setWebsiteMode('missing', 'native'),
   },
   {
@@ -315,7 +305,6 @@ const MUTATIONS: Mutation[] = [
     nodes: () => [websiteNode()],
     change: store => store.setWebsiteFullscreen('website-1', frame, null, true),
     changed: node => node.data.website?.isFullscreen === true && node.data.width === 700,
-    flushesWithoutChange: false,
     missing: store => store.setWebsiteFullscreen('missing', frame, null, true),
   },
 ]
@@ -332,39 +321,26 @@ describe.each(MUTATIONS)('$name', mutation => {
     expect(flushes[0].document.nodes.some(mutation.changed)).toBe(true)
   })
 
-  it.skipIf(!mutation.idempotent)(
-    mutation.flushesWithoutChange
-      ? 'flushes once without a write when the change repeats'
-      : 'flushes nothing when the change repeats',
-    () => {
-      const { store, harness, flushes, view } = renderStore(mutation.nodes())
-      act(() => mutation.change(store()))
-      harness.notifications.mockClear()
-      flushes.length = 0
+  it.skipIf(!mutation.idempotent)('flushes nothing when the change repeats', () => {
+    const { store, harness, flushes, view } = renderStore(mutation.nodes())
+    act(() => mutation.change(store()))
+    harness.notifications.mockClear()
+    flushes.length = 0
 
-      act(() => mutation.change(view.result.current.nodeStore))
+    act(() => mutation.change(view.result.current.nodeStore))
 
-      expect(harness.notifications).not.toHaveBeenCalled()
-      expect(flushes).toHaveLength(mutation.flushesWithoutChange ? 1 : 0)
-      if (mutation.flushesWithoutChange) {
-        expect(flushes[0].notificationsBefore).toBe(0)
-      }
-    },
-  )
+    expect(harness.notifications).not.toHaveBeenCalled()
+    expect(flushes).toHaveLength(0)
+  })
 
-  it(
-    mutation.flushesWithoutChange
-      ? 'flushes once without a write for a node that is not there'
-      : 'flushes nothing for a node that is not there',
-    () => {
-      const { store, harness, flushes } = renderStore(mutation.nodes())
+  it('flushes nothing for a node that is not there', () => {
+    const { store, harness, flushes } = renderStore(mutation.nodes())
 
-      act(() => mutation.missing(store()))
+    act(() => mutation.missing(store()))
 
-      expect(harness.notifications).not.toHaveBeenCalled()
-      expect(flushes).toHaveLength(mutation.flushesWithoutChange ? 1 : 0)
-    },
-  )
+    expect(harness.notifications).not.toHaveBeenCalled()
+    expect(flushes).toHaveLength(0)
+  })
 })
 
 describe('setWebsiteFullscreen', () => {

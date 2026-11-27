@@ -55,7 +55,7 @@ export interface UseWorkspaceCanvasNodeCreationParams {
 
 export interface CanvasDocumentWriteOptions {
   syncLayout?: boolean
-  /** Requests the persistence flush after the write, also when nothing changed. */
+  /** Requests the persistence flush after a write that applied; none when nothing changed. */
   flush?: boolean
 }
 

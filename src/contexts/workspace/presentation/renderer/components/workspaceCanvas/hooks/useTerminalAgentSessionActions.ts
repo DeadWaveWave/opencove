@@ -8,11 +8,11 @@ import {
   resolveAgentTreatedActionContext,
 } from '../../../utils/terminalAgentOverlay'
 import type { ShowWorkspaceCanvasMessage } from '../types'
-import { useCanvasDocumentCommands, useReadCanvasDocument } from '../../../store/canvasStoreContext'
+import { useReadCanvasDocument } from '../../../store/canvasStoreContext'
 
 type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-  options?: { syncLayout?: boolean },
+  options?: { syncLayout?: boolean; flush?: boolean },
 ) => void
 
 function resolveActivityFence(node: Node<TerminalNodeData>): TerminalAgentActivityFence | null {
@@ -55,7 +55,6 @@ export function useTerminalAgentSessionActions(options: {
   const { t } = useTranslation()
   const { onShowMessage, setNodes } = options
   const readDocument = useReadCanvasDocument()
-  const { requestPersistFlush } = useCanvasDocumentCommands()
   const reexecInFlight = useRef(new Set<string>())
 
   const reexecOverlayAgent = useCallback(
@@ -102,10 +101,10 @@ export function useTerminalAgentSessionActions(options: {
           return true
         }
 
-        let didChange = false
         setNodes(
-          previousNodes =>
-            previousNodes.map(candidate => {
+          previousNodes => {
+            let didChange = false
+            const nextNodes = previousNodes.map(candidate => {
               if (candidate.id !== nodeId || candidate.data.kind !== 'terminal') {
                 return candidate
               }
@@ -120,13 +119,13 @@ export function useTerminalAgentSessionActions(options: {
               })
               didChange ||= next !== candidate
               return next
-            }),
-          { syncLayout: false },
+            })
+            // The recipe returns its input when nothing changed, so the write applies only for a
+            // change, and the flush follows only a write that applied.
+            return didChange ? nextNodes : previousNodes
+          },
+          { syncLayout: false, flush: true },
         )
-        // Whether the write changed anything is decided inside it, so the flush follows it.
-        if (didChange) {
-          requestPersistFlush()
-        }
       } catch (error) {
         const message = error instanceof Error ? error.message : t('common.unknownError')
         onShowMessage?.(t('messages.terminalAgentReexecFailed', { message }), 'error')
@@ -135,7 +134,7 @@ export function useTerminalAgentSessionActions(options: {
       }
       return true
     },
-    [onShowMessage, readDocument, requestPersistFlush, setNodes, t],
+    [onShowMessage, readDocument, setNodes, t],
   )
 
   const reloadOverlayAgent = useCallback(

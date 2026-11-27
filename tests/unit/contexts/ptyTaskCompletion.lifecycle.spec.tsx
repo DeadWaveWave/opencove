@@ -68,10 +68,20 @@ function setup() {
     resolve = onResolve
   })
   const query = vi.fn(() => pending)
-  const update = vi.fn((updater: (nodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[]) => {
-    nodesRef.current = updater(nodesRef.current)
-  })
   const flush = documentHarness.flush
+  // The fake writer requests the flush the way the real one does: for a write that applied.
+  const update = vi.fn(
+    (
+      updater: (nodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
+      options?: { flush?: boolean },
+    ) => {
+      const previous = nodesRef.current
+      nodesRef.current = updater(previous)
+      if (options?.flush && nodesRef.current !== previous) {
+        flush()
+      }
+    },
+  )
   const summary: AgentSessionSummary = {
     sessionId: 'resume-1',
     provider: 'codex',

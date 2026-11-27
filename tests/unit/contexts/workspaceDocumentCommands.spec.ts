@@ -151,13 +151,18 @@ describe('workspace document commands', () => {
     expect(order).toEqual(['flush:true'])
   })
 
-  it('flushes on an unchanged result when requested, without writing', () => {
+  // A flush persists the write it accompanies (S7): a result that wrote nothing has nothing to
+  // persist, whichever status says so.
+  it('an unchanged result requests no flush and writes nothing', () => {
     const listener = vi.fn()
     const unsubscribe = useAppStore.subscribe(listener)
 
-    removeWorkspaceSpaceArchiveRecord('a', 'missing-record')
+    expect(removeWorkspaceSpaceArchiveRecord('a', 'missing-record').status).toBe('unchanged')
+    expect(commitCanvasDocument('a', document => document, { flush: true }).status).toBe(
+      'unchanged',
+    )
 
-    expect(flush).toHaveBeenCalledTimes(1)
+    expect(flush).not.toHaveBeenCalled()
     expect(listener).not.toHaveBeenCalled()
     unsubscribe()
   })

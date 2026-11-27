@@ -195,11 +195,17 @@ describe('the base of a recipe', () => {
     expect(titleIn(A, 'c')).toBe('changed')
   })
 
-  it('requests the persistence flush on the write when the options ask, also for no change', () => {
+  // A flush persists the write it accompanies (S7): a recipe that returns its input requests none.
+  it('requests the persistence flush on a write that applied, once, and none for no change', () => {
     const { harness, view } = renderWriter()
 
     act(() => view.result.current.writer.updateNodes(nodes => nodes, { flush: true }))
+    act(() =>
+      view.result.current.writer.updateCanvasDocument(document => document, { flush: true }),
+    )
+    expect(harness.flush).not.toHaveBeenCalled()
 
+    act(() => view.result.current.writer.updateNodes(retitle('c', 'flushed'), { flush: true }))
     expect(harness.flush).toHaveBeenCalledTimes(1)
   })
 })

@@ -20,7 +20,7 @@ import {
 } from '../../../utils/canvasInteractionLayout'
 import { buildOwningSpaceIdByNodeId } from './workspaceLayoutPolicy'
 import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
-import { useReadCanvasDocument } from '../../../store/canvasStoreContext'
+import { useCanvasDocumentCommands, useReadCanvasDocument } from '../../../store/canvasStoreContext'
 import { useCanvasNodeWriter } from './useCanvasNodeWriter'
 
 function rectEquals(a: WorkspaceSpaceRect | null, b: WorkspaceSpaceRect | null): boolean {
@@ -85,6 +85,7 @@ export function useWorkspaceCanvasApplyOwnershipForDrop({
 }): (input: ApplyOwnershipForDropInput, options?: { allowDirectoryMismatch?: boolean }) => void {
   const readDocument = useReadCanvasDocument()
   const { updateNodes } = useCanvasNodeWriter()
+  const { requestPersistFlush } = useCanvasDocumentCommands()
   return useCallback(
     (
       {
@@ -310,20 +311,17 @@ export function useWorkspaceCanvasApplyOwnershipForDrop({
         }
       })
 
-      // The flush rides on the directory write, the last synchronous write of the drop: it also
-      // runs when that write changes nothing, and never before it.
-      applyDirectoryExpectationForDrop({
-        nodeIds,
-        targetSpace,
-        workspacePath,
-        updateNodes,
-        flush: true,
-      })
+      applyDirectoryExpectationForDrop({ nodeIds, targetSpace, workspacePath, updateNodes })
+
+      // The drop flushes once, at its end, after the directory write, the last synchronous write
+      // of the drop, and whatever that write did: it is not the flush of one write.
+      requestPersistFlush()
     },
     [
       onShowMessage,
       readDocument,
       reactFlow,
+      requestPersistFlush,
       resolveSpaceAtPoint,
       t,
       updateCanvasDocument,
