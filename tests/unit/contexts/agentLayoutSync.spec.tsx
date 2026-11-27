@@ -197,9 +197,13 @@ describe('agent terminal layout sync', () => {
     const setNodes = vi.fn(
       (
         updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-        _options?: { syncLayout?: boolean },
+        options?: { syncLayout?: boolean; flush?: boolean },
       ) => {
-        nodesRef.current = updater(nodesRef.current)
+        const previous = nodesRef.current
+        nodesRef.current = updater(previous)
+        if (options?.flush && nodesRef.current !== previous) {
+          documentHarness.flush()
+        }
       },
     )
     const listAgentSessions = vi.fn(async () => [
