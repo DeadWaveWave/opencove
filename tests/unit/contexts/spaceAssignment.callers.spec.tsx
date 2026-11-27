@@ -162,7 +162,6 @@ const roleSettings = {
 }
 const buildAgentNodeTitle = () => 'Agent'
 const launchAgentInNode = vi.fn()
-const updateRoleProvider = vi.fn()
 const updateRoleInput = vi.fn()
 const appendRoleRunRecord = vi.fn()
 const taskTagOptions: string[] = []
@@ -719,46 +718,30 @@ describe('the push-away of the task and role callers', () => {
     // callback that lists it, and hide a writer missing from the same list.
     const readRoleDocument = () => ({ ...EMPTY_DOCUMENT, spaces: [TARGET] })
 
-    function makeActionRefs() {
-      return new Proxy(
-        {},
-        {
-          get(target: Record<string, unknown>, key: string) {
-            return (target[key] ??= { current: vi.fn() })
-          },
-        },
-      ) as unknown as Record<string, { current: Mock }>
-    }
-
-    function useRoleActionsUnderTest(
-      updateCanvasDocument: Updater,
-      actionRefs: Record<string, { current: Mock }>,
-    ) {
+    // The writer is the provider's (`useCanvasNodeWriter`): the hook renders under the canvas store
+    // of the workspace shown, so it writes the workspace of its render.
+    function useRoleActionsUnderTest() {
       return useWorkspaceCanvasRoleActions({
         workspaceId: 'workspace',
         workspacePath: '/repo',
         agentSettings: roleSettings,
+        readAgentSettings: () => roleSettings,
         readDocument: readRoleDocument,
-        setNodes,
         onSpacesChange,
         onShowMessage,
         standardWindowSizeBucket: 'regular',
         createRoleNode,
         createNodeForSession,
-        updateRoleProvider,
         updateRoleInput,
         appendRoleRunRecord,
-        actionRefs,
         buildAgentNodeTitle,
-        updateCanvasDocument,
       } as never)
     }
 
     it('gives the role created from the pane menu its workspace writer', async () => {
-      const actionRefs = makeActionRefs()
       await expectsWriterOfTheRender({
         assign: assignMock,
-        useHook: updateCanvasDocument => useRoleActionsUnderTest(updateCanvasDocument, actionRefs),
+        useHook: () => useRoleActionsUnderTest(),
         invoke: ({ hook, ui }) => {
           ui.openContextMenu(PANE_MENU)
           return hook.runProjectRoleFromContextMenu('role')
@@ -769,11 +752,10 @@ describe('the push-away of the task and role callers', () => {
     })
 
     it('gives the role run its workspace writer', async () => {
-      const actionRefs = makeActionRefs()
       await expectsWriterOfTheRender({
         assign: assignMock,
-        useHook: updateCanvasDocument => useRoleActionsUnderTest(updateCanvasDocument, actionRefs),
-        invoke: () => actionRefs.runRoleRef.current('role'),
+        useHook: () => useRoleActionsUnderTest(),
+        invoke: ({ hook }) => hook.runRole('role'),
         argsOf: () => lastCall(runRoleNodeAction)[2] as Record<string, unknown> | undefined,
         absent: ['onSpacesChange'],
       })
@@ -809,7 +791,7 @@ describe('the push-away of the task and role callers', () => {
         projectRoles: [{ id: 'role', name: 'Role', promptTemplate: 'x', outputFormat: '' }],
         readDocument,
         // The flush rides on the write that records the run, as the node store takes it.
-        setNodes: vi.fn((_updater, options) => {
+        updateNodes: vi.fn((_updater, options) => {
           if (options?.flush) {
             onRequestPersistFlush()
           }
@@ -842,34 +824,24 @@ describe('the push-away of the task and role callers', () => {
 // writer that does nothing, none, or one of an earlier render fails here, not only in E2E.
 describe('the push-away through the carriers of the canvas', () => {
   it('gives the role of the role UI its workspace writer', async () => {
-    const actionRefs = new Proxy(
-      {},
-      {
-        get(target: Record<string, unknown>, key: string) {
-          return (target[key] ??= { current: vi.fn() })
-        },
-      },
-    )
     const agentSupport = { buildAgentNodeTitle }
+    // The writer is the provider's (`useCanvasNodeWriter`), not the node store's (S7, PR 6).
     await expectsWriterOfTheRender({
       assign: assignMock,
-      useHook: updateCanvasDocument =>
+      useHook: () =>
         useWorkspaceCanvasRoleUi({
           workspaceId: 'workspace',
           workspacePath: '/repo',
           agentSettings: roleSettings,
+          readAgentSettings: () => roleSettings,
           nodeStore: {
-            setNodes,
-            updateCanvasDocument,
             createRoleNode,
             createNodeForSession,
-            updateRoleProvider,
             updateRoleInput,
             appendRoleRunRecord,
           },
           agentSupport,
           onShowMessage,
-          actionRefs,
         } as never),
       invoke: ({ hook, ui }) => {
         ui.openContextMenu(PANE_MENU)

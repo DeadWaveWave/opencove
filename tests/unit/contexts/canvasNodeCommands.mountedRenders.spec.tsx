@@ -17,6 +17,7 @@ import {
 } from '../../support/workspaceCanvasStoreHarness'
 import { agentNode, taskNode } from '../../support/agentRuntimeHarness'
 import { terminalCalibration } from '../../support/terminalCalibration'
+import { commitCanvasDocument } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import { pixelNode } from './workspacePixelLayer.fixtures'
 
 // S7 of #647 (review of PR 4): what a node component consumes, in a mounted canvas. The React Flow
@@ -565,6 +566,55 @@ describe('what node components consume keeps its identity (Decision 14)', () => 
     for (const key of everyBody) {
       expect(counts.leaf[key], key).toBe(1)
     }
+  })
+
+  // The role body reads its own window's data and the provider preferences, and the commands
+  // (PR 6). A write to another window and a settings change that touches no preference render it
+  // for nothing: a body that read a render-time copy of the settings or the document would.
+  it.each([
+    [
+      'a document write to another window',
+      () =>
+        void commitCanvasDocument(A, document => ({
+          ...document,
+          nodes: document.nodes.map(node =>
+            node.id === 'A-note'
+              ? { ...node, data: { ...node.data, note: { text: 'edited' } } }
+              : node,
+          ),
+        })),
+    ],
+    ['a focusNodeTargetZoom tick', settings({ focusNodeTargetZoom: 0.66 })],
+    ['a standardWindowSizeBucket change', settings({ standardWindowSizeBucket: 'large' })],
+    ['an agentFullAccess change', settings({ agentFullAccess: true })],
+    [
+      'an edit of the role definitions',
+      settings({
+        projectRolesByWorkspaceId: {
+          [A]: [
+            {
+              id: 'r',
+              name: 'Edited',
+              description: '',
+              promptTemplate: 'Edited: {{input}}',
+              inputHint: '',
+              outputFormat: '',
+              createdAt: '2026-03-15T00:00:00.000Z',
+              updatedAt: '2026-03-15T00:00:00.000Z',
+            },
+          ],
+        },
+      }),
+    ],
+  ])('renders the role body for nothing when %s', async (_name, change) => {
+    await mountCanvas()
+
+    await act(async () => {
+      change()
+    })
+
+    expect(counts.leaf['A-role'] ?? 0).toBe(0)
+    expect(counts.outer['A-role'] ?? 0).toBe(0)
   })
 
   // The calibration is drawn by the terminal alone (through its alignment context) and read by the

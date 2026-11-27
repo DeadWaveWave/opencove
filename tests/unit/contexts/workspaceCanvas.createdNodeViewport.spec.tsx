@@ -7,6 +7,7 @@ import {
   useWorkspaceCanvasStoreNodes,
 } from '../../support/workspaceCanvasStoreHarness'
 import { useWorkspaceCanvasNodesStore } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore'
+import { readDefaultAgentSettings } from '../../support/agentSettingsReader'
 
 const { currentFlow } = vi.hoisted(() => ({
   currentFlow: { value: {} as Record<string, unknown> },
@@ -27,6 +28,7 @@ function renderNodesStore() {
       nodes: useWorkspaceCanvasStoreNodes(),
       standardWindowSizeBucket: DEFAULT_AGENT_SETTINGS.standardWindowSizeBucket,
       browserDefaultMode: DEFAULT_AGENT_SETTINGS.browserDefaultMode,
+      readAgentSettings: readDefaultAgentSettings,
     })
   })
 }

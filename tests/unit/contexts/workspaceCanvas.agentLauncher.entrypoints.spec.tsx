@@ -406,6 +406,31 @@ describe('the agent launcher reads the settings when a launch starts', () => {
     )
   })
 
+  it('sizes the window from the bucket its launch geometry used, not one changed during the launch', async () => {
+    const reader = mutableReader({ defaultProvider: 'codex', standardWindowSizeBucket: 'regular' })
+    const params = { ...fixture(), readAgentSettings: reader.read }
+    // The bucket changes while the session is starting.
+    vi.mocked(launchWorkspaceAgentSession).mockImplementationOnce(async () => {
+      reader.set({ standardWindowSizeBucket: 'large' })
+      return {
+        sessionId: 'runtime',
+        profileId: null,
+        runtimeKind: 'posix',
+        effectiveModel: null,
+        resumeSessionId: null,
+        executionDirectory: '/repo',
+        workerBinding: { endpointId: 'local', mountId: null },
+      } as never
+    })
+    const { result } = renderHookWithCanvasStore(() => useWorkspaceCanvasAgentLauncher(params))
+
+    await act(() => result.current.launchAgentAtFlowPosition({ x: 400, y: 300 }))
+
+    expect(params.createNodeForSession).toHaveBeenCalledWith(
+      expect.objectContaining({ standardWindowSizeBucket: 'regular' }),
+    )
+  })
+
   it('opens the launcher for the default provider of the settings at the call', async () => {
     const reader = mutableReader({ defaultProvider: 'codex' })
     const params = { ...fixture(), readAgentSettings: reader.read }

@@ -75,9 +75,13 @@ type RetiredTerminalRef =
   | 'clearTerminalAgentOverlayRef'
   | 'renameTerminalTitleRef'
 
+/** The 3 refs that the role family replaced (PR 6). */
+type RetiredRoleRef = 'updateRoleProviderRef' | 'updateRoleInputRef' | 'runRoleRef'
+
 /** The 12 refs and the 3 callbacks that the window, note and website families replaced (PR 4). */
 type RetiredField =
   | RetiredTerminalRef
+  | RetiredRoleRef
   | 'selectNode'
   | 'convertNoteToTask'
   | 'setNodeLabelColorOverride'
@@ -102,7 +106,7 @@ type WindowCallbackProp =
   | 'normalizeViewportForTerminalInteractionRef'
   | 'requestNodeDeleteRef'
 
-describe('the node types context (#647 S7, PRs 4 and 5)', () => {
+describe('the node types context (#647 S7, PRs 4 to 6)', () => {
   it('finds a ref wherever it is, so the checks below cannot pass vacuously', () => {
     expectTypeOf<RefPaths<{ a: { b: MutableRefObject<number> } }>>().toEqualTypeOf<'a.b'>()
     expectTypeOf<RefPaths<{ a: RefObject<number | null>; f: () => void }>>().toEqualTypeOf<'a'>()
@@ -139,7 +143,7 @@ describe('the node types context (#647 S7, PRs 4 and 5)', () => {
     expectTypeOf<RefPaths<WorkspaceCanvasNodeTypesParams['commands']>>().toEqualTypeOf<never>()
   })
 
-  it('holds no ref in the params but the transitional ones, which PRs 6 and 7 retire', () => {
+  it('holds no ref in the params but the transitional ones, which PR 7 retires', () => {
     // Exactly this set: a ref of another family cannot return, and a transitional one cannot stay
     // after its family moved (the set is replaced by `never` in PR 7).
     expectTypeOf<RefPaths<WorkspaceCanvasNodeTypesParams>>().toEqualTypeOf<
@@ -149,10 +153,6 @@ describe('the node types context (#647 S7, PRs 4 and 5)', () => {
 
   it('lists the transitional refs by name, so that a new one cannot join them unnoticed', () => {
     expectTypeOf<keyof TransitionalNodeActionRefs>().toEqualTypeOf<
-      // Role (PR 6)
-      | 'updateRoleProviderRef'
-      | 'updateRoleInputRef'
-      | 'runRoleRef'
       // Task (PR 7)
       | 'openTaskEditorRef'
       | 'quickUpdateTaskTitleRef'
@@ -164,9 +164,12 @@ describe('the node types context (#647 S7, PRs 4 and 5)', () => {
     >()
   })
 
-  it('gives no terminal, note, website, document, folder, image or plugin component a ref prop', () => {
+  it('gives no terminal, role, note, website, document, folder, image or plugin component a ref prop', () => {
     expectTypeOf<
       RefPaths<ComponentProps<typeof WorkspaceCanvasTerminalNodeType>>
+    >().toEqualTypeOf<never>()
+    expectTypeOf<
+      RefPaths<ComponentProps<typeof WorkspaceCanvasRoleNodeType>>
     >().toEqualTypeOf<never>()
     expectTypeOf<
       RefPaths<ComponentProps<typeof WorkspaceCanvasNoteNodeType>>
@@ -257,6 +260,31 @@ describe('the node types context (#647 S7, PRs 4 and 5)', () => {
     >()
   })
 
+  it('pins each retired role ref by key too, one by one, so one cannot hide behind another', () => {
+    expectTypeOf<
+      'updateRoleProviderRef' extends keyof WorkspaceCanvasNodeTypesParams ? true : false
+    >().toEqualTypeOf<false>()
+    expectTypeOf<
+      'updateRoleInputRef' extends keyof WorkspaceCanvasNodeTypesParams ? true : false
+    >().toEqualTypeOf<false>()
+    expectTypeOf<
+      'runRoleRef' extends keyof WorkspaceCanvasNodeTypesParams ? true : false
+    >().toEqualTypeOf<false>()
+    // None of them is a prop of the role component either.
+    expectTypeOf<
+      Extract<keyof ComponentProps<typeof WorkspaceCanvasRoleNodeType>, RetiredRoleRef>
+    >().toEqualTypeOf<never>()
+  })
+
+  it('has a role family of the three commands the role window calls', () => {
+    expectTypeOf<keyof CanvasNodeCommands['role']>().toEqualTypeOf<
+      'updateInput' | 'updateProvider' | 'run'
+    >()
+    expectTypeOf<WorkspaceCanvasNodeTypesParams['commands']['role']>().toEqualTypeOf<
+      CanvasNodeCommands['role']
+    >()
+  })
+
   it('names none of the retired action refs', () => {
     const params = {} as WorkspaceCanvasNodeTypesParams
     // @ts-expect-error -- copyAgentLastMessageRef is retired; call commands.terminal.copyLastAgentMessage (#647 S7)
@@ -275,6 +303,12 @@ describe('the node types context (#647 S7, PRs 4 and 5)', () => {
     expect(params.clearTerminalAgentOverlayRef).toBeUndefined()
     // @ts-expect-error -- renameTerminalTitleRef is retired; call commands.terminal.renameTitle (#647 S7)
     expect(params.renameTerminalTitleRef).toBeUndefined()
+    // @ts-expect-error -- updateRoleProviderRef is retired; call commands.role.updateProvider (#647 S7)
+    expect(params.updateRoleProviderRef).toBeUndefined()
+    // @ts-expect-error -- updateRoleInputRef is retired; call commands.role.updateInput (#647 S7)
+    expect(params.updateRoleInputRef).toBeUndefined()
+    // @ts-expect-error -- runRoleRef is retired; call commands.role.run (#647 S7)
+    expect(params.runRoleRef).toBeUndefined()
     // @ts-expect-error -- selectNode is retired; call commands.window.select (#647 S7)
     expect(params.selectNode).toBeUndefined()
     // @ts-expect-error -- convertNoteToTask is retired; call commands.note.convertToTask (#647 S7)

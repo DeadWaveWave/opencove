@@ -1,11 +1,7 @@
 import { useRef } from 'react'
-import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { TaskRuntimeStatus } from '../../../types'
 
 export interface WorkspaceCanvasActionRefs {
-  updateRoleInputRef: React.MutableRefObject<(nodeId: string, input: string) => void>
-  updateRoleProviderRef: React.MutableRefObject<(nodeId: string, provider: AgentProvider) => void>
-  runRoleRef: React.MutableRefObject<(nodeId: string, inputOverride?: string) => Promise<void>>
   runTaskAgentRef: React.MutableRefObject<(nodeId: string) => Promise<void>>
   resumeTaskAgentSessionRef: React.MutableRefObject<
     (taskNodeId: string, recordId: string) => Promise<void>
@@ -22,15 +18,6 @@ export interface WorkspaceCanvasActionRefs {
 }
 
 export function useWorkspaceCanvasActionRefs(): WorkspaceCanvasActionRefs {
-  const updateRoleInputRef = useRef<(nodeId: string, input: string) => void>(
-    (_nodeId: string, _input: string) => undefined,
-  )
-  const updateRoleProviderRef = useRef<(nodeId: string, provider: AgentProvider) => void>(
-    (_nodeId: string, _provider: AgentProvider) => undefined,
-  )
-  const runRoleRef = useRef<(nodeId: string, inputOverride?: string) => Promise<void>>(
-    async (_nodeId: string, _inputOverride?: string) => undefined,
-  )
   const runTaskAgentRef = useRef<(nodeId: string) => Promise<void>>(
     async (_nodeId: string) => undefined,
   )
@@ -51,9 +38,6 @@ export function useWorkspaceCanvasActionRefs(): WorkspaceCanvasActionRefs {
     (_nodeId: string, _status: TaskRuntimeStatus) => undefined,
   )
   return {
-    updateRoleInputRef,
-    updateRoleProviderRef,
-    runRoleRef,
     runTaskAgentRef,
     resumeTaskAgentSessionRef,
     removeTaskAgentSessionRecordRef,

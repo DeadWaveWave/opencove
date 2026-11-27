@@ -12,7 +12,10 @@ import type {
   WorkspaceSpaceState,
   WorkspaceViewport,
 } from '../../types'
-import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
+import type {
+  AgentSettings,
+  StandardWindowSizeBucket,
+} from '@contexts/settings/domain/agentSettings'
 import type { TerminalClientDisplayCalibration } from '@contexts/settings/domain/terminalDisplayCalibration'
 import type { MountDto, TerminalPtyGeometry, TerminalRuntimeKind } from '@shared/contracts/dto'
 import type { LabelColor } from '@shared/types/labelColor'
@@ -234,6 +237,8 @@ export interface CreateNodeInput {
   profileId?: string | null
   runtimeKind?: TerminalRuntimeKind
   terminalGeometry?: TerminalPtyGeometry | null
+  /** The bucket the caller read when its launch started; the settings at the call otherwise. */
+  standardWindowSizeBucket?: StandardWindowSizeBucket
   workerBinding?: TerminalNodeData['workerBinding']
   title: string
   anchor: Point

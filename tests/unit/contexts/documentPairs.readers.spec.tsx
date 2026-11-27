@@ -17,7 +17,10 @@ import {
 } from '../../support/canvasDocumentHarness'
 import { createRowNodes, createSpace } from '../../support/canvasSelectionFixtures'
 import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
-import { createAgentSettingsReader } from '../../support/agentSettingsReader'
+import {
+  createAgentSettingsReader,
+  readDefaultAgentSettings,
+} from '../../support/agentSettingsReader'
 
 const readAgentSettings = createAgentSettingsReader({
   standardWindowSizeBucket: 'regular',
@@ -127,6 +130,7 @@ function renderInTwoWorkspaces<Result>(
         nodes: [],
         standardWindowSizeBucket: 'regular',
         browserDefaultMode: 'iframe',
+        readAgentSettings: readDefaultAgentSettings,
       })
       return useHook({ workspaceId: shown, updateCanvasDocument: nodeStore.updateCanvasDocument })
     },

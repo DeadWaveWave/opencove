@@ -1,4 +1,4 @@
-import type { MutableRefObject, ReactElement } from 'react'
+import type { ReactElement } from 'react'
 import {
   normalizeSelectableAgentProviderOrder,
   resolveSelectableAgentProvider,
@@ -12,22 +12,18 @@ import { useCanvasNodeCommands } from './nodeTypes.context'
 export function WorkspaceCanvasRoleNodeType({
   data,
   id,
-  updateRoleProviderRef,
-  updateRoleInputRef,
-  runRoleRef,
   agentProviderOrder,
   defaultProvider,
 }: {
   data: TerminalNodeData
   id: string
-  updateRoleProviderRef: MutableRefObject<(nodeId: string, provider: AgentProvider) => void>
-  updateRoleInputRef: MutableRefObject<(nodeId: string, input: string) => void>
-  runRoleRef: MutableRefObject<(nodeId: string, inputOverride?: string) => Promise<void>>
   agentProviderOrder: AgentProvider[]
   defaultProvider: AgentProvider
 }): ReactElement | null {
   const nodePosition = useNodePosition(id)
-  const windowCommands = useCanvasNodeCommands().window
+  const commands = useCanvasNodeCommands()
+  const windowCommands = commands.window
+  const roleCommands = commands.role
 
   if (!data.role) {
     return null
@@ -52,13 +48,13 @@ export function WorkspaceCanvasRoleNodeType({
         windowCommands.requestDelete([id])
       }}
       onProviderChange={provider => {
-        updateRoleProviderRef.current(id, provider)
+        roleCommands.updateProvider(id, provider)
       }}
       onInputSave={input => {
-        updateRoleInputRef.current(id, input)
+        roleCommands.updateInput(id, input)
       }}
       onRun={input => {
-        void runRoleRef.current(id, input)
+        void roleCommands.run(id, input)
       }}
       onResize={frame => windowCommands.resize(id, frame)}
       onInteractionStart={options => {

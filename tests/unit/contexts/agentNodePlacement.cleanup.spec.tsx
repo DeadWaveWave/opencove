@@ -12,6 +12,7 @@ import {
 } from '../../support/canvasStoreTestHarness'
 import { seedWorkspaceCanvasStore } from '../../support/workspaceCanvasStoreHarness'
 import { compatibilityFixture, context } from './managedClaudeLaunchCompatibility.helpers'
+import { readDefaultAgentSettings } from '../../support/agentSettingsReader'
 
 const receipt: ManagedClaudeLifecycleReceipt = {
   commitRevision: null,
@@ -63,6 +64,7 @@ function fixture(cleanupSupport = false) {
         setNodes,
         workspaceId: 'workspace',
         onShowMessage: message,
+        readAgentSettings: readDefaultAgentSettings,
       }),
     { wrapper: CanvasStoreTestProvider },
   )

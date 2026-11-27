@@ -18,7 +18,7 @@ import { assignNodeToSpaceAndExpand } from './useInteractions.spaceAssignment'
 import { composeProjectRolePrompt } from './useRolePrompt'
 import type { CanvasDocumentCommands } from '../../../store/canvasStoreContext'
 import type { WorkspaceDocument } from '../../../store/workspaceDocument'
-import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
+import type { CanvasNodeWriter } from './useCanvasNodeWriter'
 import {
   buildMergedAgentLaunchEnv,
   launchWorkspaceAgentSession,
@@ -26,7 +26,7 @@ import {
   resolveWorkspaceAgentLaunchBinding,
 } from './useWorkspaceAgentLaunch.shared'
 
-type SetNodes = UseWorkspaceCanvasNodesStoreResult['setNodes']
+type UpdateNodes = CanvasNodeWriter['updateNodes']
 
 export interface RoleRunActionContext {
   workspaceId: string
@@ -39,8 +39,12 @@ export interface RoleRunActionContext {
    * started it, whichever workspace is shown by the time the run awaits.
    */
   readDocument: () => WorkspaceDocument
-  setNodes: SetNodes
-  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
+  /**
+   * The writer of the render that started the run, which writes the workspace that started it.
+   * A plain function takes it explicitly (S7, Decision 8).
+   */
+  updateNodes: UpdateNodes
+  updateCanvasDocument: CanvasNodeWriter['updateCanvasDocument']
   updateSpaces: CanvasDocumentCommands['updateSpaces']
   onShowMessage?: ShowWorkspaceCanvasMessage
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
@@ -73,29 +77,36 @@ export function resolveNodeRoleDefinition(
 function setRoleNodeLastError({
   nodeId,
   message,
-  setNodes,
+  updateNodes,
   flush,
 }: {
   nodeId: string
   message: string
-  setNodes: SetNodes
+  updateNodes: UpdateNodes
   flush?: boolean
 }): void {
-  setNodes(
+  updateNodes(
     prevNodes =>
-      prevNodes.map(node =>
-        node.id === nodeId
-          ? {
-              ...node,
-              data: {
-                ...node.data,
-                lastError: message,
-              },
-            }
-          : node,
-      ),
+      mapNodeWhenPresent(prevNodes, nodeId, node => ({
+        ...node,
+        data: { ...node.data, lastError: message },
+      })),
     { syncLayout: false, flush },
   )
+}
+
+/**
+ * Maps the window `nodeId` names. A window that is gone by now (closed during the run) is not
+ * written: the recipe returns its input, so the write does not apply, notify or flush.
+ */
+function mapNodeWhenPresent(
+  nodes: Node<TerminalNodeData>[],
+  nodeId: string,
+  map: (node: Node<TerminalNodeData>) => Node<TerminalNodeData>,
+): Node<TerminalNodeData>[] {
+  return nodes.some(node => node.id === nodeId)
+    ? nodes.map(node => (node.id === nodeId ? map(node) : node))
+    : nodes
 }
 
 export async function runRoleNodeAction(
@@ -118,7 +129,7 @@ export async function runRoleNodeAction(
     setRoleNodeLastError({
       nodeId,
       message: context.t('roleNode.missingRoleDefinition'),
-      setNodes: context.setNodes,
+      updateNodes: context.updateNodes,
       flush: true,
     })
     return
@@ -138,7 +149,11 @@ export async function runRoleNodeAction(
   try {
     assertProviderInitialPrompt(provider, prompt)
   } catch (error) {
-    setRoleNodeLastError({ nodeId, message: toErrorMessage(error), setNodes: context.setNodes })
+    setRoleNodeLastError({
+      nodeId,
+      message: toErrorMessage(error),
+      updateNodes: context.updateNodes,
+    })
     return
   }
   const owningSpace =
@@ -196,6 +211,7 @@ export async function runRoleNodeAction(
       profileId: launched.profileId,
       runtimeKind: launched.runtimeKind,
       terminalGeometry: launchGeometry.terminalGeometry,
+      standardWindowSizeBucket: context.agentSettings.standardWindowSizeBucket,
       workerBinding: launched.workerBinding,
       title: context.buildAgentNodeTitle(provider, role.name),
       anchor: {
@@ -250,41 +266,37 @@ export async function runRoleNodeAction(
         createdAt: now,
       },
     })
-    context.setNodes(
+    context.updateNodes(
       prevNodes =>
-        prevNodes.map(node =>
-          node.id === nodeId
-            ? {
-                ...node,
-                data: {
-                  ...node.data,
-                  title: role.name,
-                  lastError: null,
-                  role:
-                    node.data.kind === 'role' && node.data.role
-                      ? {
-                          ...node.data.role,
-                          roleName: role.name,
-                          roleDescription: role.description,
-                          promptTemplate: role.promptTemplate,
-                          inputHint: role.inputHint,
-                          outputFormat: role.outputFormat,
-                          selectedProvider: provider,
-                          input,
-                          updatedAt: now,
-                        }
-                      : node.data.role,
-                },
-              }
-            : node,
-        ),
+        mapNodeWhenPresent(prevNodes, nodeId, node => ({
+          ...node,
+          data: {
+            ...node.data,
+            title: role.name,
+            lastError: null,
+            role:
+              node.data.kind === 'role' && node.data.role
+                ? {
+                    ...node.data.role,
+                    roleName: role.name,
+                    roleDescription: role.description,
+                    promptTemplate: role.promptTemplate,
+                    inputHint: role.inputHint,
+                    outputFormat: role.outputFormat,
+                    selectedProvider: provider,
+                    input,
+                    updatedAt: now,
+                  }
+                : node.data.role,
+          },
+        })),
       { syncLayout: false, flush: true },
     )
   } catch (error) {
     const message = context.t('messages.agentLaunchFailed', {
       message: toErrorMessage(error),
     })
-    setRoleNodeLastError({ nodeId, message, setNodes: context.setNodes, flush: true })
+    setRoleNodeLastError({ nodeId, message, updateNodes: context.updateNodes, flush: true })
     context.onShowMessage?.(message, 'error')
   }
 }

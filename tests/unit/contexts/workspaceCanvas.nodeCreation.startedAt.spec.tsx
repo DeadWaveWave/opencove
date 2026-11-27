@@ -18,6 +18,7 @@ import type {
 } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore.types'
 import { useWorkspaceCanvasNodeCreation } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore.createNodes'
 import { createArrangeItemsForCanvasRootNodes } from '../../../src/contexts/workspace/presentation/renderer/utils/workspaceArrange.ordering'
+import { readDefaultAgentSettings } from '../../support/agentSettingsReader'
 
 interface HarnessApi {
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
@@ -72,6 +73,7 @@ function renderHarness(): HarnessApi {
     const { createNodeForSession, createNoteNode } = useWorkspaceCanvasNodeCreation({
       defaultTerminalWindowScalePercent: 100,
       setNodes,
+      readAgentSettings: readDefaultAgentSettings,
     })
 
     useImperativeHandle(

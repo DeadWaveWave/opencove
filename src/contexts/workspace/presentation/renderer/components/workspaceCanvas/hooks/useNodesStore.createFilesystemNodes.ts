@@ -26,7 +26,7 @@ export function useWorkspaceCanvasFilesystemNodeCreation({
   onShowMessage,
   onNodeCreated,
   standardWindowSizeBucket,
-}: Omit<UseWorkspaceCanvasNodeCreationParams, 'browserDefaultMode'>) {
+}: Omit<UseWorkspaceCanvasNodeCreationParams, 'browserDefaultMode' | 'readAgentSettings'>) {
   const { t } = useTranslation()
   const readDocument = useReadCanvasDocument()
   const create = useCallback(

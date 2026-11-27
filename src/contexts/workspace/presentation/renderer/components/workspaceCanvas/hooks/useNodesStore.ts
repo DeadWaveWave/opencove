@@ -41,6 +41,7 @@ export function useWorkspaceCanvasNodesStore({
   onNodeCreated,
   standardWindowSizeBucket,
   browserDefaultMode,
+  readAgentSettings,
 }: UseWorkspaceCanvasNodesStoreParams): UseWorkspaceCanvasNodesStoreResult {
   const reactFlow = useReactFlow<Node<TerminalNodeData>, Edge>()
   // What this store reads to act on a node, and its creators to place a new one, is the committed
@@ -337,7 +338,7 @@ export function useWorkspaceCanvasNodesStore({
 
   const { updateNoteText, renameNoteTitle } = useWorkspaceCanvasNoteNodeMutations()
   const { updateRoleProvider, updateRoleInput, appendRoleRunRecord } =
-    useWorkspaceCanvasRoleNodeMutations({ setNodes: updateNodes })
+    useWorkspaceCanvasRoleNodeMutations()
   const {
     updateWebsiteUrl,
     setWebsitePinned,
@@ -405,6 +406,7 @@ export function useWorkspaceCanvasNodesStore({
     setNodes: publishCreatedNodes,
     standardWindowSizeBucket,
     browserDefaultMode,
+    readAgentSettings,
   })
 
   return {

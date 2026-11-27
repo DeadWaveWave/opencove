@@ -1,7 +1,6 @@
 import type { WorkspaceCanvasViewProps } from '../WorkspaceCanvasView.types'
 import type { WorkspaceCanvasProps } from '../types'
 import type { useWorkspaceCanvasAgentSupport } from './useCanvasAgentSupport'
-import type { WorkspaceCanvasActionRefs } from './useActionRefs'
 import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 import { useReadCanvasDocument } from '../../../store/canvasStoreContext'
 import { useWorkspaceCanvasRoleActions } from './useRoleActions'
@@ -15,35 +14,32 @@ type RoleViewProps = Pick<
   | 'deleteProjectRole'
   | 'closeRoleCreator'
   | 'createRole'
->
+> & {
+  /** The role family's `run` (S7 of #647): the canvas composes it into its commands, not the view. */
+  runRole: (nodeId: string, inputOverride?: string) => Promise<void>
+}
 
 export function useWorkspaceCanvasRoleUi({
   workspaceId,
   workspacePath,
   environmentVariables,
   agentSettings,
+  readAgentSettings,
   nodeStore,
   agentSupport,
   onShowMessage,
-  actionRefs,
 }: {
   workspaceId: string
   workspacePath: string
   environmentVariables?: Record<string, string>
   agentSettings: WorkspaceCanvasProps['agentSettings']
+  readAgentSettings: WorkspaceCanvasProps['readAgentSettings']
   nodeStore: Pick<
     UseWorkspaceCanvasNodesStoreResult,
-    | 'setNodes'
-    | 'updateCanvasDocument'
-    | 'createRoleNode'
-    | 'createNodeForSession'
-    | 'updateRoleProvider'
-    | 'updateRoleInput'
-    | 'appendRoleRunRecord'
+    'createRoleNode' | 'createNodeForSession' | 'updateRoleInput' | 'appendRoleRunRecord'
   >
   agentSupport: Pick<ReturnType<typeof useWorkspaceCanvasAgentSupport>, 'buildAgentNodeTitle'>
   onShowMessage?: WorkspaceCanvasProps['onShowMessage']
-  actionRefs: WorkspaceCanvasActionRefs
 }): RoleViewProps {
   const readDocument = useReadCanvasDocument()
   const roleActions = useWorkspaceCanvasRoleActions({
@@ -51,21 +47,19 @@ export function useWorkspaceCanvasRoleUi({
     workspacePath,
     environmentVariables,
     agentSettings,
+    readAgentSettings,
     readDocument,
-    setNodes: nodeStore.setNodes,
-    updateCanvasDocument: nodeStore.updateCanvasDocument,
     onShowMessage,
     standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
     createRoleNode: nodeStore.createRoleNode,
     createNodeForSession: nodeStore.createNodeForSession,
-    updateRoleProvider: nodeStore.updateRoleProvider,
     updateRoleInput: nodeStore.updateRoleInput,
     appendRoleRunRecord: nodeStore.appendRoleRunRecord,
-    actionRefs,
     buildAgentNodeTitle: agentSupport.buildAgentNodeTitle,
   })
 
   return {
+    runRole: roleActions.runRole,
     openRoleCreator: roleActions.openRoleCreator,
     projectRoles: agentSettings.projectRolesByWorkspaceId[workspaceId] ?? [],
     runProjectRoleFromContextMenu: roleActions.runProjectRoleFromContextMenu,

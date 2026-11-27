@@ -33,6 +33,7 @@ import {
 import { pixelNode } from './workspacePixelLayer.fixtures'
 import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
 import { setDocumentNodes } from '../../support/documentNodes'
+import { readDefaultAgentSettings } from '../../support/agentSettingsReader'
 
 // The node store reads the nodes it closes, scrolls and focuses, and its creators read the nodes
 // and the Spaces they place against, from the committed document as the store holds it when they
@@ -269,6 +270,7 @@ describe('the focus of a created node when no handler is given', () => {
           nodes: NO_NODES,
           standardWindowSizeBucket: 'regular',
           browserDefaultMode: 'iframe',
+          readAgentSettings: readDefaultAgentSettings,
         }),
       { workspaceId: A },
     )

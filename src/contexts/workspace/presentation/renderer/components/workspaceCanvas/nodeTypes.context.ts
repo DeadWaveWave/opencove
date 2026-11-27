@@ -12,14 +12,11 @@ import type {
 } from './types'
 
 /**
- * The action refs of the role and task families, until PRs 6 and 7 turn each family into commands
- * (S7 of #647). The window, terminal, note and website refs are gone: node components read those
- * from `commands`. `nodeTypes.context.spec.ts` pins this set, so a ref cannot return elsewhere.
+ * The action refs of the task family, until PR 7 turns it into commands (S7 of #647). The window,
+ * terminal, note, website and role refs are gone: node components read those from `commands`.
+ * `nodeTypes.context.spec.ts` pins this set, so a ref cannot return elsewhere.
  */
 export interface TransitionalNodeActionRefs {
-  updateRoleProviderRef: MutableRefObject<(nodeId: string, provider: AgentProvider) => void>
-  updateRoleInputRef: MutableRefObject<(nodeId: string, input: string) => void>
-  runRoleRef: MutableRefObject<(nodeId: string, inputOverride?: string) => Promise<void>>
   openTaskEditorRef: MutableRefObject<(nodeId: string) => void>
   quickUpdateTaskTitleRef: MutableRefObject<QuickUpdateTaskTitle>
   quickUpdateTaskRequirementRef: MutableRefObject<QuickUpdateTaskRequirement>

@@ -60,6 +60,22 @@ vi.mock(
     }
   },
 )
+// The writer is the provider's, and it changes with the workspace. Unless a case turns it off (the
+// harness's `stable` option), the role hooks get one writer for the whole test, which writes through
+// the writer of the latest render, so that a switch cannot rebuild a callback through it and hide a
+// reader that is missing from a dependency list.
+vi.mock(
+  '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodeWriter',
+  async importOriginal => {
+    const { mockStableNodeWriter, writerPin } = await import('../../support/stableNodeWriter')
+    return mockStableNodeWriter(
+      await importOriginal<
+        typeof import('../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodeWriter')
+      >(),
+      () => writerPin.stable,
+    )
+  },
+)
 // `t` keeps its identity, as in the app: a new one on every render would rebuild a callback that
 // lists it and hide a reader that is missing from the same list.
 const translation = vi.hoisted(() => ({ t: (key: string) => key }))

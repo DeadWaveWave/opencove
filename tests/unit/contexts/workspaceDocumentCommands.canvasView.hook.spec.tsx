@@ -14,6 +14,7 @@ import type {
   WorkspaceState,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { pixelNode } from './workspacePixelLayer.fixtures'
+import { readDefaultAgentSettings } from '../../support/agentSettingsReader'
 
 // Sized up front so ensureNodesHaveInitialDimensions leaves them alone.
 function sized(id: string, x: number): Node<TerminalNodeData> {
@@ -51,6 +52,7 @@ function renderCanvasNodesStore() {
         nodes: [],
         standardWindowSizeBucket: 'regular',
         browserDefaultMode: 'iframe',
+        readAgentSettings: readDefaultAgentSettings,
       }),
       selection: useCanvasSelectionCommands(),
       interaction: useCanvasInteractionCommands(),

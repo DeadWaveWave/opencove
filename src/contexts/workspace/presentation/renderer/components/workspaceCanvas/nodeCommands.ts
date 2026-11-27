@@ -55,7 +55,7 @@ export interface CanvasWebsiteCommands {
   ): void
 }
 
-interface CanvasRoleCommands {
+export interface CanvasRoleCommands {
   updateInput(nodeId: string, input: string): void
   updateProvider(nodeId: string, provider: AgentProviderId): void
   run(nodeId: string, inputOverride?: string): Promise<void>
@@ -82,11 +82,11 @@ export interface CanvasNodeCommands {
 }
 
 /**
- * The families that are wired so far: window, note and website (PR 4), and terminal (PR 5). The
- * role and task families join in PRs 6 and 7, each one removing its refs from the node types
- * params; this alias is replaced by `CanvasNodeCommands` in PR 7.
+ * The families that are wired so far: window, note and website (PR 4), terminal (PR 5) and role
+ * (PR 6). The task family joins in PR 7, removing its refs from the node types params; this alias
+ * is replaced by `CanvasNodeCommands` then.
  */
 export type WiredCanvasNodeCommands = Pick<
   CanvasNodeCommands,
-  'window' | 'terminal' | 'note' | 'website'
+  'window' | 'terminal' | 'note' | 'website' | 'role'
 >

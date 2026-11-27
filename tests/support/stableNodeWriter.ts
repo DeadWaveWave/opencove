@@ -11,6 +11,12 @@ import type { CanvasNodeWriter } from '../../src/contexts/workspace/presentation
  * Use it from `vi.mock` of the `useCanvasNodeWriter` module:
  * `vi.mock(path, async importOriginal => mockStableNodeWriter(await importOriginal(), () => control.on))`.
  */
+/**
+ * Whether the mocked `useCanvasNodeWriter` hands out the pinned writer. A harness that renders a
+ * hook sets it before it renders: `true` pins the writer, `false` lets it change with the workspace.
+ */
+export const writerPin = { stable: true }
+
 export function mockStableNodeWriter<
   Module extends { useCanvasNodeWriter: () => CanvasNodeWriter },
 >(original: Module, isStable: () => boolean): Module {

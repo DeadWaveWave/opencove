@@ -49,6 +49,7 @@ export function useWorkspaceCanvasNodeCreation({
   setNodes,
   standardWindowSizeBucket,
   browserDefaultMode,
+  readAgentSettings,
 }: UseWorkspaceCanvasNodeCreationParams) {
   const { t } = useTranslation()
   // Placement reads the committed document when a creator runs, for the workspace of this render.
@@ -79,11 +80,13 @@ export function useWorkspaceCanvasNodeCreation({
       executionDirectory,
       expectedDirectory,
       placement,
+      standardWindowSizeBucket: bucketOfCaller,
     }: CreateNodeInput): Promise<Node<TerminalNodeData> | null> => {
+      const bucket = bucketOfCaller ?? readAgentSettings().standardWindowSizeBucket
       const defaultSize =
         kind === 'agent'
-          ? resolveDefaultAgentWindowSize(standardWindowSizeBucket, agent?.provider)
-          : resolveDefaultTerminalWindowSize(standardWindowSizeBucket)
+          ? resolveDefaultAgentWindowSize(bucket, agent?.provider)
+          : resolveDefaultTerminalWindowSize(bucket)
       const resolvedPlacement = resolveNodesPlacement({
         workspaceId,
         getSpaces: () => readDocument().spaces,
@@ -162,15 +165,7 @@ export function useWorkspaceCanvasNodeCreation({
       onNodeCreated?.(nextNode.id)
       return nextNode
     },
-    [
-      onNodeCreated,
-      onShowMessage,
-      readDocument,
-      setNodes,
-      standardWindowSizeBucket,
-      workspaceId,
-      t,
-    ],
+    [onNodeCreated, onShowMessage, readAgentSettings, readDocument, setNodes, workspaceId, t],
   )
   const createNoteNode = useCallback(
     (anchor: Point, options: CreateNoteNodeOptions = {}): Node<TerminalNodeData> | null => {

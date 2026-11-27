@@ -376,7 +376,6 @@
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/helpers.ts": 2,
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/agentLaunchGeometry.ts": 1,
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/spaceMountLaunchContext.ts": 2,
-    "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useActionRefs.ts": 1,
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useAgentLauncher.ts": 2,
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useAgentNodeLifecycle.support.ts": 1,
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useAgentNodeLifecycle.ts": 1,

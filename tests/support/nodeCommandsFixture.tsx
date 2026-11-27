@@ -1,6 +1,7 @@
 import React from 'react'
 import type { ReactElement, ReactNode } from 'react'
 import type {
+  CanvasRoleCommands,
   CanvasTerminalCommands,
   WiredCanvasNodeCommands,
 } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeCommands'
@@ -40,6 +41,7 @@ export const noopNodeCommands: WiredCanvasNodeCommands = {
     setMode: noop,
     setFullscreen: noop,
   },
+  role: { updateInput: noop, updateProvider: noop, run: async () => {} },
 }
 
 /** The commands that do nothing, with the given terminal commands in place of the terminal's. */
@@ -47,6 +49,11 @@ export function withTerminalCommands(
   terminal: Partial<CanvasTerminalCommands>,
 ): WiredCanvasNodeCommands {
   return { ...noopNodeCommands, terminal: { ...noopNodeCommands.terminal, ...terminal } }
+}
+
+/** The commands that do nothing, with the given role commands in place of the role's. */
+export function withRoleCommands(role: Partial<CanvasRoleCommands>): WiredCanvasNodeCommands {
+  return { ...noopNodeCommands, role: { ...noopNodeCommands.role, ...role } }
 }
 
 /**

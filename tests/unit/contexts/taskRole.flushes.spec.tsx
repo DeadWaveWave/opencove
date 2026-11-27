@@ -29,6 +29,23 @@ import {
 // before it and the document it saw, so one that is dropped, doubled or requested before its write
 // fails. A branch that wrote nothing and did not flush before flushes nothing now.
 
+// The writer is the provider's, and it changes with the workspace. Unless a case turns it off (the
+// harness's `stable` option), the role hooks get one writer for the whole test, which writes through
+// the writer of the latest render, so that a switch cannot rebuild a callback through it and hide a
+// reader that is missing from a dependency list.
+vi.mock(
+  '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodeWriter',
+  async importOriginal => {
+    const { mockStableNodeWriter, writerPin } = await import('../../support/stableNodeWriter')
+    return mockStableNodeWriter(
+      await importOriginal<
+        typeof import('../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodeWriter')
+      >(),
+      () => writerPin.stable,
+    )
+  },
+)
+
 vi.mock('@app/renderer/i18n', () => {
   const translation = { t: (key: string) => key }
   return { useTranslation: () => translation }
@@ -525,6 +542,30 @@ describe('the role node creation and the role dialog flush', () => {
 
     expect(rendered.flushes).toHaveLength(1)
     expect(rendered.flushes[0].document.nodes[0].data.title).toBe('Renamed role')
+    expect(rendered.view.result.current.readUi().roleCreator).toBeNull()
+  })
+
+  it('persists the edited role definition once, and writes no node, when no window of the role is left', () => {
+    const rendered = renderRoleActions({ a: { nodes: [roleNode('role-a', { roleId: 'other' })] } })
+    act(() => {
+      rendered.view.result.current.roles.openRoleEditor('role-1')
+    })
+    act(() => {
+      rendered.view.result.current.ui.updateDialog('roleCreator', current => ({
+        ...current,
+        name: 'Renamed role',
+      }))
+    })
+    settle(rendered)
+    const nodesBefore = documentOf(A).nodes
+
+    act(() => {
+      rendered.view.result.current.roles.createRole()
+    })
+
+    // The definition is a setting persisted next to the document: one flush, asked for explicitly.
+    expect(rendered.flushes).toHaveLength(1)
+    expect(documentOf(A).nodes).toBe(nodesBefore)
     expect(rendered.view.result.current.readUi().roleCreator).toBeNull()
   })
 
