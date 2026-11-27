@@ -4,6 +4,7 @@ import type { Node } from '@xyflow/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
+import type { TerminalClientDisplayCalibration } from '../../../src/contexts/settings/domain/terminalDisplayCalibration'
 import { WorkspaceCanvas } from '../../../src/contexts/workspace/presentation/renderer/components/WorkspaceCanvas'
 import { useComposedCanvasNodeCommands } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodeCommands'
 import type { WiredCanvasNodeCommands } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeCommands'
@@ -19,6 +20,7 @@ import {
   useReadCanvasSelection,
   useReadCanvasUi,
 } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
+import { useScrollbackStore } from '../../../src/contexts/workspace/presentation/renderer/store/useScrollbackStore'
 import type {
   TerminalNodeData,
   WorkspaceState,
@@ -164,6 +166,18 @@ vi.mock('@xyflow/react', async importOriginal => {
   }
 })
 
+// The scrollback of a node that is written to disk later: the scheduler is the persistence's.
+const scheduledScrollbacks = vi.hoisted(() => [] as Array<[string, string | null]>)
+vi.mock(
+  '../../../src/contexts/workspace/presentation/renderer/utils/persistence/scrollbackSchedule',
+  async importOriginal => ({
+    ...(await importOriginal<Record<string, unknown>>()),
+    scheduleNodeScrollbackWrite: (nodeId: string, scrollback: string | null) => {
+      scheduledScrollbacks.push([nodeId, scrollback])
+    },
+  }),
+)
+
 vi.mock(
   '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/windowSignals/WorkspaceWindowSignals',
   () => ({ WorkspaceWindowSignals: () => null }),
@@ -205,15 +219,20 @@ const PREFERENCE_KEYS = [
 const onShowMessage = vi.fn()
 const readAgentSettings = () => useAppStore.getState().agentSettings
 
-let controls: { showWorkspace: (id: string) => void }
+let controls: {
+  showWorkspace: (id: string) => void
+  setCalibration: (calibration: TerminalClientDisplayCalibration | null) => void
+}
 
 function CanvasHarness() {
   const [workspaceId, setWorkspaceId] = useState(A)
+  const [calibration, setCalibration] = useState<TerminalClientDisplayCalibration | null>(null)
   controls = {
     showWorkspace: id => {
       useAppStore.setState({ activeWorkspaceId: id })
       setWorkspaceId(id)
     },
+    setCalibration,
   }
   const agentSettings = useAppStore(state => state.agentSettings)
   const nodes = useWorkspaceCanvasStoreNodes(workspaceId)
@@ -233,6 +252,7 @@ function CanvasHarness() {
       onMinimapVisibilityChange={() => undefined}
       agentSettings={agentSettings}
       readAgentSettings={readAgentSettings}
+      terminalDisplayCalibration={calibration}
       onAppendSpaceArchiveRecord={() => undefined}
       onChangePreserveWindowSizesOnArrange={() => undefined}
     />
@@ -311,21 +331,41 @@ async function observe(action: () => void | Promise<void>): Promise<Seen[]> {
   return seen.slice(mark)
 }
 
+// What a terminal command could reach outside the document. The closed-node table pins that none
+// of it is touched for a window the document no longer holds.
+const ipc = {
+  launch: vi.fn(),
+  kill: vi.fn(async () => undefined),
+  reexecAgent: vi.fn(),
+  listSessions: vi.fn(),
+  readLastMessage: vi.fn(),
+  invoke: vi.fn(),
+  writeText: vi.fn(),
+}
+
 function stubOpencoveApi(): void {
+  Object.values(ipc).forEach(mock => mock.mockClear())
   Object.defineProperty(window, 'opencoveApi', {
     configurable: true,
     writable: true,
     value: {
       pty: {
         spawn: vi.fn(),
-        kill: vi.fn(async () => undefined),
+        kill: ipc.kill,
+        reexecAgent: ipc.reexecAgent,
         onData: vi.fn(() => () => undefined),
         onExit: vi.fn(() => () => undefined),
         onState: vi.fn(() => () => undefined),
         onMetadata: vi.fn(() => () => undefined),
       },
       workspace: { ensureDirectory: vi.fn(async () => undefined) },
-      agent: { launch: vi.fn() },
+      agent: {
+        launch: ipc.launch,
+        listSessions: ipc.listSessions,
+        readLastMessage: ipc.readLastMessage,
+      },
+      controlSurface: { invoke: ipc.invoke },
+      clipboard: { writeText: ipc.writeText },
       task: { suggestTitle: vi.fn() },
     },
   })
@@ -333,6 +373,8 @@ function stubOpencoveApi(): void {
 
 beforeEach(() => {
   stubOpencoveApi()
+  scheduledScrollbacks.length = 0
+  useScrollbackStore.getState().clearAllScrollbacks()
   seedTwoWorkspaces()
   reactFlow.setCenter.mockClear()
   reactFlow.setState({
@@ -394,6 +436,19 @@ describe('the identity of the node commands and of the params value (Decision 3,
       },
     ],
     [
+      // The terminal commands read the launch fields when a launch starts (PR 5): a guard, green on
+      // the base, where the refs hide the identity.
+      'a settings change of a launch field the terminal commands read at call time (agentFullAccess)',
+      () => {
+        useAppStore.setState(state => ({
+          agentSettings: {
+            ...state.agentSettings,
+            agentFullAccess: !state.agentSettings.agentFullAccess,
+          },
+        }))
+      },
+    ],
+    [
       'a settings change of a field the commands read at call time (standardWindowSizeBucket)',
       () => {
         useAppStore.setState(state => ({
@@ -434,6 +489,7 @@ describe('the identity of the node commands and of the params value (Decision 3,
     await observe(() => void fireEvent.click(screen.getByTestId('select-a')))
 
     expect(commandsOf().window).toBe(before.window)
+    expect(commandsOf().terminal).toBe(before.terminal)
     expect(commandsOf().note).toBe(before.note)
     expect(commandsOf().website).toBe(before.website)
   })
@@ -449,6 +505,7 @@ describe('the identity of the node commands and of the params value (Decision 3,
     expect(after).not.toBe(before)
     expect(after.commands).not.toBe(before.commands)
     expect(after.commands.window).not.toBe(before.commands.window)
+    expect(after.commands.terminal).not.toBe(before.commands.terminal)
     expect(after.commands.note).not.toBe(before.commands.note)
     expect(after.commands.website).not.toBe(before.commands.website)
     expect(after.workspacePath).toBe(`/tmp/${B}`)
@@ -458,6 +515,33 @@ describe('the identity of the node commands and of the params value (Decision 3,
     expect(after.defaultProvider).toBe(before.defaultProvider)
     expect(after.browserDefaultMode).toBe(before.browserDefaultMode)
     expect(after.browserSearchEngine).toBe(before.browserSearchEngine)
+  })
+
+  // The terminal commands bind the display calibration (a monitor move, a font load): rare.
+  it('changes the terminal family and the object, and no other family, with the terminal calibration', async () => {
+    await mount()
+    const before = commandsOf()
+    const measured = { cols: 80, rows: 24, cssCellWidth: 9, cssCellHeight: 20, effectiveDpr: 1 }
+
+    await observe(() =>
+      controls.setCalibration({
+        version: 1,
+        profileKey: 'profile',
+        fontSize: 13,
+        lineHeight: 1,
+        letterSpacing: 0,
+        target: measured,
+        measured,
+        score: 1,
+        measuredAt: '2026-01-01T00:00:00.000Z',
+      }),
+    )
+
+    expect(commandsOf()).not.toBe(before)
+    expect(commandsOf().terminal).not.toBe(before.terminal)
+    expect(commandsOf().window).toBe(before.window)
+    expect(commandsOf().note).toBe(before.note)
+    expect(commandsOf().website).toBe(before.website)
   })
 
   it('changes a preference only when its content changes', async () => {
@@ -678,7 +762,7 @@ describe('the window commands reach the confirmation, the node store and the doc
 })
 
 describe('a command called with an id the document no longer holds writes nothing about it', () => {
-  // The window, note and website families, one row per command. `clearSelection` has no id.
+  // The window, terminal, note and website families, one row per command. `clearSelection` has no id.
   // Every row also reads the selection and the React Flow flag: they stay as they were (Invariant 2).
   const table: Array<[string, (commands: WiredCanvasNodeCommands) => unknown]> = [
     ['window.select', c => c.window.select('gone')],
@@ -691,6 +775,28 @@ describe('a command called with an id the document no longer holds writes nothin
     ],
     ['window.focusForInteraction', c => c.window.focusForInteraction('gone')],
     ['window.setLabelColorOverride', c => c.window.setLabelColorOverride(['gone'], 'blue')],
+    // The terminal family (PR 5): nothing is written, stored, launched or listed for the window.
+    ['terminal.updateScrollback', c => c.terminal.updateScrollback('gone', 'output')],
+    ['terminal.recordCommandRun', c => c.terminal.recordCommandRun('gone', 'ls -la', 1)],
+    ['terminal.clearAgentOverlay', c => c.terminal.clearAgentOverlay('gone', 1)],
+    ['terminal.renameTitle', c => c.terminal.renameTitle('gone', 'title')],
+    ['terminal.copyLastAgentMessage', c => c.terminal.copyLastAgentMessage('gone')],
+    ['terminal.reloadAgentSession', c => c.terminal.reloadAgentSession('gone')],
+    ['terminal.listAgentSessions', c => c.terminal.listAgentSessions('gone', 5)],
+    [
+      'terminal.switchAgentSession',
+      c =>
+        c.terminal.switchAgentSession('gone', {
+          sessionId: 'resume-1',
+          provider: 'codex',
+          cwd: '/repo',
+          title: null,
+          preview: null,
+          startedAt: null,
+          updatedAt: null,
+          source: 'codex-file',
+        }),
+    ],
     ['note.updateText', c => c.note.updateText('gone', 'text')],
     ['note.renameTitle', c => c.note.renameTitle('gone', 'title')],
     ['note.convertToTask', c => c.note.convertToTask('gone')],
@@ -726,6 +832,8 @@ describe('a command called with an id the document no longer holds writes nothin
     const documentBefore = readWorkspaceDocument(A)!
     const unsubscribe = useAppStore.subscribe(notifications)
     flushes.mockClear()
+    // The canvas's own mount traffic is not the command's.
+    Object.values(ipc).forEach(mock => mock.mockClear())
 
     await act(async () => {
       await call(commands)
@@ -744,6 +852,12 @@ describe('a command called with an id the document no longer holds writes nothin
     expect(reactFlow.state.nodesSelectionActive).toBe(true)
     expect(readUi().nodeDeleteConfirmation).toBeNull()
     expect(reactFlow.setCenter).not.toHaveBeenCalled()
+    // Outside the document: no IPC, and no scrollback stored or scheduled for the id.
+    for (const [channel, mock] of Object.entries(ipc)) {
+      expect(mock, channel).not.toHaveBeenCalled()
+    }
+    expect(useScrollbackStore.getState().scrollbackByNodeId).toEqual({})
+    expect(scheduledScrollbacks).toEqual([])
   })
 })
 
@@ -756,6 +870,14 @@ describe('the composition of the families (useComposedCanvasNodeCommands)', () =
       requestNodeDelete: vi.fn(),
       resizeNode: vi.fn(),
       setNodeLabelColorOverride: vi.fn(),
+      updateScrollback: vi.fn(),
+      recordCommandRun: vi.fn(),
+      clearAgentOverlay: vi.fn(),
+      renameTerminalTitle: vi.fn(),
+      copyLastAgentMessage: vi.fn(async () => undefined),
+      reloadAgentSession: vi.fn(async () => undefined),
+      listAgentSessions: vi.fn(async () => []),
+      switchAgentSession: vi.fn(async () => undefined),
       updateNoteText: vi.fn(),
       renameNoteTitle: vi.fn(),
       convertNoteToTask: vi.fn(() => false),
@@ -796,6 +918,7 @@ describe('the composition of the families (useComposedCanvasNodeCommands)', () =
 
     expect(result.current).toBe(first)
     expect(result.current.window).toBe(first.window)
+    expect(result.current.terminal).toBe(first.terminal)
     expect(result.current.note).toBe(first.note)
     expect(result.current.website).toBe(first.website)
   })
@@ -807,6 +930,14 @@ describe('the composition of the families (useComposedCanvasNodeCommands)', () =
     ['requestNodeDelete', 'window'],
     ['resizeNode', 'window'],
     ['setNodeLabelColorOverride', 'window'],
+    ['updateScrollback', 'terminal'],
+    ['recordCommandRun', 'terminal'],
+    ['clearAgentOverlay', 'terminal'],
+    ['renameTerminalTitle', 'terminal'],
+    ['copyLastAgentMessage', 'terminal'],
+    ['reloadAgentSession', 'terminal'],
+    ['listAgentSessions', 'terminal'],
+    ['switchAgentSession', 'terminal'],
     ['updateNoteText', 'note'],
     ['renameNoteTitle', 'note'],
     ['convertNoteToTask', 'note'],
@@ -822,7 +953,7 @@ describe('the composition of the families (useComposedCanvasNodeCommands)', () =
     rerender({ ...base, [name]: vi.fn() })
 
     expect(result.current).not.toBe(first)
-    for (const other of ['window', 'note', 'website'] as const) {
+    for (const other of ['window', 'terminal', 'note', 'website'] as const) {
       if (other === family) {
         expect(result.current[other], other).not.toBe(first[other])
       } else {
@@ -841,6 +972,14 @@ describe('the composition of the families (useComposedCanvasNodeCommands)', () =
     commands.window.requestDelete(['x'])
     commands.note.updateText('x', 't')
     commands.website.setPinned('x', true)
+    commands.terminal.updateScrollback('x', 'out')
+    commands.terminal.recordCommandRun('x', 'ls', 7)
+    commands.terminal.clearAgentOverlay('x', 8)
+    commands.terminal.renameTitle('x', 'name')
+    await commands.terminal.copyLastAgentMessage('x')
+    await commands.terminal.reloadAgentSession('x')
+    await commands.terminal.listAgentSessions('x', 3)
+    await commands.terminal.switchAgentSession('x', { sessionId: 's' } as never)
 
     expect(base.selectNode).toHaveBeenCalledWith('x', { toggle: true })
     expect(base.clearNodeSelection).toHaveBeenCalledTimes(1)
@@ -848,5 +987,13 @@ describe('the composition of the families (useComposedCanvasNodeCommands)', () =
     expect(base.requestNodeDelete).toHaveBeenCalledWith(['x'])
     expect(base.updateNoteText).toHaveBeenCalledWith('x', 't')
     expect(base.setWebsitePinned).toHaveBeenCalledWith('x', true)
+    expect(base.updateScrollback).toHaveBeenCalledWith('x', 'out')
+    expect(base.recordCommandRun).toHaveBeenCalledWith('x', 'ls', 7)
+    expect(base.clearAgentOverlay).toHaveBeenCalledWith('x', 8)
+    expect(base.renameTerminalTitle).toHaveBeenCalledWith('x', 'name')
+    expect(base.copyLastAgentMessage).toHaveBeenCalledWith('x')
+    expect(base.reloadAgentSession).toHaveBeenCalledWith('x')
+    expect(base.listAgentSessions).toHaveBeenCalledWith('x', 3)
+    expect(base.switchAgentSession).toHaveBeenCalledWith('x', { sessionId: 's' })
   })
 })

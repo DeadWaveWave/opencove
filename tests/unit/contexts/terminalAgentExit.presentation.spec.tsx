@@ -9,7 +9,7 @@ import { updateWorkspacesWithTerminalAgentActivityMetadata } from '../../../src/
 import { updateWorkspacesWithAgentExit } from '../../../src/app/renderer/shell/hooks/usePtyWorkspaceRuntimeSync'
 import { createTerminalAgentWorkspace, invocationEvent } from './terminalAgentExit.testSupport'
 import { installTerminalThemePtyApiMock } from './terminalNode.theme.testHarness'
-import { NodeCommandsProvider } from '../../support/nodeCommandsFixture'
+import { NodeCommandsProvider, withTerminalCommands } from '../../support/nodeCommandsFixture'
 
 vi.mock('@xyflow/react', () => ({
   Handle: () => null,
@@ -32,22 +32,15 @@ vi.mock(
 function renderNode(data: TerminalNodeData) {
   installTerminalThemePtyApiMock()
   const reload = vi.fn(async () => undefined)
+  const commands = withTerminalCommands({ reloadAgentSession: reload })
   const element = (nextData: TerminalNodeData) => (
-    <NodeCommandsProvider>
+    <NodeCommandsProvider commands={commands}>
       <WorkspaceCanvasTerminalNodeType
         id="terminal-1"
         data={nextData}
         terminalFontSize={14}
         terminalFontFamily={null}
         terminalDisplayCalibration={null}
-        copyAgentLastMessageRef={{ current: vi.fn(async () => undefined) }}
-        reloadAgentSessionRef={{ current: reload }}
-        listAgentSessionsRef={{ current: vi.fn(async () => []) }}
-        switchAgentSessionRef={{ current: vi.fn(async () => undefined) }}
-        updateNodeScrollbackRef={{ current: vi.fn() }}
-        updateTerminalTitleRef={{ current: vi.fn() }}
-        clearTerminalAgentOverlayRef={{ current: vi.fn() }}
-        renameTerminalTitleRef={{ current: vi.fn() }}
       />
     </NodeCommandsProvider>
   )

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_AGENT_ENV_BY_PROVIDER } from '../../../src/contexts/settings/domain/agentEnv'
 import { useWorkspaceCanvasAgentNodeLifecycle } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useAgentNodeLifecycle'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
+import { createAgentSettingsReader } from '../../support/agentSettingsReader'
 
 import {
   agentNode,
@@ -45,11 +46,31 @@ vi.mock(
     }
   },
 )
+// The lifecycle takes its writer from context. A `stable` render gets a writer of one identity
+// that writes through the one of the latest render, as the old `stableSetNodes` was.
+const writer = vi.hoisted(() => ({ stable: false }))
+vi.mock(
+  '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodeWriter',
+  async importOriginal => {
+    const { mockStableNodeWriter } = await import('../../support/stableNodeWriter')
+    return mockStableNodeWriter(
+      await importOriginal<
+        typeof import('../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodeWriter')
+      >(),
+      () => writer.stable,
+    )
+  },
+)
 const translation = vi.hoisted(() => ({ t: (key: string) => key }))
 vi.mock('@app/renderer/i18n', () => ({ useTranslation: () => translation }))
 
-const agentEnvByProvider = DEFAULT_AGENT_ENV_BY_PROVIDER
-const terminalDisplayMetrics = { fontSize: 13 }
+const readAgentSettings = createAgentSettingsReader({
+  agentFullAccess: true,
+  codexReuseRunningAppServer: false,
+  defaultTerminalProfileId: null,
+  terminalFontSize: 13,
+  agentEnvByProvider: DEFAULT_AGENT_ENV_BY_PROVIDER,
+})
 
 // `stable` pins the reader's place in the dependency lists: the writer, the project id and the
 // path then keep their value, so none of them can rebuild a callback and hide a missing reader.
@@ -57,19 +78,15 @@ function renderLifecycle(
   documents: Parameters<typeof renderInTwoWorkspaces>[1],
   { stable = false } = {},
 ) {
-  return renderInTwoWorkspaces(({ workspaceId, nodeStore, stableSetNodes }) => {
+  writer.stable = stable
+  return renderInTwoWorkspaces(({ workspaceId, nodeStore }) => {
     return useWorkspaceCanvasAgentNodeLifecycle({
       workspaceId: stable ? 'project' : workspaceId,
       workspacePath: stable ? '/repo' : `/tmp/${workspaceId}`,
-      setNodes: stable ? stableSetNodes : nodeStore.setNodes,
       bumpAgentLaunchToken: nodeStore.bumpAgentLaunchToken,
       isAgentLaunchTokenCurrent: nodeStore.isAgentLaunchTokenCurrent,
-      agentFullAccess: true,
-      codexReuseRunningAppServer: false,
-      defaultTerminalProfileId: null,
-      terminalFontSize: 13,
-      terminalDisplayMetrics,
-      agentEnvByProvider,
+      readAgentSettings,
+      terminalDisplayCalibration: null,
     })
   }, documents)
 }

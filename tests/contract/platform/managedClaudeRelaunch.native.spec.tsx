@@ -1,10 +1,15 @@
 // @vitest-environment happy-dom
+import { createAgentSettingsReader } from '../../support/agentSettingsReader'
 import { DEFAULT_AGENT_ENV_BY_PROVIDER } from '../../../src/contexts/settings/domain/agentEnv'
-import { createElement, useCallback, useMemo, useState } from 'react'
+import { createElement, useCallback, useLayoutEffect, useMemo, useState } from 'react'
 import { act, cleanup, renderHook } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
-import { createStoreBackedChannels } from '../../support/workspaceCanvasStoreHarness'
+import {
+  createStoreBackedChannels,
+  useWorkspaceCanvasStoreNodes,
+} from '../../support/workspaceCanvasStoreHarness'
+import { registerWorkspaceDocumentPersistFlush } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import { describeWithElectronNativeModules } from '../electronNativeSuite'
 import { snapshotFixture, type SnapshotFixture } from './managedClaudeSnapshotFixture'
 import { toShellWorkspaceState } from '../../../src/app/renderer/shell/hooks/useHydrateAppState.helpers'
@@ -180,7 +185,8 @@ describeWithElectronNativeModules('UI Claude relaunch during normal persistence'
       })
       const hook = renderHook(
         () => {
-          const [nodes, setNodes] = useState(workspace.nodes)
+          // The lifecycle writes the store through its own writer, so the persisted view follows the store.
+          const nodes = useWorkspaceCanvasStoreNodes(workspace.id)
           const [spaces, setSpaces] = useState(workspace.spaces)
           const onSpacesChange = (next: typeof spaces) => {
             spacesRef.current = next
@@ -202,11 +208,14 @@ describeWithElectronNativeModules('UI Claude relaunch during normal persistence'
             isHydrated: true,
             producePersistedState: produce,
           })
+          // The lifecycle's flushes reach the persistence as the shell's flush does.
+          useLayoutEffect(() =>
+            registerWorkspaceDocumentPersistFlush(() => persistence.requestPersistFlush()),
+          )
           // The flush rides on the node write that asks for it, as the node store runs it.
           const setCanvasNodes: TaskActionContext['setNodes'] = (update, options) => {
             const next = update(nodesRef.current)
             nodesRef.current = next
-            setNodes(next)
             if (options?.flush) {
               persistence.requestPersistFlush()
             }
@@ -222,15 +231,16 @@ describeWithElectronNativeModules('UI Claude relaunch during normal persistence'
           const lifecycle = useWorkspaceCanvasAgentNodeLifecycle({
             workspaceId: workspace.id,
             workspacePath: workspace.path,
-            setNodes: setCanvasNodes,
             bumpAgentLaunchToken: () => 1,
             isAgentLaunchTokenCurrent: () => true,
-            agentFullAccess: false,
-            codexReuseRunningAppServer: false,
-            defaultTerminalProfileId: null,
-            terminalFontSize: 13,
-            terminalDisplayMetrics: { fontSize: 13 },
-            agentEnvByProvider: DEFAULT_AGENT_ENV_BY_PROVIDER,
+            readAgentSettings: createAgentSettingsReader({
+              agentFullAccess: false,
+              codexReuseRunningAppServer: false,
+              defaultTerminalProfileId: null,
+              terminalFontSize: 13,
+              agentEnvByProvider: DEFAULT_AGENT_ENV_BY_PROVIDER,
+            }),
+            terminalDisplayCalibration: null,
           })
           return {
             ...lifecycle,

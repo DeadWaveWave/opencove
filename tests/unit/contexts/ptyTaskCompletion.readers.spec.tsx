@@ -99,17 +99,12 @@ describe('the PTY task completion in two workspaces', () => {
   function renderCompletion(
     documents: Parameters<typeof renderInTwoWorkspaces>[1],
     query: (nodeId: string, limit?: number) => Promise<AgentSessionSummary[]>,
-    onWrite?: () => void,
   ) {
     // `workspaceId` is optional for the hook and left out here: only the document reader can then
     // move the subscription to the workspace shown.
-    return renderInTwoWorkspaces(({ canvasState, nodeStore }) => {
+    return renderInTwoWorkspaces(({ canvasState }) => {
       useWorkspaceCanvasPtyTaskCompletion({
         nodes: canvasState.flowNodes,
-        setNodes: (updater, options) => {
-          onWrite?.()
-          nodeStore.setNodes(updater, options)
-        },
         listAgentSessions: query,
       })
     }, documents)
@@ -184,23 +179,25 @@ describe('the PTY task completion in two workspaces', () => {
           resolve = onResolve
         }),
     )
-    const writes = vi.fn()
-    renderCompletion({ a: { nodes: [watched('agent-a')] } }, query, writes)
+    const { harness } = renderCompletion({ a: { nodes: [watched('agent-a')] } }, query)
     await act(async () => {
       emitMetadata(metadataOf('agent-a'))
     })
     expect(query).toHaveBeenCalledTimes(1)
-    writes.mockClear()
 
     // The runtime of the node is replaced in the store while the scan runs; the scan re-reads it.
     await act(async () => {
       setDocumentNodes(A, [
         { ...watched('agent-a'), data: { ...watched('agent-a').data, sessionId: 'replacement' } },
       ])
+    })
+    harness.notifications.mockClear()
+    await act(async () => {
       resolve([summaryOf('agent-a-resume', 'Review persistence')])
     })
 
     expect(nodeOf(A, 'agent-a').data.title).toBe('codex · default')
-    expect(writes).not.toHaveBeenCalled()
+    // Nothing was written: the store notified no one.
+    expect(harness.notifications).not.toHaveBeenCalled()
   })
 })

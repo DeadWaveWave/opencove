@@ -13,12 +13,20 @@ import {
   createCanvasDocumentHarness,
   renderInCanvasDocument,
 } from '../../support/canvasDocumentHarness'
+import { createAgentSettingsReader } from '../../support/agentSettingsReader'
 
 // A relaunch repairs the mount of the Space that owns the agent after `mount.list` answers. The
 // repair is written through the document commands of the workspace the relaunch started in, as a
 // recipe over the Spaces that workspace holds then, and flushes once (#702).
 
 const NODE_ID = 'agent-1'
+const readAgentSettings = createAgentSettingsReader({
+  agentFullAccess: true,
+  codexReuseRunningAppServer: false,
+  defaultTerminalProfileId: null,
+  terminalFontSize: 13,
+  agentEnvByProvider: DEFAULT_AGENT_ENV_BY_PROVIDER,
+})
 
 // In the commands test the reader keeps the value of the first render, so that only the document
 // commands can make the callback follow the switch.
@@ -38,6 +46,21 @@ vi.mock(
         return frozen.reader
       },
     }
+  },
+)
+
+// The writer is the provider's, so it follows the workspace; the commands case pins it as it pins
+// the reader, so that only the document commands can make the callback follow the switch.
+vi.mock(
+  '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodeWriter',
+  async importOriginal => {
+    const { mockStableNodeWriter } = await import('../../support/stableNodeWriter')
+    return mockStableNodeWriter(
+      await importOriginal<
+        typeof import('../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodeWriter')
+      >(),
+      () => frozen.on,
+    )
   },
 )
 
@@ -125,7 +148,6 @@ function spacesOf(workspaceId: string): WorkspaceSpaceState[] {
 
 describe('agent relaunch mount repair', () => {
   let shown: string
-  let nodes: { current: Node<TerminalNodeData>[] }
   let answers: Array<{ workspaceId: string; answer: () => void }>
   let harness: ReturnType<typeof createCanvasDocumentHarness>
 
@@ -133,7 +155,6 @@ describe('agent relaunch mount repair', () => {
     frozen.on = false
     frozen.reader = null
     shown = 'workspace-a'
-    nodes = { current: [agentNode()] }
     answers = []
     harness = createCanvasDocumentHarness({
       workspaceId: 'workspace-a',
@@ -182,25 +203,15 @@ describe('agent relaunch mount repair', () => {
   })
 
   function renderLifecycle(options: { hookWorkspaceId?: string } = {}) {
-    // Stable between renders, as the canvas's is, so that a callback is rebuilt only when its own
-    // dependencies change.
-    const setNodes = (updater: (prev: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[]) => {
-      nodes.current = updater(nodes.current)
-    }
     return renderInCanvasDocument(
       () =>
         useWorkspaceCanvasAgentNodeLifecycle({
           workspaceId: options.hookWorkspaceId ?? shown,
           workspacePath: '/repo',
-          setNodes,
           bumpAgentLaunchToken: () => 1,
           isAgentLaunchTokenCurrent: () => true,
-          agentFullAccess: true,
-          codexReuseRunningAppServer: false,
-          defaultTerminalProfileId: null,
-          terminalFontSize: 13,
-          terminalDisplayMetrics: { fontSize: 13 },
-          agentEnvByProvider: DEFAULT_AGENT_ENV_BY_PROVIDER,
+          readAgentSettings,
+          terminalDisplayCalibration: null,
         }),
       { workspaceId: () => shown },
     )

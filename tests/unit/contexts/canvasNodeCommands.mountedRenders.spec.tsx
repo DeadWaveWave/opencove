@@ -486,7 +486,6 @@ describe('what node components consume keeps its identity (Decision 14)', () => 
           },
         })),
     ],
-    ['the workspace path', () => controls.setPath('/tmp/edited')],
   ])(
     'does not render the terminal body, which reads none of the preferences, when %s changes',
     async (_name, change) => {
@@ -514,24 +513,36 @@ describe('what node components consume keeps its identity (Decision 14)', () => 
           DEFAULT_AGENT_SETTINGS.browserDefaultMode === 'native' ? 'iframe' : 'native',
       }),
     ],
-    // The folder body also reads the filesystem actions, which are made for the workspace path.
-    ['the workspace path', () => controls.setPath('/tmp/edited'), ['A-folder']],
     [
       'agentProviderOrder',
       settings({ agentProviderOrder: [...DEFAULT_AGENT_SETTINGS.agentProviderOrder].reverse() }),
     ],
-  ])(
-    'renders no body that reads no preference when %s changes',
-    async (_name, change, also = []) => {
-      await mountCanvas()
+  ])('renders no body that reads no preference when %s changes', async (_name, change) => {
+    await mountCanvas()
 
-      await act(async () => {
-        change()
-      })
+    await act(async () => {
+      change()
+    })
 
-      const readers = ['A-note', 'A-web', 'A-task', 'A-role', ...also]
-      expect(Object.keys(counts.leaf).length).toBeGreaterThan(0)
-      expect(Object.keys(counts.leaf).filter(key => !readers.includes(key))).toEqual([])
-    },
-  )
+    const readers = ['A-note', 'A-web', 'A-task', 'A-role']
+    expect(Object.keys(counts.leaf).length).toBeGreaterThan(0)
+    expect(Object.keys(counts.leaf).filter(key => !readers.includes(key))).toEqual([])
+  })
+
+  // The terminal commands bind the workspace path (the mount they launch into, the environment they
+  // launch with), so an edit of the path renews the commands (Decision 3: "an edit of its path or
+  // environment"). Every body that reads them renders once for it, and the folder's actions too.
+  it('renders every body that reads the commands, once, when the workspace path is edited', async () => {
+    await mountCanvas()
+    const before = (seenParams[seenParams.length - 1] as { commands: unknown }).commands
+
+    await act(async () => {
+      controls.setPath('/tmp/edited')
+    })
+
+    expect((seenParams[seenParams.length - 1] as { commands: unknown }).commands).not.toBe(before)
+    for (const key of ['A-term', 'A-note', 'A-web', 'A-doc', 'A-folder', 'ImageNode']) {
+      expect(counts.leaf[key], key).toBeGreaterThan(0)
+    }
+  })
 })

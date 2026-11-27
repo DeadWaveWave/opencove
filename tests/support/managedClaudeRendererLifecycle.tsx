@@ -1,3 +1,4 @@
+import { createAgentSettingsReader } from './agentSettingsReader'
 import { renderHook } from '@testing-library/react'
 import { vi } from 'vitest'
 import type { Node } from '@xyflow/react'
@@ -138,15 +139,16 @@ export function rendererLifecycleFixture(mounted: boolean, persisted = true) {
       useWorkspaceCanvasAgentNodeLifecycle({
         workspaceId: 'workspace',
         workspacePath: '/repo',
-        setNodes,
         bumpAgentLaunchToken: () => 1,
         isAgentLaunchTokenCurrent: () => true,
-        agentFullAccess: false,
-        codexReuseRunningAppServer: false,
-        defaultTerminalProfileId: null,
-        terminalFontSize: 13,
-        terminalDisplayMetrics: { fontSize: 13 },
-        agentEnvByProvider: DEFAULT_AGENT_ENV_BY_PROVIDER,
+        readAgentSettings: createAgentSettingsReader({
+          agentFullAccess: false,
+          codexReuseRunningAppServer: false,
+          defaultTerminalProfileId: null,
+          terminalFontSize: 13,
+          agentEnvByProvider: DEFAULT_AGENT_ENV_BY_PROVIDER,
+        }),
+        terminalDisplayCalibration: null,
       }),
     { wrapper: CanvasStoreTestProvider },
   )

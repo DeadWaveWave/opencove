@@ -70,19 +70,6 @@ function createHarness(options: {
     nodes: [initialNode],
   })
   const { nodesRef } = storeBackedChannelsOf(CANVAS_STORE_TEST_WORKSPACE_ID)
-  // The fake writer requests the flush the way the real one does: for a write that applied.
-  const setNodes = vi.fn(
-    (
-      updater: (nodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-      writeOptions?: { flush?: boolean },
-    ) => {
-      const previous = nodesRef.current
-      nodesRef.current = updater(previous)
-      if (writeOptions?.flush && nodesRef.current !== previous) {
-        documentHarness.flush()
-      }
-    },
-  )
   const reexecAgent = vi.fn(async (input: { sessionId: string }) => ({
     sessionId: input.sessionId,
     operationId: 'operation-1',
@@ -101,7 +88,6 @@ function createHarness(options: {
   const hook = renderHook(
     () =>
       useTerminalAgentSessionActions({
-        setNodes,
         onShowMessage,
       }),
     { wrapper: CanvasStoreTestProvider },

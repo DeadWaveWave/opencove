@@ -1,3 +1,4 @@
+import { createAgentSettingsReader } from '../../support/agentSettingsReader'
 import { act, renderHook } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { Node } from '@xyflow/react'
@@ -80,7 +81,7 @@ describe('agent relaunch session binding', () => {
       if (owned) {
         node.data.sessionId = 'old-runtime'
       }
-      const { nodesRef, setNodes } = createStoreBackedChannels({
+      const { nodesRef } = createStoreBackedChannels({
         workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID,
         nodes: [node],
       })
@@ -119,15 +120,16 @@ describe('agent relaunch session binding', () => {
           useWorkspaceCanvasAgentNodeLifecycle({
             workspaceId: 'workspace-a',
             workspacePath: '/repo',
-            setNodes,
             bumpAgentLaunchToken: () => 1,
             isAgentLaunchTokenCurrent: () => true,
-            agentFullAccess: setting,
-            codexReuseRunningAppServer: false,
-            defaultTerminalProfileId: null,
-            terminalFontSize: 13,
-            terminalDisplayMetrics: { fontSize: 13 },
-            agentEnvByProvider: DEFAULT_AGENT_ENV_BY_PROVIDER,
+            readAgentSettings: createAgentSettingsReader({
+              agentFullAccess: setting,
+              codexReuseRunningAppServer: false,
+              defaultTerminalProfileId: null,
+              terminalFontSize: 13,
+              agentEnvByProvider: DEFAULT_AGENT_ENV_BY_PROVIDER,
+            }),
+            terminalDisplayCalibration: null,
           }),
         { wrapper: CanvasStoreTestProvider },
       )

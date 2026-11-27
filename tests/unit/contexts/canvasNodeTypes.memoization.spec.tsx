@@ -19,11 +19,16 @@ import {
 } from '@contexts/workspace/presentation/renderer/components/shared/windowCommitProbe'
 
 // Keep every production context consumer, collapse shell, WebsiteNode, WindowHeader and
-// viewport subscription. Only unrelated window bodies (PTY/editor/plugin/etc.) are stubbed.
-vi.mock(
-  '@contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeTypes.terminal',
-  () => ({ WorkspaceCanvasTerminalNodeType: () => null }),
-)
+// viewport subscription. Only unrelated window bodies (PTY/editor/plugin/etc.) are stubbed. The
+// terminal's body, which reads the commands (S7, PR 5), is the production one: only the xterm
+// window under it is stubbed, and counts its renders, so that a body that renders again shows.
+const terminalWindow = vi.hoisted(() => ({ renders: 0 }))
+vi.mock('@contexts/workspace/presentation/renderer/components/TerminalNode', () => ({
+  TerminalNode: () => {
+    terminalWindow.renders++
+    return null
+  },
+}))
 vi.mock(
   '@contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeTypes.note',
   () => ({ WorkspaceCanvasNoteNodeType: () => null }),
@@ -103,6 +108,14 @@ const implementations = {
   requestNodeDelete: vi.fn(),
   resizeNode: vi.fn(),
   setNodeLabelColorOverride: vi.fn(),
+  updateScrollback: vi.fn(),
+  recordCommandRun: vi.fn(),
+  clearAgentOverlay: vi.fn(),
+  renameTerminalTitle: vi.fn(),
+  copyLastAgentMessage: vi.fn(async () => undefined),
+  reloadAgentSession: vi.fn(async () => undefined),
+  listAgentSessions: vi.fn(async () => []),
+  switchAgentSession: vi.fn(async () => undefined),
   updateNoteText: vi.fn(),
   renameNoteTitle: vi.fn(),
   convertNoteToTask: () => false,
@@ -169,6 +182,7 @@ function Canvas() {
 
 afterEach(() => {
   cleanup()
+  terminalWindow.renders = 0
   resetWindowCommitCounts()
   Object.defineProperty(window, 'opencoveApi', { configurable: true, value: originalApi })
 })
@@ -204,6 +218,8 @@ it.each(['unchanged parent', 'viewport pan', 'viewport zoom'])(
     expect(readWindowCommitCounts()).toEqual({ media: 1 })
     expect(Object.keys(readWindowPresentationCommitCounts())).toHaveLength(nodes.length)
     const before = parentRenders
+    const terminalRendersBefore = terminalWindow.renders
+    expect(terminalRendersBefore).toBeGreaterThan(0)
     resetWindowCommitCounts()
     if (update === 'unchanged parent') {
       fireEvent.click(screen.getByRole('button', { name: 'Parent update' }))
@@ -219,6 +235,8 @@ it.each(['unchanged parent', 'viewport pan', 'viewport zoom'])(
     expect(readWindowCommitRecords()).toEqual([])
     expect(readWindowCommitCounts()).toEqual({})
     expect(readWindowPresentationCommitCounts()).toEqual({})
+    // The production terminal body is a consumer of the commands too: it renders for none of them.
+    expect(terminalWindow.renders).toBe(terminalRendersBefore)
     expect(parameters).toBe(initialParameters)
     // The commands are composed again on every parent render and keep their identity.
     expect(parameters.commands).toBe(initialCommands)

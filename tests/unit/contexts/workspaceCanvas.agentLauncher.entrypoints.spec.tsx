@@ -1,11 +1,11 @@
 import { act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
 import {
   CANVAS_STORE_TEST_WORKSPACE_ID,
   renderHookWithCanvasStore,
 } from '../../support/canvasStoreTestHarness'
 import { createCanvasDocumentHarness } from '../../support/canvasDocumentHarness'
+import { createAgentSettingsReader } from '../../support/agentSettingsReader'
 import { useWorkspaceCanvasAgentLauncher } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useAgentLauncher'
 import {
   launchWorkspaceAgentSession,
@@ -46,7 +46,7 @@ const SPACE = {
 
 function fixture(): LauncherParams {
   return {
-    agentSettings: { ...DEFAULT_AGENT_SETTINGS, defaultProvider: 'codex' },
+    readAgentSettings: createAgentSettingsReader({ defaultProvider: 'codex' }),
     workspaceId: 'project-a',
     workspacePath: '/repo',
     updateCanvasDocument: vi.fn(),
@@ -74,7 +74,6 @@ function fixture(): LauncherParams {
         website: null,
       },
     })),
-    standardWindowSizeBucket: DEFAULT_AGENT_SETTINGS.standardWindowSizeBucket,
     buildAgentNodeTitle: vi.fn(provider => `${provider} · new`),
   }
 }

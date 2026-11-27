@@ -10,6 +10,9 @@ import { describe, expect, it, vi } from 'vitest'
 import type { Node } from '@xyflow/react'
 import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { DEFAULT_AGENT_ENV_BY_PROVIDER } from '../../../src/contexts/settings/domain/agentEnv'
+import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
+import { TERMINAL_LAYOUT_SYNC_EVENT } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/constants'
+import { createAgentSettingsReader } from '../../support/agentSettingsReader'
 import { useWorkspaceCanvasAgentNodeLifecycle } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useAgentNodeLifecycle'
 import { useWorkspaceCanvasPtyTaskCompletion } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/usePtyTaskCompletion'
 
@@ -64,6 +67,18 @@ function createAgentNode(): Node<TerminalNodeData> {
   }
 }
 
+// What `syncLayout: false` means to the canvas's writer: no layout sync event while the workspace
+// is shown. The hooks take the writer from context, so a spy on its calls is the event itself.
+function trackLayoutSyncs(): { count: () => number; stop: () => void } {
+  useAppStore.setState({ activeWorkspaceId: CANVAS_STORE_TEST_WORKSPACE_ID })
+  const listener = vi.fn()
+  window.addEventListener(TERMINAL_LAYOUT_SYNC_EVENT, listener)
+  return {
+    count: () => listener.mock.calls.length,
+    stop: () => window.removeEventListener(TERMINAL_LAYOUT_SYNC_EVENT, listener),
+  }
+}
+
 describe('agent terminal layout sync', () => {
   it('does not trigger layout sync during agent lifecycle status updates', async () => {
     createCanvasDocumentHarness({
@@ -71,15 +86,7 @@ describe('agent terminal layout sync', () => {
       nodes: [createAgentNode()],
     })
     const { nodesRef } = storeBackedChannelsOf(CANVAS_STORE_TEST_WORKSPACE_ID)
-
-    const setNodes = vi.fn(
-      (
-        updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-        _options?: { syncLayout?: boolean },
-      ) => {
-        nodesRef.current = updater(nodesRef.current)
-      },
-    )
+    const layoutSyncs = trackLayoutSyncs()
 
     Object.defineProperty(window, 'opencoveApi', {
       configurable: true,
@@ -108,13 +115,17 @@ describe('agent terminal layout sync', () => {
 
     function Harness(): React.ReactElement | null {
       const { launchAgentInNode } = useWorkspaceCanvasAgentNodeLifecycle({
-        setNodes,
+        workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID,
+        workspacePath: '/tmp/project',
         bumpAgentLaunchToken: () => 1,
         isAgentLaunchTokenCurrent: () => true,
-        agentFullAccess: true,
-        codexReuseRunningAppServer: false,
-        defaultTerminalProfileId: 'wsl:Ubuntu',
-        agentEnvByProvider: DEFAULT_AGENT_ENV_BY_PROVIDER,
+        readAgentSettings: createAgentSettingsReader({
+          agentFullAccess: true,
+          codexReuseRunningAppServer: false,
+          defaultTerminalProfileId: 'wsl:Ubuntu',
+          agentEnvByProvider: DEFAULT_AGENT_ENV_BY_PROVIDER,
+        }),
+        terminalDisplayCalibration: null,
       })
 
       useEffect(() => {
@@ -130,14 +141,12 @@ describe('agent terminal layout sync', () => {
       expect(window.opencoveApi.agent.launch).toHaveBeenCalledTimes(1)
     })
 
+    // The launch writes twice (restoring, then bound to its session); neither syncs the layout.
     await waitFor(() => {
-      expect(setNodes).toHaveBeenCalledTimes(2)
+      expect(nodesRef.current[0]?.data.sessionId).toBe('agent-session-1')
     })
-
-    expect(setNodes.mock.calls.map(call => call[1])).toEqual([
-      { syncLayout: false },
-      { syncLayout: false },
-    ])
+    layoutSyncs.stop()
+    expect(layoutSyncs.count()).toBe(0)
   })
 
   it('leaves agent runtime state events to the shell writer, so the canvas never syncs layout for them', async () => {
@@ -145,7 +154,12 @@ describe('agent terminal layout sync', () => {
       | ((event: { sessionId: string; state: 'running' | 'standby' }) => void)
       | null = null
 
-    const setNodes = vi.fn()
+    createCanvasDocumentHarness({
+      workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID,
+      nodes: [createAgentNode()],
+    })
+    const writes = vi.fn()
+    const unsubscribeWrites = useAppStore.subscribe(writes)
 
     Object.defineProperty(window, 'opencoveApi', {
       configurable: true,
@@ -166,9 +180,7 @@ describe('agent terminal layout sync', () => {
     })
 
     function Harness(): null {
-      useWorkspaceCanvasPtyTaskCompletion({
-        setNodes,
-      })
+      useWorkspaceCanvasPtyTaskCompletion({})
       return null
     }
 
@@ -180,7 +192,8 @@ describe('agent terminal layout sync', () => {
 
     // Moved from "setNodes called once with { syncLayout: false }": the shell writer now owns this
     // write (ptyRuntimeObservation.singleWriter.spec.tsx asserts no layout sync event for it).
-    expect(setNodes).not.toHaveBeenCalled()
+    unsubscribeWrites()
+    expect(writes).not.toHaveBeenCalled()
   })
 
   it('updates a directly launched Agent title after session metadata resolves', async () => {
@@ -194,18 +207,7 @@ describe('agent terminal layout sync', () => {
       nodes: [node],
     })
     const { nodesRef } = storeBackedChannelsOf(CANVAS_STORE_TEST_WORKSPACE_ID)
-    const setNodes = vi.fn(
-      (
-        updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-        options?: { syncLayout?: boolean; flush?: boolean },
-      ) => {
-        const previous = nodesRef.current
-        nodesRef.current = updater(previous)
-        if (options?.flush && nodesRef.current !== previous) {
-          documentHarness.flush()
-        }
-      },
-    )
+    const layoutSyncs = trackLayoutSyncs()
     const listAgentSessions = vi.fn(async () => [
       {
         sessionId: 'resume-1',
@@ -240,7 +242,6 @@ describe('agent terminal layout sync', () => {
 
     function Harness(): null {
       useWorkspaceCanvasPtyTaskCompletion({
-        setNodes,
         listAgentSessions,
       })
       return null
@@ -258,7 +259,8 @@ describe('agent terminal layout sync', () => {
 
     expect(listAgentSessions).toHaveBeenCalledWith('agent-1', 20)
     expect(onRequestPersistFlush).toHaveBeenCalledTimes(2)
-    expect(setNodes.mock.calls.every(call => call[1]?.syncLayout === false)).toBe(true)
+    layoutSyncs.stop()
+    expect(layoutSyncs.count()).toBe(0)
   })
 
   it('restarts an unresolved title lookup immediately when the Agent enters standby', async () => {
@@ -275,14 +277,6 @@ describe('agent terminal layout sync', () => {
       node.data.title = 'codex · gpt-5.2-codex'
       createCanvasDocumentHarness({ workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID, nodes: [node] })
       const { nodesRef } = storeBackedChannelsOf(CANVAS_STORE_TEST_WORKSPACE_ID)
-      const setNodes = vi.fn(
-        (
-          updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-          _options?: { syncLayout?: boolean },
-        ) => {
-          nodesRef.current = updater(nodesRef.current)
-        },
-      )
       const listAgentSessions = vi
         .fn()
         .mockResolvedValueOnce([])
@@ -323,7 +317,6 @@ describe('agent terminal layout sync', () => {
 
       function Harness(): null {
         useWorkspaceCanvasPtyTaskCompletion({
-          setNodes,
           listAgentSessions,
         })
         return null

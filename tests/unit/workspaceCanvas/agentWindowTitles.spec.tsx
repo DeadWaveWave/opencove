@@ -5,7 +5,7 @@ import type { Node } from '@xyflow/react'
 import type { TerminalNodeData } from '@contexts/workspace/presentation/renderer/types'
 import type { TerminalNodeProps } from '@contexts/workspace/presentation/renderer/components/TerminalNode.types'
 import { WorkspaceCanvasTerminalNodeType } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeTypes.terminal'
-import { NodeCommandsProvider } from '../../support/nodeCommandsFixture'
+import { NodeCommandsProvider, withTerminalCommands } from '../../support/nodeCommandsFixture'
 import { CollapsedWindow } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/collapse/CollapsedWindow'
 import { WorkspaceCollapseContext } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/collapse/WorkspaceCollapseContext'
 import { TerminalNodeHeader } from '@contexts/workspace/presentation/renderer/components/terminalNode/TerminalNodeHeader'
@@ -114,25 +114,18 @@ function renderTitles(data: TerminalNodeData, linkedTaskTitle?: string) {
     terminalFontSize: 14,
     terminalFontFamily: null,
     terminalDisplayCalibration: null,
-    copyAgentLastMessageRef: { current: vi.fn(async () => undefined) },
-    reloadAgentSessionRef: { current: vi.fn(async () => undefined) },
-    listAgentSessionsRef: { current: vi.fn(async () => []) },
-    switchAgentSessionRef: { current: vi.fn(async () => undefined) },
-    updateNodeScrollbackRef: { current: vi.fn() },
-    updateTerminalTitleRef: { current: vi.fn() },
-    clearTerminalAgentOverlayRef: { current: vi.fn() },
-    renameTerminalTitleRef: { current: vi.fn() },
   }
+  const rename = vi.fn()
   const collapse = createCollapseContext(flow.nodes)
   const view = render(
-    <NodeCommandsProvider>
+    <NodeCommandsProvider commands={withTerminalCommands({ renameTitle: rename })}>
       <WorkspaceCollapseContext.Provider value={collapse}>
         <WorkspaceCanvasTerminalNodeType {...props} />
         <CollapsedWindow id="agent" data={data} onExpand={vi.fn()} />
       </WorkspaceCollapseContext.Provider>
     </NodeCommandsProvider>,
   )
-  return { ...view, rename: props.renameTerminalTitleRef.current }
+  return { ...view, rename }
 }
 
 describe('Agent window title presentation', () => {

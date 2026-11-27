@@ -1,7 +1,7 @@
 import { act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
-import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
+import { createAgentSettingsReader } from '../../support/agentSettingsReader'
 import { useWorkspaceCanvasAgentLauncher } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useAgentLauncher'
 import { assignNodeToSpaceAndExpand } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useInteractions.spaceAssignment'
 import {
@@ -88,7 +88,7 @@ const spaceIn = (id: string): WorkspaceSpaceState => ({
 // Arguments are built once, as the canvas's are, so that the callback is rebuilt only when a
 // dependency of its own changes.
 const params = {
-  agentSettings: { ...DEFAULT_AGENT_SETTINGS, defaultProvider: 'codex' as const },
+  readAgentSettings: createAgentSettingsReader({ defaultProvider: 'codex' }),
   workspaceId: 'project',
   workspacePath: '/repo',
   updateCanvasDocument: vi.fn(),
@@ -100,7 +100,6 @@ const params = {
       data: { kind: 'agent' },
     }),
   ),
-  standardWindowSizeBucket: DEFAULT_AGENT_SETTINGS.standardWindowSizeBucket,
   buildAgentNodeTitle: vi.fn(() => 'Agent'),
 } as unknown as Parameters<typeof useWorkspaceCanvasAgentLauncher>[0]
 

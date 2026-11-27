@@ -59,8 +59,27 @@ describe('Inner hands the document writer of its node store to the hooks that ne
     )
   })
 
+  // The agent support reads the launch settings through the reader when a launch starts, and the
+  // writer from the context (S7, PR 5). Inner hands it the reader and the terminal calibration,
+  // and no writer, no settings object and no geometry computed at render. The runtime integrations
+  // get no action ref, no message callback and no writer.
+  it('passes the agent support the settings reader and the calibration, and no writer or setting', () => {
+    const call = callOf('useWorkspaceCanvasAgentSupport')
+    expect(call).toMatch(/\breadAgentSettings\b/)
+    expect(call).toMatch(/\bterminalDisplayCalibration\b/)
+    expect(call).not.toMatch(
+      /\b(setNodes|agentSettings|standardWindowSizeBucket|terminalDisplayMetrics)\b/,
+    )
+  })
+
+  it('passes the runtime integrations no action ref, message callback or writer', () => {
+    expect(callOf('useWorkspaceCanvasRuntimeIntegrations')).not.toMatch(
+      /\b(actionRefs|onShowMessage|setNodes)\b/,
+    )
+  })
+
   // The agent support and the runtime integrations read the document through their own readers
-  // and flush through the document commands (#702, PR 10). Inner keeps `setNodes` for the writes.
+  // and flush through the document commands (#702, PR 10).
   it.each(['useWorkspaceCanvasAgentSupport', 'useWorkspaceCanvasRuntimeIntegrations'])(
     'passes none of the retired channels to %s',
     name => {

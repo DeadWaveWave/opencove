@@ -276,14 +276,13 @@ describe('the writer that launch callers hand to the mount repair and the bindin
 
   it('gives the agent launcher its workspace commands', async () => {
     const params = {
-      agentSettings: DEFAULT_AGENT_SETTINGS,
+      readAgentSettings: () => DEFAULT_AGENT_SETTINGS,
       workspaceId: 'workspace',
       workspacePath: '/repo',
       setNodes,
       onSpacesChange,
       onShowMessage,
       createNodeForSession,
-      standardWindowSizeBucket: 'regular',
       buildAgentNodeTitle: () => 'Agent',
     } as unknown as Parameters<typeof useWorkspaceCanvasAgentLauncher>[0]
     await expectsWriterOfTheRender({

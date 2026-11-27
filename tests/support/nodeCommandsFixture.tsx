@@ -1,6 +1,9 @@
 import React from 'react'
 import type { ReactElement, ReactNode } from 'react'
-import type { WiredCanvasNodeCommands } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeCommands'
+import type {
+  CanvasTerminalCommands,
+  WiredCanvasNodeCommands,
+} from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeCommands'
 import {
   WorkspaceCanvasNodeTypesProvider,
   type WorkspaceCanvasNodeTypesParams,
@@ -19,6 +22,16 @@ export const noopNodeCommands: WiredCanvasNodeCommands = {
     focusForInteraction: noop,
     setLabelColorOverride: noop,
   },
+  terminal: {
+    updateScrollback: noop,
+    recordCommandRun: noop,
+    clearAgentOverlay: noop,
+    renameTitle: noop,
+    copyLastAgentMessage: async () => {},
+    reloadAgentSession: async () => {},
+    listAgentSessions: async () => [],
+    switchAgentSession: async () => {},
+  },
   note: { updateText: noop, renameTitle: noop, convertToTask: () => false },
   website: {
     updateUrl: noop,
@@ -27,6 +40,13 @@ export const noopNodeCommands: WiredCanvasNodeCommands = {
     setMode: noop,
     setFullscreen: noop,
   },
+}
+
+/** The commands that do nothing, with the given terminal commands in place of the terminal's. */
+export function withTerminalCommands(
+  terminal: Partial<CanvasTerminalCommands>,
+): WiredCanvasNodeCommands {
+  return { ...noopNodeCommands, terminal: { ...noopNodeCommands.terminal, ...terminal } }
 }
 
 /**
