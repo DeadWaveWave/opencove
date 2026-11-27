@@ -35,10 +35,21 @@ import { pixelNode } from './workspacePixelLayer.fixtures'
 // commands from context, and the whole params value they read keeps its identity until the
 // workspace or its configuration changes. This spec mounts the real canvas on a faithful React
 // Flow mock and records every value a consumer of the context sees, on every render of the host.
+//
+// Why the commands have a context of their own: a context consumer renders on every change of the
+// context value, whatever field it reads. A memoised window body that reads only commands (the
+// terminal, document, folder, image and plugin bodies) must therefore not subscribe to the params,
+// which also hold the preferences and change with them. `useCanvasNodeCommands()` reads the
+// commands context that `WorkspaceCanvasNodeTypesProvider` provides next to the params;
+// `canvasNodeCommands.mountedRenders.spec.tsx` pins that those bodies do not render for a
+// preference.
 
 const reactFlow = vi.hoisted(() => {
-  // One spy for both instances: React Flow's `useReactFlow()` returns a new instance once, when
-  // the viewport initializes (`viewportInitialized`), and the commands follow it.
+  // What `@xyflow/react` 12.10.1 does (`dist/esm/index.mjs:499` and `:1203-1210`): the object that
+  // `useReactFlow()` returns is renewed once, when `viewportInitialized` flips, but its viewport
+  // helpers (`setViewport`, `setCenter`, `getViewport`, `screenToFlowPosition`) come from
+  // `useViewportHelper`, memoised with `[]`, so they keep their identity. The two instances here
+  // are two objects that share the same helper functions.
   const setCenter = vi.fn()
   const methods = {
     screenToFlowPosition: ({ x, y }: { x: number; y: number }) => ({ x, y }),
@@ -351,6 +362,22 @@ describe('the identity of the node commands and of the params value (Decision 3,
       },
     ],
     ['a select batch', () => void fireEvent.click(screen.getByTestId('select-a'))],
+    [
+      // `useReactFlow()` returns a new object, and `focusForInteraction` must not depend on it:
+      // its helpers keep their identity (see the mock).
+      'React Flow initializing its viewport (a new instance, the same viewport helpers)',
+      () => reactFlow.setState({ viewportInitialized: true }),
+    ],
+    [
+      'a deserialized copy of the settings with equal preferences (a Worker sync of a zoom change)',
+      () => {
+        useAppStore.setState(state => ({
+          agentSettings: JSON.parse(
+            JSON.stringify({ ...state.agentSettings, focusNodeTargetZoom: 0.77 }),
+          ),
+        }))
+      },
+    ],
     ['a drag frame', () => void fireEvent.click(screen.getByTestId('drag-frame'))],
     [
       'a render with equal props (a new, equal settings object)',
@@ -409,32 +436,6 @@ describe('the identity of the node commands and of the params value (Decision 3,
     expect(commandsOf().window).toBe(before.window)
     expect(commandsOf().note).toBe(before.note)
     expect(commandsOf().website).toBe(before.website)
-  })
-
-  // The one change besides the workspace: `useReactFlow()` returns a new instance once, when the
-  // viewport initializes, and `focusForInteraction` calls through the instance. Only the window
-  // family and what contains it change; the note and website families keep their objects.
-  it('changes once when React Flow initializes its viewport: the window family and the object, not the others', async () => {
-    await mount()
-    const before = latest().params
-
-    const renders = await observe(() => reactFlow.setState({ viewportInitialized: true }))
-
-    const values = [...new Set(renders.map(snapshot => snapshot.params))]
-    expect(values).toHaveLength(1)
-    const after = values[0]!
-    expect(after).not.toBe(before)
-    expect(after.commands).not.toBe(before.commands)
-    expect(after.commands.window).not.toBe(before.commands.window)
-    expect(after.commands.note).toBe(before.commands.note)
-    expect(after.commands.website).toBe(before.commands.website)
-    for (const key of PREFERENCE_KEYS) {
-      expect(after[key], key).toBe(before[key])
-    }
-
-    // And it stays put afterwards.
-    const later = await observe(() => void fireEvent.click(screen.getByTestId('select-a')))
-    expect(later.every(snapshot => snapshot.params === after)).toBe(true)
   })
 
   it('changes with the workspace: the params value, every family, and the path', async () => {
@@ -620,6 +621,45 @@ describe('the window commands reach the confirmation, the node store and the doc
     expect(flushes).toHaveBeenCalledTimes(1)
   })
 
+  // The flush follows a real change only: a website write of a window the document holds still
+  // requests one (the guard of the `didChange` pattern).
+  it.each([
+    [
+      'website.updateUrl',
+      (c: WiredCanvasNodeCommands) => c.website.updateUrl('w', 'https://other.example'),
+    ],
+    ['website.setPinned', (c: WiredCanvasNodeCommands) => c.website.setPinned('w', true)],
+    [
+      'website.setSession',
+      (c: WiredCanvasNodeCommands) => c.website.setSession('w', 'incognito', null),
+    ],
+    ['website.setMode', (c: WiredCanvasNodeCommands) => c.website.setMode('w', 'native')],
+    [
+      'website.setFullscreen',
+      (c: WiredCanvasNodeCommands) =>
+        c.website.setFullscreen(
+          'w',
+          { position: { x: 0, y: 0 }, size: { width: 800, height: 600 } },
+          null,
+          true,
+        ),
+    ],
+    [
+      'window.setLabelColorOverride',
+      (c: WiredCanvasNodeCommands) => c.window.setLabelColorOverride(['b'], 'green'),
+    ],
+  ])('%s of a window the document holds requests one flush', async (_name, call) => {
+    const flushes = vi.fn()
+    const unregister = registerWorkspaceDocumentPersistFlush(flushes)
+    await mount()
+    flushes.mockClear()
+
+    await act(async () => call(commandsOf()))
+    unregister()
+
+    expect(flushes).toHaveBeenCalledTimes(1)
+  })
+
   it('note.updateText, website.setPinned and window.setLabelColorOverride write the window they name', async () => {
     await mount()
     const commands = commandsOf()
@@ -640,16 +680,6 @@ describe('the window commands reach the confirmation, the node store and the doc
 describe('a command called with an id the document no longer holds writes nothing about it', () => {
   // The window, note and website families, one row per command. `clearSelection` has no id.
   // Every row also reads the selection and the React Flow flag: they stay as they were (Invariant 2).
-  // These ask for a persistence flush on every call, as they did before S7 (`flush: true` on the
-  // write): nothing is written, so the flush persists what was already there.
-  const FLUSHES_WITHOUT_A_WRITE = new Set([
-    'window.setLabelColorOverride',
-    'website.updateUrl',
-    'website.setPinned',
-    'website.setSession',
-    'website.setMode',
-    'website.setFullscreen',
-  ])
   const table: Array<[string, (commands: WiredCanvasNodeCommands) => unknown]> = [
     ['window.select', c => c.window.select('gone')],
     ['window.select with toggle', c => c.window.select('gone', { toggle: true })],
@@ -707,7 +737,8 @@ describe('a command called with an id the document no longer holds writes nothin
     expect(readWorkspaceDocument(A)!.nodes).toBe(documentBefore.nodes)
     expect(readWorkspaceDocument(A)!.spaces).toBe(documentBefore.spaces)
     expect(notifications).not.toHaveBeenCalled()
-    expect(flushes).toHaveBeenCalledTimes(FLUSHES_WITHOUT_A_WRITE.has(name) ? 1 : 0)
+    // Nothing about the id: not even a request to persist.
+    expect(flushes).not.toHaveBeenCalled()
     // The canvas store: the selection, the dialog, and the viewport are as they were.
     expect(readSelection().nodeIds).toEqual(['a'])
     expect(reactFlow.state.nodesSelectionActive).toBe(true)

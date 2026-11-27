@@ -1,6 +1,7 @@
 import type { ComponentProps, MutableRefObject, RefObject } from 'react'
 import type { Node } from '@xyflow/react'
 import { describe, expect, expectTypeOf, it } from 'vitest'
+import type { TerminalNodeData } from '../../types'
 import type { CanvasNodeCommands } from './nodeCommands'
 import type {
   TransitionalNodeActionRefs,
@@ -20,22 +21,43 @@ import type { WorkspaceCanvasWebsiteNodeType } from './nodeTypes.website'
 // when the field it names comes back. A directive is consumed by any error on its line, so the
 // retired names are also pinned as keys, which no other error can satisfy.
 
-/** Every path, at any depth, whose type is a React ref. Functions are leaves. */
+/** Every path, at any depth, whose type is a React ref. Functions are leaves; arrays are walked. */
 type RefPaths<T, P extends string = ''> = T extends MutableRefObject<unknown> | RefObject<unknown>
   ? P
   : T extends (...args: never[]) => unknown
     ? never
-    : T extends object
-      ? {
-          [K in keyof T & string]-?: RefPaths<T[K], P extends '' ? K : `${P}.${K}`>
-        }[keyof T & string]
-      : never
+    : T extends readonly (infer E)[]
+      ? RefPaths<E, `${P}.${number}`>
+      : T extends object
+        ? {
+            [K in keyof T & string]-?: RefPaths<T[K], P extends '' ? K : `${P}.${K}`>
+          }[keyof T & string]
+        : never
 
-/** `family.command` for every command with a parameter that is a node object. */
+/** A node, a node's `data`, or the part of a node a command could be handed in place of one. */
+type NodeLike = Pick<Node, 'id' | 'position'> | TerminalNodeData
+/** `true` when `T` is a node-like value, or an array of them. */
+type IsNodeLike<T> = T extends NodeLike
+  ? true
+  : T extends readonly (infer E)[]
+    ? E extends NodeLike
+      ? true
+      : never
+    : never
+/** `true` when `T` is node-like, or an object with a node-like property (one level deep). */
+type HoldsNode<T> =
+  | IsNodeLike<T>
+  | (T extends readonly unknown[]
+      ? never
+      : T extends object
+        ? { [K in keyof T]-?: IsNodeLike<NonNullable<T[K]>> }[keyof T]
+        : never)
+
+/** `family.command` for every command with a parameter that holds a node. */
 type NodeTakingCommands<C> = {
   [F in keyof C & string]: {
     [K in keyof C[F] & string]: C[F][K] extends (...args: infer A) => unknown
-      ? Extract<A[number], Pick<Node, 'id' | 'position'>> extends never
+      ? [HoldsNode<A[number]>] extends [never]
         ? never
         : `${F}.${K}`
       : never
@@ -74,12 +96,30 @@ describe('the node types context (#647 S7, PR 4)', () => {
     expectTypeOf<RefPaths<{ a: RefObject<number | null>; f: () => void }>>().toEqualTypeOf<'a'>()
   })
 
-  it('finds a command that takes a node object, so the check below cannot pass vacuously', () => {
+  it('finds a ref inside an array, so the check cannot pass vacuously', () => {
     expectTypeOf<
-      NodeTakingCommands<{
-        window: { resize(node: Node, frame: number): void; close(id: string): void }
-      }>
-    >().toEqualTypeOf<'window.resize'>()
+      RefPaths<{ list: Array<{ current: number }>; m(): void }>
+    >().toEqualTypeOf<`list.${number}`>()
+    expectTypeOf<RefPaths<readonly [MutableRefObject<number>]>>().toEqualTypeOf<`.${number}`>()
+  })
+
+  it('finds a command that takes a node, wherever the node is, so the check cannot pass vacuously', () => {
+    type Frame = { position: { x: number; y: number }; size: { width: number } }
+    type Probe = {
+      window: {
+        node(node: Node, frame: number): void
+        nodes(nodes: Node[]): void
+        data(data: TerminalNodeData): void
+        snapshot(snapshot: { id: string; position: { x: number; y: number } }): void
+        options(id: string, options?: { toggle?: boolean; node?: Node }): void
+        // What commands take today: ids, values and frames.
+        id(id: string, frame: Frame | null): void
+        ids(ids: readonly string[], options?: { toggle?: boolean }): void
+      }
+    }
+    expectTypeOf<NodeTakingCommands<Probe>>().toEqualTypeOf<
+      'window.node' | 'window.nodes' | 'window.data' | 'window.snapshot' | 'window.options'
+    >()
   })
 
   it('holds no ref in the commands, at any depth', () => {
