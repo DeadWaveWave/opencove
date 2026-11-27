@@ -107,8 +107,11 @@ export function isActiveWorkspace(workspaceId: string): boolean {
 /**
  * Applies a recipe to the document of `workspaceId`, computed from the store as it is now.
  * `flush` persists the write it accompanies: it requests the persistence flush after a write that
- * applied, and none for a result that changed nothing or a workspace that is gone. A flush that
- * ends an operation whatever its last write did is `requestWorkspaceDocumentPersistFlush`. The recipe runs outside the store's `set` and must be pure: a nested command would be
+ * applied, and none for a result that changed nothing or a workspace that is gone. An operation
+ * that must flush at its end, whatever its last write did, calls
+ * `requestWorkspaceDocumentPersistFlush` instead.
+ *
+ * The recipe runs outside the store's `set` and must be pure: a nested command would be
  * overwritten by this write, which is the lost update this module exists to prevent.
  */
 export function commitCanvasDocument(

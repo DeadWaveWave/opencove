@@ -230,6 +230,24 @@ describe('the terminal session action flush', () => {
     })
 
     expect(nodeOf(A, 'terminal-1').data.sessionId).toBe('pty-replacement')
+    // The replacement is the only store write: the re-activation recipe returns its input.
+    expect(harness.notifications).toHaveBeenCalledTimes(1)
+    expect(flushes).toHaveLength(0)
+  })
+
+  it('writes nothing and does not flush when the node was closed during the re-execution', async () => {
+    const { view, harness, flushes } = renderActions(async input => {
+      setDocumentNodes(A, [])
+      return await reexecuted(input)
+    })
+    harness.notifications.mockClear()
+
+    await act(async () => {
+      await view.result.current.reloadOverlayAgent('terminal-1')
+    })
+
+    // The closing is the only store write.
+    expect(harness.notifications).toHaveBeenCalledTimes(1)
     expect(flushes).toHaveLength(0)
   })
 
