@@ -13,6 +13,7 @@ import {
 } from '../../../utils/agentSessionTitleSync'
 import { projectAgentRuntimeObservation } from '../../../utils/agentRuntimeObservation'
 import { useReadCanvasDocument } from '../../../store/canvasStoreContext'
+import { useCanvasNodeWriter } from './useCanvasNodeWriter'
 
 export function applyAgentMetadataToNodes(
   prevNodes: Node<TerminalNodeData>[],
@@ -63,15 +64,10 @@ export function applyAgentMetadataToNodes(
 export function useWorkspaceCanvasPtyTaskCompletion({
   workspaceId,
   nodes,
-  setNodes,
   listAgentSessions,
 }: {
   workspaceId?: string
   nodes?: Node<TerminalNodeData>[]
-  setNodes: (
-    updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-    options?: { syncLayout?: boolean; flush?: boolean },
-  ) => void
   listAgentSessions?: (nodeId: string, limit?: number) => Promise<AgentSessionSummary[]>
 }): void {
   // The reader belongs to the workspace of this render: a subscription made for one workspace
@@ -79,7 +75,8 @@ export function useWorkspaceCanvasPtyTaskCompletion({
   const readDocument = useReadCanvasDocument()
   // Callback changes are not a new runtime lifetime. Re-subscribing replays cached metadata and
   // restarts title scans while the previous Worker's request is still running.
-  const updateNodes = useEffectEvent(setNodes)
+  const { updateNodes: writeNodes } = useCanvasNodeWriter()
+  const updateNodes = useEffectEvent(writeNodes)
   const querySessionTitles = useEffectEvent(
     async (nodeId: string) => (await listAgentSessions?.(nodeId, 20)) ?? [],
   )

@@ -268,4 +268,3 @@ export interface WorkspaceCanvasQuickPreviewState {
 export type QuickUpdateTaskTitle = (nodeId: string, title: string) => void
 export type QuickUpdateTaskRequirement = (nodeId: string, requirement: string) => void
 export type UpdateTaskStatus = (nodeId: string, status: TaskRuntimeStatus) => void
-export type UpdateNodeScrollback = (nodeId: string, scrollback: string) => void

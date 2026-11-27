@@ -14,6 +14,7 @@ import {
   resolveCanonicalNodeMinSize,
 } from '../../../utils/workspaceNodeSizing'
 import { useCanvasDocumentCommands, useReadCanvasDocument } from '../../../store/canvasStoreContext'
+import { isActiveWorkspace } from '../../../store/workspaceDocumentCommands'
 import { useCanvasNodeWriter } from './useCanvasNodeWriter'
 import { removeNodeWithRelations } from './useNodesStore.closeNode'
 import { resolveWorkspaceLayoutAfterNodeResize } from './useNodesStore.resolveResizeLayout'
@@ -113,8 +114,7 @@ export function useWorkspaceCanvasNodesStore({
       syncWorkspaceCanvasTestState(nodes)
     }
   }, [nodes])
-  const { updateTerminalTitle, clearTerminalAgentOverlay } =
-    useTerminalAgentOverlayMutations(updateNodes)
+  const { updateTerminalTitle, clearTerminalAgentOverlay } = useTerminalAgentOverlayMutations()
   const upsertNode = useCallback(
     (nextNode: Node<TerminalNodeData>) => {
       updateNodes(prevNodes => prevNodes.map(node => (node.id === nextNode.id ? nextNode : node)))
@@ -283,7 +283,10 @@ export function useWorkspaceCanvasNodesStore({
         return
       }
 
-      if (isNodeDraggingRef.current) {
+      // The drag flag and the pending map belong to the canvas that is shown: its change path
+      // applies them. A publish of a workspace that is no longer shown (a terminal of A, after the
+      // switch to B) has no drag of its own to wait for, and B's flush would drop it.
+      if (isNodeDraggingRef.current && isActiveWorkspace(workspaceId)) {
         pendingScrollbackByNodeRef.current.set(nodeId, scrollback)
         return
       }
@@ -291,7 +294,7 @@ export function useWorkspaceCanvasNodesStore({
       setNodeScrollback(nodeId, scrollback)
       persistNodeScrollback(node, scrollback)
     },
-    [readDocument, setNodeScrollback],
+    [readDocument, setNodeScrollback, workspaceId],
   )
 
   const renameTerminalTitle = useCallback(

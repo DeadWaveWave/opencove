@@ -8,18 +8,17 @@ import {
 import { isResumeSessionBindingVerified } from '../../../utils/agentResumeBinding'
 import { useCanvasDocumentCommands, useReadCanvasDocument } from '../../../store/canvasStoreContext'
 import { findAgentNode, type RelaunchAgentNodeOptions } from './useAgentNodeLifecycle.support'
-import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
+import { useCanvasNodeWriter } from './useCanvasNodeWriter'
 
 export function useAgentNodeSessionSwitch({
-  setNodes,
   relaunchAgentNode,
 }: {
-  setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']
   relaunchAgentNode: (
     options: RelaunchAgentNodeOptions,
   ) => Promise<void | ManagedClaudeLifecycleReceipt>
 }): (nodeId: string, summary: AgentSessionSummary) => Promise<void> {
   const readDocument = useReadCanvasDocument()
+  const { updateNodes } = useCanvasNodeWriter()
   const { requestPersistFlush } = useCanvasDocumentCommands()
 
   return useCallback(
@@ -62,7 +61,7 @@ export function useAgentNodeSessionSwitch({
           switchedNode.data.agent.resumeSessionId === summary.sessionId &&
           switchedNode.data.agent.executionDirectory === summary.cwd
       if (switchCommitted && previousTaskNodeId && previousSessionRecord) {
-        setNodes(
+        updateNodes(
           prevNodes =>
             appendTaskAgentSessionRecordToHistory({
               prevNodes,
@@ -78,6 +77,6 @@ export function useAgentNodeSessionSwitch({
       // meanwhile. It is not the flush of one write.
       requestPersistFlush()
     },
-    [readDocument, relaunchAgentNode, requestPersistFlush, setNodes],
+    [readDocument, relaunchAgentNode, requestPersistFlush, updateNodes],
   )
 }

@@ -9,11 +9,7 @@ import {
 } from '../../../utils/terminalAgentOverlay'
 import type { ShowWorkspaceCanvasMessage } from '../types'
 import { useReadCanvasDocument } from '../../../store/canvasStoreContext'
-
-type SetNodes = (
-  updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-  options?: { syncLayout?: boolean; flush?: boolean },
-) => void
+import { useCanvasNodeWriter } from './useCanvasNodeWriter'
 
 function resolveActivityFence(node: Node<TerminalNodeData>): TerminalAgentActivityFence | null {
   if (node.data.kind !== 'terminal') {
@@ -42,7 +38,6 @@ function resolveActivityFence(node: Node<TerminalNodeData>): TerminalAgentActivi
 }
 
 export function useTerminalAgentSessionActions(options: {
-  setNodes: SetNodes
   onShowMessage?: ShowWorkspaceCanvasMessage
 }): {
   reloadOverlayAgent: (nodeId: string) => Promise<boolean>
@@ -53,8 +48,9 @@ export function useTerminalAgentSessionActions(options: {
   switchOverlayAgentSession: (nodeId: string, summary: AgentSessionSummary) => Promise<boolean>
 } {
   const { t } = useTranslation()
-  const { onShowMessage, setNodes } = options
+  const { onShowMessage } = options
   const readDocument = useReadCanvasDocument()
+  const { updateNodes } = useCanvasNodeWriter()
   const reexecInFlight = useRef(new Set<string>())
 
   const reexecOverlayAgent = useCallback(
@@ -101,7 +97,7 @@ export function useTerminalAgentSessionActions(options: {
           return true
         }
 
-        setNodes(
+        updateNodes(
           previousNodes => {
             let didChange = false
             const nextNodes = previousNodes.map(candidate => {
@@ -134,7 +130,7 @@ export function useTerminalAgentSessionActions(options: {
       }
       return true
     },
-    [onShowMessage, readDocument, setNodes, t],
+    [onShowMessage, readDocument, t, updateNodes],
   )
 
   const reloadOverlayAgent = useCallback(

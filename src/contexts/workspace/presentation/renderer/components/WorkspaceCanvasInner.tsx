@@ -99,18 +99,16 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
     nodeDragPointerAnchorRef: nodeDragSession.nodeDragPointerAnchorRef,
   })
   const agentSupport = workspaceCanvasHooks.useWorkspaceCanvasAgentSupport({
-    setNodes: nodeStore.setNodes,
     bumpAgentLaunchToken: nodeStore.bumpAgentLaunchToken,
     isAgentLaunchTokenCurrent: nodeStore.isAgentLaunchTokenCurrent,
-    agentSettings,
+    readAgentSettings,
+    terminalDisplayCalibration,
     workspaceId,
     workspacePath,
     environmentVariables,
     updateCanvasDocument: nodeStore.updateCanvasDocument,
     onShowMessage,
     createNodeForSession: nodeStore.createNodeForSession,
-    standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
-    terminalDisplayMetrics,
   })
   const taskUi = workspaceCanvasHooks.useWorkspaceCanvasTaskUi({
     agentTaskTagOptions: agentSettings.taskTagOptions,
@@ -188,6 +186,11 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
     createWebsiteNode: nodeStore.createWebsiteNode,
   })
   const selectNode = workspaceCanvasHooks.useWorkspaceCanvasSelectNode()
+  // Made here, not in the runtime bindings: the terminal commands need it, and the commands are
+  // composed before the runtime integrations.
+  const copyAgentLastMessage = workspaceCanvasHooks.useWorkspaceCanvasAgentLastMessageCopy({
+    onShowMessage,
+  })
   const commands = workspaceCanvasHooks.useComposedCanvasNodeCommands({
     reactFlow,
     readAgentSettings,
@@ -197,6 +200,14 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
     requestNodeDelete: taskUi.requestNodeDelete,
     resizeNode: nodeStore.resizeNode,
     setNodeLabelColorOverride: nodeStore.setNodeLabelColorOverride,
+    updateScrollback: nodeStore.updateNodeScrollback,
+    recordCommandRun: nodeStore.updateTerminalTitle,
+    clearAgentOverlay: nodeStore.clearTerminalAgentOverlay,
+    renameTerminalTitle: nodeStore.renameTerminalTitle,
+    copyLastAgentMessage: copyAgentLastMessage,
+    reloadAgentSession: agentSupport.reloadAgentNode,
+    listAgentSessions: agentSupport.listAgentSessionsForNode,
+    switchAgentSession: agentSupport.switchAgentNodeSession,
     updateNoteText: nodeStore.updateNoteText,
     renameNoteTitle: nodeStore.renameNoteTitle,
     convertNoteToTask,
@@ -253,10 +264,8 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
   })
   const applyChanges = workspaceCanvasHooks.useWorkspaceCanvasRuntimeIntegrations({
     workspaceId,
-    actionRefs,
     nodeStore,
     agentSupport,
-    onShowMessage,
     canvasState,
     nodePublishers,
     nodeDragSession,
