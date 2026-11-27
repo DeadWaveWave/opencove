@@ -1,5 +1,4 @@
 import { useCallback } from 'react'
-import { useCanvasDocumentCommands } from '../../../store/canvasStoreContext'
 import { guardNodeFromSyncOverwrite } from '../../../utils/syncNodeGuards'
 import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 import { useCanvasNodeWriter } from './useCanvasNodeWriter'
@@ -8,7 +7,6 @@ export function useWorkspaceCanvasNoteNodeMutations(): Pick<
   UseWorkspaceCanvasNodesStoreResult,
   'updateNoteText' | 'renameNoteTitle'
 > {
-  const { requestPersistFlush } = useCanvasDocumentCommands()
   const { updateNodes } = useCanvasNodeWriter()
   const updateNoteText = useCallback(
     (nodeId: string, text: string) => {
@@ -61,8 +59,6 @@ export function useWorkspaceCanvasNoteNodeMutations(): Pick<
 
       const normalizedTitle = title.trim()
       guardNodeFromSyncOverwrite(normalizedNodeId)
-      let didChange = false
-
       updateNodes(
         prevNodes => {
           let hasChanged = false
@@ -78,7 +74,6 @@ export function useWorkspaceCanvasNoteNodeMutations(): Pick<
             }
 
             hasChanged = true
-            didChange = true
             return {
               ...node,
               data: {
@@ -91,15 +86,10 @@ export function useWorkspaceCanvasNoteNodeMutations(): Pick<
 
           return hasChanged ? nextNodes : prevNodes
         },
-        { syncLayout: false },
+        { syncLayout: false, flush: true },
       )
-
-      // The write decides whether there is anything to persist.
-      if (didChange) {
-        requestPersistFlush()
-      }
     },
-    [requestPersistFlush, updateNodes],
+    [updateNodes],
   )
 
   return { updateNoteText, renameNoteTitle }

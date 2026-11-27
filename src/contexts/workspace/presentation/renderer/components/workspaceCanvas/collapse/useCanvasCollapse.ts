@@ -222,10 +222,13 @@ export function useCanvasCollapse({
           const committed = planCollapsedArrangement(spaceId, input.nodes, input.spaces, current)
           return committed ? { nodes: committed.nodes, spaces: committed.spaces } : input
         },
-        { syncLayout: false, flush: true },
+        { syncLayout: false },
       )
+      // The operation flushes once, at its end, whatever the write did: the collapse state stored
+      // above is persisted next to the document, and the write may have changed nothing.
+      requestPersistFlush()
     },
-    [prepareMotion, readDocument, update, updateCanvasDocument, workspaceId],
+    [prepareMotion, readDocument, requestPersistFlush, update, updateCanvasDocument, workspaceId],
   )
   const undoArrange = useCallback(
     (spaceId: string) => {
@@ -254,15 +257,26 @@ export function useCanvasCollapse({
           )
           return { nodes: committed.nodes, spaces: committed.spaces }
         },
-        { syncLayout: false, flush: true },
+        { syncLayout: false },
       )
+      // As in `collapseAndArrange`: one flush at the end, whatever the write did. The restore
+      // returns its input when the layout changed since the snapshot.
+      requestPersistFlush()
       setUndoHistory(previous => {
         const next = new Map(previous)
         next.delete(spaceId)
         return next
       })
     },
-    [prepareMotion, readDocument, undoHistory, update, updateCanvasDocument, workspaceId],
+    [
+      prepareMotion,
+      readDocument,
+      requestPersistFlush,
+      undoHistory,
+      update,
+      updateCanvasDocument,
+      workspaceId,
+    ],
   )
   return useMemo(
     () => ({

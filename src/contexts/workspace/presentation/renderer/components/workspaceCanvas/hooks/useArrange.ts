@@ -113,6 +113,8 @@ export function useWorkspaceCanvasArrange({
         return result
       }
 
+      // Kept as a condition of the layout, not of the write: a layout that changes nothing still
+      // applies a write that only gives initial sizes, and that write is not flushed.
       requestPersistFlush()
 
       const schedule =
