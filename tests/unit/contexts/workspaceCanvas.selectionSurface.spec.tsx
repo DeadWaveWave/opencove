@@ -1,7 +1,9 @@
-import { act, renderHook } from '@testing-library/react'
+import React from 'react'
+import { act, render, renderHook } from '@testing-library/react'
 import { ReactFlowProvider, useStoreApi } from '@xyflow/react'
 import { describe, expect, it, vi } from 'vitest'
 import { useWorkspaceCanvasNodesSelectionActive } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesSelectionActive'
+import { NodesSelectionActiveSync } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/view/NodesSelectionActiveSync'
 import { pixelNode } from './workspacePixelLayer.fixtures'
 
 function renderSelectionSurface(selectedNodeCount = 0) {
@@ -42,5 +44,34 @@ describe('canvas selection surface ownership', () => {
     rerender({ count: 1 })
     expect(writes).not.toHaveBeenCalled()
     unsubscribe()
+  })
+})
+
+describe('NodesSelectionActiveSync', () => {
+  it('shows the selection surface for a selection, clears it for none, and leaves a user rectangle alone', () => {
+    let store!: ReturnType<typeof useStoreApi>
+    function Capture() {
+      store = useStoreApi()
+      return null
+    }
+    const mount = (count: number) => (
+      <ReactFlowProvider>
+        <Capture />
+        <NodesSelectionActiveSync selectedNodeCount={count} />
+      </ReactFlowProvider>
+    )
+    const view = render(mount(0))
+    expect(store.getState().nodesSelectionActive).toBe(false)
+
+    view.rerender(mount(2))
+    expect(store.getState().nodesSelectionActive).toBe(true)
+    view.rerender(mount(0))
+    expect(store.getState().nodesSelectionActive).toBe(false)
+
+    act(() => store.setState({ userSelectionActive: true }))
+    view.rerender(mount(1))
+    expect(store.getState().nodesSelectionActive).toBe(false)
+    act(() => store.setState({ userSelectionActive: false }))
+    expect(store.getState().nodesSelectionActive).toBe(true)
   })
 })

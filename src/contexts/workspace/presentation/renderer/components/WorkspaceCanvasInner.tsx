@@ -1,6 +1,7 @@
 import { useReactFlow, type Edge, type Node } from '@xyflow/react'
 import * as workspaceCanvasHooks from './workspaceCanvas/hooks'
 import { CanvasFlowHost } from './workspaceCanvas/CanvasFlowHost'
+import { NodesSelectionActiveSync } from './workspaceCanvas/view/NodesSelectionActiveSync'
 import { openQuickMenuSettings } from './workspaceCanvas/openQuickMenuSettings'
 import type { WorkspaceCanvasInnerProps } from './workspaceCanvas/types'
 import { useCanvasCollapse } from './workspaceCanvas/collapse/useCanvasCollapse'
@@ -45,7 +46,7 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
   })
   const nodePublishers = workspaceCanvasHooks.useWorkspaceCanvasNodePublishers({ workspaceId })
   // prettier-ignore
-  const exclusiveNodeDragAnchorIdRef = workspaceCanvasHooks.useWorkspaceCanvasWorkspaceReset(workspaceId, canvasState.selectedNodeIds.length)
+  const exclusiveNodeDragAnchorIdRef = workspaceCanvasHooks.useWorkspaceCanvasWorkspaceReset(workspaceId)
   const actionRefs = workspaceCanvasHooks.useWorkspaceCanvasActionRefs()
   const nodeStore = workspaceCanvasHooks.useWorkspaceCanvasNodesStore({
     workspaceId,
@@ -277,6 +278,7 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
       nodeStore={nodeStore}
       onShowMessage={onShowMessage}
     >
+      <NodesSelectionActiveSync selectedNodeCount={canvasState.selectedNodeIds.length} />
       <CanvasFlowHost
         workspaceId={workspaceId}
         terminalFontSize={agentSettings.terminalFontSize}

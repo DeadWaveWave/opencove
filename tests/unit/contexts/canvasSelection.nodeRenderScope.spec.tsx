@@ -41,21 +41,50 @@ const reactFlowInstance = vi.hoisted(() => ({
   setViewport: () => undefined,
 }))
 
-const reactFlowStoreApi = vi.hoisted(() => ({
-  setState: () => undefined,
-  getState: () => ({ transform: [0, 0, 1] }),
-  subscribe: () => () => undefined,
-}))
+// A faithful enough React Flow store: `useStore` subscribes to it, so a change of
+// `nodesSelectionActive` re-renders the component that selects it, as the real one does.
+const reactFlowStoreApi = vi.hoisted(() => {
+  const state: Record<string, unknown> = {
+    nodes: [],
+    transform: [0, 0, 1],
+    userSelectionActive: false,
+    nodesSelectionActive: false,
+  }
+  const listeners = new Set<(state: Record<string, unknown>) => void>()
+  return {
+    state,
+    setState: (partial: Record<string, unknown>) => {
+      Object.assign(state, partial)
+      listeners.forEach(listener => listener(state))
+    },
+    getState: () => state,
+    subscribe: (listener: (state: Record<string, unknown>) => void) => {
+      listeners.add(listener)
+      return () => listeners.delete(listener)
+    },
+  }
+})
 
 vi.mock('@xyflow/react', async importOriginal => {
   const actual = await importOriginal<typeof import('@xyflow/react')>()
+  const { useSyncExternalStore, useRef } = await import('react')
   let currentNodes: Array<{ id: string; type: string; data: unknown }> = []
 
   return {
     ReactFlowProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
     useReactFlow: () => reactFlowInstance,
-    useStore: (selector: (state: unknown) => unknown) =>
-      selector({ nodes: currentNodes, transform: [0, 0, 1] }),
+    useStore: (selector: (state: unknown) => unknown) => {
+      const cache = useRef<{ value: unknown } | null>(null)
+      return useSyncExternalStore(reactFlowStoreApi.subscribe, () => {
+        const next = selector(reactFlowStoreApi.state)
+        // Equal by content keeps the same snapshot, as React Flow's shallow equality does.
+        if (cache.current && JSON.stringify(cache.current.value) === JSON.stringify(next)) {
+          return cache.current.value
+        }
+        cache.current = { value: next }
+        return next
+      })
+    },
     useStoreApi: () => reactFlowStoreApi,
     ViewportPortal: ({ children }: { children: React.ReactNode }) => <>{children}</>,
     // The select changes of this spec go through the real reducer, as they do under React Flow.
@@ -72,12 +101,18 @@ vi.mock('@xyflow/react', async importOriginal => {
       onNodesChange?: (changes: unknown[]) => void
     }) => {
       currentNodes = nodes
+      reactFlowStoreApi.state.nodes = nodes
       return (
         <div>
           <button
             type="button"
             data-testid="select-a"
             onClick={() => onNodesChange?.([{ type: 'select', id: 'a', selected: true }])}
+          />
+          <button
+            type="button"
+            data-testid="deselect-a"
+            onClick={() => onNodesChange?.([{ type: 'select', id: 'a', selected: false }])}
           />
           <button
             type="button"
@@ -198,5 +233,30 @@ describe('WorkspaceCanvas node selection render scope', () => {
     await act(async () => {})
 
     expect(canvasStateCalls.count - before).toBe(RENDERS_PER_EQUAL_SELECT_BATCH)
+  })
+
+  // React Flow's `nodesSelectionActive` follows the selection (shown for a non-empty selection,
+  // cleared for none). The subscription lives in a leaf, so its change renders the leaf and not the
+  // canvas: the first selection and the clear to none cost the same one render as any other
+  // select batch (S7, PR 3; before, Inner subscribed and rendered a second time).
+  it('renders the canvas state hooks once for the first selection and for clearing to none', async () => {
+    stubOpencoveApi()
+    seedWorkspaceCanvasStore({ nodes: createRowNodes(['a', 'b']) })
+    reactFlowStoreApi.setState({ nodesSelectionActive: false, userSelectionActive: false })
+    render(<CanvasHarness />)
+    await act(async () => {})
+
+    let before = canvasStateCalls.count
+    fireEvent.click(screen.getByTestId('select-a'))
+    await act(async () => {})
+    expect(reactFlowStoreApi.state.nodesSelectionActive).toBe(true)
+    expect(canvasStateCalls.count - before).toBe(RENDERS_PER_SELECT_BATCH)
+
+    before = canvasStateCalls.count
+    fireEvent.click(screen.getByTestId('deselect-a'))
+    await act(async () => {})
+    expect(screen.getByTestId('selected-ids').textContent).toBe('')
+    expect(reactFlowStoreApi.state.nodesSelectionActive).toBe(false)
+    expect(canvasStateCalls.count - before).toBe(RENDERS_PER_SELECT_BATCH)
   })
 })
