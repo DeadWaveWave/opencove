@@ -1,6 +1,6 @@
 import { act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { replaceWorkspaceNodes } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+
 import {
   documentOf,
   stubOpencoveApi,
@@ -20,6 +20,7 @@ import {
   terminalNodeAt,
 } from '../../support/explorerDocumentsHarness'
 import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
+import { setDocumentNodes } from '../../support/documentNodes'
 
 // The document opening, the document navigation, the explorer and the filesystem nodes read the
 // committed nodes and Spaces of the workspace whose render made them, from the store, when they
@@ -128,7 +129,7 @@ describe('the document opening', () => {
 
     let opened: { id: string } | null = null
     await act(async () => {
-      replaceWorkspaceNodes(A, [documentNodeAt('written-now', URI)])
+      setDocumentNodes(A, [documentNodeAt('written-now', URI)])
       opened = await view.result.current(request())
     })
 
@@ -144,7 +145,7 @@ describe('the document opening', () => {
     let opened: { id: string } | null = null
     await act(async () => {
       const pending = view.result.current(request())
-      replaceWorkspaceNodes(A, [documentNodeAt('concurrent', URI)])
+      setDocumentNodes(A, [documentNodeAt('concurrent', URI)])
       finish(LOCAL)
       opened = await pending
     })
@@ -263,7 +264,7 @@ describe('the document navigation', () => {
 
     let opened = false
     await act(async () => {
-      replaceWorkspaceNodes(A, [source(), documentNodeAt('written-now', URI)])
+      setDocumentNodes(A, [source(), documentNodeAt('written-now', URI)])
       replaceSpacesInStore(A, [spaceAt('space-a', ['terminal', 'written-now'])])
       opened = await view.result.current.openFileLink('terminal', link)
     })
@@ -278,7 +279,7 @@ describe('the document navigation', () => {
 
     let opened = false
     await act(async () => {
-      replaceWorkspaceNodes(A, [source()])
+      setDocumentNodes(A, [source()])
       opened = await view.result.current.openFileLink('terminal', link)
     })
 
@@ -290,7 +291,7 @@ describe('the document navigation', () => {
 
     let opened = true
     await act(async () => {
-      replaceWorkspaceNodes(A, [])
+      setDocumentNodes(A, [])
       opened = await view.result.current.openFileLink('terminal', link)
     })
 
@@ -310,7 +311,7 @@ describe('the document navigation', () => {
     expect(view.result.current.navigationByNode.size).toBe(1)
 
     act(() => {
-      replaceWorkspaceNodes(A, [source()])
+      setDocumentNodes(A, [source()])
       view.rerender()
     })
 
@@ -351,7 +352,7 @@ describe('the document navigation', () => {
       expect(rendered.view.result.current.navigationByNode.size).toBe(1)
 
       act(() => {
-        replaceWorkspaceNodes(A, [source()])
+        setDocumentNodes(A, [source()])
         rendered.view.rerender()
       })
 
@@ -383,7 +384,7 @@ describe('the explorer', () => {
 
     let block: unknown = null
     act(() => {
-      replaceWorkspaceNodes(A, [documentNodeAt('open-doc', 'file:///repo/docs/a.md')])
+      setDocumentNodes(A, [documentNodeAt('open-doc', 'file:///repo/docs/a.md')])
       block = view.result.current.findBlockingOpenDocument('file:///repo/docs')
     })
 
@@ -427,7 +428,7 @@ describe('the explorer', () => {
     const free = view.result.current.quickPreview!.rect
 
     await act(async () => {
-      replaceWorkspaceNodes(A, [
+      setDocumentNodes(A, [
         documentNodeAt('blocker', 'file:///repo/blocker.md', LOCAL, { x: free.x, y: free.y }),
       ])
       view.result.current.previewFileInSpace('space-a', URI)
@@ -561,7 +562,7 @@ describe('the filesystem nodes', () => {
     const { view } = renderFilesystemNodes({ a: { nodes: [] } })
 
     act(() => {
-      replaceWorkspaceNodes(A, [folder()])
+      setDocumentNodes(A, [folder()])
       view.result.current.actions.updateFolder('folder', folderData())
     })
 
@@ -572,7 +573,7 @@ describe('the filesystem nodes', () => {
     const { view } = renderFilesystemNodes({ a: { nodes: [] } })
 
     await act(async () => {
-      replaceWorkspaceNodes(A, [folder()])
+      setDocumentNodes(A, [folder()])
       view.result.current.actions.openFile('folder', `${folderUri}/a.md`)
     })
 
@@ -588,7 +589,7 @@ describe('the filesystem nodes', () => {
     await act(async () => {
       view.result.current.actions.openFile('folder', `${folderUri}/a.md`)
       await vi.waitFor(() => expect(stat).toHaveBeenCalled())
-      replaceWorkspaceNodes(A, [])
+      setDocumentNodes(A, [])
       finish({ kind: 'file' })
     })
 
@@ -600,7 +601,7 @@ describe('the filesystem nodes', () => {
 
     let block: unknown = null
     act(() => {
-      replaceWorkspaceNodes(A, [folder(), documentNodeAt('doc', `${folderUri}/a.md`)])
+      setDocumentNodes(A, [folder(), documentNodeAt('doc', `${folderUri}/a.md`)])
       block = view.result.current.actions.findBlockingOpenDocument('folder', `${folderUri}/a.md`)
     })
 
@@ -612,7 +613,7 @@ describe('the filesystem nodes', () => {
 
     let uri: string | null = null
     act(() => {
-      replaceWorkspaceNodes(A, [documentNodeAt('doc', `${folderUri}/a.md`)])
+      setDocumentNodes(A, [documentNodeAt('doc', `${folderUri}/a.md`)])
       uri = view.result.current.actions.getNodePathUri('doc')
     })
 
@@ -717,7 +718,7 @@ describe('reads that only the store can answer', () => {
 
     let opened = false
     await act(async () => {
-      replaceWorkspaceNodes(A, [source(), documentNodeAt('written-now', URI)])
+      setDocumentNodes(A, [source(), documentNodeAt('written-now', URI)])
       replaceSpacesInStore(A, [spaceAt('space-a', ['terminal', 'written-now'])])
       opened = await view.result.current.openFileLink('terminal', {
         uri: URI,
@@ -736,7 +737,7 @@ describe('reads that only the store can answer', () => {
 
     let opened: { id: string } | null = null
     await act(async () => {
-      replaceWorkspaceNodes(A, [documentNodeAt('written-now', URI)])
+      setDocumentNodes(A, [documentNodeAt('written-now', URI)])
       opened = await view.result.current({
         uri: URI,
         mountId: null,
@@ -757,7 +758,7 @@ describe('the materialization after a switch during its awaits', () => {
     const createDocumentNode = vi.fn(
       (anchor: { x: number; y: number }, document: { uri: string }) => {
         const node = documentNodeAt('materialized', document.uri, LOCAL, anchor)
-        replaceWorkspaceNodes(A, [...documentOf(A).nodes, node])
+        setDocumentNodes(A, [...documentOf(A).nodes, node])
         return node
       },
     )
@@ -922,7 +923,7 @@ describe('more reads in a render of workspace A while workspace B is displayed',
     await vi.waitFor(() => expect(view.result.current.quickPreview).not.toBeNull())
     const free = view.result.current.quickPreview!.rect
     act(() => {
-      replaceWorkspaceNodes(A, [
+      setDocumentNodes(A, [
         documentNodeAt('blocker', 'file:///repo/blocker.md', LOCAL, { x: free.x, y: free.y }),
       ])
     })

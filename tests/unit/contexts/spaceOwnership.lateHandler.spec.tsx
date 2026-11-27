@@ -3,10 +3,7 @@ import type { Node } from '@xyflow/react'
 import { describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import { useWorkspaceCanvasSpaceOwnership } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceOwnership'
-import {
-  readWorkspaceDocument,
-  replaceWorkspaceNodes,
-} from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+import { readWorkspaceDocument } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
 import {
   createCanvasDocumentHarness,
@@ -14,6 +11,7 @@ import {
 } from '../../support/canvasDocumentHarness'
 import { createSpace } from '../../support/canvasSelectionFixtures'
 import { pixelNode } from './workspacePixelLayer.fixtures'
+import { setDocumentNodes } from '../../support/documentNodes'
 
 // The drop hooks take the node writer from the canvas store provider (S7, PR 2). A handler made
 // while workspace A was shown writes A's document, also when it runs after B is shown.
@@ -88,8 +86,8 @@ describe('a node drop through a handler of a workspace that is no longer shown',
       ),
     )
     act(() => {
-      replaceWorkspaceNodes('workspace-a', [{ ...t1, position: NODE_IN_C }])
-      replaceWorkspaceNodes('workspace-b', [{ ...t1, position: NODE_IN_C }])
+      setDocumentNodes('workspace-a', [{ ...t1, position: NODE_IN_C }])
+      setDocumentNodes('workspace-b', [{ ...t1, position: NODE_IN_C }])
     })
     current = 'workspace-b'
     view.rerender()

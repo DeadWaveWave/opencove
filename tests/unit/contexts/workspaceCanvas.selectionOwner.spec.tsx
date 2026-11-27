@@ -29,6 +29,7 @@ import {
   seedWorkspaceCanvasStore,
   useWorkspaceCanvasStoreNodes,
 } from '../../support/workspaceCanvasStoreHarness'
+import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import { pixelNode } from './workspacePixelLayer.fixtures'
 
 const selectLiveNodes = (interaction: CanvasInteractionState) => interaction.liveNodes
@@ -257,12 +258,21 @@ describe('canvas selection owner', () => {
       ['compact', false],
     ])
 
-    // The mirror alone: a document node flagged without the store naming it shows no selection.
+    // A flag on a document node alone, as a document from before S7 held one (a write that carries
+    // one throws in development, so it is put into the store directly): without the store naming
+    // the node it shows no selection.
     act(() => result.current.selection.clear())
     act(() =>
-      result.current.setNodes(nodes =>
-        nodes.map(node => ({ ...node, selected: node.id === 'compact' })),
-      ),
+      useAppStore.setState(state => ({
+        workspaces: state.workspaces.map(workspace =>
+          workspace.id === CANVAS_STORE_TEST_WORKSPACE_ID
+            ? {
+                ...workspace,
+                nodes: workspace.nodes.map(node => ({ ...node, selected: node.id === 'compact' })),
+              }
+            : workspace,
+        ),
+      })),
     )
     expect(result.current.canvas.flowNodes.filter(node => node.selected)).toEqual([])
     expectFlagsToMatchStore(result)

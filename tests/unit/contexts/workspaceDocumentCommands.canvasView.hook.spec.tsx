@@ -71,11 +71,37 @@ describe('workspace document commands: the canvas view of the store', () => {
     useAppStore.setState({ workspaces: [], activeWorkspaceId: null })
   })
 
-  it('writes nothing when an updater changes nothing but the canvas view differs in canvas-only fields', () => {
+  // S7, PR 3: the base of a recipe is the committed nodes, the store's own objects. The selection
+  // of the canvas view is the slice's, and it reaches React Flow through `decorateFlowNodes`; no
+  // node a recipe is handed or returns carries `selected`, `dragHandle` or `dragging`.
+  it('hands a recipe the committed nodes with no canvas-only field, whatever the selection says', () => {
     const stored = [sized('t1', 0), sized('n2', 400)]
     seed(stored)
     const view = renderCanvasNodesStore()
     // The canvas view: both windows selected, which the document nodes do not say.
+    act(() => view.result.current.selection.setNodeIds(['t1', 'n2']))
+    let seen: Node<TerminalNodeData>[] = []
+
+    act(() => {
+      view.result.current.store.setNodes(prev => {
+        seen = prev
+        return prev
+      })
+    })
+
+    expect(seen).toHaveLength(2)
+    seen.forEach((node, index) => {
+      expect(node).toBe(stored[index])
+      expect(node.selected).toBeUndefined()
+      expect(node.dragHandle).toBeUndefined()
+      expect(node.dragging).toBeUndefined()
+    })
+  })
+
+  it('writes nothing when an updater changes nothing, and nothing but the change when it does', () => {
+    const stored = [sized('t1', 0), sized('n2', 400)]
+    seed(stored)
+    const view = renderCanvasNodesStore()
     act(() => view.result.current.selection.setNodeIds(['t1', 'n2']))
     const listener = vi.fn()
     const unsubscribe = useAppStore.subscribe(listener)
@@ -98,8 +124,12 @@ describe('workspace document commands: the canvas view of the store', () => {
 
     expect(listener).toHaveBeenCalledTimes(1)
     const after = useAppStore.getState().workspaces[0].nodes
-    expect(after[0]).toMatchObject({ id: 't1', selected: true, position: stored[0].position })
+    // The window the recipe did not change is the store's own object, with no flag from the view.
+    expect(after[0]).toBe(stored[0])
+    expect(after[0].selected).toBeUndefined()
     expect(after[1].data.title).toBe('changed')
+    expect(after[1].selected).toBeUndefined()
+    expect(after[1].dragHandle).toBeUndefined()
   })
 
   // A canvas write computes from the committed view (S6, PR 4): while a gesture holds live

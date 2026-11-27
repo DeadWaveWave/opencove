@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { drag, drop, setupNodeDrag as setup, sizedNode } from '../../support/nodeDragHarness'
 import { createRowNodes, createSpace } from '../../support/canvasSelectionFixtures'
-import { replaceWorkspaceNodes } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+import { setDocumentNodes } from '../../support/documentNodes'
 
 // The release of a node gesture is one write (#738, PR 5): the windows the gesture owns, at their
 // release position, applied to the store's nodes as they are when it runs, and, in a Space-dominant
@@ -60,7 +60,7 @@ describe('the release of an ordinary drag', () => {
     runFrames()
 
     act(() => {
-      replaceWorkspaceNodes(
+      setDocumentNodes(
         harness.workspaceId,
         harness
           .readStoreDocument()
@@ -143,7 +143,7 @@ describe('the release of an ordinary drag', () => {
     act(() => view.result.current.apply(drag('a', 0, 30)))
     runFrames()
     act(() => {
-      replaceWorkspaceNodes(
+      setDocumentNodes(
         harness.workspaceId,
         harness.readStoreDocument().nodes.filter(node => node.id !== 'a'),
       )
@@ -353,10 +353,7 @@ const both = (ay: number, by: number, dragging: boolean) =>
 
 function fromElsewhere(context: ReturnType<typeof setup>, change: (nodes: N[]) => N[]) {
   act(() => {
-    replaceWorkspaceNodes(
-      context.harness.workspaceId,
-      change(context.harness.readStoreDocument().nodes),
-    )
+    setDocumentNodes(context.harness.workspaceId, change(context.harness.readStoreDocument().nodes))
   })
 }
 const moveTo = (id: string, x: number, y: number) => (nodes: N[]) =>

@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import { TERMINAL_LAYOUT_SYNC_EVENT } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/constants'
 import { useWorkspaceCanvasSpaceDirectoryOps } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceDirectoryOps'
-import { replaceWorkspaceNodes } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+
 import type {
   TerminalNodeData,
   WorkspaceSpaceState,
@@ -20,6 +20,7 @@ import {
 } from '../../support/agentRuntimeHarness'
 import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
 import { pixelNode } from './workspacePixelLayer.fixtures'
+import { setDocumentNodes } from '../../support/documentNodes'
 
 // The directory change and the archive (#702, PR 14): each is one store write that plans from the
 // document when it runs and flushes on itself. A Space that is not there writes and flushes
@@ -204,7 +205,7 @@ describe('updateSpaceDirectory', () => {
     const { ops } = renderOps({ a: { nodes: [], spaces: [spaceOf('s-1', ['late-node'])] } })
 
     act(() => {
-      replaceWorkspaceNodes(A, [note('late-node')])
+      setDocumentNodes(A, [note('late-node')])
       ops().updateSpaceDirectory('s-1', '/repo', { archiveSpace: true })
     })
 
@@ -280,7 +281,7 @@ describe('getSpaceBlockingNodes', () => {
 
     let blocking: ReturnType<ReturnType<typeof ops>['getSpaceBlockingNodes']> | null = null
     act(() => {
-      replaceWorkspaceNodes(A, [...documentOf(A).nodes, agentNode('a-late')])
+      setDocumentNodes(A, [...documentOf(A).nodes, agentNode('a-late')])
       blocking = ops().getSpaceBlockingNodes('s-1')
     })
 
@@ -317,7 +318,7 @@ describe('getSpaceBlockingNodes', () => {
       a: { nodes: [terminal('t-1')], spaces: [spaceOf('s-1', ['t-1'])] },
     })
     act(() => {
-      replaceWorkspaceNodes(B, [agentNode('b-agent')])
+      setDocumentNodes(B, [agentNode('b-agent')])
       replaceSpacesInStore(B, [spaceOf('s-1', ['b-agent'])])
     })
     showB()

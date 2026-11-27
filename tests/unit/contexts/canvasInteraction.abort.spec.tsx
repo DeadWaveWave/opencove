@@ -18,7 +18,7 @@ import {
   stubFrames,
   useDragUnderTest,
 } from '../../support/nodeDragHarness'
-import { replaceWorkspaceNodes } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+import { setDocumentNodes } from '../../support/documentNodes'
 
 // A gesture that ends without a release (#738, PR 5). React Flow aborts a node-handle drag when the
 // window it grabbed leaves its node lookup, and sends no release; a workspace switch leaves the
@@ -42,7 +42,7 @@ function fromElsewhere(
   change: (nodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
 ) {
   act(() => {
-    replaceWorkspaceNodes(harness.workspaceId, change(harness.readStoreDocument().nodes))
+    setDocumentNodes(harness.workspaceId, change(harness.readStoreDocument().nodes))
   })
 }
 
@@ -109,9 +109,10 @@ describe.each([
 
     expect(yOf.stored('b')).toBe(700)
     expect(harness.readStoreDocument().nodes.find(node => node.id === 'c')?.position.x).toBe(2500)
-    expect(harness.readStoreDocument().nodes.find(node => node.id === 'c')?.selected).toBe(true)
+    // The click selects: the selection is the slice's, and the batch writes no document.
+    expect(view.result.current.canvasState.selectedNodeIds).toEqual(['c'])
     expect(isDragging(context)).toBe(false)
-    expect(harness.notifications).toHaveBeenCalledTimes(1)
+    expect(harness.notifications).not.toHaveBeenCalled()
   })
 
   it('does not start the gesture again from a frame that was waiting for its animation frame', () => {

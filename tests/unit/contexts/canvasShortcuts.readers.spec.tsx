@@ -9,7 +9,7 @@ import { useWorkspaceCanvasShortcutActions } from '../../../src/contexts/workspa
 import { useWorkspaceCanvasShortcuts } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useShortcuts'
 import { useWorkspaceCanvasCreationActivation } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCreationActivation'
 import { useCanvasSelectionCommands } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
-import { replaceWorkspaceNodes } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+
 import type {
   TerminalNodeData,
   WorkspaceSpaceState,
@@ -21,6 +21,7 @@ import {
 import { createRowNodes, createSpace } from '../../support/canvasSelectionFixtures'
 import { pixelNode } from './workspacePixelLayer.fixtures'
 import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
+import { setDocumentNodes } from '../../support/documentNodes'
 
 // The shortcuts, the close-selected-node shortcut and the creation activation read the committed
 // nodes and Spaces of the workspace whose render made them, from the store, when they run (#702,
@@ -212,7 +213,7 @@ describe('the shortcut actions', () => {
       const { navigateNodeRight, setActiveSpaceIdFromNodeNavigation } = mount()
 
       act(() => {
-        replaceWorkspaceNodes(WORKSPACE_A, [noteAt('node')])
+        setDocumentNodes(WORKSPACE_A, [noteAt('node')])
         replaceSpacesInStore(WORKSPACE_A, [createSpace('space', RIGHT_OF_CENTER, ['node'])])
       })
       navigateNodeRight()
@@ -226,7 +227,7 @@ describe('the shortcut actions', () => {
       const { navigateNodeRight } = mount()
 
       act(() => {
-        replaceWorkspaceNodes(WORKSPACE_A, [
+        setDocumentNodes(WORKSPACE_A, [
           { ...noteAt('node'), hidden: true },
           noteAt('b-node', 1400, 400),
         ])
@@ -331,7 +332,7 @@ describe('the shortcut actions', () => {
       const { cycleIdleForward, activateSpace } = mount()
 
       act(() => {
-        replaceWorkspaceNodes(WORKSPACE_A, [agentNode('agent', 'running')])
+        setDocumentNodes(WORKSPACE_A, [agentNode('agent', 'running')])
       })
       cycleIdleForward()
 
@@ -492,7 +493,7 @@ describe('the creation activation', () => {
     const { textarea, settle } = mount()
 
     act(() => {
-      replaceWorkspaceNodes(WORKSPACE_A, [noteAt('node')])
+      setDocumentNodes(WORKSPACE_A, [noteAt('node')])
       publishWorkspaceNodeCreated('node')
     })
     settle()
@@ -519,7 +520,7 @@ describe('the creation activation', () => {
 
     act(() => {
       useAppStore.setState({ activeWorkspaceId: WORKSPACE_B })
-      replaceWorkspaceNodes(WORKSPACE_A, [noteAt('node')])
+      setDocumentNodes(WORKSPACE_A, [noteAt('node')])
       publishWorkspaceNodeCreated('node')
     })
     expect(vi.getTimerCount()).toBeGreaterThan(0)

@@ -11,7 +11,7 @@ import {
   useCanvasSelectionCommands,
   useReadCanvasSelection,
 } from '@contexts/workspace/presentation/renderer/store/canvasStoreContext'
-import { replaceWorkspaceNodes } from '@contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+
 import type { TerminalNodeData } from '@contexts/workspace/presentation/renderer/types'
 import {
   createCanvasDocumentHarness,
@@ -24,6 +24,7 @@ import {
   createRowNodes,
   createSpace,
 } from '../../support/canvasSelectionFixtures'
+import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 
 vi.mock('@app/renderer/i18n', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -143,13 +144,18 @@ describe('convertSelectedNoteToTask in useWorkspaceCanvasNoteToTaskConversion', 
     expect(kinds()).toEqual(['note', 'note'])
   })
 
+  // The document holds no flag after S7, and a write that carries one throws in development, so a
+  // flagged node is put into the store directly: what a document from before S7 held.
   it('converts nothing when the store names none, even if a document node is flagged', () => {
     const { result, harness, kinds } = setup([])
     act(() => {
-      replaceWorkspaceNodes(
-        harness.workspaceId,
-        harness.readStoreDocument().nodes.map(node => ({ ...node, selected: true })),
-      )
+      useAppStore.setState(state => ({
+        workspaces: state.workspaces.map(workspace =>
+          workspace.id === harness.workspaceId
+            ? { ...workspace, nodes: workspace.nodes.map(node => ({ ...node, selected: true })) }
+            : workspace,
+        ),
+      }))
     })
 
     act(() => result.current.conversion.convertSelectedNoteToTask())

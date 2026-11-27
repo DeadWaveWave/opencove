@@ -28,25 +28,35 @@ vi.mock(
   },
 )
 
+// The instance of the real `useReactFlow()` and the store API of the real `useStoreApi()` are
+// stable: React Flow memoises the first on `viewportInitialized` only, and the second is the
+// provider's own store. The mock returns one object each too. A new object per render would
+// re-run every effect that depends on it, among them the trackpad gesture effect whose cleanup
+// sets state, and render Inner a second time for a reason the app does not have (S7, PR 3: that
+// was the second render of PR 2's review, section 6, and it was the mock's).
+const reactFlowInstance = vi.hoisted(() => ({
+  screenToFlowPosition: ({ x, y }: { x: number; y: number }) => ({ x, y }),
+  setCenter: () => undefined,
+  getViewport: () => ({ x: 0, y: 0, zoom: 1 }),
+  setViewport: () => undefined,
+}))
+
+const reactFlowStoreApi = vi.hoisted(() => ({
+  setState: () => undefined,
+  getState: () => ({ transform: [0, 0, 1] }),
+  subscribe: () => () => undefined,
+}))
+
 vi.mock('@xyflow/react', async importOriginal => {
   const actual = await importOriginal<typeof import('@xyflow/react')>()
   let currentNodes: Array<{ id: string; type: string; data: unknown }> = []
 
   return {
     ReactFlowProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-    useReactFlow: () => ({
-      screenToFlowPosition: ({ x, y }: { x: number; y: number }) => ({ x, y }),
-      setCenter: vi.fn(),
-      getViewport: vi.fn(() => ({ x: 0, y: 0, zoom: 1 })),
-      setViewport: vi.fn(),
-    }),
+    useReactFlow: () => reactFlowInstance,
     useStore: (selector: (state: unknown) => unknown) =>
       selector({ nodes: currentNodes, transform: [0, 0, 1] }),
-    useStoreApi: () => ({
-      setState: vi.fn(),
-      getState: vi.fn(() => ({ transform: [0, 0, 1] })),
-      subscribe: vi.fn(() => () => undefined),
-    }),
+    useStoreApi: () => reactFlowStoreApi,
     ViewportPortal: ({ children }: { children: React.ReactNode }) => <>{children}</>,
     // The select changes of this spec go through the real reducer, as they do under React Flow.
     applyNodeChanges: actual.applyNodeChanges,
@@ -148,14 +158,13 @@ function CanvasHarness() {
   )
 }
 
-// Decision 5 of #692: a node selection change renders what it rendered before the node ids moved
-// into the canvas store: WorkspaceCanvasInner and its hooks once per select batch, no more.
-// `RENDERS_PER_SELECT_BATCH` was measured on the base of the PR (6bb49379), before any production
-// change: 2 for a select batch that changes the selection, and 2 for an equal one.
-const RENDERS_PER_SELECT_BATCH = 2
-// S6 (#738, PR 3): the equal batch still writes the document, and the canvas no longer copies the
-// document's nodes into a state of its own in a layout effect, so that write renders it once.
-const RENDERS_PER_EQUAL_SELECT_BATCH = 1
+// A node selection change is one write to the canvas store and no write to the document (S7,
+// PR 3): the change path publishes the selection and writes nothing when a batch only selects. So
+// Inner and its hooks render once per select batch that changes the selection, and not at all for
+// an equal one. Before S7 a select batch also wrote the document (the `selected` mirror) and Inner
+// rendered twice; an equal batch rendered once for that write.
+const RENDERS_PER_SELECT_BATCH = 1
+const RENDERS_PER_EQUAL_SELECT_BATCH = 0
 
 describe('WorkspaceCanvas node selection render scope', () => {
   it('renders the canvas state hooks the same number of times for one select change', async () => {
@@ -173,8 +182,8 @@ describe('WorkspaceCanvas node selection render scope', () => {
     expect(canvasStateCalls.count - before).toBe(RENDERS_PER_SELECT_BATCH)
   })
 
-  // The node still reaches the document through the mirror commit, so an equal batch renders the
-  // canvas for that write; the selection store itself notifies nobody.
+  // The selection store keeps an equal write as the same array and notifies nobody, and the
+  // document is not written.
   it('renders the canvas state hooks the same number of times for an equal select change', async () => {
     stubOpencoveApi()
     seedWorkspaceCanvasStore({ nodes: createRowNodes(['a', 'b']) })

@@ -122,9 +122,8 @@ describe('useWorkspaceCanvasApplyNodeChanges live and commit publishing', () => 
           liveNodesChange(next)
           setNodes(current => applyLiveNodes(current, next))
         },
-        onNodesCommit: next => {
-          committedNodesChange(next)
-          setNodes(next)
+        onNodesCommit: commit => {
+          committedNodesChange(commit)
         },
         onNodesRelease: release => {
           releaseNodesChange(release)

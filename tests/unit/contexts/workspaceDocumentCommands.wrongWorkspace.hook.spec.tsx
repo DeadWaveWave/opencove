@@ -127,7 +127,7 @@ describe('workspace document commands: a late canvas write lands in the workspac
 
     const nodeInA = useAppStore.getState().workspaces[0].nodes[0]
     expect(nodeInA.data.title).toBe('Renamed late')
-    expect(nodeInA.selected).toBe(false)
+    expect(nodeInA.selected).toBeUndefined()
     expect(nodeInA.position).toBe(nodeInABefore.position)
   })
 })

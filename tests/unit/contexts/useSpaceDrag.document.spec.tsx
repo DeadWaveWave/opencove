@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import { TERMINAL_LAYOUT_SYNC_EVENT } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/constants'
 import { useCanvasCollapseStore } from '../../../src/contexts/workspace/presentation/renderer/store/useCanvasCollapseStore'
-import { replaceWorkspaceNodes } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+
 import { createCanvasDocumentHarness } from '../../support/canvasDocumentHarness'
 import { createRowNodes, createSpace } from '../../support/canvasSelectionFixtures'
 import {
@@ -19,6 +19,7 @@ import {
   spaceC,
 } from '../../support/spaceDragHarness'
 import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
+import { setDocumentNodes } from '../../support/documentNodes'
 
 beforeEach(() => {
   vi.useFakeTimers()
@@ -58,7 +59,7 @@ describe('useWorkspaceCanvasSpaceDrag reads the committed document', () => {
       const view = renderDrag(harness)
 
       act(() => {
-        replaceWorkspaceNodes(harness.workspaceId, [nodeAt('n1', 50, 60), nodeAt('n2', 300, 150)])
+        setDocumentNodes(harness.workspaceId, [nodeAt('n1', 50, 60), nodeAt('n2', 300, 150)])
         replaceSpacesInStore(harness.workspaceId, [spaceA(['n1', 'n2'])])
       })
       press(view, 'space-a', INSIDE_A)
@@ -81,7 +82,7 @@ describe('useWorkspaceCanvasSpaceDrag reads the committed document', () => {
 
       // The node ends at x = 450 + width: a resize of the right edge cannot go below it.
       act(() => {
-        replaceWorkspaceNodes(harness.workspaceId, [nodeAt('n1', 450, 60)])
+        setDocumentNodes(harness.workspaceId, [nodeAt('n1', 450, 60)])
       })
       press(view, 'space-a', { x: 599, y: 200 })
       release({ x: 100, y: 200 })
@@ -146,7 +147,7 @@ describe('useWorkspaceCanvasSpaceDrag reads the committed document', () => {
       // A node the store gained since pointer down, in the way of the moved Space: the frame
       // pushes it clear before release, which only the nodes read at the frame know.
       act(() => {
-        replaceWorkspaceNodes(harness.workspaceId, [
+        setDocumentNodes(harness.workspaceId, [
           ...harness.readStoreDocument().nodes,
           nodeAt('n-late', 650, 100),
         ])
@@ -345,7 +346,7 @@ describe('useWorkspaceCanvasSpaceDrag reads the committed document', () => {
       // A node that the store gained since pointer down is not part of the drag, but the moved
       // Space pushes it clear of its new rect, which only the nodes read at pointer up know.
       act(() => {
-        replaceWorkspaceNodes(harness.workspaceId, [
+        setDocumentNodes(harness.workspaceId, [
           ...harness.readStoreDocument().nodes,
           nodeAt('n-late', 650, 100),
         ])
@@ -358,22 +359,27 @@ describe('useWorkspaceCanvasSpaceDrag reads the committed document', () => {
       ])
     })
 
-    it('applies the node changes to the nodes that carry the canvas fields', () => {
+    // The release writes the moved windows' positions and nothing of the canvas view: `selected`
+    // exists only in the view (S7, PR 3), so the stored node holds none, and the selection stays
+    // the slice's.
+    it('moves the stored window with the Space and stores no canvas-only field', () => {
       const harness = createCanvasDocumentHarness({
         nodes: [nodeAt('n1', 50, 60)],
         spaces: [spaceA()],
       })
       const view = renderDrag(harness)
       act(() => view.result.current.selection.select({ nodeIds: ['n1'], spaceIds: ['space-a'] }))
-      // `selected` exists only in the canvas view; the store's node does not hold it.
-      expect(harness.readStoreDocument().nodes[0].selected).toBeFalsy()
+      expect(harness.readStoreDocument().nodes[0].selected).toBeUndefined()
       press(view, 'space-a', INSIDE_A)
 
       release({ x: INSIDE_A.x + 100, y: INSIDE_A.y })
 
       const [stored] = harness.readStoreDocument().nodes
       expect(stored.position.x).toBe(150)
-      expect(stored.selected).toBe(true)
+      expect(stored.selected).toBeUndefined()
+      expect(stored.dragHandle).toBeUndefined()
+      expect(stored.dragging).toBeUndefined()
+      expect(view.result.current.readSelection().nodeIds).toEqual(['n1'])
     })
 
     // A click on a Space writes nothing (S7, Decision 10). On the base it finalized the drag with

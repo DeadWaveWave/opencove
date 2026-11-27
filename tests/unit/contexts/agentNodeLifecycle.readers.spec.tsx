@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_AGENT_ENV_BY_PROVIDER } from '../../../src/contexts/settings/domain/agentEnv'
 import { useWorkspaceCanvasAgentNodeLifecycle } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useAgentNodeLifecycle'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
-import { replaceWorkspaceNodes } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+
 import {
   agentNode,
   nodeOf,
@@ -13,6 +13,7 @@ import {
   WORKSPACE_A as A,
   WORKSPACE_B as B,
 } from '../../support/agentRuntimeHarness'
+import { setDocumentNodes } from '../../support/documentNodes'
 
 // The agent lifecycle reads the committed nodes of the workspace whose render made its callbacks
 // (#702, PR 10). A launch that the user interrupts by switching workspace finds its node after
@@ -151,7 +152,7 @@ describe('the agent lifecycle in two workspaces', () => {
     await waitFor(() => expect(launched.api.launch).toHaveBeenCalledTimes(1))
     // The node leaves its workspace during the await, as a close would remove it.
     act(() => {
-      replaceWorkspaceNodes(A, [])
+      setDocumentNodes(A, [])
     })
     showB()
     await act(async () => {
@@ -208,7 +209,7 @@ describe('the agent lifecycle in two workspaces', () => {
     showB()
 
     await act(async () => {
-      replaceWorkspaceNodes(B, [agentNode('agent-b', { sessionId: '' })])
+      setDocumentNodes(B, [agentNode('agent-b', { sessionId: '' })])
       await view.result.current.reloadAgentNode('agent-b')
     })
 

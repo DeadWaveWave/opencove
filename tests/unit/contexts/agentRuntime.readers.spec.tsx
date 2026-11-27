@@ -11,7 +11,7 @@ import { useAgentNodeSessionControls } from '../../../src/contexts/workspace/pre
 import { useAgentNodeSessionSwitch } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useAgentNodeSessionSwitch'
 import { useTerminalAgentSessionActions } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useTerminalAgentSessionActions'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
-import { replaceWorkspaceNodes } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+
 import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
 import {
   agentNode,
@@ -25,6 +25,7 @@ import {
   WORKSPACE_B as B,
 } from '../../support/agentRuntimeHarness'
 import { pixelNode } from './workspacePixelLayer.fixtures'
+import { setDocumentNodes } from '../../support/documentNodes'
 
 // The agent session controls, the session switch, the last message copy, the terminal agent
 // session actions and the viewport normalisation read the committed nodes of the workspace whose
@@ -89,14 +90,14 @@ describe('the agent session controls', () => {
     const { view, showB } = renderControls()
 
     await act(async () => {
-      replaceWorkspaceNodes(A, [agentNode('agent-a', {}, { executionDirectory: '/dir-a' })])
+      setDocumentNodes(A, [agentNode('agent-a', {}, { executionDirectory: '/dir-a' })])
       await view.result.current.listAgentSessionsForNode('agent-a')
     })
     expect(listSessions).toHaveBeenLastCalledWith({ provider: 'codex', cwd: '/dir-a', limit: 20 })
 
     showB()
     await act(async () => {
-      replaceWorkspaceNodes(B, [agentNode('agent-b', {}, { executionDirectory: '/dir-b' })])
+      setDocumentNodes(B, [agentNode('agent-b', {}, { executionDirectory: '/dir-b' })])
       await view.result.current.listAgentSessionsForNode('agent-b')
     })
     expect(listSessions).toHaveBeenLastCalledWith({ provider: 'codex', cwd: '/dir-b', limit: 20 })
@@ -109,7 +110,7 @@ describe('the agent session controls', () => {
     const { view, showB } = renderControls()
     const madeInA = view.result.current
     act(() => {
-      replaceWorkspaceNodes(A, [agentNode('agent-a', {}, { executionDirectory: '/dir-a' })])
+      setDocumentNodes(A, [agentNode('agent-a', {}, { executionDirectory: '/dir-a' })])
     })
     showB()
 
@@ -126,7 +127,7 @@ describe('the agent session controls', () => {
     const { view, showB } = renderControls({ stable: false })
 
     await act(async () => {
-      replaceWorkspaceNodes(A, [agentNode('agent-a')])
+      setDocumentNodes(A, [agentNode('agent-a')])
       await view.result.current.stopAgentNode('agent-a')
     })
     expect(kill).toHaveBeenLastCalledWith({ sessionId: 'agent-a-runtime' })
@@ -134,7 +135,7 @@ describe('the agent session controls', () => {
 
     showB()
     await act(async () => {
-      replaceWorkspaceNodes(B, [agentNode('agent-b')])
+      setDocumentNodes(B, [agentNode('agent-b')])
       await view.result.current.stopAgentNode('agent-b')
     })
     expect(kill).toHaveBeenLastCalledWith({ sessionId: 'agent-b-runtime' })
@@ -176,7 +177,7 @@ describe('the agent session switch', () => {
     const { view, showB } = renderSwitch(relaunch, undefined, { stable: true })
 
     await act(async () => {
-      replaceWorkspaceNodes(A, [agentNode('agent-a')])
+      setDocumentNodes(A, [agentNode('agent-a')])
       await view.result.current('agent-a', summary('resume-next', '/dir-a'))
     })
     expect(relaunch).toHaveBeenLastCalledWith(
@@ -189,7 +190,7 @@ describe('the agent session switch', () => {
 
     showB()
     await act(async () => {
-      replaceWorkspaceNodes(B, [agentNode('agent-b')])
+      setDocumentNodes(B, [agentNode('agent-b')])
       await view.result.current('agent-b', summary('resume-next', '/dir-b'))
     })
     expect(relaunch).toHaveBeenLastCalledWith(
@@ -204,7 +205,7 @@ describe('the agent session switch', () => {
     agentNode('agent-1', {}, { taskId: 'task-1', resumeSessionId, executionDirectory: '/dir' })
   const landRelaunch = () =>
     vi.fn(async () => {
-      replaceWorkspaceNodes(A, [linked('resume-new'), taskNode('task-1', 'agent-1')])
+      setDocumentNodes(A, [linked('resume-new'), taskNode('task-1', 'agent-1')])
       return undefined
     })
   const beforeRelaunch = { a: { nodes: [linked('resume-old'), taskNode('task-1', 'agent-1')] } }
@@ -248,7 +249,7 @@ describe('the last message copy', () => {
     )
 
     await act(async () => {
-      replaceWorkspaceNodes(A, [agentNode('agent-a', {}, { executionDirectory: '/dir-a' })])
+      setDocumentNodes(A, [agentNode('agent-a', {}, { executionDirectory: '/dir-a' })])
       await view.result.current('agent-a')
     })
     expect(readLastMessage).toHaveBeenLastCalledWith(
@@ -257,7 +258,7 @@ describe('the last message copy', () => {
 
     showB()
     await act(async () => {
-      replaceWorkspaceNodes(B, [agentNode('agent-b', {}, { executionDirectory: '/dir-b' })])
+      setDocumentNodes(B, [agentNode('agent-b', {}, { executionDirectory: '/dir-b' })])
       await view.result.current('agent-b')
     })
     expect(readLastMessage).toHaveBeenLastCalledWith(
@@ -341,14 +342,14 @@ describe('the terminal agent session actions', () => {
     )
 
     await act(async () => {
-      replaceWorkspaceNodes(A, [overlayNode('terminal-a', 'pty-a')])
+      setDocumentNodes(A, [overlayNode('terminal-a', 'pty-a')])
       await view.result.current.reloadOverlayAgent('terminal-a')
     })
     expect(reexecAgent).toHaveBeenLastCalledWith(expect.objectContaining({ sessionId: 'pty-a' }))
 
     showB()
     await act(async () => {
-      replaceWorkspaceNodes(B, [overlayNode('terminal-b', 'pty-b')])
+      setDocumentNodes(B, [overlayNode('terminal-b', 'pty-b')])
       await view.result.current.reloadOverlayAgent('terminal-b')
     })
     expect(reexecAgent).toHaveBeenLastCalledWith(expect.objectContaining({ sessionId: 'pty-b' }))
@@ -364,7 +365,7 @@ describe('the terminal agent session actions', () => {
 
     let sessions: unknown
     await act(async () => {
-      replaceWorkspaceNodes(A, [overlayNode('terminal-a', 'pty-a')])
+      setDocumentNodes(A, [overlayNode('terminal-a', 'pty-a')])
       sessions = await view.result.current.listOverlayAgentSessions('terminal-a')
     })
     expect(sessions).toEqual([])
@@ -376,7 +377,7 @@ describe('the terminal agent session actions', () => {
 
     showB()
     await act(async () => {
-      replaceWorkspaceNodes(B, [overlayNode('terminal-b', 'pty-b')])
+      setDocumentNodes(B, [overlayNode('terminal-b', 'pty-b')])
       await view.result.current.listOverlayAgentSessions('terminal-b')
     })
     expect(listSessions).toHaveBeenLastCalledWith({
@@ -402,7 +403,7 @@ describe('the terminal agent session actions', () => {
 
     let handled = false
     await act(async () => {
-      replaceWorkspaceNodes(A, [overlayNode('terminal-a', 'pty-a')])
+      setDocumentNodes(A, [overlayNode('terminal-a', 'pty-a')])
       handled = await view.result.current.switchOverlayAgentSession('terminal-a', {
         sessionId: 'resume-next',
         provider: 'codex',
@@ -469,14 +470,14 @@ describe('the viewport normalisation of a terminal interaction', () => {
     const { view, showB } = renderViewportRefs(setCenter)
 
     act(() => {
-      replaceWorkspaceNodes(A, [at(100, 200)])
+      setDocumentNodes(A, [at(100, 200)])
       view.result.current.normalizeViewportForTerminalInteractionRef.current('agent')
     })
     expect(setCenter).toHaveBeenLastCalledWith(100 + 260, 200 + 180, expect.anything())
 
     showB()
     act(() => {
-      replaceWorkspaceNodes(B, [at(1000, 2000)])
+      setDocumentNodes(B, [at(1000, 2000)])
       view.result.current.normalizeViewportForTerminalInteractionRef.current('agent')
     })
     expect(setCenter).toHaveBeenLastCalledWith(1000 + 260, 2000 + 180, expect.anything())

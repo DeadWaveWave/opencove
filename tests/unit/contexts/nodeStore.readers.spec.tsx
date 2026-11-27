@@ -3,7 +3,7 @@ import type { Node } from '@xyflow/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import { useScrollbackStore } from '../../../src/contexts/workspace/presentation/renderer/store/useScrollbackStore'
-import { replaceWorkspaceNodes } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+
 import type {
   TerminalNodeData,
   WorkspaceSpaceState,
@@ -32,6 +32,7 @@ import {
 } from '../../support/canvasDocumentHarness'
 import { pixelNode } from './workspacePixelLayer.fixtures'
 import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
+import { setDocumentNodes } from '../../support/documentNodes'
 
 // The node store reads the nodes it closes, scrolls and focuses, and its creators read the nodes
 // and the Spaces they place against, from the committed document as the store holds it when they
@@ -121,7 +122,7 @@ describe('closeNode', () => {
     const { view } = renderStore({ a: { nodes: [] } })
 
     await act(async () => {
-      replaceWorkspaceNodes(A, [pixelNode({ sessionId: 'pty-late' })])
+      setDocumentNodes(A, [pixelNode({ sessionId: 'pty-late' })])
       await store(view).closeNode('terminal-1')
     })
 
@@ -144,7 +145,7 @@ describe('closeNode', () => {
     })
 
     await act(async () => {
-      replaceWorkspaceNodes(A, [
+      setDocumentNodes(A, [
         { ...image, id: 'image-late' },
         { ...pixelNode({ kind: 'website', sessionId: '' }), id: 'website-late' },
       ])
@@ -160,7 +161,7 @@ describe('closeNode', () => {
     const { view } = renderStore({ a: { nodes: [] } })
 
     await act(async () => {
-      replaceWorkspaceNodes(A, [
+      setDocumentNodes(A, [
         agentNode('agent-late', {}, { taskId: 'task-late' }),
         taskNode('task-late', 'agent-late'),
       ])
@@ -180,7 +181,7 @@ describe('closeNode', () => {
     displayB()
 
     await act(async () => {
-      replaceWorkspaceNodes(A, [pixelNode({ sessionId: 'pty-of-a' })])
+      setDocumentNodes(A, [pixelNode({ sessionId: 'pty-of-a' })])
       await store(view).closeNode('terminal-1')
     })
 
@@ -195,7 +196,7 @@ describe('updateNodeScrollback', () => {
     const { view } = renderStore({ a: { nodes: [] } })
 
     act(() => {
-      replaceWorkspaceNodes(A, [pixelNode({ sessionId: 'pty-late' })])
+      setDocumentNodes(A, [pixelNode({ sessionId: 'pty-late' })])
       store(view).updateNodeScrollback('terminal-1', 'late output')
     })
 
@@ -206,7 +207,7 @@ describe('updateNodeScrollback', () => {
     const { view } = renderStore({ a: { nodes: [] } })
 
     act(() => {
-      replaceWorkspaceNodes(A, [pixelNode({ sessionId: 'pty-late' })])
+      setDocumentNodes(A, [pixelNode({ sessionId: 'pty-late' })])
       store(view).isNodeDraggingRef.current = true
       store(view).updateNodeScrollback('terminal-1', 'late output')
     })
@@ -219,7 +220,7 @@ describe('updateNodeScrollback', () => {
     const { view } = renderStore({ a: { nodes: [pixelNode()] } })
 
     act(() => {
-      replaceWorkspaceNodes(A, [{ ...taskNode('terminal-1', 'x') }])
+      setDocumentNodes(A, [{ ...taskNode('terminal-1', 'x') }])
       store(view).updateNodeScrollback('terminal-1', 'output')
     })
 
@@ -248,7 +249,7 @@ describe('updateNodeScrollback', () => {
     displayB()
 
     act(() => {
-      replaceWorkspaceNodes(A, [pixelNode()])
+      setDocumentNodes(A, [pixelNode()])
       store(view).updateNodeScrollback('terminal-1', 'output of a')
     })
 
@@ -317,7 +318,7 @@ describe.each(Object.keys(CREATIONS))('creating %s', name => {
 
     let created: Node<TerminalNodeData> | null = null
     await act(async () => {
-      replaceWorkspaceNodes(A, [blockerNode()])
+      setDocumentNodes(A, [blockerNode()])
       created = (await CREATIONS[name](view.result.current)) as Node<TerminalNodeData>
     })
 

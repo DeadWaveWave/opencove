@@ -19,7 +19,7 @@ import {
   useDragUnderTest,
 } from '../../support/nodeDragHarness'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
-import { replaceWorkspaceNodes } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+import { setDocumentNodes } from '../../support/documentNodes'
 
 // The node drag overlay (#738, PR 3), below the canvas: what a drag frame, a release and a write
 // during a gesture do to the canvas store and to the document, with the hooks the canvas wires.
@@ -216,7 +216,7 @@ describe('a write from elsewhere in the middle of a gesture', () => {
     runFrames()
 
     act(() => {
-      replaceWorkspaceNodes(
+      setDocumentNodes(
         harness.workspaceId,
         harness
           .readStoreDocument()
@@ -248,7 +248,7 @@ describe('a write from elsewhere in the middle of a gesture', () => {
     const { harness, view, runFrames, yOf, liveIds } = setup()
     const moveC = (to: number) =>
       act(() => {
-        replaceWorkspaceNodes(
+        setDocumentNodes(
           harness.workspaceId,
           harness
             .readStoreDocument()
@@ -278,7 +278,7 @@ describe('a write from elsewhere in the middle of a gesture', () => {
     const { harness, view, runFrames, yOf } = setup()
     const nodesWith = (change: (nodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[]) =>
       act(() => {
-        replaceWorkspaceNodes(harness.workspaceId, change(harness.readStoreDocument().nodes))
+        setDocumentNodes(harness.workspaceId, change(harness.readStoreDocument().nodes))
       })
     act(() => view.result.current.apply(drag('a', 0, 30)))
     runFrames()
@@ -306,7 +306,7 @@ describe('a write from elsewhere in the middle of a gesture', () => {
     runFrames()
 
     act(() => {
-      replaceWorkspaceNodes(
+      setDocumentNodes(
         harness.workspaceId,
         harness
           .readStoreDocument()
@@ -398,7 +398,7 @@ describe('a canvas write after a write from elsewhere, before the next frame', (
     act(() => view.result.current.apply(drag('a', 0, 30)))
     runFrames()
     act(() => {
-      replaceWorkspaceNodes(
+      setDocumentNodes(
         harness.workspaceId,
         retitle('b', 'from elsewhere')(harness.readStoreDocument().nodes),
       )
@@ -423,7 +423,7 @@ describe('a canvas write after a write from elsewhere, before the next frame', (
     act(() => view.result.current.apply(drag('a', 0, 30)))
     runFrames()
     act(() => {
-      replaceWorkspaceNodes(
+      setDocumentNodes(
         harness.workspaceId,
         retitle('b', 'from elsewhere')(harness.readStoreDocument().nodes),
       )
@@ -443,7 +443,7 @@ describe('a canvas write with no gesture live', () => {
     const { harness, view, yOf } = setup()
 
     act(() => {
-      replaceWorkspaceNodes(
+      setDocumentNodes(
         harness.workspaceId,
         harness
           .readStoreDocument()
@@ -470,7 +470,7 @@ describe('a release whose windows were all removed from elsewhere', () => {
     act(() => view.result.current.apply(drag('a', 0, 30)))
     runFrames()
     act(() => {
-      replaceWorkspaceNodes(
+      setDocumentNodes(
         harness.workspaceId,
         harness.readStoreDocument().nodes.filter(node => node.id !== 'a'),
       )
@@ -522,9 +522,27 @@ describe('a gesture across a workspace switch', () => {
     const nodesOfB = documentOf(B).nodes
     showB()
 
+    act(() =>
+      applyOfA([
+        { type: 'position', id: 'a', position: { x: 0, y: 900 }, dragging: false },
+      ] as never),
+    )
+
+    expect(documentOf(A).nodes.find(node => node.id === 'a')?.position.y).toBe(900)
+    expect(documentOf(B).nodes).toBe(nodesOfB)
+  })
+
+  // A select batch writes no document (S7, PR 3), so a late one writes neither workspace.
+  it('writes no document for a select batch applied after the switch', () => {
+    const { view, showB } = renderTwoWorkspaces()
+    const applyOfA = view.result.current.apply
+    const nodesOfA = documentOf(A).nodes
+    const nodesOfB = documentOf(B).nodes
+    showB()
+
     act(() => applyOfA([{ type: 'select', id: 'a', selected: true }] as never))
 
-    expect(documentOf(A).nodes.find(node => node.id === 'a')?.selected).toBe(true)
+    expect(documentOf(A).nodes).toBe(nodesOfA)
     expect(documentOf(B).nodes).toBe(nodesOfB)
   })
 

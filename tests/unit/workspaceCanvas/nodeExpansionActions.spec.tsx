@@ -8,7 +8,7 @@ import {
 import { useCanvasCollapse } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/collapse/useCanvasCollapse'
 import { TERMINAL_LAYOUT_SYNC_EVENT } from '@contexts/workspace/presentation/renderer/components/terminalNode/constants'
 import { useCanvasSelectionCommands } from '@contexts/workspace/presentation/renderer/store/canvasStoreContext'
-import { replaceWorkspaceNodes } from '@contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+
 import { useCanvasCollapseStore } from '@contexts/workspace/presentation/renderer/store/useCanvasCollapseStore'
 import type {
   TerminalNodeData,
@@ -21,6 +21,7 @@ import {
   type CanvasDocumentHarness,
   type CanvasNodeStoreContext,
 } from '../../support/canvasDocumentHarness'
+import { setDocumentNodes } from '../../support/documentNodes'
 
 // A collapse action plans from the committed document and writes the nodes and the Spaces in one
 // store update (#702, PR 9). The nodes carry the initial size that the node store would otherwise
@@ -186,14 +187,16 @@ describe('collapsed window expansion actions', () => {
 
   it('reveals into nearby free space and focuses the relocated target rather than its old position', () => {
     const actions = renderActions({ expandBehavior: 'find-space' })
-    // The write runs on the committed view of each node (the document's node with the selection of
-    // the canvas store); a peer that does not move keeps its value.
+    // The write runs on the committed nodes, which hold no canvas-only field (S7); a peer that does
+    // not move keeps its value, and the canvas view of it is that node with the flags derived.
     const canvasPeer = actions.view.result.current.canvasState.flowNodes[1]
     act(() => actions.collapse().revealNode('target'))
     const [target, peer] = actions.stored().nodes
     expect(target.position).not.toEqual(actions.originalNodes[0].position)
     expectUnmoved(peer, actions.originalNodes[1])
-    expect(peer).toEqual(canvasPeer)
+    expect(peer.selected).toBeUndefined()
+    expect(peer.dragHandle).toBeUndefined()
+    expect(canvasPeer).toEqual({ ...peer, selected: false, dragHandle: canvasPeer.dragHandle })
     expect(target.data).toBe(actions.originalNodes[0].data)
     expect(setCenter).toHaveBeenCalledWith(
       target.position.x + target.data.width / 2,
@@ -238,7 +241,8 @@ describe('collapsed window expansion actions', () => {
     const [target, peer] = actions.stored().nodes
     expect(target.position).not.toEqual(actions.originalNodes[0].position)
     expectUnmoved(peer, actions.originalNodes[1])
-    expect(peer).toEqual(canvasPeer)
+    expect(peer.selected).toBeUndefined()
+    expect(canvasPeer).toEqual({ ...peer, selected: false, dragHandle: canvasPeer.dragHandle })
     expect(setCenter).toHaveBeenCalledWith(
       target.position.x + target.data.width / 2,
       target.position.y + target.data.height / 2,
@@ -268,7 +272,7 @@ describe('collapsed window expansion actions', () => {
     const actions = renderActions({ collapsed: ['target', 'late'] })
     let returned: Node<TerminalNodeData> | undefined
     act(() => {
-      replaceWorkspaceNodes(actions.harness.workspaceId, [
+      setDocumentNodes(actions.harness.workspaceId, [
         ...actions.stored().nodes,
         createNode('late', 0, 600),
       ])
@@ -282,15 +286,20 @@ describe('collapsed window expansion actions', () => {
     expect(actions.harness.notifications).toHaveBeenCalledTimes(2)
   })
 
-  it('keeps the canvas selection flag of the nodes it moves', () => {
+  // The selection is the slice's and the view's: a layout write moves the node, stores no flag for
+  // it, and the view still shows the selected window as selected (S7).
+  it('moves a selected window without storing its selection', () => {
     const actions = renderActions()
     act(() => actions.view.result.current.selection.setNodeIds(['peer']))
-    expect(actions.storedNode('peer').selected).toBeFalsy()
+    expect(actions.storedNode('peer').selected).toBeUndefined()
     expect(actions.view.result.current.canvasState.flowNodes[1].selected).toBe(true)
     act(() => actions.collapse().expandNode('target'))
     const peer = actions.storedNode('peer')
     expect(peer.position).not.toEqual({ x: 200, y: 0 })
-    expect(peer.selected).toBe(true)
+    expect(peer.selected).toBeUndefined()
+    const shown = actions.view.result.current.canvasState.flowNodes[1]
+    expect(shown.position).toEqual(peer.position)
+    expect(shown.selected).toBe(true)
   })
 
   it('prepares the motion before the write, with the planned layout', () => {
@@ -404,20 +413,27 @@ describe('collapse and arrange, and its undo', () => {
     expect(actions.collapse().canUndoArrange('space-1')).toBe(false)
   })
 
-  it('keeps the canvas selection flag through the arrange and the undo', () => {
+  it('shows the selection through the arrange and the undo, and stores none', () => {
     const actions = arrangedSpace()
+    const selectedIds = () =>
+      actions.view.result.current.canvasState.flowNodes
+        .filter(node => node.selected)
+        .map(node => node.id)
     act(() => actions.view.result.current.selection.setNodeIds(['target']))
-    expect(actions.view.result.current.canvasState.flowNodes[0].selected).toBe(true)
+    expect(selectedIds()).toEqual(['target'])
     act(() => actions.collapse().collapseAndArrange('space-1'))
-    expect(actions.storedNode('target').selected).toBe(true)
+    expect(selectedIds()).toEqual(['target'])
 
-    // The canvas selects the other window; the store still flags the first.
+    // The canvas selects the other window while the arrange is on.
     act(() => actions.view.result.current.selection.setNodeIds(['peer']))
-    expect(actions.view.result.current.canvasState.flowNodes[1].selected).toBe(true)
+    expect(selectedIds()).toEqual(['peer'])
     act(() => actions.collapse().undoArrange('space-1'))
 
-    expect(actions.storedNode('target').selected).toBeFalsy()
-    expect(actions.storedNode('peer').selected).toBe(true)
+    expect(selectedIds()).toEqual(['peer'])
+    actions.stored().nodes.forEach(node => {
+      expect(node.selected).toBeUndefined()
+      expect(node.dragHandle).toBeUndefined()
+    })
   })
 
   it('prepares the motion before each write, with the planned layout', () => {
@@ -473,7 +489,7 @@ describe('collapse and arrange, and its undo', () => {
     const actions = arrangedSpace()
     act(() => actions.collapse().collapseAndArrange('space-1'))
     act(() => {
-      replaceWorkspaceNodes(
+      setDocumentNodes(
         actions.harness.workspaceId,
         actions.stored().nodes.map(node => ({ ...node, position: { x: 5000, y: 5000 } })),
       )

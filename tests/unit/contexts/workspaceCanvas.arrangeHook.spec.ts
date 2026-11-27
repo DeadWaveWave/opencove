@@ -7,7 +7,7 @@ import {
 } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useArrange'
 import { TERMINAL_LAYOUT_SYNC_EVENT } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/constants'
 import { useCanvasSelectionCommands } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
-import { replaceWorkspaceNodes } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+
 import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
 import {
   createCanvasDocumentHarness,
@@ -15,6 +15,7 @@ import {
   type CanvasNodeStoreContext,
 } from '../../support/canvasDocumentHarness'
 import { createRowNodes, createSpace } from '../../support/canvasSelectionFixtures'
+import { setDocumentNodes } from '../../support/documentNodes'
 
 vi.mock('@app/renderer/i18n', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -227,7 +228,7 @@ describe('workspace canvas arrange hook', () => {
       harness.notifications.mockClear()
 
       act(() => {
-        replaceWorkspaceNodes(harness.workspaceId, [...harness.readStoreDocument().nodes, added])
+        setDocumentNodes(harness.workspaceId, [...harness.readStoreDocument().nodes, added])
         view.result.current.arrange.arrangeCanvas()
       })
 
@@ -238,21 +239,22 @@ describe('workspace canvas arrange hook', () => {
       expect(harness.notifications).toHaveBeenCalledTimes(2)
     })
 
-    // `selected` exists only in the canvas view. The layout is planned from the nodes of the
-    // write, which carry it, so it survives into the store.
-    it('keeps the canvas selection flag of a node whose stored flag differs', () => {
+    // `selected` exists only in the canvas view (S7). The layout is planned from the committed
+    // nodes: it stores no flag, and the view still shows the selected window as selected.
+    it('stores no selection flag, and the view keeps showing the selected window', () => {
       const harness = createCanvasDocumentHarness({ nodes: scattered(['a', 'b']) })
       const view = renderCanvasNodeStore(harness, { extend: useArrangeUnderTest })
       act(() => view.result.current.selection.setNodeIds(['b']))
-      expect(harness.readStoreDocument().nodes[1].selected).toBeFalsy()
+      expect(harness.readStoreDocument().nodes[1].selected).toBeUndefined()
       expect(view.result.current.canvasState.flowNodes[1].selected).toBe(true)
 
       act(() => view.result.current.arrange.arrangeCanvas())
 
       const [a, b] = harness.readStoreDocument().nodes
       expect(b.position).not.toEqual({ x: 37, y: 11 })
-      expect(b.selected).toBe(true)
-      expect(a.selected).toBeFalsy()
+      expect(b.selected).toBeUndefined()
+      expect(a.selected).toBeUndefined()
+      expect(view.result.current.canvasState.flowNodes[1].selected).toBe(true)
     })
 
     it('writes nothing, flushes nothing and warns when a Space has no room', async () => {

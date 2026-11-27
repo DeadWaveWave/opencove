@@ -1,7 +1,7 @@
 import { act } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useCanvasCollapseStore } from '../../../src/contexts/workspace/presentation/renderer/store/useCanvasCollapseStore'
-import { replaceWorkspaceNodes } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+
 import { applyLiveNodes } from '../../../src/contexts/workspace/presentation/renderer/utils/canvasLiveNodes'
 import {
   createCanvasDocumentHarness,
@@ -17,6 +17,7 @@ import {
   renderDrag,
   spaceA,
 } from '../../support/spaceDragHarness'
+import { setDocumentNodes } from '../../support/documentNodes'
 
 // #738, PR 6: the release of a Space drag keeps the store's position for a window the drag did not
 // move, as the frames showed it (invariant 3: a write from elsewhere during the gesture is never
@@ -42,7 +43,7 @@ function renderOpenSpace(extra: ReturnType<typeof nodeAt>[] = []) {
 
 function moveFromElsewhere(harness: CanvasDocumentHarness, id: string, x: number, y: number) {
   act(() => {
-    replaceWorkspaceNodes(
+    setDocumentNodes(
       harness.workspaceId,
       harness
         .readStoreDocument()

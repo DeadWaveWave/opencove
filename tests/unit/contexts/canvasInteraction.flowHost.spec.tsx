@@ -3,15 +3,13 @@ import { act, render } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
 import { WorkspaceCanvas } from '../../../src/contexts/workspace/presentation/renderer/components/WorkspaceCanvas'
-import {
-  readWorkspaceDocument,
-  replaceWorkspaceNodes,
-} from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+import { readWorkspaceDocument } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import {
   seedWorkspaceCanvasStore,
   useWorkspaceCanvasStoreNodes,
 } from '../../support/workspaceCanvasStoreHarness'
 import { createRowNodes } from '../../support/canvasSelectionFixtures'
+import { setDocumentNodes } from '../../support/documentNodes'
 
 // The flow host (#738, PR 3): a node drag frame renders the host and what is below it, and the
 // canvas component, `WorkspaceCanvasInner`, does not. React Flow is mocked so that the nodes it
@@ -285,7 +283,7 @@ describe('a node drag in the mounted canvas', () => {
     const nodes = readWorkspaceDocument(WORKSPACE_ID)!.nodes
 
     await act(async () => {
-      replaceWorkspaceNodes(
+      setDocumentNodes(
         WORKSPACE_ID,
         nodes.map(node =>
           node.id === 'b' ? { ...node, data: { ...node.data, title: 'from elsewhere' } } : node,
@@ -304,7 +302,7 @@ describe('a node drag in the mounted canvas', () => {
     const nodes = readWorkspaceDocument(WORKSPACE_ID)!.nodes
 
     await act(async () => {
-      replaceWorkspaceNodes(
+      setDocumentNodes(
         WORKSPACE_ID,
         nodes.map(node =>
           node.id === 'b' ? { ...node, data: { ...node.data, title: 'from elsewhere' } } : node,

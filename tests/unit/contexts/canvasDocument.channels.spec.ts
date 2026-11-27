@@ -33,6 +33,8 @@ const ALLOWED_FILES: Record<string, readonly string[]> = {
   // Retired by S7 (PR 2): it wrote the dragged windows' `selected` mirror into the document one
   // frame after a drop, which the canvas view never read.
   restoreSelectionAfterDrop: [],
+  // Retired by S7 (PR 3): the change path writes a recipe of removals and settled positions.
+  replaceWorkspaceNodes: [],
 }
 
 function trackedSourceFiles(): string[] {
@@ -503,5 +505,89 @@ describe('hooks do not take the node writer as a parameter', () => {
     )
 
     expect(declared.sort()).toEqual([...HOOKS_WITH_WRITER_PARAMETERS].sort())
+  })
+})
+
+// Decision 7 of S7 (#647), Invariant 1: the document holds no canvas-only field. `selected`,
+// `dragHandle` and `dragging` exist only in the view handed to React Flow, which two files derive
+// from committed nodes: the decoration and the live overlay (`canvasLiveNodes.ts`) and the
+// collapse projection (`canvasCollapse.ts`). An object literal that spreads an object and sets one
+// of the three is how such a field gets copied onto a node, so it may appear nowhere else.
+const CANVAS_ONLY_FIELDS = new Set(['selected', 'dragHandle', 'dragging'])
+const RENDERER_UTILS_DIR = 'src/contexts/workspace/presentation/renderer/utils/'
+const CANVAS_VIEW_FILES = [
+  `${RENDERER_UTILS_DIR}canvasCollapse.ts`,
+  `${RENDERER_UTILS_DIR}canvasLiveNodes.ts`,
+]
+
+/** The canvas-only fields that object literals of `source` set next to a spread. */
+function canvasOnlyFieldsSetBySpreadLiterals(source: string, fileName = 'source.ts'): string[] {
+  const file = ts.createSourceFile(
+    fileName,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  )
+  const found = new Set<string>()
+  const visit = (node: ts.Node) => {
+    if (
+      ts.isObjectLiteralExpression(node) &&
+      node.properties.some(property => ts.isSpreadAssignment(property))
+    ) {
+      for (const property of node.properties) {
+        if (ts.isPropertyAssignment(property) || ts.isShorthandPropertyAssignment(property)) {
+          const name = propertyNameText(property.name)
+          if (name !== null && CANVAS_ONLY_FIELDS.has(name)) {
+            found.add(name)
+          }
+        }
+      }
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(file)
+  return [...found].sort()
+}
+
+describe('canvas-only fields are set only where the view is derived', () => {
+  it('flags a spread literal that sets one, however it is written', () => {
+    const flagged = (source: string) => canvasOnlyFieldsSetBySpreadLiterals(source)
+
+    expect(flagged('const a = { ...node, selected: true }')).toEqual(['selected'])
+    expect(flagged('const a = { ...node, dragHandle: existing.dragHandle }')).toEqual([
+      'dragHandle',
+    ])
+    expect(flagged('const a = { ...node, ...(x ? { dragging: true } : {}), dragging }')).toEqual([
+      'dragging',
+    ])
+    expect(flagged("const a = { ...node, 'selected': false, dragging }")).toEqual([
+      'dragging',
+      'selected',
+    ])
+    expect(flagged('const a = { ...node, selected }')).toEqual(['selected'])
+    // The spread need not come first.
+    expect(flagged('const a = { selected: true, ...node }')).toEqual(['selected'])
+  })
+
+  it('does not flag a literal that cannot copy a field onto a node', () => {
+    const flagged = (source: string) => canvasOnlyFieldsSetBySpreadLiterals(source)
+
+    // No spread: a fixture or a record of its own, not a node carried forward.
+    expect(flagged('const a = { selected: true, id }')).toEqual([])
+    // A spread with other fields, and reading the fields.
+    expect(flagged('const a = { ...node, position, data: { ...node.data, title } }')).toEqual([])
+    expect(flagged('const isSelected = node.selected === true')).toEqual([])
+    expect(flagged('type T = { selected: boolean }')).toEqual([])
+  })
+
+  it('finds them only in the decoration and the collapse projection', () => {
+    const holders = trackedSourceFiles()
+      .filter(
+        file => canvasOnlyFieldsSetBySpreadLiterals(readFileSync(file, 'utf8'), file).length > 0,
+      )
+      .sort()
+
+    expect(holders).toEqual(CANVAS_VIEW_FILES)
   })
 })

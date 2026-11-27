@@ -395,9 +395,9 @@ describe('useWorkspaceCanvasSpaces reads and writes the committed document', () 
     })
   })
 
-  // `selected` exists only in the canvas view. The combined write applies its node changes to the
-  // recipe's own nodes, which carry it, so it survives into the store.
-  describe('keeps the canvas fields of the nodes it changes', () => {
+  // `selected` exists only in the canvas view (S7). The combined write changes the committed
+  // nodes, stores no flag, and the view still shows the window as selected.
+  describe('stores no canvas field on the nodes it changes', () => {
     function terminalRow(ids: string[]) {
       return createRowNodes(ids).map(node => ({
         ...node,
@@ -417,7 +417,8 @@ describe('useWorkspaceCanvasSpaces reads and writes the committed document', () 
 
       const [stored] = harness.readStoreDocument().nodes
       expect(stored.data.expectedDirectory).toBe(WORKSPACE_PATH)
-      expect(stored.selected).toBe(true)
+      expect(stored.selected).toBeUndefined()
+      expect(view.result.current.canvasState.flowNodes[0].selected).toBe(true)
     })
 
     it('when it creates a child Space', () => {
@@ -436,7 +437,8 @@ describe('useWorkspaceCanvasSpaces reads and writes the committed document', () 
 
       const [stored] = harness.readStoreDocument().nodes
       expect(stored.data.expectedDirectory).toBe(WORKSPACE_PATH)
-      expect(stored.selected).toBe(true)
+      expect(stored.selected).toBeUndefined()
+      expect(view.result.current.canvasState.flowNodes[0].selected).toBe(true)
     })
   })
 

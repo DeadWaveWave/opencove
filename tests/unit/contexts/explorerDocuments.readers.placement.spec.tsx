@@ -1,7 +1,7 @@
 import { act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { FILESYSTEM_ENTRY_MIME } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/filesystemDrag'
-import { replaceWorkspaceNodes } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+
 import {
   documentOf,
   stubOpencoveApi,
@@ -21,6 +21,7 @@ import {
   terminalNodeAt,
 } from '../../support/explorerDocumentsHarness'
 import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
+import { setDocumentNodes } from '../../support/documentNodes'
 
 // The document opening, the document navigation, the explorer and the filesystem nodes read the
 // committed nodes and Spaces of the workspace whose render made them, from the store, when they
@@ -128,7 +129,7 @@ describe('the reposition after a creation', () => {
   const creatorInA = () =>
     vi.fn((anchor: { x: number; y: number }, document: { uri: string }) => {
       const node = documentNodeAt('created', document.uri, LOCAL, anchor)
-      replaceWorkspaceNodes(A, [...documentOf(A).nodes, node])
+      setDocumentNodes(A, [...documentOf(A).nodes, node])
       return node
     })
   const openAt = (view: ReturnType<typeof renderOpening>['view']) =>
@@ -155,7 +156,7 @@ describe('the reposition after a creation', () => {
     const { view } = renderOpening({ a: {} }, { createDocumentNode: creatorInA() as never })
 
     await act(async () => {
-      replaceWorkspaceNodes(A, [blocker()])
+      setDocumentNodes(A, [blocker()])
       await openAt(view)
     })
 
@@ -196,7 +197,7 @@ describe('the reposition after a creation', () => {
     stubOpencoveApi({ workspace: { writeCanvasImage: vi.fn(async () => undefined) } })
     const createImageNode = vi.fn(() => {
       const node = { ...documentNodeAt('created', IMAGE, LOCAL, { x: 100, y: 100 }) }
-      replaceWorkspaceNodes(A, [...documentOf(A).nodes, node])
+      setDocumentNodes(A, [...documentOf(A).nodes, node])
       return node
     })
     const rendered = renderExplorer(

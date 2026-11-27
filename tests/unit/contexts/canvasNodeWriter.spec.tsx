@@ -22,7 +22,6 @@ import {
 } from '../../support/agentRuntimeHarness'
 import { createRowNodes } from '../../support/canvasSelectionFixtures'
 import { sizedNode } from '../../support/nodeDragHarness'
-import { NODE_DRAG_HANDLE_SELECTOR } from '../../../src/contexts/workspace/presentation/renderer/utils/nodeFrameResize'
 
 // The canvas's node writer (#738, PR 4): what it writes, from what, and for which workspace. It
 // is called here from a hook below the providers, with nothing of `WorkspaceCanvasInner`.
@@ -114,23 +113,23 @@ describe('the node writer, below the providers', () => {
 })
 
 describe('the base of a recipe', () => {
-  it('is the committed view as it is when the recipe runs: a selection written in the same act is in it', () => {
+  // S7, PR 3: the base is the committed nodes, the store's own objects. The selection is the
+  // slice's and reaches React Flow through `decorateFlowNodes`; a recipe never sees it.
+  it('is the committed nodes as they are when the recipe runs, with no selection in them', () => {
     const { view } = renderWriter()
-    const seen: Array<{ id: string; selected?: boolean }> = []
+    const stored = documentOf(A).nodes
+    let seen: Node<TerminalNodeData>[] = []
 
     act(() => {
       view.result.current.selection.setNodeIds(['b'])
       view.result.current.writer.updateNodes(nodes => {
-        seen.push(...nodes.map(node => ({ id: node.id, selected: node.selected })))
+        seen = nodes
         return nodes
       })
     })
 
-    expect(seen).toEqual([
-      { id: 'a', selected: false },
-      { id: 'b', selected: true },
-      { id: 'c', selected: false },
-    ])
+    expect(seen).toBe(stored)
+    expect(seen.map(node => node.selected)).toEqual([undefined, undefined, undefined])
   })
 
   it('is computed from the store, so a store write made since the last render is part of it', () => {
@@ -175,9 +174,9 @@ describe('the base of a recipe', () => {
     expect(nodeOf(A, 'a').position.y).toBe(0)
   })
 
-  // `selected` and `dragHandle` are fields only the canvas owns: a recipe that returns what it was
-  // given changes nothing, and one that changes a node writes the rest of the base as it was.
-  it('treats the canvas-only fields as no change', () => {
+  // A recipe that returns what it was given changes nothing, whatever the selection says, and one
+  // that changes a node writes the rest of the base as it was.
+  it('writes nothing for a recipe that returns its input', () => {
     const { harness, view } = renderWriter()
     act(() => view.result.current.selection.setNodeIds(['a', 'b']))
     const nodesBefore = documentOf(A).nodes
@@ -217,8 +216,9 @@ describe('the node writer: what it writes besides the recipe', () => {
     expect(nodeOf(A, 'n').initialHeight).toBe(unsized.data.height)
   })
 
-  // The committed view's `dragHandle` follows React Flow's drag-surface mode, as `flowNodes` does.
-  it('hands a recipe the drag handle of the drag-surface mode', () => {
+  // `dragHandle` follows React Flow's drag-surface mode in the view (`flowNodes`); the committed
+  // nodes a recipe receives have none.
+  it('hands a recipe no drag handle, also in the drag-surface mode', () => {
     const { view } = renderWriter()
     const seen: Array<string | undefined> = []
     act(() => {
@@ -233,7 +233,7 @@ describe('the node writer: what it writes besides the recipe', () => {
       }),
     )
 
-    expect(seen).toEqual([NODE_DRAG_HANDLE_SELECTOR, undefined, NODE_DRAG_HANDLE_SELECTOR])
+    expect(seen).toEqual([undefined, undefined, undefined])
   })
 })
 

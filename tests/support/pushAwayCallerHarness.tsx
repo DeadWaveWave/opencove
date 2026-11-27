@@ -4,10 +4,7 @@ import React, { type ReactElement } from 'react'
 import { expect, type Mock } from 'vitest'
 import { useAppStore } from '../../src/app/renderer/shell/store/useAppStore'
 import { useWorkspaceCanvasNodesStore } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore'
-import {
-  readWorkspaceDocument,
-  replaceWorkspaceNodes,
-} from '../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+import { readWorkspaceDocument } from '../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import type { WorkspaceDocument } from '../../src/contexts/workspace/presentation/renderer/store/workspaceDocument'
 import { useCanvasUiCommands } from '../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
 import type {
@@ -17,6 +14,7 @@ import type {
 import { createCanvasDocumentHarness, renderInCanvasDocument } from './canvasDocumentHarness'
 import { CanvasStoreTestProvider } from './canvasStoreTestHarness'
 import { useWorkspaceCanvasStoreNodes } from './workspaceCanvasStoreHarness'
+import { setDocumentNodes } from './documentNodes'
 
 // Shared by the specs that check what the callers of the push-away hand it (#702, PR 6). The spec
 // that uses it mocks the push-away and the canvas store's stable hooks itself: module mocks do not
@@ -57,7 +55,7 @@ export function writeCreatedNode(workspaceId: string, node: Node<TerminalNodeDat
   if (!document) {
     throw new Error(`workspace ${workspaceId} is not in the store`)
   }
-  replaceWorkspaceNodes(workspaceId, [...document.nodes.filter(item => item.id !== node.id), node])
+  setDocumentNodes(workspaceId, [...document.nodes.filter(item => item.id !== node.id), node])
   return node
 }
 
@@ -69,7 +67,7 @@ export function writeShownNodes(
   if (!document) {
     throw new Error(`workspace ${shownWorkspaceId} is not in the store`)
   }
-  replaceWorkspaceNodes(shownWorkspaceId, updater(document.nodes))
+  setDocumentNodes(shownWorkspaceId, updater(document.nodes))
 }
 
 /**

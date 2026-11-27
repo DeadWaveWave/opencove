@@ -26,7 +26,7 @@ import {
   taskNode,
   WORKSPACE_A,
 } from './agentRuntimeHarness'
-import { replaceWorkspaceNodes } from '../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+import { setDocumentNodes } from './documentNodes'
 
 export interface TaskPatch {
   title?: string
@@ -214,7 +214,7 @@ export function taskRefs() {
 function createAgentNodeInA() {
   return vi.fn(async () => {
     const created = agentNode('created-agent')
-    replaceWorkspaceNodes(WORKSPACE_A, [...documentOf(WORKSPACE_A).nodes, created])
+    setDocumentNodes(WORKSPACE_A, [...documentOf(WORKSPACE_A).nodes, created])
     return created
   })
 }
@@ -278,7 +278,7 @@ export function renderRoleActions(documents?: Documents, { stable = true }: Rend
   // As the node store's creator does: the role node joins the nodes of workspace A.
   const createRoleNode = vi.fn(() => {
     const created = roleNode('created-role')
-    replaceWorkspaceNodes(WORKSPACE_A, [...documentOf(WORKSPACE_A).nodes, created])
+    setDocumentNodes(WORKSPACE_A, [...documentOf(WORKSPACE_A).nodes, created])
     return created
   })
   const onShowMessage = vi.fn()

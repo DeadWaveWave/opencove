@@ -3,14 +3,16 @@ import { createStore } from 'zustand/vanilla'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import {
   appendWorkspaceSpaceArchiveRecord,
+  applyRuntimeObservation,
   bindWorkspaceDocumentStore,
   commitCanvasDocument,
+  mergeHydratedNodes,
+  replaceFromSync,
   isActiveWorkspace,
   readWorkspaceDocument,
   registerWorkspaceDocumentPersistFlush,
   requestWorkspaceDocumentPersistFlush,
   removeWorkspaceSpaceArchiveRecord,
-  replaceWorkspaceNodes,
   setWorkspaceActiveSpace,
   setWorkspaceMinimapVisible,
   setWorkspaceViewport,
@@ -22,6 +24,16 @@ import type {
   WorkspaceState,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { pixelNode } from './workspacePixelLayer.fixtures'
+import { setDocumentNodes } from '../../support/documentNodes'
+
+const CANVAS_ONLY_FIELDS = ['selected', 'dragHandle', 'dragging'] as const
+
+function withCanvasOnlyField(
+  node: WorkspaceState['nodes'][number],
+  field: (typeof CANVAS_ONLY_FIELDS)[number],
+): WorkspaceState['nodes'][number] {
+  return { ...node, [field]: field === 'dragHandle' ? '.drag-handle' : false }
+}
 
 function space(id: string, nodeIds: string[]): WorkspaceSpaceState {
   return {
@@ -88,7 +100,7 @@ describe('workspace document commands', () => {
 
     listener.mockClear()
     expect(commitCanvasDocument('a', document => document).status).toBe('unchanged')
-    expect(replaceWorkspaceNodes('a', useAppStore.getState().workspaces[0].nodes).status).toBe(
+    expect(setDocumentNodes('a', useAppStore.getState().workspaces[0].nodes).status).toBe(
       'unchanged',
     )
     expect(listener).not.toHaveBeenCalled()
@@ -115,7 +127,7 @@ describe('workspace document commands', () => {
     const [, workspaceB] = useAppStore.getState().workspaces
     useAppStore.setState({ activeWorkspaceId: 'b' })
 
-    replaceWorkspaceNodes('a', [])
+    setDocumentNodes('a', [])
 
     const [workspaceA, nextB] = useAppStore.getState().workspaces
     expect(workspaceA.nodes).toEqual([])
@@ -153,12 +165,12 @@ describe('workspace document commands', () => {
   it('throws when a command runs inside a recipe and clears the guard afterwards', () => {
     expect(() =>
       commitCanvasDocument('a', document => {
-        replaceWorkspaceNodes('b', [])
+        setDocumentNodes('b', [])
         return document
       }),
     ).toThrow('workspace document command ran inside a recipe')
 
-    expect(replaceWorkspaceNodes('a', []).status).toBe('applied')
+    expect(setDocumentNodes('a', []).status).toBe('applied')
   })
 
   it('clears the guard when a recipe throws', () => {
@@ -168,7 +180,7 @@ describe('workspace document commands', () => {
       }),
     ).toThrow('boom')
 
-    expect(replaceWorkspaceNodes('a', []).status).toBe('applied')
+    expect(setDocumentNodes('a', []).status).toBe('applied')
   })
 
   it('writes to the store it was last bound to', () => {
@@ -179,7 +191,7 @@ describe('workspace document commands', () => {
     const fresh = createStore<WorkspaceDocumentStoreState>(() => state)
     bindWorkspaceDocumentStore(fresh)
 
-    replaceWorkspaceNodes('solo', [])
+    setDocumentNodes('solo', [])
 
     expect(fresh.getState().workspaces[0].nodes).toEqual([])
     expect(useAppStore.getState().workspaces[0].nodes).not.toEqual([])
@@ -190,7 +202,7 @@ describe('workspace document commands', () => {
     const unbound =
       await import('../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands')
 
-    expect(() => unbound.replaceWorkspaceNodes('a', [])).toThrow(
+    expect(() => unbound.commitCanvasDocument('a', document => document)).toThrow(
       'workspace document store is not bound',
     )
   })
@@ -278,8 +290,103 @@ describe('workspace document commands', () => {
 
   it('keeps the shell store bound to the module', () => {
     const before = useAppStore.getState().workspaces
-    replaceWorkspaceNodes('b', [])
+    setDocumentNodes('b', [])
     expect(useAppStore.getState().workspaces).not.toBe(before)
     expect(useAppStore.getState().workspaces[0]).toBe(before[0])
+  })
+
+  // S7, PR 3 (Invariant 1): the document holds no canvas-only field. Every write entry that takes
+  // nodes refuses one in development (unit tests run under it), so a view node written back, or a
+  // spread of one into a recipe, fails where it is written instead of reaching the document.
+  describe.each(CANVAS_ONLY_FIELDS)('a write that carries %s', field => {
+    const message = new RegExp(`canvas-only field "${field}"`)
+
+    function expectRefused(write: () => void): void {
+      const before = useAppStore.getState().workspaces
+      const listener = vi.fn()
+      const unsubscribe = useAppStore.subscribe(listener)
+
+      expect(write).toThrow(message)
+      unsubscribe()
+
+      expect(useAppStore.getState().workspaces).toBe(before)
+      expect(listener).not.toHaveBeenCalled()
+      expect(flush).not.toHaveBeenCalled()
+    }
+
+    it('throws in commitCanvasDocument, and writes nothing', () => {
+      expectRefused(() => {
+        commitCanvasDocument(
+          'a',
+          document => ({
+            ...document,
+            nodes: document.nodes.map(node => withCanvasOnlyField(node, field)),
+          }),
+          { flush: true },
+        )
+      })
+    })
+
+    it('throws in applyRuntimeObservation, and writes nothing', () => {
+      expectRefused(() => {
+        applyRuntimeObservation(workspaces => ({
+          nextWorkspaces: workspaces.map(item => ({
+            ...item,
+            nodes: item.nodes.map(node => withCanvasOnlyField(node, field)),
+          })),
+          didChange: true,
+          durableDidChange: true,
+        }))
+      })
+    })
+
+    it('throws in replaceFromSync, for a workspace of the list that is not the active one', () => {
+      const { workspaces } = useAppStore.getState()
+      expectRefused(() => {
+        replaceFromSync({
+          workspaces: [
+            workspaces[0],
+            {
+              ...workspaces[1],
+              nodes: workspaces[1].nodes.map(node => withCanvasOnlyField(node, field)),
+            },
+          ],
+          activeWorkspaceId: 'a',
+        })
+      })
+    })
+
+    it('throws in mergeHydratedNodes, and writes nothing', () => {
+      expectRefused(() => {
+        mergeHydratedNodes('a', nodes => nodes.map(node => withCanvasOnlyField(node, field)))
+      })
+    })
+  })
+
+  it('accepts a node that names a canvas-only field as undefined, and writes through every entry', () => {
+    const clean = (node: WorkspaceState['nodes'][number]) => ({
+      ...node,
+      selected: undefined,
+      dragHandle: undefined,
+      dragging: undefined,
+      data: { ...node.data, title: 'clean' },
+    })
+
+    expect(
+      commitCanvasDocument('a', document => ({ ...document, nodes: document.nodes.map(clean) }))
+        .status,
+    ).toBe('applied')
+    expect(
+      applyRuntimeObservation(workspaces => ({
+        nextWorkspaces: workspaces.map(item => ({ ...item, nodes: item.nodes.map(clean) })),
+        didChange: true,
+        durableDidChange: false,
+      })),
+    ).toBe(true)
+    expect(mergeHydratedNodes('b', nodes => nodes.map(clean)).status).toBe('applied')
+    const { workspaces } = useAppStore.getState()
+    expect(() =>
+      replaceFromSync({ workspaces: [...workspaces], activeWorkspaceId: 'b' }),
+    ).not.toThrow()
   })
 })
