@@ -80,8 +80,9 @@ export function useWorkspaceCanvasNodeCreation({
       executionDirectory,
       expectedDirectory,
       placement,
+      standardWindowSizeBucket: bucketOfCaller,
     }: CreateNodeInput): Promise<Node<TerminalNodeData> | null> => {
-      const bucket = readAgentSettings().standardWindowSizeBucket
+      const bucket = bucketOfCaller ?? readAgentSettings().standardWindowSizeBucket
       const defaultSize =
         kind === 'agent'
           ? resolveDefaultAgentWindowSize(bucket, agent?.provider)

@@ -243,28 +243,34 @@ export function useWorkspaceCanvasRoleActions({
     if (roleCreator.mode === 'edit') {
       updateNodes(
         prevNodes =>
-          prevNodes.map(node =>
-            node.data.kind === 'role' && node.data.role?.roleId === role.id
-              ? {
-                  ...node,
-                  data: {
-                    ...node.data,
-                    title: role.name,
-                    role: {
-                      ...node.data.role,
-                      roleName: role.name,
-                      roleDescription: role.description,
-                      promptTemplate: role.promptTemplate,
-                      inputHint: role.inputHint,
-                      outputFormat: role.outputFormat,
-                      updatedAt: now,
-                    },
-                  },
-                }
-              : node,
-          ),
-        { syncLayout: false, flush: true },
+          // No window of the role is left: the recipe returns its input, and nothing is written.
+          !prevNodes.some(node => node.data.role?.roleId === role.id)
+            ? prevNodes
+            : prevNodes.map(node =>
+                node.data.kind === 'role' && node.data.role?.roleId === role.id
+                  ? {
+                      ...node,
+                      data: {
+                        ...node.data,
+                        title: role.name,
+                        role: {
+                          ...node.data.role,
+                          roleName: role.name,
+                          roleDescription: role.description,
+                          promptTemplate: role.promptTemplate,
+                          inputHint: role.inputHint,
+                          outputFormat: role.outputFormat,
+                          updatedAt: now,
+                        },
+                      },
+                    }
+                  : node,
+              ),
+        { syncLayout: false },
       )
+      // The role definition is a setting persisted next to the document (#769): the flush is asked
+      // for here, once, whether or not a window of the role was written.
+      documentCommands.requestPersistFlush()
     } else {
       createRoleNodeAtFlowPoint(roleCreator.anchor, role)
       // The new role node and its Space were written by the creation above; the flush follows.

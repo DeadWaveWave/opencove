@@ -13,7 +13,8 @@ import type {
 
 /**
  * The action refs of the task family, until PR 7 turns it into commands (S7 of #647). The window,
- * terminal, note, website and role refs are gone: node components read those from `commands`. `nodeTypes.context.spec.ts` pins this set, so a ref cannot return elsewhere.
+ * terminal, note, website and role refs are gone: node components read those from `commands`.
+ * `nodeTypes.context.spec.ts` pins this set, so a ref cannot return elsewhere.
  */
 export interface TransitionalNodeActionRefs {
   openTaskEditorRef: MutableRefObject<(nodeId: string) => void>
