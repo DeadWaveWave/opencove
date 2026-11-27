@@ -153,7 +153,10 @@ function propertyNameText(name: ts.PropertyName | ts.BindingName | undefined): s
 }
 
 /** The writer names a parameter of a hook declares, by its name, its pattern or its type. */
-function declaredWriterNames(parameter: ts.ParameterDeclaration): string[] {
+function declaredWriterNames(
+  parameter: ts.ParameterDeclaration,
+  localTypes: ReadonlyMap<string, ts.Node>,
+): string[] {
   const found = new Set<string>()
   const check = (name: string | null) => {
     if (name !== null && WRITER_NAMES.has(name)) {
@@ -180,9 +183,21 @@ function declaredWriterNames(parameter: ts.ParameterDeclaration): string[] {
   } else {
     visitPattern(parameter.name)
   }
+  const visited = new Set<ts.Node>()
   const visitType = (node: ts.Node) => {
+    if (visited.has(node)) {
+      return
+    }
+    visited.add(node)
     if (ts.isPropertySignature(node) || ts.isMethodSignature(node)) {
       check(propertyNameText(node.name))
+    }
+    // A parameter typed by an interface or alias of the same file: its members are declared too.
+    if (ts.isTypeReferenceNode(node) && ts.isIdentifier(node.typeName)) {
+      const declaration = localTypes.get(node.typeName.text)
+      if (declaration) {
+        visitType(declaration)
+      }
     }
     ts.forEachChild(node, visitType)
   }
@@ -206,11 +221,17 @@ function hooksDeclaringWriterParameters(source: string, fileName = 'source.ts'):
     ts.ScriptKind.TSX,
   )
   const hooks: string[] = []
+  const localTypes = new Map<string, ts.Node>()
+  for (const statement of file.statements) {
+    if (ts.isInterfaceDeclaration(statement) || ts.isTypeAliasDeclaration(statement)) {
+      localTypes.set(statement.name.text, statement)
+    }
+  }
   const inspect = (hookName: string, fn: ts.SignatureDeclaration & { body?: ts.Node }) => {
     const names = new Set<string>()
     const objectParameters = new Set<string>()
     for (const parameter of fn.parameters) {
-      declaredWriterNames(parameter).forEach(name => names.add(name))
+      declaredWriterNames(parameter, localTypes).forEach(name => names.add(name))
       if (ts.isIdentifier(parameter.name)) {
         objectParameters.add(parameter.name.text)
       }
@@ -341,6 +362,13 @@ describe('hooks do not take the node writer as a parameter', () => {
       'useA:setNodes',
     ])
     expect(flagged('export function useA(p: { setNodes: Fn; other: number }) {}')).toEqual([
+      'useA:setNodes',
+    ])
+    // A parameter typed by an interface or alias of the same file declares its members.
+    expect(flagged('interface P { updateNodes: Fn }\nexport function useA(p: P) {}')).toEqual([
+      'useA:updateNodes',
+    ])
+    expect(flagged('type P = { setNodes: Fn }\nexport function useA(p: P) {}')).toEqual([
       'useA:setNodes',
     ])
     expect(flagged('export const useA = ({ updateNodes }: P) => {}')).toEqual(['useA:updateNodes'])
