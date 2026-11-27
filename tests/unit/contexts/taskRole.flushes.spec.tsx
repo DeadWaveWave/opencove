@@ -545,6 +545,30 @@ describe('the role node creation and the role dialog flush', () => {
     expect(rendered.view.result.current.readUi().roleCreator).toBeNull()
   })
 
+  it('persists the edited role definition once, and writes no node, when no window of the role is left', () => {
+    const rendered = renderRoleActions({ a: { nodes: [roleNode('role-a', { roleId: 'other' })] } })
+    act(() => {
+      rendered.view.result.current.roles.openRoleEditor('role-1')
+    })
+    act(() => {
+      rendered.view.result.current.ui.updateDialog('roleCreator', current => ({
+        ...current,
+        name: 'Renamed role',
+      }))
+    })
+    settle(rendered)
+    const nodesBefore = documentOf(A).nodes
+
+    act(() => {
+      rendered.view.result.current.roles.createRole()
+    })
+
+    // The definition is a setting persisted next to the document: one flush, asked for explicitly.
+    expect(rendered.flushes).toHaveLength(1)
+    expect(documentOf(A).nodes).toBe(nodesBefore)
+    expect(rendered.view.result.current.readUi().roleCreator).toBeNull()
+  })
+
   it.each([
     { name: 'inside a Space', spaces: [spaceOf('space-a', [])], flushes: 2 },
     { name: 'outside every Space', spaces: [], flushes: 1 },

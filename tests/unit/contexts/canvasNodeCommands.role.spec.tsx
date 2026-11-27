@@ -20,10 +20,12 @@ import {
   type AgentSettings,
 } from '../../../src/contexts/settings/domain/agentSettings'
 import {
+  commitCanvasDocument,
   readWorkspaceDocument,
   registerWorkspaceDocumentPersistFlush,
 } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
+import { resolveDefaultAgentWindowSize } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/constants'
 import { setDocumentNodes } from '../../support/documentNodes'
 import { pixelNode } from './workspacePixelLayer.fixtures'
 
@@ -337,6 +339,72 @@ describe('a role run that is waiting for the launch when the user switches works
     expect(readWorkspaceDocument(B)!.nodes).toBe(documentOfBBefore.nodes)
     expect(nodeOf(B, 'r')!.data.lastError).toBeNull()
   })
+})
+
+describe('role.run reads the settings once, when the run starts', () => {
+  it('sizes the agent window from the bucket its launch geometry used, not one changed during the launch', async () => {
+    const launch = stubLaunch({ hold: true })
+    await mount()
+    let running!: Promise<void>
+    act(() => {
+      running = commandsOf().role.run('r')
+    })
+    await vi.waitFor(() => expect(launch.payloads()).toHaveLength(1))
+    await settingsWith({ standardWindowSizeBucket: 'large' })
+
+    await act(async () => {
+      launch.release()
+      await running
+    })
+
+    const regular = resolveDefaultAgentWindowSize('regular', 'codex')
+    expect(agentsOf(A)).toHaveLength(1)
+    expect({ width: agentsOf(A)[0]!.data.width, height: agentsOf(A)[0]!.data.height }).toEqual(
+      regular,
+    )
+  })
+})
+
+describe('a role window that is closed while its run waits for the launch', () => {
+  // The launch that completes still creates its agent window (as before): one write, flushed by
+  // the creator. Nothing else is written, notified or flushed for the window that is gone.
+  it.each([
+    ['succeeds', false, 1, 1],
+    ['is refused', true, 0, 0],
+  ] as const)(
+    'writes nothing about the window when the launch %s',
+    async (_name, fail, writes, flushCount) => {
+      const launch = stubLaunch({ hold: true, fail })
+      await mount()
+      let running!: Promise<void>
+      act(() => {
+        running = commandsOf().role.run('r')
+      })
+      await vi.waitFor(() => expect(launch.payloads()).toHaveLength(1))
+      act(() => {
+        commitCanvasDocument(A, document => ({
+          ...document,
+          nodes: document.nodes.filter(node => node.id !== 'r'),
+        }))
+      })
+      const notifications = vi.fn()
+      const flushes = vi.fn()
+      const unsubscribe = useAppStore.subscribe(notifications)
+      const unregister = registerWorkspaceDocumentPersistFlush(flushes)
+
+      await act(async () => {
+        launch.release()
+        await running
+      })
+      unsubscribe()
+      unregister()
+
+      expect(notifications).toHaveBeenCalledTimes(writes)
+      expect(flushes).toHaveBeenCalledTimes(flushCount)
+      expect(nodeOf(A, 'r')).toBeUndefined()
+      expect(agentsOf(A)).toHaveLength(fail ? 0 : 1)
+    },
+  )
 })
 
 describe('a role command of workspace A that runs after the switch to B writes A (Decision 4)', () => {

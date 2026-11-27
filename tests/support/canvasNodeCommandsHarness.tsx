@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { act, cleanup, render } from '@testing-library/react'
 import type { Node } from '@xyflow/react'
-import { afterEach, beforeEach, expect, vi } from 'vitest'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { useAppStore } from '../../src/app/renderer/shell/store/useAppStore'
 import type { TerminalClientDisplayCalibration } from '../../src/contexts/settings/domain/terminalDisplayCalibration'
 import { WorkspaceCanvas } from '../../src/contexts/workspace/presentation/renderer/components/WorkspaceCanvas'
@@ -156,18 +156,18 @@ vi.mock('@xyflow/react', async importOriginal => {
 // The scrollback of a node that is written to disk later: the scheduler is the persistence's.
 const scheduledScrollbacksState = vi.hoisted(() => [] as Array<[string, string | null]>)
 vi.mock(
-  '../../../src/contexts/workspace/presentation/renderer/utils/persistence/scrollbackSchedule',
+  '../../src/contexts/workspace/presentation/renderer/utils/persistence/scrollbackSchedule',
   async importOriginal => ({
     ...(await importOriginal<Record<string, unknown>>()),
-    scheduleNodeScrollbackWrite: (nodeId: string, scrollback: string | null) => {
+    scheduleNodeScrollbackWrite: vi.fn((nodeId: string, scrollback: string | null) => {
       scheduledScrollbacksState.push([nodeId, scrollback])
-    },
+    }),
   }),
 )
 
 vi.mock(
-  '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/windowSignals/WorkspaceWindowSignals',
-  () => ({ WorkspaceWindowSignals: () => null }),
+  '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/windowSignals/WorkspaceWindowSignals',
+  () => ({ WorkspaceWindowSignals: vi.fn(() => null) }),
 )
 
 export const A = 'workspace-a'
@@ -368,6 +368,19 @@ function stubOpencoveApi(): void {
 
 /** Registers the harness's hooks in the spec file that calls it. */
 export function installCanvasHarnessHooks(): void {
+  // A `vi.mock` path that resolves to nothing mocks nothing and fails nothing: the closed-node
+  // table's "no scrollback scheduled" would then pass for any command. This row fails loudly.
+  it('applies the mocks it registers (a path that resolves to nothing would mock nothing)', async () => {
+    const schedule =
+      await import('../../src/contexts/workspace/presentation/renderer/utils/persistence/scrollbackSchedule')
+    const signals =
+      await import('../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/windowSignals/WorkspaceWindowSignals')
+    expect(vi.isMockFunction(schedule.scheduleNodeScrollbackWrite)).toBe(true)
+    expect(vi.isMockFunction(signals.WorkspaceWindowSignals)).toBe(true)
+    schedule.scheduleNodeScrollbackWrite('guard', 'x')
+    expect(scheduledScrollbacksState).toEqual([['guard', 'x']])
+  })
+
   beforeEach(() => {
     appliedCalibration = null
     stubOpencoveApi()
