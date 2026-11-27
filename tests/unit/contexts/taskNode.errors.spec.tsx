@@ -8,7 +8,7 @@ import type { TaskActionContext } from '../../../src/contexts/workspace/presenta
 import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
 import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
-import { NodeCommandsProvider } from '../../support/nodeCommandsFixture'
+import { NodeCommandsProvider, withTaskCommands } from '../../support/nodeCommandsFixture'
 import { createStoreBackedChannels } from '../../support/workspaceCanvasStoreHarness'
 
 const flow = vi.hoisted(() => ({ nodes: [] as Node<TerminalNodeData>[] }))
@@ -105,32 +105,27 @@ it('shows a refused Pi config run in the actual canvas task card while preservin
       updateCanvasDocument,
       updateSpaces,
       t: (key: string) => key,
-      setNodes: (update: (previous: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[]) => {
+      updateNodes: (update: (previous: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[]) => {
         channels.nodesRef.current = update(channels.nodesRef.current)
         setNodes(channels.nodesRef.current)
       },
     } as TaskActionContext
+    // The task family's `runAgent` runs the action with this context: the card calls the command.
+    const commands = withTaskCommands({ runAgent: async () => runTaskAgentAction('task', context) })
     return (
-      <WorkspaceCanvasTaskNodeType
-        id="task"
-        data={nodes[0].data}
-        nodePosition={nodes[0].position}
-        workspacePath="/repo"
-        openTaskEditorRef={{ current: () => {} }}
-        quickUpdateTaskTitleRef={{ current: () => {} }}
-        quickUpdateTaskRequirementRef={{ current: () => {} }}
-        runTaskAgentRef={{ current: async () => runTaskAgentAction('task', context) }}
-        resumeTaskAgentSessionRef={{ current: async () => {} }}
-        removeTaskAgentSessionRecordRef={{ current: () => {} }}
-        updateTaskStatusRef={{ current: () => {} }}
-      />
+      <NodeCommandsProvider commands={commands}>
+        <WorkspaceCanvasTaskNodeType
+          id="task"
+          data={nodes[0].data}
+          nodePosition={nodes[0].position}
+          workspacePath="/repo"
+        />
+      </NodeCommandsProvider>
     )
   }
   render(
     <CanvasStoreTestProvider workspaceId="workspace">
-      <NodeCommandsProvider>
-        <Harness />
-      </NodeCommandsProvider>
+      <Harness />
     </CanvasStoreTestProvider>,
   )
   expect(screen.queryByRole('alert')).toBeNull()

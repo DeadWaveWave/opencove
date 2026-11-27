@@ -75,8 +75,7 @@ function storeContext(nodes: unknown[], onRequestPersistFlush = vi.fn()) {
   return {
     nodesRef: channels.nodesRef,
     readDocument: channels.readDocument,
-    setNodes: channels.setNodes,
-    // The plain role-run function takes the writer as `updateNodes` (S7, PR 6).
+    // The plain run functions take the writer as `updateNodes` (S7, PRs 6 and 7).
     updateNodes: channels.setNodes,
     onRequestPersistFlush,
   }

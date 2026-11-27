@@ -8,7 +8,7 @@ import {
 } from '../../../src/contexts/settings/domain/agentSettings'
 import type { TerminalClientDisplayCalibration } from '../../../src/contexts/settings/domain/terminalDisplayCalibration'
 import { WorkspaceCanvas } from '../../../src/contexts/workspace/presentation/renderer/components/WorkspaceCanvas'
-import type { WiredCanvasNodeCommands } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeCommands'
+import type { CanvasNodeCommands } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeCommands'
 import {
   useWorkspaceCanvasNodeTypeParameters,
   type WorkspaceCanvasNodeTypesParams,
@@ -180,7 +180,7 @@ function ParamsProbe(): null {
   return null
 }
 reactFlow.Probe = ParamsProbe
-const commandsOf = (): WiredCanvasNodeCommands => seen[seen.length - 1]!.commands
+const commandsOf = (): CanvasNodeCommands => seen[seen.length - 1]!.commands
 
 const onShowMessage = vi.fn()
 const readAgentSettings = () => useAppStore.getState().agentSettings

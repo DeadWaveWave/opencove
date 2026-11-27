@@ -42,7 +42,7 @@ it.each(['update', 'plugins\0 explain this project'])(
         workspacePath: '/repo',
         readDocument: f.readDocument,
         agentSettings: DEFAULT_AGENT_SETTINGS,
-        setNodes: updater => {
+        updateNodes: updater => {
           f.nodesRef.current = updater(f.nodesRef.current)
         },
         launchAgentInNode,
@@ -81,7 +81,7 @@ it('refused new task keeps editable requirements before any launch or space chan
       workspacePath: '/repo',
       readDocument: f.readDocument,
       agentSettings: { ...DEFAULT_AGENT_SETTINGS, defaultProvider: 'pi' },
-      setNodes: updater => {
+      updateNodes: updater => {
         f.nodesRef.current = updater(f.nodesRef.current)
       },
       updateCanvasDocument,

@@ -621,14 +621,13 @@ describe('the push-away of the task and role callers', () => {
   it('gives the task created at a point its workspace writer', async () => {
     await expectsWriterOfTheRender({
       assign: assignMock,
-      useHook: updateCanvasDocument =>
+      // The writer is the provider's (`useCanvasNodeWriter`), not a parameter (S7, PR 7).
+      useHook: () =>
         useWorkspaceCanvasTaskNodeCreation({
           workspaceId: 'workspace',
-          setNodes,
           onSpacesChange,
           standardWindowSizeBucket: 'regular',
           createTaskNode,
-          updateCanvasDocument,
         } as never),
       invoke: ({ hook }) => hook.createTaskAtPoint({ x: 400, y: 300 }),
       argsOf: assignArgs,
@@ -637,51 +636,37 @@ describe('the push-away of the task and role callers', () => {
   })
 
   describe('the task agent', () => {
-    const taskRefs = () => ({
-      runTaskAgentRef: { current: vi.fn() },
-      resumeTaskAgentSessionRef: { current: vi.fn() },
-      removeTaskAgentSessionRecordRef: { current: vi.fn() },
-      updateTaskStatusRef: { current: vi.fn() },
-      quickUpdateTaskTitleRef: { current: vi.fn() },
-      quickUpdateTaskRequirementRef: { current: vi.fn() },
-    })
-    function useTaskActionsUnderTest(
-      updateCanvasDocument: Updater,
-      refs: ReturnType<typeof taskRefs>,
-    ) {
+    // The writer is the provider's (`useCanvasNodeWriter`): the hook renders under the canvas store
+    // of the workspace shown, so it writes the workspace of its render.
+    function useTaskActionsUnderTest() {
       return useWorkspaceCanvasTaskActions({
-        setNodes,
         onSpacesChange,
         createNodeForSession,
         buildAgentNodeTitle,
         launchAgentInNode,
-        agentSettings: DEFAULT_AGENT_SETTINGS,
+        readAgentSettings,
+        readTerminalDisplayCalibration: () => null,
         workspaceId: 'workspace',
         workspacePath: '/repo',
         taskTagOptions,
-        terminalDisplayMetrics: metrics,
-        updateCanvasDocument,
-        ...refs,
       } as never)
     }
 
     it('gives the task run its workspace writer', async () => {
-      const refs = taskRefs()
       await expectsWriterOfTheRender({
         assign: assignMock,
-        useHook: updateCanvasDocument => useTaskActionsUnderTest(updateCanvasDocument, refs),
-        invoke: () => refs.runTaskAgentRef.current('task' as never),
+        useHook: () => useTaskActionsUnderTest(),
+        invoke: ({ hook }) => hook.runTaskAgent('task'),
         argsOf: () => lastCall(runTaskAgentAction)[1] as Record<string, unknown> | undefined,
         absent: ['onSpacesChange'],
       })
     })
 
     it('gives the task resume its workspace writer', async () => {
-      const refs = taskRefs()
       await expectsWriterOfTheRender({
         assign: assignMock,
-        useHook: updateCanvasDocument => useTaskActionsUnderTest(updateCanvasDocument, refs),
-        invoke: () => refs.resumeTaskAgentSessionRef.current('task' as never, 'record' as never),
+        useHook: () => useTaskActionsUnderTest(),
+        invoke: ({ hook }) => hook.resumeTaskAgentSession('task', 'record'),
         argsOf: () =>
           lastCall(resumeTaskAgentSessionAction)[2] as Record<string, unknown> | undefined,
         absent: ['onSpacesChange'],
@@ -853,41 +838,25 @@ describe('the push-away through the carriers of the canvas', () => {
   })
 
   describe('the task UI', () => {
-    const makeActionRefs = () =>
-      new Proxy(
-        {},
-        {
-          get(target: Record<string, unknown>, key: string) {
-            return (target[key] ??= { current: vi.fn() })
-          },
-        },
-      ) as unknown as Record<string, { current: Mock }>
-    const useTaskUiUnderTest = (
-      updateCanvasDocument: Updater,
-      actionRefs: Record<string, { current: Mock }>,
-    ) =>
+    const useTaskUiUnderTest = () =>
       useWorkspaceCanvasTaskUi({
         agentTaskTagOptions: taskTagOptions,
-        updateCanvasDocument,
-        setNodes,
         createNodeForSession,
         buildAgentNodeTitle,
         launchAgentInNode,
-        agentSettings: DEFAULT_AGENT_SETTINGS,
+        readAgentSettings,
+        readTerminalDisplayCalibration: () => null,
         workspaceId: 'workspace',
         workspacePath: '/repo',
-        actionRefs,
-        terminalDisplayMetrics: metrics,
         standardWindowSizeBucket: 'regular',
         createTaskNode,
         closeNode: vi.fn(),
       } as never)
 
     it('gives the task created at a point its workspace writer', async () => {
-      const actionRefs = makeActionRefs()
       await expectsWriterOfTheRender({
         assign: assignMock,
-        useHook: updateCanvasDocument => useTaskUiUnderTest(updateCanvasDocument, actionRefs),
+        useHook: () => useTaskUiUnderTest(),
         invoke: ({ hook }) => hook.createTaskAtPoint({ x: 400, y: 300 }),
         argsOf: assignArgs,
         flush: 'document',
@@ -895,11 +864,10 @@ describe('the push-away through the carriers of the canvas', () => {
     })
 
     it('gives the task run its workspace writer', async () => {
-      const actionRefs = makeActionRefs()
       await expectsWriterOfTheRender({
         assign: assignMock,
-        useHook: updateCanvasDocument => useTaskUiUnderTest(updateCanvasDocument, actionRefs),
-        invoke: () => actionRefs.runTaskAgentRef.current('task'),
+        useHook: () => useTaskUiUnderTest(),
+        invoke: ({ hook }) => hook.runTaskAgent('task'),
         argsOf: () => lastCall(runTaskAgentAction)[1] as Record<string, unknown> | undefined,
         absent: ['onSpacesChange'],
       })

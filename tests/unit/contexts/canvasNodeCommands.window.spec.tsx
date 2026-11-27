@@ -13,7 +13,7 @@ import {
   reactFlow,
 } from '../../support/canvasNodeCommandsHarness'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
-import type { WiredCanvasNodeCommands } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeCommands'
+import type { CanvasNodeCommands } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeCommands'
 import {
   readWorkspaceDocument,
   registerWorkspaceDocumentPersistFlush,
@@ -174,17 +174,14 @@ describe('the window commands reach the confirmation, the node store and the doc
   it.each([
     [
       'website.updateUrl',
-      (c: WiredCanvasNodeCommands) => c.website.updateUrl('w', 'https://other.example'),
+      (c: CanvasNodeCommands) => c.website.updateUrl('w', 'https://other.example'),
     ],
-    ['website.setPinned', (c: WiredCanvasNodeCommands) => c.website.setPinned('w', true)],
-    [
-      'website.setSession',
-      (c: WiredCanvasNodeCommands) => c.website.setSession('w', 'incognito', null),
-    ],
-    ['website.setMode', (c: WiredCanvasNodeCommands) => c.website.setMode('w', 'native')],
+    ['website.setPinned', (c: CanvasNodeCommands) => c.website.setPinned('w', true)],
+    ['website.setSession', (c: CanvasNodeCommands) => c.website.setSession('w', 'incognito', null)],
+    ['website.setMode', (c: CanvasNodeCommands) => c.website.setMode('w', 'native')],
     [
       'website.setFullscreen',
-      (c: WiredCanvasNodeCommands) =>
+      (c: CanvasNodeCommands) =>
         c.website.setFullscreen(
           'w',
           { position: { x: 0, y: 0 }, size: { width: 800, height: 600 } },
@@ -194,7 +191,7 @@ describe('the window commands reach the confirmation, the node store and the doc
     ],
     [
       'window.setLabelColorOverride',
-      (c: WiredCanvasNodeCommands) => c.window.setLabelColorOverride(['b'], 'green'),
+      (c: CanvasNodeCommands) => c.window.setLabelColorOverride(['b'], 'green'),
     ],
   ])('%s of a window the document holds requests one flush', async (_name, call) => {
     const flushes = vi.fn()

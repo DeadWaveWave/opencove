@@ -1,6 +1,5 @@
 import { useLayoutEffect } from 'react'
 import type { Node } from '@xyflow/react'
-import type { UpdateTaskStatus } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/types'
 import { vi } from 'vitest'
 import { DEFAULT_AGENT_SETTINGS } from '../../src/contexts/settings/domain/agentSettings'
 import { useWorkspaceCanvasNodeDeleteConfirmation } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodeDeleteConfirmation'
@@ -16,6 +15,7 @@ import {
 } from '../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
 import type {
   TaskAgentSessionRecord,
+  TaskRuntimeStatus,
   TerminalNodeData,
   WorkspaceSpaceState,
 } from '../../src/contexts/workspace/presentation/renderer/types'
@@ -184,28 +184,22 @@ export const LAUNCHED = {
   managedClaudeLifecycle: undefined,
 }
 const EMPTY_TAGS: string[] = []
-const METRICS = { fontSize: 13 }
+// One function for every render: a callback that lists them is rebuilt only for its own reasons.
+const readTaskSettings = () => DEFAULT_AGENT_SETTINGS
+const readNoCalibration = () => null
 
 type Documents = Parameters<typeof renderInTwoWorkspaces>[1]
 
 /**
- * `stable` hands the hook writers that keep their identity across a switch, and write through the
- * node store of the latest render: only the reader then changes with the workspace, so a reader
- * missing from a dependency list shows. A case that follows a write across a switch passes `false`:
- * the writers of the render that made the callback write the workspace of that render.
+ * `stable` pins the writer that the hook takes from context (the spec mocks `useCanvasNodeWriter`):
+ * one writer for the whole test, which writes through the writer of the latest render. Only the
+ * reader or the commands under test can then make a callback follow the workspace that is shown,
+ * so a reader missing from a dependency list shows. A case that follows a write across a switch
+ * passes `false`: the writer of the render that made the callback writes the workspace of that
+ * render.
  */
 export interface RenderOptions {
   stable?: boolean
-}
-
-/**
- * The task hooks still take their writers from the node store's result, which is rendered under the
- * mocked `useCanvasNodeWriter`: a case of theirs lets that writer follow its own workspace, as the
- * canvas's does, and pins its writers through `stable` instead. Only the role hooks, which take
- * the writer from context (PR 6), are pinned by `renderRoleActions`.
- */
-function unpinTheNodeWriter(): void {
-  writerPin.stable = false
 }
 
 export function taskRefs() {
@@ -213,7 +207,7 @@ export function taskRefs() {
     run: recordingRef<(nodeId: string) => Promise<void>>(),
     resume: recordingRef<(taskNodeId: string, recordId: string) => Promise<void>>(),
     remove: recordingRef<(taskNodeId: string, recordId: string) => void>(),
-    status: recordingRef<UpdateTaskStatus>(),
+    status: recordingRef<(nodeId: string, status: TaskRuntimeStatus) => void>(),
     title: recordingRef<(nodeId: string, title: string) => void>(),
     requirement: recordingRef<(nodeId: string, requirement: string) => void>(),
   }
@@ -233,36 +227,37 @@ function createAgentNodeInA() {
 
 /**
  * The task actions, wired as the canvas wires them. Every callback the hook is called with keeps
- * its identity across a switch, so the reader's place in the dependency lists is observable.
+ * its identity across a switch, so the reader's place in the dependency lists is observable. The
+ * function of each render is recorded in `refs`, so a case can call the one a render of workspace A
+ * made after a switch.
  */
 export function renderTaskActions(documents?: Documents, { stable = true }: RenderOptions = {}) {
-  unpinTheNodeWriter()
+  writerPin.stable = stable
   const refs = taskRefs()
   const launchAgentInNode = vi.fn(async () => undefined)
   const createNodeForSession = createAgentNodeInA()
   const buildAgentNodeTitle = (provider: string, label: string | null) => `${provider}:${label}`
-  const rendered = renderInTwoWorkspaces(
-    ({ nodeStore, stableSetNodes, stableUpdateCanvasDocument }) =>
-      useWorkspaceCanvasTaskActions({
-        updateCanvasDocument: stable ? stableUpdateCanvasDocument : nodeStore.updateCanvasDocument,
-        setNodes: stable ? stableSetNodes : nodeStore.setNodes,
-        createNodeForSession,
-        buildAgentNodeTitle,
-        launchAgentInNode,
-        agentSettings: DEFAULT_AGENT_SETTINGS,
-        workspaceId: 'workspace',
-        workspacePath: '/repo',
-        taskTagOptions: EMPTY_TAGS,
-        terminalDisplayMetrics: METRICS,
-        runTaskAgentRef: refs.run.ref,
-        resumeTaskAgentSessionRef: refs.resume.ref,
-        removeTaskAgentSessionRecordRef: refs.remove.ref,
-        updateTaskStatusRef: refs.status.ref,
-        quickUpdateTaskTitleRef: refs.title.ref,
-        quickUpdateTaskRequirementRef: refs.requirement.ref,
-      }),
-    documents,
-  )
+  const rendered = renderInTwoWorkspaces(() => {
+    const actions = useWorkspaceCanvasTaskActions({
+      readAgentSettings: readTaskSettings,
+      readTerminalDisplayCalibration: readNoCalibration,
+      createNodeForSession,
+      buildAgentNodeTitle,
+      launchAgentInNode,
+      workspaceId: 'workspace',
+      workspacePath: '/repo',
+      taskTagOptions: EMPTY_TAGS,
+    })
+    useLayoutEffect(() => {
+      refs.run.ref.current = actions.runTaskAgent
+      refs.resume.ref.current = actions.resumeTaskAgentSession
+      refs.remove.ref.current = actions.removeTaskAgentSessionRecord
+      refs.status.ref.current = actions.updateTaskStatus
+      refs.title.ref.current = actions.quickUpdateTaskTitle
+      refs.requirement.ref.current = actions.quickUpdateTaskRequirement
+    }, [actions])
+    return actions
+  }, documents)
   return { ...rendered, refs, launchAgentInNode, createNodeForSession }
 }
 
@@ -334,26 +329,24 @@ export function renderRoleActions(documents?: Documents, { stable = true }: Rend
 }
 
 export function renderEditor(documents?: Documents, { stable = true }: RenderOptions = {}) {
-  unpinTheNodeWriter()
+  writerPin.stable = stable
   const open = recordingRef<(nodeId: string) => void>()
-  const rendered = renderInTwoWorkspaces(
-    ({ nodeStore, stableSetNodes }) => ({
-      readUi: useReadCanvasUi(),
-      ui: useCanvasUiCommands(),
-      editor: useWorkspaceCanvasTaskEditor({
-        setNodes: stable ? stableSetNodes : nodeStore.setNodes,
-        suggestTaskTitle: vi.fn(),
-        taskTagOptions: EMPTY_TAGS,
-        openTaskEditorRef: open.ref,
-      }),
-    }),
-    documents,
-  )
+  const rendered = renderInTwoWorkspaces(() => {
+    const editor = useWorkspaceCanvasTaskEditor({
+      suggestTaskTitle: vi.fn(),
+      taskTagOptions: EMPTY_TAGS,
+    })
+    // What the canvas hands to its commands (S7, PR 7): the function of each render is recorded.
+    useLayoutEffect(() => {
+      open.ref.current = editor.openTaskEditor
+    }, [editor.openTaskEditor])
+    return { readUi: useReadCanvasUi(), ui: useCanvasUiCommands(), editor }
+  }, documents)
   return { ...rendered, open }
 }
 
 export function renderCreation(documents?: Documents, { stable = true }: RenderOptions = {}) {
-  unpinTheNodeWriter()
+  writerPin.stable = stable
   const createdTask = taskNodeWith('created-task')
   const createTaskNode = vi.fn(() => createdTask)
   // The node store's creator adds the task to the document before it returns it, and the Space
@@ -363,10 +356,9 @@ export function renderCreation(documents?: Documents, { stable = true }: RenderO
     a: { ...documents?.a, nodes: [...(documents?.a?.nodes ?? []), createdTask] },
   }
   const rendered = renderInTwoWorkspaces(
-    ({ nodeStore, stableUpdateCanvasDocument }) =>
+    () =>
       useWorkspaceCanvasTaskNodeCreation({
         workspaceId: 'workspace',
-        updateCanvasDocument: stable ? stableUpdateCanvasDocument : nodeStore.updateCanvasDocument,
         standardWindowSizeBucket: 'regular',
         createTaskNode,
       }),
@@ -376,7 +368,7 @@ export function renderCreation(documents?: Documents, { stable = true }: RenderO
 }
 
 export function renderConfirmation(documents?: Documents) {
-  unpinTheNodeWriter()
+  writerPin.stable = true
   const requestNodeDelete = recordingRef<(nodeIds: readonly string[]) => void>()
   const closeNode = vi.fn(async () => undefined)
   const rendered = renderInTwoWorkspaces(() => {

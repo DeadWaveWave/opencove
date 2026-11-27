@@ -182,7 +182,7 @@ describe('the push-away of the task agent', () => {
       readDocument: channels.readDocument,
       updateCanvasDocument: vi.fn(),
       updateSpaces: vi.fn(),
-      setNodes: channels.setNodes,
+      updateNodes: channels.setNodes,
       createNodeForSession: vi.fn(async () => {
         const created = { ...CREATED, id: 'agent' } as Node<TerminalNodeData>
         channels.setNodes(previous => [...previous, created])

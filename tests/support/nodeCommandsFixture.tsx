@@ -1,9 +1,10 @@
 import React from 'react'
 import type { ReactElement, ReactNode } from 'react'
 import type {
+  CanvasNodeCommands,
   CanvasRoleCommands,
+  CanvasTaskCommands,
   CanvasTerminalCommands,
-  WiredCanvasNodeCommands,
 } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeCommands'
 import {
   WorkspaceCanvasNodeTypesProvider,
@@ -13,7 +14,7 @@ import {
 const noop = (): void => {}
 
 /** Commands that do nothing, for a node component under test that does not act. */
-export const noopNodeCommands: WiredCanvasNodeCommands = {
+export const noopNodeCommands: CanvasNodeCommands = {
   window: {
     select: noop,
     clearSelection: noop,
@@ -42,18 +43,32 @@ export const noopNodeCommands: WiredCanvasNodeCommands = {
     setFullscreen: noop,
   },
   role: { updateInput: noop, updateProvider: noop, run: async () => {} },
+  task: {
+    runAgent: async () => {},
+    resumeAgentSession: async () => {},
+    removeAgentSessionRecord: noop,
+    openEditor: noop,
+    updateTitle: noop,
+    updateRequirement: noop,
+    updateStatus: noop,
+  },
 }
 
 /** The commands that do nothing, with the given terminal commands in place of the terminal's. */
 export function withTerminalCommands(
   terminal: Partial<CanvasTerminalCommands>,
-): WiredCanvasNodeCommands {
+): CanvasNodeCommands {
   return { ...noopNodeCommands, terminal: { ...noopNodeCommands.terminal, ...terminal } }
 }
 
 /** The commands that do nothing, with the given role commands in place of the role's. */
-export function withRoleCommands(role: Partial<CanvasRoleCommands>): WiredCanvasNodeCommands {
+export function withRoleCommands(role: Partial<CanvasRoleCommands>): CanvasNodeCommands {
   return { ...noopNodeCommands, role: { ...noopNodeCommands.role, ...role } }
+}
+
+/** The commands that do nothing, with the given task commands in place of the task's. */
+export function withTaskCommands(task: Partial<CanvasTaskCommands>): CanvasNodeCommands {
+  return { ...noopNodeCommands, task: { ...noopNodeCommands.task, ...task } }
 }
 
 /**
@@ -64,7 +79,7 @@ export function NodeCommandsProvider({
   commands = noopNodeCommands,
   children,
 }: {
-  commands?: WiredCanvasNodeCommands
+  commands?: CanvasNodeCommands
   children: ReactNode
 }): ReactElement {
   return (

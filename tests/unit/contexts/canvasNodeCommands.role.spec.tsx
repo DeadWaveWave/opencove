@@ -13,6 +13,7 @@ import {
   mount,
   observe,
   onShowMessage,
+  stubAgentLaunch,
 } from '../../support/canvasNodeCommandsHarness'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import {
@@ -92,51 +93,9 @@ const roleOf = (workspaceId: string, nodeId = 'r') => nodeOf(workspaceId, nodeId
 const agentsOf = (workspaceId: string) =>
   readWorkspaceDocument(workspaceId)?.nodes.filter(node => node.data.kind === 'agent') ?? []
 
-interface Launch {
-  release: () => void
-  payloads: () => Array<Record<string, unknown>>
-}
-/** What the launch answers. `hold` keeps it pending until a case releases it; `fail` rejects it. */
-function stubLaunch({ hold = false, fail = false } = {}): Launch {
-  let release: () => void = () => undefined
-  const gate = hold
-    ? new Promise<void>(resolve => {
-        release = resolve
-      })
-    : Promise.resolve()
-  ipc.invoke.mockImplementation(async (request: { id: string }) => {
-    if (request.id === 'mount.list') {
-      return { mounts: [] }
-    }
-    if (request.id === 'session.launchAgent') {
-      await gate
-      if (fail) {
-        throw new Error('launch refused')
-      }
-      return {
-        sessionId: 'runtime-role',
-        profileId: null,
-        runtimeKind: 'posix',
-        effectiveModel: 'gpt-5.2-codex',
-        resumeSessionId: null,
-        executionContext: {
-          workingDirectory: '/tmp/work',
-          endpoint: { endpointId: 'local' },
-          mountId: null,
-        },
-      }
-    }
-    return undefined
-  })
-  return {
-    release: () => release(),
-    payloads: () =>
-      ipc.invoke.mock.calls
-        .map(call => call[0] as { id: string; payload: Record<string, unknown> })
-        .filter(request => request.id === 'session.launchAgent')
-        .map(request => request.payload),
-  }
-}
+/** The launch these rows stub: the harness's, with the session id the rows assert. */
+const stubLaunch = (options: { hold?: boolean; fail?: boolean } = {}) =>
+  stubAgentLaunch({ ...options, sessionId: 'runtime-role' })
 
 const settingsWith = (patch: Partial<AgentSettings>) =>
   act(() => {

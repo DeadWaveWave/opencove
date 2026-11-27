@@ -120,7 +120,7 @@ describe('WorkspaceCanvas task run agent auto resize', () => {
           readDocument: harness.readStoreDocument,
           updateCanvasDocument: nodeStore.updateCanvasDocument,
           updateSpaces: vi.fn(),
-          setNodes,
+          updateNodes: setNodes,
           createNodeForSession: async input => {
             const created: Node<TerminalNodeData> = {
               id: 'agent-1',
@@ -320,7 +320,7 @@ describe('WorkspaceCanvas task run agent auto resize', () => {
       readDocument,
       updateCanvasDocument: vi.fn(),
       updateSpaces: vi.fn(),
-      setNodes,
+      updateNodes: setNodes,
       createNodeForSession,
       buildAgentNodeTitle: () => 'codex · gpt-5.2-codex',
       launchAgentInNode: vi.fn(async () => undefined),
@@ -440,7 +440,7 @@ describe('WorkspaceCanvas task run agent auto resize', () => {
         readDocument: harness.readStoreDocument,
         updateCanvasDocument: nodeStore.updateCanvasDocument,
         updateSpaces: vi.fn(),
-        setNodes: nodeStore.setNodes,
+        updateNodes: nodeStore.setNodes,
         createNodeForSession: async input => {
           const created = {
             id: 'agent-2',

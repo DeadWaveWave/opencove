@@ -569,9 +569,10 @@ describe('what node components consume keeps its identity (Decision 14)', () => 
   })
 
   // The role body reads its own window's data and the provider preferences, and the commands
-  // (PR 6). A write to another window and a settings change that touches no preference render it
-  // for nothing: a body that read a render-time copy of the settings or the document would.
-  it.each([
+  // (PR 6); the task body reads its own window's data, the workspace path and the commands (PR 7).
+  // A write to another window and a settings change that touches no preference render them for
+  // nothing: a body that read a render-time copy of the settings or the document would.
+  const quietRows: Array<[string, () => void]> = [
     [
       'a document write to another window',
       () =>
@@ -606,7 +607,8 @@ describe('what node components consume keeps its identity (Decision 14)', () => 
         },
       }),
     ],
-  ])('renders the role body for nothing when %s', async (_name, change) => {
+  ]
+  it.each(quietRows)('renders the role body for nothing when %s', async (_name, change) => {
     await mountCanvas()
 
     await act(async () => {
@@ -615,6 +617,39 @@ describe('what node components consume keeps its identity (Decision 14)', () => 
 
     expect(counts.leaf['A-role'] ?? 0).toBe(0)
     expect(counts.outer['A-role'] ?? 0).toBe(0)
+  })
+
+  it.each(quietRows)('renders the task body for nothing when %s', async (_name, change) => {
+    await mountCanvas()
+
+    await act(async () => {
+      change()
+    })
+
+    expect(counts.leaf['A-task'] ?? 0).toBe(0)
+    expect(counts.outer['A-task'] ?? 0).toBe(0)
+  })
+
+  // The task body's own render values are the data of its window and the path: an edit of the
+  // task window renders it, and only it, so the rows above cannot pass for a body that never renders.
+  it('renders the task body for a write to its own window, and no other body', async () => {
+    await mountCanvas()
+
+    await act(async () => {
+      commitCanvasDocument(A, document => ({
+        ...document,
+        nodes: document.nodes.map(node =>
+          node.data.kind === 'task'
+            ? { ...node, data: { ...node.data, title: 'renamed task' } }
+            : node,
+        ),
+      }))
+    })
+
+    // The leaf is keyed by the title, which this write changed.
+    expect(counts.leaf['renamed task'] ?? 0).toBeGreaterThan(0)
+    expect(counts.outer['A-task'] ?? 0).toBeGreaterThan(0)
+    expect(Object.keys(counts.leaf)).toEqual(['renamed task'])
   })
 
   // The calibration is drawn by the terminal alone (through its alignment context) and read by the
