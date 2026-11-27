@@ -3,7 +3,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { applyNodeChanges } from '@xyflow/react'
 import type { Node, NodeChange, NodePositionChange } from '@xyflow/react'
 import type { TerminalNodeData } from '../../../types'
-import { applyLiveNodes, toLiveNodes } from '../../../utils/canvasLiveNodes'
+import { applyLiveNodes, toLiveNodes, type LiveNode } from '../../../utils/canvasLiveNodes'
 import { cleanupNodeRuntimeArtifacts } from '../../../utils/nodeRuntimeCleanup'
 import {
   useCanvasInteractionCommands,
@@ -366,8 +366,9 @@ export function useWorkspaceCanvasApplyNodeChanges({
         onSelectedNodeIdsChange?.(nextNodes.filter(node => node.selected).map(node => node.id))
       }
       // A drag frame publishes the gesture's windows, a release writes them (and the Space frames)
-      // in one commit and then ends the overlay, and any other batch writes its whole result. A
-      // batch that changes no window this canvas holds writes nothing, whatever its kind.
+      // in one commit and then ends the overlay, and any other batch writes what it does to the
+      // document: its removals and settled moves. A batch that changes no window this canvas holds
+      // writes nothing, whatever its kind, and a select batch writes no document at all.
       const changesHeldNode = filteredChanges.some(change =>
         currentNodes.some(node => node.id === change.id),
       )
@@ -403,7 +404,21 @@ export function useWorkspaceCanvasApplyNodeChanges({
           ),
         )
       } else if (changesHeldNode) {
-        onNodesCommit(nextNodes)
+        // What the batch does to the document: removals, and the windows a settled move placed at
+        // the position resolved above. A select batch does neither and writes nothing; its
+        // selection went to the canvas store already.
+        const settledPositions = new Map<string, LiveNode>()
+        for (const change of settledPositionChanges) {
+          const settled = nextNodes.find(node => node.id === change.id)
+          if (settled) {
+            settledPositions.set(settled.id, {
+              position: { x: settled.position.x, y: settled.position.y },
+            })
+          }
+        }
+        if (removedIds.size > 0 || settledPositions.size > 0) {
+          onNodesCommit({ removedIds, settledPositions })
+        }
       }
       if (removedIds.size > 0) {
         const survivingIds = new Set(nextNodes.map(node => node.id))

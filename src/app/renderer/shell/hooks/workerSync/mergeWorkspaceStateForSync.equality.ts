@@ -296,11 +296,10 @@ export function isNodeEquivalent(
     return false
   }
 
+  // `selected`, `dragHandle` and `dragging` are the view's, not the document's (S7): neither node
+  // carries them, so there is nothing to compare.
   return (
-    (nextNode.dragHandle ?? null) === (existingNode.dragHandle ?? null) &&
     (nextNode.draggable ?? null) === (existingNode.draggable ?? null) &&
-    (nextNode.selectable ?? null) === (existingNode.selectable ?? null) &&
-    (nextNode.selected ?? null) === (existingNode.selected ?? null) &&
-    (nextNode.dragging ?? null) === (existingNode.dragging ?? null)
+    (nextNode.selectable ?? null) === (existingNode.selectable ?? null)
   )
 }

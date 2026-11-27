@@ -7,7 +7,6 @@ import { useCanvasWorkspaceId } from '../../../store/canvasStoreContext'
 import { TERMINAL_LAYOUT_SYNC_EVENT } from '../../terminalNode/constants'
 import { syncWorkspaceCanvasTestStateInTestWindow } from '../testHarness'
 import type { CanvasDocumentRecipeInput, CanvasDocumentWriteOptions } from './useNodesStore.types'
-import { useDecorateCommittedNodes } from './useDecorateCommittedNodes'
 
 export interface CanvasNodeWriter {
   updateNodes: (
@@ -26,8 +25,9 @@ export interface CanvasNodeWriter {
 
 /**
  * The canvas's writer of nodes (S6, PR 4). It needs nothing from `WorkspaceCanvasInner`: the
- * workspace is the provider's, and the base of a recipe is the committed view, computed when the
- * recipe runs, from the store's nodes and the selection. It never reads a gesture's live positions:
+ * workspace is the provider's, and the base of a recipe is the committed nodes, the store's own
+ * objects as they are when the recipe runs (S7, PR 3: the document holds no `selected` or
+ * `dragHandle`, so the writer decorates nothing). It never reads a gesture's live positions:
  * a write during a gesture commits the committed ones, and the gesture's windows reach the document
  * at the release. It writes the workspace of the render that made it, also after the user has
  * switched away; the layout-sync event and the test state follow only while that workspace is
@@ -35,7 +35,6 @@ export interface CanvasNodeWriter {
  */
 export function useCanvasNodeWriter(): CanvasNodeWriter {
   const workspaceId = useCanvasWorkspaceId()
-  const decorateCommittedNodes = useDecorateCommittedNodes()
 
   const updateCanvasDocument = useCallback<CanvasNodeWriter['updateCanvasDocument']>(
     (recipe, options = {}) => {
@@ -44,19 +43,12 @@ export function useCanvasNodeWriter(): CanvasNodeWriter {
         workspaceId,
         document => {
           previousDocumentNodes = document.nodes
-          const base = decorateCommittedNodes(document.nodes)
-          const output = recipe({ nodes: base, spaces: document.spaces })
+          const output = recipe({ nodes: document.nodes, spaces: document.spaces })
           const nextNodes = ensureNodesHaveInitialDimensions(output.nodes)
-          // `selected` and `dragHandle` are canvas-only fields: a recipe that changes nothing
-          // else is not a change.
-          if (nextNodes === base && output.spaces === document.spaces) {
+          if (nextNodes === document.nodes && output.spaces === document.spaces) {
             return document
           }
-          return {
-            ...document,
-            nodes: nextNodes === base ? document.nodes : nextNodes,
-            spaces: output.spaces,
-          }
+          return { ...document, nodes: nextNodes, spaces: output.spaces }
         },
         { flush: options.flush },
       )
@@ -75,7 +67,7 @@ export function useCanvasNodeWriter(): CanvasNodeWriter {
         window.dispatchEvent(new Event(TERMINAL_LAYOUT_SYNC_EVENT))
       }
     },
-    [decorateCommittedNodes, workspaceId],
+    [workspaceId],
   )
 
   const updateNodes = useCallback<CanvasNodeWriter['updateNodes']>(

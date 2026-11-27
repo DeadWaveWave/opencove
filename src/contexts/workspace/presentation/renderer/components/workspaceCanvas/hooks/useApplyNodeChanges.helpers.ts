@@ -4,6 +4,22 @@ import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '
 import type { LiveNodes } from '../../../utils/canvasLiveNodes'
 import type { WorkspaceCanvasNodeDragSession } from './useNodeDragSession'
 
+/**
+ * What a batch that is neither a drag frame nor a release does to the document: the windows it
+ * removes and the windows it settles, at their normalized position. A select batch has no effect on
+ * the document and commits nothing; the selection reaches the canvas store through
+ * `onSelectedNodeIdsChange`.
+ */
+export interface NodesCommit {
+  /** The windows the batch removes; what pointed at them is unlinked in the same write. */
+  removedIds: ReadonlySet<string>
+  /**
+   * The windows a settled move places, by id, at the position the node store resolved. The entries
+   * hold a position and no flag: the document holds no `dragging`.
+   */
+  settledPositions: LiveNodes
+}
+
 /** What a release writes: the gesture's windows, what the batch removed, the frame rects. */
 export interface NodesRelease {
   /** `toLiveNodes` of the release array: the windows the gesture owns, at their release position. */
@@ -17,8 +33,8 @@ export interface NodesRelease {
 export interface UseApplyNodeChangesParams {
   /** A drag frame: the overlay of the gesture's windows. */
   onNodesChange: (liveNodes: LiveNodes) => void
-  /** Any other batch: the whole result, computed from the committed view. */
-  onNodesCommit: (nodes: Node<TerminalNodeData>[]) => void
+  /** Any other batch: its removals and settled moves, as one recipe over the committed nodes. */
+  onNodesCommit: (commit: NodesCommit) => void
   /** A release: one write of the gesture's windows and Space frames. */
   onNodesRelease: (release: NodesRelease) => void
   onSelectedNodeIdsChange?: (nodeIds: string[]) => void
