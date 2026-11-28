@@ -6,13 +6,11 @@ import type { WorkspaceSpaceState } from '../../../src/contexts/workspace/presen
 import {
   createCanvasDocumentHarness,
   renderCanvasNodeStore,
-  type CanvasNodeStoreContext,
 } from '../../support/canvasDocumentHarness'
 
-function useDirectoryOpsUnderTest({ writer }: CanvasNodeStoreContext) {
+function useDirectoryOpsUnderTest() {
   return useWorkspaceCanvasSpaceDirectoryOps({
     workspacePath: '/repo',
-    updateCanvasDocument: writer.updateCanvasDocument,
     closeNode: vi.fn(async () => undefined),
   })
 }
@@ -57,10 +55,9 @@ describe('useWorkspaceCanvasSpaceDirectoryOps renameSpaceTo', () => {
     const harness = createCanvasDocumentHarness({ spaces: INITIAL_SPACES })
     const view = renderCanvasNodeStore(harness, {
       workspacePath: '/repo',
-      extend: function useDirectoryOps({ writer }: CanvasNodeStoreContext) {
+      extend: function useDirectoryOps() {
         return useWorkspaceCanvasSpaceDirectoryOps({
           workspacePath: '/repo',
-          updateCanvasDocument: writer.updateCanvasDocument,
           closeNode,
         })
       },

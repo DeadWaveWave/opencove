@@ -192,7 +192,6 @@ describe('createSpaceFromSelectedNodes in useWorkspaceCanvasCreateSpace', () => 
           workspacePath: '/tmp/repo',
           standardWindowSizeBucket: 'regular',
           reactFlow,
-          updateCanvasDocument: vi.fn(),
           createChildSpaceInParent,
         }),
         ...useSelectionProbe(),
@@ -270,7 +269,6 @@ describe('spatial navigation in useWorkspaceCanvasShortcutActions', () => {
           canvasRef: { current: canvas },
           reactFlow,
           spaceNavigationAnchorIdRef: { current: null },
-          updateCanvasDocument: vi.fn(),
           nodeCreation: {
             createNodeForSession: vi.fn(async () => null),
             createNoteNode: vi.fn(() => null),

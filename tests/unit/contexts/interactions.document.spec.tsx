@@ -65,7 +65,6 @@ describe('the default title of a pane terminal', () => {
           terminalFontSize: 13,
           terminalDisplayMetrics: metrics,
           createNodeForSession,
-          updateCanvasDocument: vi.fn(),
         }),
       { workspaceId: () => shown },
     )
@@ -110,7 +109,6 @@ describe('the website opened from a website window', () => {
           workspaceId: 'workspace-a',
           canvasRef: { current: document.createElement('div') },
           reactFlow: { screenToFlowPosition: () => ({ x: -9999, y: -9999 }) } as never,
-          updateCanvasDocument: vi.fn(),
           createWebsiteNode,
           standardWindowSizeBucket: 'regular',
           browserDefaultMode: 'iframe',
@@ -173,7 +171,6 @@ describe('the quick command', () => {
           browserDefaultMode: 'iframe',
           createWebsiteNode: vi.fn(() => null),
           createNoteNode: vi.fn(() => null),
-          updateCanvasDocument: vi.fn(),
           defaultTerminalProfileId: null,
           terminalFontSize: 13,
           terminalDisplayMetrics: metrics,

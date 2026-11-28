@@ -35,7 +35,7 @@ function renderNestedResize() {
     }),
   ]
   const harness = createCanvasDocumentHarness({ workspaceId: 'workspace', nodes: [node], spaces })
-  function useDragUnderTest({ workspaceId, writer }: CanvasNodeStoreContext) {
+  function useDragUnderTest({ workspaceId }: CanvasNodeStoreContext) {
     const flow = useReactFlow<Node<TerminalNodeData>>()
     const drag = useWorkspaceCanvasSpaceDrag({
       workspaceId,
@@ -44,7 +44,6 @@ function renderNestedResize() {
         screenToFlowPosition: point => point,
         getZoom: () => 1,
       },
-      updateCanvasDocument: writer.updateCanvasDocument,
     })
     return {
       ...drag,

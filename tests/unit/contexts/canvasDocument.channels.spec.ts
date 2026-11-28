@@ -173,7 +173,7 @@ describe('canvas document channels', () => {
 
 // Decision 7 and 8 of S7 (#647): a hook gets the node writer from `useCanvasNodeWriter()`, not as a
 // parameter. Plain (non-hook) action functions keep taking it. The hooks that still declare one are
-// listed; each pull request of the slice shortens the list, and PR 9 leaves it empty. The check
+// listed; each pull request of the slice shortened the list, and PR 9 left it empty. The check
 // reads what a hook declares, not what it is called: a parameter, a property of a destructured
 // parameter (under whatever local name), a property read from an object parameter (`props.x`,
 // `nodeStore.x` on a destructured `nodeStore`, `const { x } = props`), a member of a parameter type
@@ -371,29 +371,11 @@ function hooksDeclaringWriterParameters(source: string, fileName = 'source.ts'):
   return hooks.sort()
 }
 
-// The hooks under `workspaceCanvas/` that still take the node writer as a parameter, as
-// `~/<file>#<hook>:<name>`. Do not add a line: take the writer from `useCanvasNodeWriter()`.
-const HOOKS_WITH_WRITER_PARAMETERS: readonly string[] = [
-  '~/collapse/useCanvasCollapse.ts#useCanvasCollapse:updateCanvasDocument',
-  '~/hooks/useAgentLauncher.ts#useWorkspaceCanvasAgentLauncher:updateCanvasDocument',
-  '~/hooks/useCanvasAgentSupport.ts#useWorkspaceCanvasAgentSupport:updateCanvasDocument',
-  '~/hooks/useCanvasImageImport.ts#useWorkspaceCanvasImageImport:updateCanvasDocument',
-  '~/hooks/useCanvasShortcutActions.ts#useWorkspaceCanvasShortcutActions:updateCanvasDocument',
-  '~/hooks/useInteractions.flowNodeCreation.ts#useWorkspaceCanvasFlowNodeCreation:updateCanvasDocument',
-  '~/hooks/useInteractions.pasteHandlers.ts#useWorkspaceCanvasPasteHandlers:updateCanvasDocument',
-  '~/hooks/useInteractions.quickMenuActions.ts#useWorkspaceCanvasQuickMenuActions:updateCanvasDocument',
-  '~/hooks/useInteractions.terminalCreation.ts#useWorkspaceCanvasTerminalCreation:updateCanvasDocument',
-  '~/hooks/useInteractions.ts#useWorkspaceCanvasInteractions:updateCanvasDocument',
-  '~/hooks/useInteractions.websiteContextMenu.ts#useWebsiteNodeContextMenuCreation:updateCanvasDocument',
-  '~/hooks/useSpaceDirectoryOps.ts#useWorkspaceCanvasSpaceDirectoryOps:updateCanvasDocument',
-  '~/hooks/useSpaceDrag.ts#useWorkspaceCanvasSpaceDrag:updateCanvasDocument',
-  '~/hooks/useSpaceOwnership.applyDrop.ts#useWorkspaceCanvasApplyOwnershipForDrop:updateCanvasDocument',
-  '~/hooks/useSpaceOwnership.ts#useWorkspaceCanvasSpaceOwnership:updateCanvasDocument',
-  '~/hooks/useSpaces.createChildSpace.ts#useWorkspaceCanvasCreateChildSpace:updateCanvasDocument',
-  '~/hooks/useSpaces.createSpace.ts#useWorkspaceCanvasCreateSpace:updateCanvasDocument',
-  '~/hooks/useSpaces.ts#useWorkspaceCanvasSpaces:updateCanvasDocument',
-  '~/hooks/useWebsiteWindowOpenUrlNodeCreation.ts#useWebsiteWindowOpenUrlNodeCreation:updateCanvasDocument',
-]
+// The hooks under `workspaceCanvas/` that take the node writer as a parameter, as
+// `~/<file>#<hook>:<name>`. S7 PR 9 emptied the list: every hook takes the writer from
+// `useCanvasNodeWriter()` (or `useCanvasDocumentCommands()`), so a parameter cannot come back.
+// Do not add a line.
+const HOOKS_WITH_WRITER_PARAMETERS: readonly string[] = []
 
 describe('hooks do not take the node writer as a parameter', () => {
   const canvasFiles = trackedSourceFiles().filter(file => file.startsWith(CANVAS_DIR))
@@ -465,21 +447,21 @@ describe('hooks do not take the node writer as a parameter', () => {
     ])
   })
 
-  // The hook that still receives the writer inside an options object, which the first version of
-  // the check did not see (found in review). It is in the list because PR 9 removes it.
-  // `useFilesystemNodes` and `useCanvasSpaceExplorer` left it in PR 8. `useWorkspaceCanvasRuntimeIntegrations` left it in PR 5, and
-  // `useWorkspaceCanvasRoleUi` in PR 6.
-  it.each([['hooks/useInteractions.quickMenuActions.ts', 'useWorkspaceCanvasQuickMenuActions']])(
-    'finds the writer that %s receives inside an object parameter',
-    (file, hook) => {
-      const found = hooksDeclaringWriterParameters(readFileSync(CANVAS_DIR + file, 'utf8'), file)
+  // The shapes the first version of the check missed (found in review) and that the hooks of PR 9
+  // used: the writer inside an options object that the hook reads or destructures.
+  it('flags the writer that a hook receives inside an options object', () => {
+    const flagged = (source: string) => hooksDeclaringWriterParameters(source)
 
-      expect(found.some(entry => entry.startsWith(`${hook}:`))).toBe(true)
-      expect(
-        HOOKS_WITH_WRITER_PARAMETERS.some(entry => entry.startsWith(`~/${file}#${hook}:`)),
-      ).toBe(true)
-    },
-  )
+    expect(
+      flagged(
+        'interface Options { updateCanvasDocument: UpdateCanvasDocument }\n' +
+          'export function useA(options: Options) { const write = options.updateCanvasDocument }',
+      ),
+    ).toEqual(['useA:updateCanvasDocument'])
+    expect(flagged('export function useA({ setNodes, other }: Options) {}')).toEqual([
+      'useA:setNodes',
+    ])
+  })
 
   it('does not flag what Decision 8 allows', () => {
     const flagged = (source: string) => hooksDeclaringWriterParameters(source)
@@ -497,7 +479,7 @@ describe('hooks do not take the node writer as a parameter', () => {
     expect(flagged('export function useA(props: P) { return props.other }')).toEqual([])
   })
 
-  it('lists exactly the hooks under workspaceCanvas that still declare one', () => {
+  it('finds no hook under workspaceCanvas that declares one', () => {
     expect(canvasFiles.length).toBeGreaterThan(300)
 
     const declared = canvasFiles.flatMap(file =>

@@ -66,7 +66,6 @@ function TestHarnessBody({
     standardWindowSizeBucket: 'regular',
     reactFlow,
     nodes: [NODE],
-    updateCanvasDocument: vi.fn(),
     spaces,
   })
 

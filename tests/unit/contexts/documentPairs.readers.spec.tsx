@@ -4,8 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import { useCanvasCollapse } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/collapse/useCanvasCollapse'
 import { useWorkspaceCanvasMenuActions } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasMenuActions'
-import type { UpdateCanvasDocument } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore.types'
-import { useCanvasNodeWriter } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodeWriter'
 import { useWorkspaceCanvasNodesStore } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore'
 import { useWorkspaceCanvasSpaceUi } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceUi'
 import { useCanvasCollapseStore } from '../../../src/contexts/workspace/presentation/renderer/store/useCanvasCollapseStore'
@@ -103,11 +101,11 @@ function readDocument(workspaceId: string) {
 
 /**
  * Seeds workspaces A and B, renders `useHook` under the provider of the shown workspace, and
- * returns the view and a function that shows B. `useHook` receives the shown workspace and the
- * node store's writer of that workspace, as the canvas hands it down.
+ * returns the view and a function that shows B. `useHook` receives the shown workspace; a hook
+ * takes the writer of that workspace from context.
  */
 function renderInTwoWorkspaces<Result>(
-  useHook: (input: { workspaceId: string; updateCanvasDocument: UpdateCanvasDocument }) => Result,
+  useHook: (input: { workspaceId: string }) => Result,
   documents: Record<
     'a' | 'b',
     { nodes?: Node<TerminalNodeData>[]; spaces?: WorkspaceSpaceState[] }
@@ -131,8 +129,7 @@ function renderInTwoWorkspaces<Result>(
         browserDefaultMode: 'iframe',
         readAgentSettings: readDefaultAgentSettings,
       })
-      const { updateCanvasDocument } = useCanvasNodeWriter()
-      return useHook({ workspaceId: shown, updateCanvasDocument })
+      return useHook({ workspaceId: shown })
     },
     { workspaceId: () => shown },
   )
@@ -172,7 +169,7 @@ describe('useCanvasCollapse in two workspaces', () => {
       },
     })
     const { view, showB } = renderInTwoWorkspaces(
-      ({ workspaceId, updateCanvasDocument }) =>
+      ({ workspaceId }) =>
         useCanvasCollapse({
           workspaceId,
           nodes: [],
@@ -180,7 +177,6 @@ describe('useCanvasCollapse in two workspaces', () => {
           reactFlow: reactFlow as never,
           focusNodeTargetZoom: 1,
           nodeExpandBehavior: 'push-away',
-          updateCanvasDocument,
         }),
       {
         a: { nodes: [node('target', 0, 0), node('peer', 100, 0)] },

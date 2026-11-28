@@ -46,7 +46,7 @@ export function renderSpaceOwnershipInDocument(
   const exclusiveNodeDragAnchorIdRef = { current: null as string | null }
 
   function useOwnershipUnderTest(context: CanvasNodeStoreContext) {
-    const { workspaceId, writer } = context
+    const { workspaceId } = context
     const reactFlow = useMemo(() => {
       const nodes = () => options.reactFlowNodes?.() ?? harness.readStoreDocument().nodes
       return {
@@ -68,7 +68,6 @@ export function renderSpaceOwnershipInDocument(
       reactFlow,
       nodeDragSession,
       exclusiveNodeDragAnchorIdRef,
-      updateCanvasDocument: writer.updateCanvasDocument,
       onShowMessage: options.onShowMessage,
       hideWorktreeMismatchDropWarning: options.hideWorktreeMismatchDropWarning ?? true,
       nodeDragPointerAnchorRef: nodeDragSession.nodeDragPointerAnchorRef,

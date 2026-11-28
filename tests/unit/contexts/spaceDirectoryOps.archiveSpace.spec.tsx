@@ -9,7 +9,6 @@ import type {
 import {
   createCanvasDocumentHarness,
   renderCanvasNodeStore,
-  type CanvasNodeStoreContext,
 } from '../../support/canvasDocumentHarness'
 
 function createNoteNode(id: string, title: string): Node<TerminalNodeData> {
@@ -102,10 +101,9 @@ describe('useWorkspaceCanvasSpaceDirectoryOps archiveSpace', () => {
     const harness = createCanvasDocumentHarness({ nodes: initialNodes, spaces: initialSpaces })
     const view = renderCanvasNodeStore(harness, {
       workspacePath: '/repo',
-      extend: function useDirectoryOpsUnderTest({ writer }: CanvasNodeStoreContext) {
+      extend: function useDirectoryOpsUnderTest() {
         return useWorkspaceCanvasSpaceDirectoryOps({
           workspacePath: '/repo',
-          updateCanvasDocument: writer.updateCanvasDocument,
           closeNode,
         })
       },

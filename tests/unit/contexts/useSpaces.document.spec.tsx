@@ -56,7 +56,7 @@ const reactFlow = {
 const onActiveSpaceChange = vi.fn()
 const onShowMessage = vi.fn()
 
-function useSpacesUnderTest({ workspaceId, writer, nodes, spaces }: CanvasNodeStoreContext) {
+function useSpacesUnderTest({ workspaceId, nodes, spaces }: CanvasNodeStoreContext) {
   return {
     spacesApi: useWorkspaceCanvasSpaces({
       workspaceId,
@@ -67,7 +67,6 @@ function useSpacesUnderTest({ workspaceId, writer, nodes, spaces }: CanvasNodeSt
       standardWindowSizeBucket: 'regular',
       reactFlow: reactFlow as unknown as ReactFlowInstance<Node<TerminalNodeData>>,
       nodes,
-      updateCanvasDocument: writer.updateCanvasDocument,
       spaces,
       onShowMessage,
     }),

@@ -5,7 +5,6 @@ import { useReactFlow, type Node } from '@xyflow/react'
 import { vi } from 'vitest'
 import { useAppStore } from '../../src/app/renderer/shell/store/useAppStore'
 import { useWorkspaceCanvasSpaceDrag } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceDrag'
-import type { UpdateCanvasDocument } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore.types'
 import type { CanvasInteractionState } from '../../src/contexts/workspace/presentation/renderer/store/canvasStore.interaction'
 import {
   useCanvasInteractionCommands,
@@ -13,7 +12,6 @@ import {
   useReadCanvasInteraction,
   useReadCanvasSelection,
 } from '../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
-import { commitCanvasDocument } from '../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import type {
   Point,
   TerminalNodeData,
@@ -45,13 +43,12 @@ export function spaceC() {
   return createSpace('space-c', { x: 700, y: 0, width: 500, height: 400 }, [])
 }
 
-function useDragUnderTest({ workspaceId, writer }: CanvasNodeStoreContext) {
+function useDragUnderTest({ workspaceId }: CanvasNodeStoreContext) {
   const flow = useReactFlow<Node<TerminalNodeData>>()
   return {
     drag: useWorkspaceCanvasSpaceDrag({
       workspaceId,
       reactFlow: { ...flow, screenToFlowPosition: point => point, getZoom: () => 1 },
-      updateCanvasDocument: writer.updateCanvasDocument,
     }),
     selection: useCanvasSelectionCommands(),
     readSelection: useReadCanvasSelection(),
@@ -136,10 +133,6 @@ export function renderSwitchingSpaceDrag() {
     ],
   }))
   let shown = 'workspace-a'
-  // A stable writer: only the reader (and the workspace id) can change when the user switches.
-  const updateCanvasDocument: UpdateCanvasDocument = (recipe, options) => {
-    commitCanvasDocument(shown, document => ({ ...document, ...recipe(document) }), options)
-  }
   const view = renderInCanvasDocument(
     () => {
       const flow = useReactFlow<Node<TerminalNodeData>>()
@@ -154,7 +147,6 @@ export function renderSwitchingSpaceDrag() {
         drag: useWorkspaceCanvasSpaceDrag({
           workspaceId: shown,
           reactFlow,
-          updateCanvasDocument,
         }),
       }
     },

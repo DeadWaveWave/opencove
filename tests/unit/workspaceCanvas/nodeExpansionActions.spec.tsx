@@ -117,7 +117,7 @@ const setCenter = vi.fn()
 const reactFlow = { setCenter } as unknown as ReactFlowInstance<Node<TerminalNodeData>>
 let behavior: NodeExpandBehavior = DEFAULT_AGENT_SETTINGS.nodeExpandBehavior
 
-function useActions({ workspaceId, nodes, spaces, writer }: CanvasNodeStoreContext) {
+function useActions({ workspaceId, nodes, spaces }: CanvasNodeStoreContext) {
   return {
     selection: useCanvasSelectionCommands(),
     collapse: useCanvasCollapse({
@@ -127,7 +127,6 @@ function useActions({ workspaceId, nodes, spaces, writer }: CanvasNodeStoreConte
       reactFlow,
       focusNodeTargetZoom: 0.85,
       nodeExpandBehavior: behavior,
-      updateCanvasDocument: writer.updateCanvasDocument,
     }),
   }
 }
