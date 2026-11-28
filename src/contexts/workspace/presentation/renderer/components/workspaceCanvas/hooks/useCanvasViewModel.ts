@@ -1,4 +1,4 @@
-import { useMemo, type MutableRefObject } from 'react'
+import { useMemo } from 'react'
 import type { Node, Viewport } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
 import {
@@ -15,7 +15,6 @@ import { resolveWorkspaceMinimapNodeColor } from '../minimap'
 
 export function useWorkspaceCanvasViewModel({
   agentSettings,
-  viewportRef,
   onViewportChange,
   flowNodes,
   workspacePath,
@@ -25,7 +24,6 @@ export function useWorkspaceCanvasViewModel({
   handleSelectionContextMenu,
 }: {
   agentSettings: AgentSettings
-  viewportRef: MutableRefObject<Viewport>
   onViewportChange: (viewport: Viewport) => void
   flowNodes: Node<TerminalNodeData>[]
   workspacePath: string
@@ -47,10 +45,7 @@ export function useWorkspaceCanvasViewModel({
   const { t } = useTranslation()
   const taskTitleProviderLabel = AGENT_PROVIDER_LABEL[resolveTaskTitleProvider(agentSettings)]
   const taskTitleModelLabel = resolveTaskTitleModel(agentSettings) ?? t('common.defaultModel')
-  const handleViewportMoveEnd = useWorkspaceCanvasViewportMoveEnd({
-    viewportRef,
-    onViewportChange,
-  })
+  const handleViewportMoveEnd = useWorkspaceCanvasViewportMoveEnd({ onViewportChange })
   const minimapNodeColor = resolveWorkspaceMinimapNodeColor
 
   const taskAgentEdges = useWorkspaceCanvasTaskAgentEdges(flowNodes)

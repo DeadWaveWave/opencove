@@ -95,7 +95,6 @@ function renderSelectionOwner() {
       const canvas = useWorkspaceCanvasState({
         nodes: documentNodes,
         spaces,
-        viewport: { x: 0, y: 0, zoom: 0.28 },
       })
       // What the flow host shows: the committed view with the live nodes of a gesture applied.
       const liveNodes = useCanvasInteraction(selectLiveNodes)

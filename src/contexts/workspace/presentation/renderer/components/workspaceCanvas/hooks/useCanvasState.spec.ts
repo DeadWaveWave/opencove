@@ -70,6 +70,15 @@ describe('the retired canvas channels', () => {
     expect(canvasState.hasTransientNodePositionsRef).toBeUndefined()
   })
 
+  // #647 S8 (PR 1): the camera lives in React Flow's store. The gestures read it when an event
+  // arrives, so the canvas state holds no copy of it.
+  it('do not keep a copy of the camera in the canvas state', () => {
+    const canvasState = {} as ReturnType<typeof useWorkspaceCanvasState>
+
+    // @ts-expect-error -- viewportRef is retired; read flowStore.getState().transform (#647 S8)
+    expect(canvasState.viewportRef).toBeUndefined()
+  })
+
   // #738 (S6 of #647), the commit path: the node store keeps no mirror of the canvas view. The
   // change path and the writers read the document and the canvas store when they run.
   it('do not keep the canvas view in the node store', () => {

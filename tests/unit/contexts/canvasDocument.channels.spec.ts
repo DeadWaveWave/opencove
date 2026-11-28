@@ -75,6 +75,18 @@ const ALLOWED_FILES: Record<string, readonly string[]> = {
   useWorkspaceCanvasActionRefs: [],
   TransitionalNodeActionRefs: [],
   WiredCanvasNodeCommands: [],
+  // Retired by S8 (PR 1): the canvas keeps no copy of the camera. React Flow's store is the only
+  // live one, and the manual gestures read its `transform` when an event arrives. What is left
+  // are other refs of the same name: the DOM handle of the website window (four files) and the
+  // Space archive replay's own React Flow instance (two files).
+  viewportRef: [
+    'src/app/renderer/shell/components/SpaceArchiveReplayCanvas.tsx',
+    'src/app/renderer/shell/components/useSpaceArchiveReplayWheelGestures.ts',
+    'src/contexts/workspace/presentation/renderer/components/WebsiteNode.body.tsx',
+    'src/contexts/workspace/presentation/renderer/components/WebsiteNode.frame.ts',
+    'src/contexts/workspace/presentation/renderer/components/WebsiteNode.nativeView.ts',
+    'src/contexts/workspace/presentation/renderer/components/WebsiteNode.tsx',
+  ],
 }
 
 function trackedSourceFiles(): string[] {

@@ -2,6 +2,7 @@ import type { Edge, Node, ReactFlowInstance, Viewport } from '@xyflow/react'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
 import type { TerminalNodeData } from '../../../types'
 import { useWorkspaceCanvasLifecycle } from './useLifecycle'
+import { useFocusTargetZoomPreview } from './useFocusTargetZoomPreview'
 import { useWorkspaceCanvasState } from './useCanvasState'
 import { useWorkspaceCanvasViewportNavigation } from './useViewportNavigation'
 import { useWorkspaceCanvasCreationActivation } from './useCreationActivation'
@@ -59,16 +60,16 @@ export function useWorkspaceCanvasLifecycleBindings({
     selectionDraftRef: canvasState.selectionDraftRef,
     trackpadGestureLockRef: canvasState.trackpadGestureLockRef,
     setIsCanvasWheelGestureCaptureActive: canvasState.setIsCanvasWheelGestureCaptureActive,
-    reactFlow,
-    viewport,
-    viewportRef: canvasState.viewportRef,
     canvasInputModeSetting: agentSettings.canvasInputMode,
     inputModalityStateRef: canvasState.inputModalityStateRef,
     setDetectedCanvasInputMode: canvasState.setDetectedCanvasInputMode,
     isShiftPressedRef: canvasState.isShiftPressedRef,
     setIsShiftPressed: canvasState.setIsShiftPressed,
     requestNodeDelete,
+  })
+  useFocusTargetZoomPreview({
+    reactFlow,
     focusNodeTargetZoom: agentSettings.focusNodeTargetZoom,
-    isFocusNodeTargetZoomPreviewing,
+    isPreviewing: isFocusNodeTargetZoomPreviewing,
   })
 }

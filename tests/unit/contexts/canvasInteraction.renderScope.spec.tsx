@@ -22,7 +22,6 @@ import {
 
 const NO_NODES: never[] = []
 const NO_SPACES: never[] = []
-const VIEWPORT = { x: 0, y: 0, zoom: 1 }
 const DRAFT = { startX: 1, startY: 2, currentX: 3, currentY: 4, phase: 'active' } as const
 
 // #738 Decision 2: the marquee rectangle and the snapping toggle are read by leaves. A frame of
@@ -36,7 +35,6 @@ describe('useWorkspaceCanvasState and the interaction slice', () => {
         canvasState: useWorkspaceCanvasState({
           nodes: NO_NODES,
           spaces: NO_SPACES,
-          viewport: VIEWPORT,
         }),
         interaction: useCanvasInteractionCommands(),
       }
@@ -133,7 +131,6 @@ describe('a marquee across a workspace switch', () => {
     } as unknown as ReactFlowInstance<Node<TerminalNodeData>>
     const refs = {
       trackpadGestureLockRef: { current: null },
-      viewportRef: { current: { x: 0, y: 0, zoom: 1 } },
       inputModalityStateRef: { current: createCanvasInputModalityState('mouse') },
       isShiftPressedRef: { current: false },
       requestNodeDeleteRef: { current: vi.fn() },
@@ -146,17 +143,12 @@ describe('a marquee across a workspace switch', () => {
           selectionDraftRef,
           trackpadGestureLockRef: refs.trackpadGestureLockRef,
           setIsCanvasWheelGestureCaptureActive: vi.fn(),
-          reactFlow: reactFlow as never,
-          viewport: { x: 0, y: 0, zoom: 1 },
-          viewportRef: refs.viewportRef,
           canvasInputModeSetting: 'mouse',
           inputModalityStateRef: refs.inputModalityStateRef,
           setDetectedCanvasInputMode: vi.fn(),
           isShiftPressedRef: refs.isShiftPressedRef,
           setIsShiftPressed: vi.fn(),
           requestNodeDeleteRef: refs.requestNodeDeleteRef,
-          focusNodeTargetZoom: 1,
-          isFocusNodeTargetZoomPreviewing: false,
         })
         return {
           draft: useWorkspaceCanvasSelectionDraft({

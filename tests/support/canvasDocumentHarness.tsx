@@ -187,7 +187,6 @@ export function renderCanvasNodeStore<Extra extends object = Record<never, never
       const canvasState = useWorkspaceCanvasState({
         nodes,
         spaces,
-        viewport: { x: 0, y: 0, zoom: 1 },
       })
       const publishers = useWorkspaceCanvasNodePublishers({ workspaceId: harness.workspaceId })
       const nodeStore = useWorkspaceCanvasNodesStore({

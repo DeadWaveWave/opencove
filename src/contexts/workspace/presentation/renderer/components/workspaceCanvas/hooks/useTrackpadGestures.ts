@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useRef, type MutableRefObject } from 'react'
-import { useStoreApi, type Node, type ReactFlowInstance, type Viewport } from '@xyflow/react'
+import {
+  useStoreApi,
+  type Node,
+  type ReactFlowInstance,
+  type ReactFlowState,
+  type Viewport,
+} from '@xyflow/react'
 import type {
   CanvasWheelBehavior,
   CanvasWheelZoomModifier,
@@ -38,9 +44,17 @@ interface UseTrackpadGesturesParams {
   canvasRef: MutableRefObject<HTMLDivElement | null>
   trackpadGestureLockRef: MutableRefObject<TrackpadGestureLockState | null>
   setIsCanvasWheelGestureCaptureActive: React.Dispatch<React.SetStateAction<boolean>>
-  viewportRef: MutableRefObject<Viewport>
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
   onViewportChange: (viewport: { x: number; y: number; zoom: number }) => void
+}
+
+// React Flow's store is the only live copy of the camera (#647 S8). Every gesture reads it when its
+// event arrives, so a gesture that starts during a navigation animation continues from the camera
+// on screen (docs/ui/VIEWPORT_NAVIGATION_STANDARD.md section 4.1), and consecutive events chain
+// because `setViewport(..., { duration: 0 })` writes `transform` before it returns.
+function readCamera(state: Pick<ReactFlowState, 'transform'>): Viewport {
+  const [x, y, zoom] = state.transform
+  return { x, y, zoom }
 }
 
 export function useWorkspaceCanvasTrackpadGestures({
@@ -53,7 +67,6 @@ export function useWorkspaceCanvasTrackpadGestures({
   canvasRef,
   trackpadGestureLockRef,
   setIsCanvasWheelGestureCaptureActive,
-  viewportRef,
   reactFlow,
   onViewportChange,
 }: UseTrackpadGesturesParams): { handleCanvasWheelCapture: (event: WheelEvent) => void } {
@@ -174,7 +187,7 @@ export function useWorkspaceCanvasTrackpadGestures({
       event.preventDefault()
       event.stopPropagation()
 
-      const currentViewport = viewportRef.current
+      const currentViewport = readCamera(reactFlowStore.getState())
 
       if (viewportCommitTimerRef.current !== null) {
         window.clearTimeout(viewportCommitTimerRef.current)
@@ -196,11 +209,10 @@ export function useWorkspaceCanvasTrackpadGestures({
           zoom: currentViewport.zoom,
         }
 
-        viewportRef.current = nextViewport
         reactFlow.setViewport(nextViewport, { duration: 0 })
         viewportCommitTimerRef.current = window.setTimeout(() => {
           viewportCommitTimerRef.current = null
-          onViewportChange(viewportRef.current)
+          onViewportChange(readCamera(reactFlowStore.getState()))
         }, VIEWPORT_INTERACTION_SETTLE_MS)
         return
       }
@@ -238,11 +250,10 @@ export function useWorkspaceCanvasTrackpadGestures({
         zoom: nextZoom,
       }
 
-      viewportRef.current = nextViewport
       reactFlow.setViewport(nextViewport, { duration: 0 })
       viewportCommitTimerRef.current = window.setTimeout(() => {
         viewportCommitTimerRef.current = null
-        onViewportChange(viewportRef.current)
+        onViewportChange(readCamera(reactFlowStore.getState()))
       }, VIEWPORT_INTERACTION_SETTLE_MS)
     },
     [
@@ -254,11 +265,11 @@ export function useWorkspaceCanvasTrackpadGestures({
       markViewportInteractionActive,
       onViewportChange,
       reactFlow,
+      reactFlowStore,
       resolvedCanvasInputMode,
       commitTrackpadGestureSession,
       setDetectedCanvasInputMode,
       trackpadGestureLockRef,
-      viewportRef,
     ],
   )
 
@@ -358,7 +369,7 @@ export function useWorkspaceCanvasTrackpadGestures({
 
       viewportCommitTimerRef.current = window.setTimeout(() => {
         viewportCommitTimerRef.current = null
-        onViewportChange(viewportRef.current)
+        onViewportChange(readCamera(reactFlowStore.getState()))
       }, VIEWPORT_INTERACTION_SETTLE_MS)
     }
 
@@ -392,7 +403,7 @@ export function useWorkspaceCanvasTrackpadGestures({
       const clientX = Number.isFinite(event.clientX) ? Number(event.clientX) : 0
       const clientY = Number.isFinite(event.clientY) ? Number(event.clientY) : 0
 
-      const startViewport = viewportRef.current
+      const startViewport = readCamera(reactFlowStore.getState())
       safariPinchSessionRef.current = {
         startScale:
           typeof event.scale === 'number' && Number.isFinite(event.scale) && event.scale > 0
@@ -423,7 +434,7 @@ export function useWorkspaceCanvasTrackpadGestures({
         MAX_CANVAS_ZOOM,
       )
 
-      if (Math.abs(nextZoom - viewportRef.current.zoom) < 0.0001) {
+      if (Math.abs(nextZoom - readCamera(reactFlowStore.getState()).zoom) < 0.0001) {
         event.preventDefault()
         event.stopPropagation()
         return
@@ -451,7 +462,6 @@ export function useWorkspaceCanvasTrackpadGestures({
         zoom: nextZoom,
       }
 
-      viewportRef.current = nextViewport
       reactFlow.setViewport(nextViewport, { duration: 0 })
       commitViewportSoon()
 
@@ -490,10 +500,10 @@ export function useWorkspaceCanvasTrackpadGestures({
     markViewportInteractionActive,
     onViewportChange,
     reactFlow,
+    reactFlowStore,
     clearTrackpadGestureSession,
     commitTrackpadGestureSession,
     setDetectedCanvasInputMode,
-    viewportRef,
   ])
 
   return { handleCanvasWheelCapture }
