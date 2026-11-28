@@ -3,16 +3,12 @@ import type { Node } from '@xyflow/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import WebSocket from 'ws'
 import type { QuickCommand } from '../../src/contexts/settings/domain/agentSettings'
-import type {
-  TerminalNodeData,
-  WorkspaceSpaceState,
-} from '../../src/contexts/workspace/presentation/renderer/types'
+import type { TerminalNodeData } from '../../src/contexts/workspace/presentation/renderer/types'
 import {
   CANVAS_STORE_TEST_WORKSPACE_ID,
   renderHookWithCanvasStore,
 } from '../support/canvasStoreTestHarness'
 import { createCanvasDocumentHarness } from '../support/canvasDocumentHarness'
-import { commitCanvasDocument } from '../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import { useWorkspaceCanvasQuickMenuActions } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useInteractions.quickMenuActions'
 import { useWorkspaceCanvasNodeCreation } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore.createNodes'
 import { createRemotePtySessionCoordinator } from '../../src/app/main/controlSurface/remote/remotePtyRuntime.sessionCoordinator'
@@ -113,18 +109,6 @@ function setup() {
     ],
   })
   const readNodes = (): Node<TerminalNodeData>[] => document.readStoreDocument().nodes
-  // The push-away of the created node writes through one recipe, as the node store runs it.
-  const updateCanvasDocument = (
-    recipe: (document: { nodes: Node<TerminalNodeData>[]; spaces: WorkspaceSpaceState[] }) => {
-      nodes: Node<TerminalNodeData>[]
-      spaces: WorkspaceSpaceState[]
-    },
-  ) => {
-    commitCanvasDocument(CANVAS_STORE_TEST_WORKSPACE_ID, current => {
-      const next = recipe({ nodes: current.nodes, spaces: current.spaces })
-      return { ...current, nodes: next.nodes, spaces: next.spaces }
-    })
-  }
   const onShowMessage = vi.fn()
   const hook = renderHookWithCanvasStore(
     ({ workspaceId }) => {
@@ -144,7 +128,6 @@ function setup() {
         workspaceId,
         // A detached worktree uses Control Surface spawn, outside the workspace root.
         workspacePath: '/workspace',
-        updateCanvasDocument,
         websiteWindowsEnabled: true,
         defaultTerminalProfileId: null,
         terminalFontSize: 13,

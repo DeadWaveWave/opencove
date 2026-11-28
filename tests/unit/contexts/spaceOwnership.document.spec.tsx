@@ -2,10 +2,7 @@ import { act } from '@testing-library/react'
 import type { Node } from '@xyflow/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TERMINAL_LAYOUT_SYNC_EVENT } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/constants'
-import {
-  commitCanvasDocument,
-  readWorkspaceDocument,
-} from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+import { readWorkspaceDocument } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import type {
   TerminalNodeData,
   WorkspaceSpaceState,
@@ -880,7 +877,6 @@ describe('the workspace of a node drop', () => {
             clearDragStartSpaceSelection: () => undefined,
           },
           exclusiveNodeDragAnchorIdRef: { current: null },
-          updateCanvasDocument: vi.fn(),
           hideWorktreeMismatchDropWarning: false,
         })
       },
@@ -942,15 +938,6 @@ describe('the workspace of a node drop', () => {
             clearDragStartSpaceSelection: () => undefined,
           },
           exclusiveNodeDragAnchorIdRef: { current: null },
-          updateCanvasDocument: (recipe, options) =>
-            commitCanvasDocument(
-              workspaceId,
-              document => ({
-                ...document,
-                ...recipe({ nodes: document.nodes, spaces: document.spaces }),
-              }),
-              options,
-            ),
           onShowMessage,
           hideWorktreeMismatchDropWarning: true,
         })

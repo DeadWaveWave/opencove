@@ -9,13 +9,12 @@ import {
 } from '@shared/contracts/websiteWindowCanvas'
 import type { Point, TerminalNodeData, WebsiteNodeData, WorkspaceSpaceState } from '../../../types'
 import { createWebsiteNodeAtFlowPosition } from './useInteractions.paneNodeCreation'
-import type { UpdateCanvasDocument } from './useNodesStore.types'
+import { useCanvasNodeWriter } from './useCanvasNodeWriter'
 
 export function useWebsiteWindowOpenUrlNodeCreation({
   workspaceId,
   canvasRef,
   reactFlow,
-  updateCanvasDocument,
   createWebsiteNode,
   standardWindowSizeBucket,
   browserDefaultMode,
@@ -24,7 +23,6 @@ export function useWebsiteWindowOpenUrlNodeCreation({
   workspaceId?: string
   canvasRef: React.RefObject<HTMLDivElement | null>
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
-  updateCanvasDocument: UpdateCanvasDocument
   createWebsiteNode: (
     anchor: Point,
     website: WebsiteNodeData,
@@ -35,6 +33,7 @@ export function useWebsiteWindowOpenUrlNodeCreation({
   enabled: boolean
 }): void {
   const readDocument = useReadCanvasDocument()
+  const { updateCanvasDocument } = useCanvasNodeWriter()
 
   useEffect(() => {
     if (!enabled) {

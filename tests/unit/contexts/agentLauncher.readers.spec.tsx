@@ -91,7 +91,6 @@ const params = {
   readAgentSettings: createAgentSettingsReader({ defaultProvider: 'codex' }),
   workspaceId: 'project',
   workspacePath: '/repo',
-  updateCanvasDocument: vi.fn(),
   onShowMessage: vi.fn(),
   createNodeForSession: vi.fn(
     async (input: { nodeId: string; anchor: { x: number; y: number } }) => ({

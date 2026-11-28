@@ -9,6 +9,7 @@ import {
   createWebsiteNodeAtFlowPosition,
 } from './useInteractions.paneNodeCreation'
 import type { UseWorkspaceCanvasInteractionsParams } from './useInteractions.types'
+import { useCanvasNodeWriter } from './useCanvasNodeWriter'
 import {
   useCanvasDocumentCommands,
   useCanvasUiCommands,
@@ -25,7 +26,6 @@ export function useWorkspaceCanvasQuickMenuActions(
     | 'browserDefaultMode'
     | 'createWebsiteNode'
     | 'createNoteNode'
-    | 'updateCanvasDocument'
     | 'defaultTerminalProfileId'
     | 'terminalFontSize'
     | 'terminalDisplayMetrics'
@@ -41,6 +41,7 @@ export function useWorkspaceCanvasQuickMenuActions(
   const documentCommands = useCanvasDocumentCommands()
   const readDocument = useReadCanvasDocument()
   const readUi = useReadCanvasUi()
+  const { updateCanvasDocument } = useCanvasNodeWriter()
 
   const {
     workspaceId,
@@ -49,7 +50,6 @@ export function useWorkspaceCanvasQuickMenuActions(
     browserDefaultMode,
     createWebsiteNode,
     createNoteNode,
-    updateCanvasDocument,
     defaultTerminalProfileId,
     terminalFontSize,
     terminalDisplayMetrics,

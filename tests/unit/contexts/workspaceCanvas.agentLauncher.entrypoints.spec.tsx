@@ -54,7 +54,6 @@ function fixture(): LauncherParams {
     readAgentSettings: createAgentSettingsReader({ defaultProvider: 'codex' }),
     workspaceId: 'project-a',
     workspacePath: '/repo',
-    updateCanvasDocument: vi.fn(),
     onShowMessage: vi.fn(),
     createNodeForSession: vi.fn(async input => ({
       id: 'new-agent',
@@ -175,7 +174,7 @@ describe('shared Agent launcher entrypoints', () => {
       expect.objectContaining({
         createdNodeId: 'new-agent',
         targetSpaceId: 'space-a',
-        updateCanvasDocument: params.updateCanvasDocument,
+        updateCanvasDocument: expect.any(Function),
       }),
     )
     const assignOptions = vi.mocked(assignNodeToSpaceAndExpand).mock.calls[0][0]

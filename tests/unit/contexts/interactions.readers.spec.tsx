@@ -80,7 +80,6 @@ const assignMock = assignNodeToSpaceAndExpand as unknown as Mock
 
 const WIDE = { x: -5000, y: -5000, width: 10000, height: 10000 }
 const PANE_MENU = { kind: 'pane', x: 20, y: 20, flowX: 400, flowY: 300 } as const
-const updateCanvasDocument = vi.fn()
 const createNodeForSession = vi.fn(async () => CREATED)
 const createNoteNode = vi.fn(() => CREATED)
 const createWebsiteNode = vi.fn(() => CREATED)
@@ -209,7 +208,6 @@ describe('the node creation callbacks of the interactions', () => {
     isShiftPressedRef: { current: false },
     selectionDraftRef: { current: null },
     reactFlow,
-    updateCanvasDocument,
     workspaceId: 'workspace',
     workspacePath: '/repo',
     defaultTerminalProfileId: null,
@@ -341,7 +339,6 @@ describe('the shortcuts that create a node', () => {
     canvasRef,
     reactFlow,
     spaceNavigationAnchorIdRef: { current: null },
-    updateCanvasDocument,
     nodeCreation: { createNodeForSession, createNoteNode },
     launchAgentAtFlowPosition: vi.fn(),
     createSpaceFromSelectedNodes: vi.fn(),

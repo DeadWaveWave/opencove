@@ -22,7 +22,7 @@ import {
   resolveAgentExecutableOverride,
   resolveWorkspaceAgentLaunchBinding,
 } from './useWorkspaceAgentLaunch.shared'
-import type { UpdateCanvasDocument } from './useNodesStore.types'
+import { useCanvasNodeWriter } from './useCanvasNodeWriter'
 import {
   useCanvasDocumentCommands,
   useCanvasUiCommands,
@@ -36,7 +36,6 @@ interface UseAgentLauncherParams {
   workspaceId: string
   workspacePath: string
   environmentVariables?: Record<string, string>
-  updateCanvasDocument: UpdateCanvasDocument
   onShowMessage?: ShowWorkspaceCanvasMessage
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
   buildAgentNodeTitle: (
@@ -50,7 +49,6 @@ export function useWorkspaceCanvasAgentLauncher({
   workspaceId,
   workspacePath,
   environmentVariables,
-  updateCanvasDocument,
   onShowMessage,
   createNodeForSession,
   buildAgentNodeTitle,
@@ -66,6 +64,7 @@ export function useWorkspaceCanvasAgentLauncher({
   const readUi = useReadCanvasUi()
   const documentCommands = useCanvasDocumentCommands()
   const readDocument = useReadCanvasDocument()
+  const { updateCanvasDocument } = useCanvasNodeWriter()
   const { t } = useTranslation()
   const launching = useRef(false)
 

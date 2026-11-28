@@ -15,7 +15,6 @@ import type {
   SelectionDraftState,
   ShowWorkspaceCanvasMessage,
 } from '../types'
-import type { UpdateCanvasDocument } from './useNodesStore.types'
 
 export interface UseWorkspaceCanvasInteractionsParams {
   canvasRef: React.RefObject<HTMLDivElement | null>
@@ -27,7 +26,6 @@ export interface UseWorkspaceCanvasInteractionsParams {
   isShiftPressedRef: React.MutableRefObject<boolean>
   selectionDraftRef: React.MutableRefObject<SelectionDraftState | null>
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
-  updateCanvasDocument: UpdateCanvasDocument
   workspaceId: string
   workspacePath: string
   environmentVariables?: Record<string, string>

@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { createWebsiteNodeFromPaneContextMenu } from './useInteractions.paneNodeCreation'
 import type { UseWorkspaceCanvasInteractionsParams } from './useInteractions.types'
+import { useCanvasNodeWriter } from './useCanvasNodeWriter'
 import {
   useCanvasUiCommands,
   useReadCanvasDocument,
@@ -13,7 +14,6 @@ type WebsiteContextMenuParams = Pick<
   | 'browserDefaultMode'
   | 'createWebsiteNode'
   | 'standardWindowSizeBucket'
-  | 'updateCanvasDocument'
   | 'websiteWindowsEnabled'
 >
 
@@ -22,9 +22,9 @@ export function useWebsiteNodeContextMenuCreation({
   browserDefaultMode,
   createWebsiteNode,
   standardWindowSizeBucket,
-  updateCanvasDocument,
   websiteWindowsEnabled,
 }: WebsiteContextMenuParams): () => void {
+  const { updateCanvasDocument } = useCanvasNodeWriter()
   const ui = useCanvasUiCommands()
   const readDocument = useReadCanvasDocument()
   const readUi = useReadCanvasUi()

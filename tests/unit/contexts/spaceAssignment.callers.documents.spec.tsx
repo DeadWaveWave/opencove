@@ -294,7 +294,7 @@ describe('the push-away of a document opened from a terminal link, through the P
     await expectsWriterOfTheRender<WorkspaceDocumentNavigation>({
       assign: assignMock,
       seed: { nodes: [source], spaces: [sourceSpace] },
-      element: (_writer, _store, capture) => (
+      element: (_store, capture) => (
         <WorkspaceCanvasProviders
           nodeTypesParameters={{} as never}
           collapse={{ expandNode: vi.fn() } as never}

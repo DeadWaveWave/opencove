@@ -70,7 +70,6 @@ describe('a node drop through a handler of a workspace that is no longer shown',
             clearDragStartSpaceSelection: () => undefined,
           },
           exclusiveNodeDragAnchorIdRef: { current: null },
-          updateCanvasDocument: vi.fn(),
           onShowMessage: vi.fn(),
           hideWorktreeMismatchDropWarning: true,
         })

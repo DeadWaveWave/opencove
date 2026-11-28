@@ -6,7 +6,7 @@ import { resolveInnermostSpaceAtPoint } from '@contexts/space/application/spaceC
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type { ShowWorkspaceCanvasMessage } from '../types'
 import { useCanvasUiCommands, useReadCanvasDocument } from '../../../store/canvasStoreContext'
-import type { UpdateCanvasDocument } from './useNodesStore.types'
+import { useCanvasNodeWriter } from './useCanvasNodeWriter'
 
 function resolveNodeCenter(node: Node<TerminalNodeData>): { x: number; y: number } {
   return {
@@ -100,11 +100,9 @@ function moveNodesIntoChildSpaceDirectory(options: {
 
 export function useWorkspaceCanvasCreateChildSpace({
   workspacePath,
-  updateCanvasDocument,
   onShowMessage,
 }: {
   workspacePath: string
-  updateCanvasDocument: UpdateCanvasDocument
   onShowMessage?: ShowWorkspaceCanvasMessage
 }): {
   createChildSpaceInParent: (
@@ -114,6 +112,7 @@ export function useWorkspaceCanvasCreateChildSpace({
 } {
   const ui = useCanvasUiCommands()
   const readDocument = useReadCanvasDocument()
+  const { updateCanvasDocument } = useCanvasNodeWriter()
 
   const { t } = useTranslation()
 

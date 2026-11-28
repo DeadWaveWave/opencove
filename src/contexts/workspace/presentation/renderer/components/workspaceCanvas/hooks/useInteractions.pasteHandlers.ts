@@ -14,13 +14,12 @@ import { isEditableDomTarget } from '../domTargets'
 import { resolveWebsitePasteUrl } from '@shared/utils/websiteUrl'
 import { useWorkspaceCanvasImageImport } from './useCanvasImageImport'
 import { createWebsiteNodeAtFlowPosition } from './useInteractions.paneNodeCreation'
-import type { UpdateCanvasDocument } from './useNodesStore.types'
+import { useCanvasNodeWriter } from './useCanvasNodeWriter'
 
 export function useWorkspaceCanvasPasteHandlers({
   workspaceId,
   canvasRef,
   reactFlow,
-  updateCanvasDocument,
   onShowMessage,
   createImageNode,
   createWebsiteNode,
@@ -32,7 +31,6 @@ export function useWorkspaceCanvasPasteHandlers({
   workspaceId?: string
   canvasRef: React.RefObject<HTMLDivElement | null>
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
-  updateCanvasDocument: UpdateCanvasDocument
   onShowMessage?: ShowWorkspaceCanvasMessage
   createImageNode: (
     anchor: { x: number; y: number },
@@ -54,11 +52,11 @@ export function useWorkspaceCanvasPasteHandlers({
   handleCanvasDrop: React.DragEventHandler<HTMLDivElement>
 } {
   const readDocument = useReadCanvasDocument()
+  const { updateCanvasDocument } = useCanvasNodeWriter()
   const imageImport = useWorkspaceCanvasImageImport({
     workspaceId,
     canvasRef,
     reactFlow,
-    updateCanvasDocument,
     onShowMessage,
     createImageNode,
     standardWindowSizeBucket,

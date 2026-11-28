@@ -6,7 +6,7 @@ import {
 } from '@contexts/space/application/updateSpaceDirectory'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { useReadCanvasDocument } from '../../../store/canvasStoreContext'
-import type { UpdateCanvasDocument } from './useNodesStore.types'
+import { useCanvasNodeWriter } from './useCanvasNodeWriter'
 
 type UpdateSpaceDirectoryOptions = {
   markNodeDirectoryMismatch?: boolean
@@ -92,11 +92,9 @@ function applyDirectoryUpdateToNodes(
 
 export function useWorkspaceCanvasSpaceDirectoryOps({
   workspacePath,
-  updateCanvasDocument,
   closeNode,
 }: {
   workspacePath: string
-  updateCanvasDocument: UpdateCanvasDocument
   closeNode: (nodeId: string) => Promise<void>
 }): {
   updateSpaceDirectory: (
@@ -108,6 +106,7 @@ export function useWorkspaceCanvasSpaceDirectoryOps({
   closeNodesById: (nodeIds: string[]) => Promise<void>
 } {
   const readDocument = useReadCanvasDocument()
+  const { updateCanvasDocument } = useCanvasNodeWriter()
 
   const updateSpaceDirectory = useCallback(
     (spaceId: string, directoryPath: string, options?: UpdateSpaceDirectoryOptions) => {

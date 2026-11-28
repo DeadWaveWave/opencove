@@ -21,13 +21,12 @@ import {
   useReadCanvasDocument,
   useReadCanvasSelection,
 } from '../../../store/canvasStoreContext'
-import type { UpdateCanvasDocument } from './useNodesStore.types'
+import { useCanvasNodeWriter } from './useCanvasNodeWriter'
 export function useWorkspaceCanvasCreateSpace({
   workspaceId,
   workspacePath,
   standardWindowSizeBucket,
   reactFlow,
-  updateCanvasDocument,
   onShowMessage,
   createChildSpaceInParent,
 }: {
@@ -35,7 +34,6 @@ export function useWorkspaceCanvasCreateSpace({
   workspacePath: string
   standardWindowSizeBucket: StandardWindowSizeBucket
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
-  updateCanvasDocument: UpdateCanvasDocument
   onShowMessage?: ShowWorkspaceCanvasMessage
   createChildSpaceInParent: (
     parentSpaceId: string,
@@ -55,6 +53,7 @@ export function useWorkspaceCanvasCreateSpace({
   const ui = useCanvasUiCommands()
   const readSelection = useReadCanvasSelection()
   const readDocument = useReadCanvasDocument()
+  const { updateCanvasDocument } = useCanvasNodeWriter()
 
   const { t } = useTranslation()
   const lifetime = useMemo(

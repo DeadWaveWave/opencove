@@ -118,7 +118,6 @@ describe('workspace canvas space location zoom', () => {
         focusNodeTargetZoom: 0.75,
         reactFlow: reactFlow as never,
         nodes,
-        updateCanvasDocument: vi.fn(),
         spaces,
       })
 

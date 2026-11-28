@@ -293,7 +293,6 @@ describe('node selection writers in useWorkspaceCanvasInteractions', () => {
         defaultTerminalProfileId: null,
         terminalFontSize: 13,
         terminalDisplayMetrics: {} as never,
-        updateCanvasDocument: vi.fn(),
         standardWindowSizeBucket: 'regular',
         browserDefaultMode: 'headless' as never,
         createNodeForSession: vi.fn(async () => null),
@@ -607,13 +606,12 @@ describe('Space click selection in useWorkspaceCanvasSpaceDrag', () => {
         return harness.readStoreDocument().nodes
       },
     }
-    function useDragUnderTest({ workspaceId, writer }: CanvasNodeStoreContext) {
+    function useDragUnderTest({ workspaceId }: CanvasNodeStoreContext) {
       const flow = useReactFlow<Node<TerminalNodeData>>()
       return {
         drag: useWorkspaceCanvasSpaceDrag({
           workspaceId,
           reactFlow: { ...flow, screenToFlowPosition: point => point, getZoom: () => 1 },
-          updateCanvasDocument: writer.updateCanvasDocument,
         }),
         ...useStoreProbe(),
       }

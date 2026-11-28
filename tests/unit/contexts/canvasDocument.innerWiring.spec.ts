@@ -33,12 +33,11 @@ function propsOf(component: string): string {
 }
 
 describe('Inner hands the document writer of its context to the hooks that need it', () => {
-  // S7 (PR 8, Decision 8): the node store returns no writer. Inner takes it from context once, for
-  // the hooks that still receive it as a parameter (PR 9), and hands the explorer and the
-  // Providers none: they take it from context themselves.
-  it('takes the writer from useCanvasNodeWriter, not from the node store', () => {
-    expect(source).toMatch(/\bconst\s*\{\s*updateCanvasDocument\s*\}\s*=\s*useCanvasNodeWriter\(\)/)
-    expect(source).not.toMatch(/\bnodeStore\.(updateCanvasDocument|setNodes|upsertNode)\b/)
+  // S7 (PR 8 and 9, Decision 8): the node store returns no writer and no hook takes one as a
+  // parameter. Inner neither holds nor passes a writer: every hook takes it from context.
+  it('holds no writer and takes none from the node store', () => {
+    expect(source).not.toMatch(/\buseCanvasNodeWriter\b/)
+    expect(source).not.toMatch(/\b(updateCanvasDocument|setNodes|upsertNode)\b/)
   })
 
   it('hands the explorer and the Providers no writer', () => {
@@ -46,17 +45,16 @@ describe('Inner hands the document writer of its context to the hooks that need 
     expect(propsOf('WorkspaceCanvasProviders')).not.toMatch(/\b(setNodes|updateCanvasDocument)\b/)
   })
 
-  it('passes the writer to the shortcut actions', () => {
-    expect(callOf('useWorkspaceCanvasShortcutActions')).toMatch(/\bupdateCanvasDocument\b/)
+  it('passes the shortcut actions no writer', () => {
+    expect(callOf('useWorkspaceCanvasShortcutActions')).not.toMatch(/\bupdateCanvasDocument\b/)
   })
 
   // The collapse actions write the nodes and the Spaces in one update and read the document
   // themselves (#702, PR 9).
-  it('passes the writer to useCanvasCollapse and none of the retired channels', () => {
+  it('passes useCanvasCollapse no writer and none of the retired channels', () => {
     const call = callOf('useCanvasCollapse')
-    expect(call).toMatch(/\bupdateCanvasDocument\b/)
     expect(call).not.toMatch(
-      /\b(nodesRef|spacesRef|setNodes|onSpacesChange|onRequestPersistFlush)\b/,
+      /\b(updateCanvasDocument|nodesRef|spacesRef|setNodes|onSpacesChange|onRequestPersistFlush)\b/,
     )
   })
 
@@ -154,14 +152,13 @@ describe('Inner hands the document writer of its context to the hooks that need 
     )
   })
 
-  // The directory ops write nodes and Spaces in one update through the node store's writer, read
+  // The directory ops write nodes and Spaces in one update through the writer of its context, read
   // the document themselves and flush on their write (#702, PR 14); the node types read through
   // the reader of the canvas store provider, and the shortcut actions take no Spaces.
-  it('passes the directory ops the writer and none of the retired channels', () => {
+  it('passes the directory ops no writer and none of the retired channels', () => {
     const call = callOf('useWorkspaceCanvasSpaceDirectoryOps')
-    expect(call).toMatch(/\bupdateCanvasDocument\b/)
     expect(call).not.toMatch(
-      /\b(nodesRef|spacesRef|setNodes|onSpacesChange|onRequestPersistFlush)\b/,
+      /\b(updateCanvasDocument|nodesRef|spacesRef|setNodes|onSpacesChange|onRequestPersistFlush)\b/,
     )
   })
 

@@ -11,7 +11,6 @@ export function useWorkspaceCanvasAgentSupport({
   workspaceId,
   workspacePath,
   environmentVariables,
-  updateCanvasDocument,
   onShowMessage,
   createNodeForSession,
 }: {
@@ -28,9 +27,6 @@ export function useWorkspaceCanvasAgentSupport({
   workspaceId: Parameters<typeof useWorkspaceCanvasAgentLauncher>[0]['workspaceId']
   workspacePath: Parameters<typeof useWorkspaceCanvasAgentLauncher>[0]['workspacePath']
   environmentVariables?: Record<string, string>
-  updateCanvasDocument: Parameters<
-    typeof useWorkspaceCanvasAgentLauncher
-  >[0]['updateCanvasDocument']
   onShowMessage?: Parameters<typeof useWorkspaceCanvasAgentLauncher>[0]['onShowMessage']
   createNodeForSession: Parameters<
     typeof useWorkspaceCanvasAgentLauncher
@@ -66,7 +62,6 @@ export function useWorkspaceCanvasAgentSupport({
       workspaceId,
       workspacePath,
       environmentVariables,
-      updateCanvasDocument,
       onShowMessage,
       createNodeForSession,
       buildAgentNodeTitle,

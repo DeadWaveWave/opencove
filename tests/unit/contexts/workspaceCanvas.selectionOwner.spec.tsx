@@ -132,7 +132,6 @@ function renderSelectionOwner() {
         reactFlow,
         nodeDragSession: session,
         exclusiveNodeDragAnchorIdRef,
-        updateCanvasDocument: vi.fn(),
         hideWorktreeMismatchDropWarning: true,
       })
       return {

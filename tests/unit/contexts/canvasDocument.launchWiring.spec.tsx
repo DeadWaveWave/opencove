@@ -99,7 +99,6 @@ const PANE_MENU = { kind: 'pane', x: 20, y: 20, flowX: 400, flowY: 300 } as cons
 // dependencies change and a missing `documentCommands` shows.
 const nodesRef = { current: [] }
 const spacesRef = { current: [] }
-const setNodes = vi.fn()
 const onSpacesChange = vi.fn()
 const onShowMessage = vi.fn()
 const createNodeForSession = vi.fn()
@@ -255,7 +254,6 @@ describe('the writer that launch callers hand to the mount repair and the bindin
       readAgentSettings: () => DEFAULT_AGENT_SETTINGS,
       workspaceId: 'workspace',
       workspacePath: '/repo',
-      setNodes,
       onSpacesChange,
       onShowMessage,
       createNodeForSession,
@@ -285,7 +283,6 @@ describe('the writer that launch callers hand to the mount repair and the bindin
       terminalFontSize: 13,
       terminalDisplayMetrics: metrics,
       createNodeForSession,
-      setNodes,
       onSpacesChange,
       onShowMessage,
     } as unknown as Parameters<typeof useWorkspaceCanvasTerminalCreation>[0]
@@ -306,7 +303,6 @@ describe('the writer that launch callers hand to the mount repair and the bindin
       createNoteNode: vi.fn(),
       spacesRef,
       nodesRef,
-      setNodes,
       onSpacesChange,
       defaultTerminalProfileId: null,
       terminalFontSize: 13,

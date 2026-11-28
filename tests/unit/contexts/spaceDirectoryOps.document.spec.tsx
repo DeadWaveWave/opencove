@@ -16,7 +16,6 @@ import {
   sized,
   WORKSPACE_A as A,
   WORKSPACE_B as B,
-  type RuntimeCanvasContext,
 } from '../../support/agentRuntimeHarness'
 import { replaceSpacesInStore } from '../../support/workspaceCanvasStoreHarness'
 import { pixelNode } from './workspacePixelLayer.fixtures'
@@ -60,10 +59,9 @@ const note = (id: string): Node<TerminalNodeData> =>
 function renderOps(documents: Parameters<typeof renderInTwoWorkspaces>[1] = {}) {
   const closeNode = vi.fn(async () => undefined)
   const rendered = renderInTwoWorkspaces(
-    (context: RuntimeCanvasContext) =>
+    () =>
       useWorkspaceCanvasSpaceDirectoryOps({
         workspacePath: '/repo',
-        updateCanvasDocument: context.writer.updateCanvasDocument,
         closeNode,
       }),
     documents,
