@@ -11,7 +11,7 @@ import {
   assignNodeToSpaceAndExpand,
   findContainingSpaceByAnchor,
 } from './useInteractions.spaceAssignment'
-import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
+import { useCanvasNodeWriter } from './useCanvasNodeWriter'
 import {
   useCanvasDocumentCommands,
   useCanvasUiCommands,
@@ -21,7 +21,6 @@ import {
 
 interface UseTaskNodeCreationParams {
   workspaceId?: string
-  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
   standardWindowSizeBucket: StandardWindowSizeBucket
   createTaskNode: (
     anchor: Point,
@@ -36,7 +35,6 @@ interface UseTaskNodeCreationParams {
 
 export function useWorkspaceCanvasTaskNodeCreation({
   workspaceId,
-  updateCanvasDocument,
   standardWindowSizeBucket,
   createTaskNode,
 }: UseTaskNodeCreationParams): {
@@ -47,6 +45,7 @@ export function useWorkspaceCanvasTaskNodeCreation({
   const readUi = useReadCanvasUi()
   const readDocument = useReadCanvasDocument()
   const documentCommands = useCanvasDocumentCommands()
+  const { updateCanvasDocument } = useCanvasNodeWriter()
 
   const { t } = useTranslation()
   const createTaskAtAnchor = useCallback(

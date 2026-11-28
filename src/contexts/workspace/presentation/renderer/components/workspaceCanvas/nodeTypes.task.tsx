@@ -1,11 +1,10 @@
-import type { MutableRefObject, ReactElement } from 'react'
+import type { ReactElement } from 'react'
 import { useStore, type Node } from '@xyflow/react'
 import { TaskNode } from '../TaskNode'
 import { resolveTaskExecutionContext } from '@contexts/session/application/resolveTaskExecutionContext'
 import type { TerminalNodeData } from '../../types'
 import { useReadCanvasDocument } from '../../store/canvasStoreContext'
 import type { LabelColor } from '@shared/types/labelColor'
-import type { QuickUpdateTaskRequirement, QuickUpdateTaskTitle, UpdateTaskStatus } from './types'
 import { resolveAgentDisplayTitle } from '../../utils/agentTitle'
 import { useCanvasNodeCommands } from './nodeTypes.context'
 
@@ -14,30 +13,16 @@ export function WorkspaceCanvasTaskNodeType({
   id,
   nodePosition,
   workspacePath,
-  openTaskEditorRef,
-  quickUpdateTaskTitleRef,
-  quickUpdateTaskRequirementRef,
-  runTaskAgentRef,
-  resumeTaskAgentSessionRef,
-  removeTaskAgentSessionRecordRef,
-  updateTaskStatusRef,
 }: {
   data: TerminalNodeData
   id: string
   nodePosition: { x: number; y: number }
   workspacePath: string
-  openTaskEditorRef: MutableRefObject<(nodeId: string) => void>
-  quickUpdateTaskTitleRef: MutableRefObject<QuickUpdateTaskTitle>
-  quickUpdateTaskRequirementRef: MutableRefObject<QuickUpdateTaskRequirement>
-  runTaskAgentRef: MutableRefObject<(nodeId: string) => Promise<void>>
-  resumeTaskAgentSessionRef: MutableRefObject<
-    (taskNodeId: string, recordId: string) => Promise<void>
-  >
-  removeTaskAgentSessionRecordRef: MutableRefObject<(taskNodeId: string, recordId: string) => void>
-  updateTaskStatusRef: MutableRefObject<UpdateTaskStatus>
 }): ReactElement | null {
   const readDocument = useReadCanvasDocument()
-  const windowCommands = useCanvasNodeCommands().window
+  const commands = useCanvasNodeCommands()
+  const windowCommands = commands.window
+  const taskCommands = commands.task
   const linkedAgentNodeId = data.task?.linkedAgentNodeId ?? null
   const labelColor =
     (data as TerminalNodeData & { effectiveLabelColor?: LabelColor | null }).effectiveLabelColor ??
@@ -110,26 +95,26 @@ export function WorkspaceCanvasTaskNodeType({
         windowCommands.requestDelete([id])
       }}
       onOpenEditor={() => {
-        openTaskEditorRef.current(id)
+        taskCommands.openEditor(id)
       }}
       onQuickTitleSave={title => {
-        quickUpdateTaskTitleRef.current(id, title)
+        taskCommands.updateTitle(id, title)
       }}
       onQuickRequirementSave={requirement => {
-        quickUpdateTaskRequirementRef.current(id, requirement)
+        taskCommands.updateRequirement(id, requirement)
       }}
       onRunAgent={() => {
-        void runTaskAgentRef.current(id)
+        void taskCommands.runAgent(id)
       }}
       onResize={frame => windowCommands.resize(id, frame)}
       onStatusChange={status => {
-        updateTaskStatusRef.current(id, status)
+        taskCommands.updateStatus(id, status)
       }}
       onResumeAgentSession={recordId => {
-        void resumeTaskAgentSessionRef.current(id, recordId)
+        void taskCommands.resumeAgentSession(id, recordId)
       }}
       onRemoveAgentSessionRecord={recordId => {
-        removeTaskAgentSessionRecordRef.current(id, recordId)
+        taskCommands.removeAgentSessionRecord(id, recordId)
       }}
       onInteractionStart={options => {
         if (options?.selectNode !== false) {

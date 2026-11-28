@@ -104,15 +104,6 @@ const onSpacesChange = vi.fn()
 const onShowMessage = vi.fn()
 const createNodeForSession = vi.fn()
 const metrics = { fontSize: 13 }
-const noopRef = () => ({ current: vi.fn() })
-const taskRefs = {
-  runTaskAgentRef: noopRef(),
-  resumeTaskAgentSessionRef: noopRef(),
-  removeTaskAgentSessionRecordRef: noopRef(),
-  updateTaskStatusRef: noopRef(),
-  quickUpdateTaskTitleRef: noopRef(),
-  quickUpdateTaskRequirementRef: noopRef(),
-}
 
 function renderWithWorkspaces<Result>(useHook: () => Result) {
   let shown = 'workspace-a'
@@ -205,23 +196,21 @@ describe('the writer that launch callers hand to the mount repair and the bindin
   const taskParams = () =>
     ({
       onSpacesChange,
-      setNodes,
       createNodeForSession,
       buildAgentNodeTitle: () => 'Agent',
       launchAgentInNode: vi.fn(),
-      agentSettings: DEFAULT_AGENT_SETTINGS,
+      readAgentSettings: () => DEFAULT_AGENT_SETTINGS,
+      readTerminalDisplayCalibration: () => null,
       workspaceId: 'workspace',
       workspacePath: '/repo',
       taskTagOptions: [],
-      terminalDisplayMetrics: metrics,
-      ...taskRefs,
     }) as unknown as Parameters<typeof useWorkspaceCanvasTaskActions>[0]
   const stableTaskParams = taskParams()
 
   it('gives the task run its workspace commands', async () => {
     await expectsWriterOfTheRender({
       useHook: () => useWorkspaceCanvasTaskActions(stableTaskParams),
-      invoke: () => taskRefs.runTaskAgentRef.current('task'),
+      invoke: ({ hook }) => hook.runTaskAgent('task'),
       writerOf: () =>
         (lastCall(runTaskAgentAction)[1] as { updateSpaces: unknown } | undefined)?.updateSpaces,
     })
@@ -230,7 +219,7 @@ describe('the writer that launch callers hand to the mount repair and the bindin
   it('gives the task resume its workspace commands', async () => {
     await expectsWriterOfTheRender({
       useHook: () => useWorkspaceCanvasTaskActions(stableTaskParams),
-      invoke: () => taskRefs.resumeTaskAgentSessionRef.current('task', 'record'),
+      invoke: ({ hook }) => hook.resumeTaskAgentSession('task', 'record'),
       writerOf: () =>
         (lastCall(resumeTaskAgentSessionAction)[2] as { updateSpaces: unknown } | undefined)
           ?.updateSpaces,

@@ -213,7 +213,7 @@ describeWithElectronNativeModules('UI Claude relaunch during normal persistence'
             registerWorkspaceDocumentPersistFlush(() => persistence.requestPersistFlush()),
           )
           // The flush rides on the node write that asks for it, as the node store runs it.
-          const setCanvasNodes: TaskActionContext['setNodes'] = (update, options) => {
+          const setCanvasNodes: TaskActionContext['updateNodes'] = (update, options) => {
             const next = update(nodesRef.current)
             nodesRef.current = next
             if (options?.flush) {
@@ -250,7 +250,7 @@ describeWithElectronNativeModules('UI Claude relaunch during normal persistence'
                 readDocument,
                 updateCanvasDocument,
                 updateSpaces: vi.fn(),
-                setNodes: setCanvasNodes,
+                updateNodes: setCanvasNodes,
                 createNodeForSession: vi.fn(),
                 buildAgentNodeTitle: () => 'Claude',
                 launchAgentInNode: lifecycle.launchAgentInNode,

@@ -123,6 +123,23 @@ describe('the identity of the node commands and of the params value (Decision 3,
       },
     ],
     [
+      // The task run and resume read the settings when an action starts (PR 7): the launch fields,
+      // the font size of the geometry and the executable overrides of the provider.
+      'a settings change of the fields the task commands read at call time (terminalFontSize, agentEnvByProvider)',
+      () => {
+        useAppStore.setState(state => ({
+          agentSettings: {
+            ...state.agentSettings,
+            terminalFontSize: state.agentSettings.terminalFontSize + 3,
+            agentEnvByProvider: {
+              ...state.agentSettings.agentEnvByProvider,
+              codex: [{ id: 'row', key: 'FROM_SETTINGS', value: 'yes', enabled: true }],
+            },
+          },
+        }))
+      },
+    ],
+    [
       'a settings change of a field the commands read at call time (standardWindowSizeBucket)',
       () => {
         useAppStore.setState(state => ({
@@ -167,6 +184,7 @@ describe('the identity of the node commands and of the params value (Decision 3,
     expect(commandsOf().note).toBe(before.note)
     expect(commandsOf().website).toBe(before.website)
     expect(commandsOf().role).toBe(before.role)
+    expect(commandsOf().task).toBe(before.task)
   })
 
   it('changes with the workspace: the params value, every family, and the path', async () => {
@@ -184,6 +202,7 @@ describe('the identity of the node commands and of the params value (Decision 3,
     expect(after.commands.note).not.toBe(before.commands.note)
     expect(after.commands.website).not.toBe(before.commands.website)
     expect(after.commands.role).not.toBe(before.commands.role)
+    expect(after.commands.task).not.toBe(before.commands.task)
     expect(after.workspacePath).toBe(`/tmp/${B}`)
     // The other five preferences are the settings', and the settings are the app's.
     expect(after.onShowMessage).toBe(before.onShowMessage)
@@ -205,11 +224,13 @@ describe('the identity of the node commands and of the params value (Decision 3,
       }
     }
     expect(commandsOf().terminal).toBe(before.params.commands.terminal)
+    // The task launch reads the calibration when it starts (PR 7), so its family keeps identity too.
+    expect(commandsOf().task).toBe(before.params.commands.task)
   })
 
   // The path and the environment are bound by the render (the launch's mount and env): rare. The
-  // terminal and role commands launch with them.
-  it('changes the terminal and role families and the object, and no other family, with an environment edit', async () => {
+  // terminal, role and task commands launch with them.
+  it('changes the terminal, role and task families and the object, and no other family, with an environment edit', async () => {
     await mount()
     const before = commandsOf()
 
@@ -218,6 +239,7 @@ describe('the identity of the node commands and of the params value (Decision 3,
     expect(commandsOf()).not.toBe(before)
     expect(commandsOf().terminal).not.toBe(before.terminal)
     expect(commandsOf().role).not.toBe(before.role)
+    expect(commandsOf().task).not.toBe(before.task)
     expect(commandsOf().window).toBe(before.window)
     expect(commandsOf().note).toBe(before.note)
     expect(commandsOf().website).toBe(before.website)

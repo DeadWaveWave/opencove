@@ -4,11 +4,12 @@ import type { TerminalNodeData } from '../../../types'
 import type { WorkspaceCanvasProps } from '../types'
 import type {
   CanvasNoteCommands,
+  CanvasNodeCommands,
   CanvasRoleCommands,
+  CanvasTaskCommands,
   CanvasTerminalCommands,
   CanvasWebsiteCommands,
   CanvasWindowCommands,
-  WiredCanvasNodeCommands,
 } from '../nodeCommands'
 import { useCanvasFocusForInteraction } from './useCanvasFocusForInteraction'
 
@@ -49,6 +50,13 @@ export function useComposedCanvasNodeCommands({
   updateRoleInput,
   updateRoleProvider,
   runRole,
+  runTaskAgent,
+  resumeTaskAgentSession,
+  removeTaskAgentSessionRecord,
+  openTaskEditor,
+  updateTaskTitle,
+  updateTaskRequirement,
+  updateTaskStatus,
 }: {
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
   readAgentSettings: WorkspaceCanvasProps['readAgentSettings']
@@ -77,7 +85,14 @@ export function useComposedCanvasNodeCommands({
   updateRoleInput: CanvasRoleCommands['updateInput']
   updateRoleProvider: CanvasRoleCommands['updateProvider']
   runRole: CanvasRoleCommands['run']
-}): WiredCanvasNodeCommands {
+  runTaskAgent: CanvasTaskCommands['runAgent']
+  resumeTaskAgentSession: CanvasTaskCommands['resumeAgentSession']
+  removeTaskAgentSessionRecord: CanvasTaskCommands['removeAgentSessionRecord']
+  openTaskEditor: CanvasTaskCommands['openEditor']
+  updateTaskTitle: CanvasTaskCommands['updateTitle']
+  updateTaskRequirement: CanvasTaskCommands['updateRequirement']
+  updateTaskStatus: CanvasTaskCommands['updateStatus']
+}): CanvasNodeCommands {
   const focusForInteraction = useCanvasFocusForInteraction({ reactFlow, readAgentSettings })
 
   const windowCommands = useMemo<CanvasWindowCommands>(
@@ -146,8 +161,29 @@ export function useComposedCanvasNodeCommands({
     [runRole, updateRoleInput, updateRoleProvider],
   )
 
+  const task = useMemo<CanvasTaskCommands>(
+    () => ({
+      runAgent: runTaskAgent,
+      resumeAgentSession: resumeTaskAgentSession,
+      removeAgentSessionRecord: removeTaskAgentSessionRecord,
+      openEditor: openTaskEditor,
+      updateTitle: updateTaskTitle,
+      updateRequirement: updateTaskRequirement,
+      updateStatus: updateTaskStatus,
+    }),
+    [
+      openTaskEditor,
+      removeTaskAgentSessionRecord,
+      resumeTaskAgentSession,
+      runTaskAgent,
+      updateTaskRequirement,
+      updateTaskStatus,
+      updateTaskTitle,
+    ],
+  )
+
   return useMemo(
-    () => ({ window: windowCommands, terminal, note, website, role }),
-    [note, role, terminal, website, windowCommands],
+    () => ({ window: windowCommands, terminal, note, website, role, task }),
+    [note, role, task, terminal, website, windowCommands],
   )
 }

@@ -9,7 +9,6 @@ import {
   WorkspaceCanvasNodeTypesProvider,
 } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeTypes.context'
 import { useWorkspaceCanvasNodeTypes } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeTypes'
-import { useWorkspaceCanvasActionRefs } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useActionRefs'
 import { GenericPluginView } from '@contexts/plugins/presentation/renderer/GenericPluginView'
 import { ensurePersistedWorkspace } from '@contexts/workspace/presentation/renderer/utils/persistence/ensure'
 import { acceptPersistedStateSnapshot } from '@contexts/workspace/presentation/renderer/utils/persistence/accept'
@@ -105,9 +104,7 @@ const selected: string[] = []
 function Canvas() {
   const { workspaces, agentSettings } = useAppStore()
   const workspace = workspaces[0]
-  const actions = useWorkspaceCanvasActionRefs()
   const composed = useWorkspaceCanvasNodeTypes({
-    ...actions,
     workspacePath: workspace.path,
     agentProviderOrder: agentSettings.agentProviderOrder,
     defaultProvider: agentSettings.defaultProvider,

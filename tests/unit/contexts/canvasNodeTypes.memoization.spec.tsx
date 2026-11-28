@@ -5,7 +5,6 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
 import { DEFAULT_AGENT_SETTINGS } from '@contexts/settings/domain/agentSettings'
 import type { TerminalNodeData } from '@contexts/workspace/presentation/renderer/types'
-import { useWorkspaceCanvasActionRefs } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useActionRefs'
 import { useComposedCanvasNodeCommands } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodeCommands'
 import { useWorkspaceCanvasComposedNodeTypes } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodeTypes'
 import { useWorkspaceCanvasNodeTypes } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeTypes'
@@ -124,6 +123,16 @@ const implementations = {
   setWebsiteSession: vi.fn(),
   setWebsiteMode: vi.fn(),
   setWebsiteFullscreen: vi.fn(),
+  updateRoleInput: vi.fn(),
+  updateRoleProvider: vi.fn(),
+  runRole: vi.fn(async () => undefined),
+  runTaskAgent: vi.fn(async () => undefined),
+  resumeTaskAgentSession: vi.fn(async () => undefined),
+  removeTaskAgentSessionRecord: vi.fn(),
+  openTaskEditor: vi.fn(),
+  updateTaskTitle: vi.fn(),
+  updateTaskRequirement: vi.fn(),
+  updateTaskStatus: vi.fn(),
 }
 const onShowMessage = vi.fn()
 const readAgentSettings = () => DEFAULT_AGENT_SETTINGS
@@ -144,7 +153,6 @@ function Canvas() {
   store = useStoreApi()
   const viewport = useViewport()
   const [tick, setTick] = useState(0)
-  const actionRefs = useWorkspaceCanvasActionRefs()
   const reactFlow = useReactFlow<Node<TerminalNodeData>>()
   const commands = useComposedCanvasNodeCommands({
     reactFlow,
@@ -152,7 +160,6 @@ function Canvas() {
     ...implementations,
   })
   const composed = useWorkspaceCanvasComposedNodeTypes({
-    actionRefs,
     workspacePath: '/tmp/canvas-memoization',
     agentSettings: { ...DEFAULT_AGENT_SETTINGS },
     commands,

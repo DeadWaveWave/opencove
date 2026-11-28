@@ -5,7 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { useAppStore } from '../../src/app/renderer/shell/store/useAppStore'
 import type { TerminalClientDisplayCalibration } from '../../src/contexts/settings/domain/terminalDisplayCalibration'
 import { WorkspaceCanvas } from '../../src/contexts/workspace/presentation/renderer/components/WorkspaceCanvas'
-import type { WiredCanvasNodeCommands } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeCommands'
+import type { CanvasNodeCommands } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeCommands'
 import {
   useWorkspaceCanvasNodeTypeParameters,
   type WorkspaceCanvasNodeTypesParams,
@@ -176,7 +176,7 @@ export const B = 'workspace-b'
 export interface Seen {
   params: WorkspaceCanvasNodeTypesParams
   readSelection: () => { nodeIds: readonly string[] }
-  readUi: () => { nodeDeleteConfirmation: unknown }
+  readUi: () => { nodeDeleteConfirmation: unknown; taskEditor: unknown }
 }
 export const seen: Seen[] = []
 
@@ -192,7 +192,7 @@ function ParamsProbe(): null {
 reactFlowState.Probe = ParamsProbe
 
 export const latest = (): Seen => seen[seen.length - 1]!
-export const commandsOf = (): WiredCanvasNodeCommands => latest().params.commands
+export const commandsOf = (): CanvasNodeCommands => latest().params.commands
 
 export const PREFERENCE_KEYS = [
   'workspacePath',
@@ -404,3 +404,57 @@ export function installCanvasHarnessHooks(): void {
 export const reactFlow = reactFlowState
 /** What the scrollback scheduler was asked to write. */
 export const scheduledScrollbacks = scheduledScrollbacksState
+
+export interface AgentLaunch {
+  release: () => void
+  payloads: () => Array<Record<string, unknown>>
+}
+/**
+ * What the control surface answers to an agent launch (the role and task runs). `hold` keeps the
+ * launch pending until a case releases it, so a case can switch workspace or change a setting
+ * inside the await; `fail` rejects it. `payloads()` are the launch requests it received.
+ */
+export function stubAgentLaunch({
+  hold = false,
+  fail = false,
+  sessionId = 'runtime-agent',
+}: { hold?: boolean; fail?: boolean; sessionId?: string } = {}): AgentLaunch {
+  let release: () => void = () => undefined
+  const gate = hold
+    ? new Promise<void>(resolve => {
+        release = resolve
+      })
+    : Promise.resolve()
+  ipc.invoke.mockImplementation(async (request: { id: string }) => {
+    if (request.id === 'mount.list') {
+      return { mounts: [] }
+    }
+    if (request.id === 'session.launchAgent') {
+      await gate
+      if (fail) {
+        throw new Error('launch refused')
+      }
+      return {
+        sessionId,
+        profileId: null,
+        runtimeKind: 'posix',
+        effectiveModel: 'gpt-5.2-codex',
+        resumeSessionId: null,
+        executionContext: {
+          workingDirectory: '/tmp/work',
+          endpoint: { endpointId: 'local' },
+          mountId: null,
+        },
+      }
+    }
+    return undefined
+  })
+  return {
+    release: () => release(),
+    payloads: () =>
+      ipc.invoke.mock.calls
+        .map(call => call[0] as { id: string; payload: Record<string, unknown> })
+        .filter(request => request.id === 'session.launchAgent')
+        .map(request => request.payload),
+  }
+}

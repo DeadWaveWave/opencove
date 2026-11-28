@@ -4,7 +4,7 @@ import type { Node } from '@xyflow/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import { WorkspaceCanvas } from '../../../src/contexts/workspace/presentation/renderer/components/WorkspaceCanvas'
-import type { WiredCanvasNodeCommands } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeCommands'
+import type { CanvasNodeCommands } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeCommands'
 import {
   useWorkspaceCanvasNodeTypeParameters,
   type WorkspaceCanvasNodeTypesParams,
@@ -178,7 +178,7 @@ function ParamsProbe(): null {
 reactFlow.Probe = ParamsProbe
 
 const latest = (): Seen => seen[seen.length - 1]!
-const commandsOf = (): WiredCanvasNodeCommands => latest().params.commands
+const commandsOf = (): CanvasNodeCommands => latest().params.commands
 
 const onShowMessage = vi.fn()
 const readAgentSettings = () => useAppStore.getState().agentSettings
@@ -334,18 +334,18 @@ describe('each wired command has its own effect, through the canvas', () => {
   it.each([
     [
       'updateUrl',
-      (c: WiredCanvasNodeCommands) => c.website.updateUrl('w', 'https://other.example'),
+      (c: CanvasNodeCommands) => c.website.updateUrl('w', 'https://other.example'),
       { url: 'https://other.example' },
     ],
-    ['setPinned', (c: WiredCanvasNodeCommands) => c.website.setPinned('w', true), { pinned: true }],
+    ['setPinned', (c: CanvasNodeCommands) => c.website.setPinned('w', true), { pinned: true }],
     [
       'setSession',
-      (c: WiredCanvasNodeCommands) => c.website.setSession('w', 'profile', 'p1'),
+      (c: CanvasNodeCommands) => c.website.setSession('w', 'profile', 'p1'),
       { sessionMode: 'profile', profileId: 'p1' },
     ],
     [
       'setMode',
-      (c: WiredCanvasNodeCommands) => c.website.setMode('w', 'native'),
+      (c: CanvasNodeCommands) => c.website.setMode('w', 'native'),
       { browserMode: 'native' },
     ],
   ] as const)('website.%s writes its own field of the website', async (_name, call, expected) => {

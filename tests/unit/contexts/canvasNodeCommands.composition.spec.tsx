@@ -35,6 +35,13 @@ describe('the composition of the families (useComposedCanvasNodeCommands)', () =
       updateRoleInput: vi.fn(),
       updateRoleProvider: vi.fn(),
       runRole: vi.fn(async () => undefined),
+      runTaskAgent: vi.fn(async () => undefined),
+      resumeTaskAgentSession: vi.fn(async () => undefined),
+      removeTaskAgentSessionRecord: vi.fn(),
+      openTaskEditor: vi.fn(),
+      updateTaskTitle: vi.fn(),
+      updateTaskRequirement: vi.fn(),
+      updateTaskStatus: vi.fn(),
     }
   }
 
@@ -71,6 +78,7 @@ describe('the composition of the families (useComposedCanvasNodeCommands)', () =
     expect(result.current.note).toBe(first.note)
     expect(result.current.website).toBe(first.website)
     expect(result.current.role).toBe(first.role)
+    expect(result.current.task).toBe(first.task)
   })
 
   it.each([
@@ -99,6 +107,13 @@ describe('the composition of the families (useComposedCanvasNodeCommands)', () =
     ['updateRoleInput', 'role'],
     ['updateRoleProvider', 'role'],
     ['runRole', 'role'],
+    ['runTaskAgent', 'task'],
+    ['resumeTaskAgentSession', 'task'],
+    ['removeTaskAgentSessionRecord', 'task'],
+    ['openTaskEditor', 'task'],
+    ['updateTaskTitle', 'task'],
+    ['updateTaskRequirement', 'task'],
+    ['updateTaskStatus', 'task'],
   ] as const)('renews %s: its family and the object, and no other family', (name, family) => {
     const { result, rerender, base } = renderCommands()
     const first = result.current
@@ -106,7 +121,7 @@ describe('the composition of the families (useComposedCanvasNodeCommands)', () =
     rerender({ ...base, [name]: vi.fn() })
 
     expect(result.current).not.toBe(first)
-    for (const other of ['window', 'terminal', 'note', 'website', 'role'] as const) {
+    for (const other of ['window', 'terminal', 'note', 'website', 'role', 'task'] as const) {
       if (other === family) {
         expect(result.current[other], other).not.toBe(first[other])
       } else {
@@ -128,6 +143,13 @@ describe('the composition of the families (useComposedCanvasNodeCommands)', () =
     commands.role.updateInput('x', 'in')
     commands.role.updateProvider('x', 'opencode')
     await commands.role.run('x', 'override')
+    await commands.task.runAgent('x')
+    await commands.task.resumeAgentSession('x', 'rec')
+    commands.task.removeAgentSessionRecord('x', 'rec')
+    commands.task.openEditor('x')
+    commands.task.updateTitle('x', 'title')
+    commands.task.updateRequirement('x', 'req')
+    commands.task.updateStatus('x', 'done')
     commands.terminal.updateScrollback('x', 'out')
     commands.terminal.recordCommandRun('x', 'ls', 7)
     commands.terminal.clearAgentOverlay('x', 8)
@@ -146,6 +168,13 @@ describe('the composition of the families (useComposedCanvasNodeCommands)', () =
     expect(base.updateRoleInput).toHaveBeenCalledWith('x', 'in')
     expect(base.updateRoleProvider).toHaveBeenCalledWith('x', 'opencode')
     expect(base.runRole).toHaveBeenCalledWith('x', 'override')
+    expect(base.runTaskAgent).toHaveBeenCalledWith('x')
+    expect(base.resumeTaskAgentSession).toHaveBeenCalledWith('x', 'rec')
+    expect(base.removeTaskAgentSessionRecord).toHaveBeenCalledWith('x', 'rec')
+    expect(base.openTaskEditor).toHaveBeenCalledWith('x')
+    expect(base.updateTaskTitle).toHaveBeenCalledWith('x', 'title')
+    expect(base.updateTaskRequirement).toHaveBeenCalledWith('x', 'req')
+    expect(base.updateTaskStatus).toHaveBeenCalledWith('x', 'done')
     expect(base.updateScrollback).toHaveBeenCalledWith('x', 'out')
     expect(base.recordCommandRun).toHaveBeenCalledWith('x', 'ls', 7)
     expect(base.clearAgentOverlay).toHaveBeenCalledWith('x', 8)

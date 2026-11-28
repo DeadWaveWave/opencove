@@ -2,11 +2,10 @@ import type { ComponentProps, MutableRefObject, RefObject } from 'react'
 import type { Node } from '@xyflow/react'
 import { describe, expect, expectTypeOf, it } from 'vitest'
 import type { TerminalNodeData } from '../../types'
+import type * as CommandsModule from './nodeCommands'
 import type { CanvasNodeCommands } from './nodeCommands'
-import type {
-  TransitionalNodeActionRefs,
-  WorkspaceCanvasNodeTypesParams,
-} from './nodeTypes.context'
+import type * as ContextModule from './nodeTypes.context'
+import type { WorkspaceCanvasNodeTypesParams } from './nodeTypes.context'
 import type { WorkspaceCanvasDocumentNodeType } from './nodeTypes.document'
 import type { WorkspaceCanvasFolderNodeType } from './nodeTypes.folder'
 import type { WorkspaceCanvasImageNodeType } from './nodeTypes.image'
@@ -78,10 +77,21 @@ type RetiredTerminalRef =
 /** The 3 refs that the role family replaced (PR 6). */
 type RetiredRoleRef = 'updateRoleProviderRef' | 'updateRoleInputRef' | 'runRoleRef'
 
+/** The 7 refs that the task family replaced (PR 7), the last of the action refs. */
+type RetiredTaskRef =
+  | 'openTaskEditorRef'
+  | 'quickUpdateTaskTitleRef'
+  | 'quickUpdateTaskRequirementRef'
+  | 'runTaskAgentRef'
+  | 'resumeTaskAgentSessionRef'
+  | 'removeTaskAgentSessionRecordRef'
+  | 'updateTaskStatusRef'
+
 /** The 12 refs and the 3 callbacks that the window, note and website families replaced (PR 4). */
 type RetiredField =
   | RetiredTerminalRef
   | RetiredRoleRef
+  | RetiredTaskRef
   | 'selectNode'
   | 'convertNoteToTask'
   | 'setNodeLabelColorOverride'
@@ -106,7 +116,7 @@ type WindowCallbackProp =
   | 'normalizeViewportForTerminalInteractionRef'
   | 'requestNodeDeleteRef'
 
-describe('the node types context (#647 S7, PRs 4 to 6)', () => {
+describe('the node types context (#647 S7, PRs 4 to 7)', () => {
   it('finds a ref wherever it is, so the checks below cannot pass vacuously', () => {
     expectTypeOf<RefPaths<{ a: { b: MutableRefObject<number> } }>>().toEqualTypeOf<'a.b'>()
     expectTypeOf<RefPaths<{ a: RefObject<number | null>; f: () => void }>>().toEqualTypeOf<'a'>()
@@ -143,28 +153,38 @@ describe('the node types context (#647 S7, PRs 4 to 6)', () => {
     expectTypeOf<RefPaths<WorkspaceCanvasNodeTypesParams['commands']>>().toEqualTypeOf<never>()
   })
 
-  it('holds no ref in the params but the transitional ones, which PR 7 retires', () => {
-    // Exactly this set: a ref of another family cannot return, and a transitional one cannot stay
-    // after its family moved (the set is replaced by `never` in PR 7).
-    expectTypeOf<RefPaths<WorkspaceCanvasNodeTypesParams>>().toEqualTypeOf<
-      keyof TransitionalNodeActionRefs
-    >()
+  it('holds no ref in the node types params, at any depth (#647 acceptance)', () => {
+    expectTypeOf<RefPaths<WorkspaceCanvasNodeTypesParams>>().toEqualTypeOf<never>()
   })
 
-  it('lists the transitional refs by name, so that a new one cannot join them unnoticed', () => {
-    expectTypeOf<keyof TransitionalNodeActionRefs>().toEqualTypeOf<
-      // Task (PR 7)
-      | 'openTaskEditorRef'
-      | 'quickUpdateTaskTitleRef'
-      | 'quickUpdateTaskRequirementRef'
-      | 'runTaskAgentRef'
-      | 'resumeTaskAgentSessionRef'
-      | 'removeTaskAgentSessionRecordRef'
-      | 'updateTaskStatusRef'
+  it('has no transitional shape left: the bag of refs and the partial command type are gone', () => {
+    // The directive of each line is consumed only by the error that its name is not exported: the
+    // line is a type alias of a namespace import, so nothing else can fail on it. A name that came
+    // back would leave the directive unused, which `pnpm check` fails.
+    // @ts-expect-error -- TransitionalNodeActionRefs is gone; the params hold `commands` only (#647 S7)
+    type GoneTransitionalRefs = ContextModule.TransitionalNodeActionRefs
+    // @ts-expect-error -- WiredCanvasNodeCommands is gone; the commands are `CanvasNodeCommands` (#647 S7)
+    type GoneWiredCommands = CommandsModule.WiredCanvasNodeCommands
+    // A name that does not exist resolves to `any`: both are, and an alias of a real type is not.
+    expectTypeOf<GoneTransitionalRefs>().toBeAny()
+    expectTypeOf<GoneWiredCommands>().toBeAny()
+    // The params are exactly the preferences and the commands.
+    expectTypeOf<keyof WorkspaceCanvasNodeTypesParams>().toEqualTypeOf<
+      | 'workspacePath'
+      | 'onShowMessage'
+      | 'agentProviderOrder'
+      | 'defaultProvider'
+      | 'browserDefaultMode'
+      | 'browserSearchEngine'
+      | 'commands'
     >()
+    expectTypeOf<WorkspaceCanvasNodeTypesParams['commands']>().toEqualTypeOf<CanvasNodeCommands>()
   })
 
-  it('gives no terminal, role, note, website, document, folder, image or plugin component a ref prop', () => {
+  it('gives no node type component a ref prop', () => {
+    expectTypeOf<
+      RefPaths<ComponentProps<typeof WorkspaceCanvasTaskNodeType>>
+    >().toEqualTypeOf<never>()
     expectTypeOf<
       RefPaths<ComponentProps<typeof WorkspaceCanvasTerminalNodeType>>
     >().toEqualTypeOf<never>()
@@ -285,6 +305,49 @@ describe('the node types context (#647 S7, PRs 4 to 6)', () => {
     >()
   })
 
+  it('pins each retired task ref by key too, one by one, so one cannot hide behind another', () => {
+    expectTypeOf<
+      'openTaskEditorRef' extends keyof WorkspaceCanvasNodeTypesParams ? true : false
+    >().toEqualTypeOf<false>()
+    expectTypeOf<
+      'quickUpdateTaskTitleRef' extends keyof WorkspaceCanvasNodeTypesParams ? true : false
+    >().toEqualTypeOf<false>()
+    expectTypeOf<
+      'quickUpdateTaskRequirementRef' extends keyof WorkspaceCanvasNodeTypesParams ? true : false
+    >().toEqualTypeOf<false>()
+    expectTypeOf<
+      'runTaskAgentRef' extends keyof WorkspaceCanvasNodeTypesParams ? true : false
+    >().toEqualTypeOf<false>()
+    expectTypeOf<
+      'resumeTaskAgentSessionRef' extends keyof WorkspaceCanvasNodeTypesParams ? true : false
+    >().toEqualTypeOf<false>()
+    expectTypeOf<
+      'removeTaskAgentSessionRecordRef' extends keyof WorkspaceCanvasNodeTypesParams ? true : false
+    >().toEqualTypeOf<false>()
+    expectTypeOf<
+      'updateTaskStatusRef' extends keyof WorkspaceCanvasNodeTypesParams ? true : false
+    >().toEqualTypeOf<false>()
+    // None of them is a prop of the task component either, and it takes no settings.
+    expectTypeOf<
+      Extract<keyof ComponentProps<typeof WorkspaceCanvasTaskNodeType>, RetiredTaskRef>
+    >().toEqualTypeOf<never>()
+  })
+
+  it('has a task family of the seven commands the task window calls', () => {
+    expectTypeOf<keyof CanvasNodeCommands['task']>().toEqualTypeOf<
+      | 'runAgent'
+      | 'resumeAgentSession'
+      | 'removeAgentSessionRecord'
+      | 'openEditor'
+      | 'updateTitle'
+      | 'updateRequirement'
+      | 'updateStatus'
+    >()
+    expectTypeOf<WorkspaceCanvasNodeTypesParams['commands']['task']>().toEqualTypeOf<
+      CanvasNodeCommands['task']
+    >()
+  })
+
   it('names none of the retired action refs', () => {
     const params = {} as WorkspaceCanvasNodeTypesParams
     // @ts-expect-error -- copyAgentLastMessageRef is retired; call commands.terminal.copyLastAgentMessage (#647 S7)
@@ -309,6 +372,20 @@ describe('the node types context (#647 S7, PRs 4 to 6)', () => {
     expect(params.updateRoleInputRef).toBeUndefined()
     // @ts-expect-error -- runRoleRef is retired; call commands.role.run (#647 S7)
     expect(params.runRoleRef).toBeUndefined()
+    // @ts-expect-error -- openTaskEditorRef is retired; call commands.task.openEditor (#647 S7)
+    expect(params.openTaskEditorRef).toBeUndefined()
+    // @ts-expect-error -- quickUpdateTaskTitleRef is retired; call commands.task.updateTitle (#647 S7)
+    expect(params.quickUpdateTaskTitleRef).toBeUndefined()
+    // @ts-expect-error -- quickUpdateTaskRequirementRef is retired; call commands.task.updateRequirement (#647 S7)
+    expect(params.quickUpdateTaskRequirementRef).toBeUndefined()
+    // @ts-expect-error -- runTaskAgentRef is retired; call commands.task.runAgent (#647 S7)
+    expect(params.runTaskAgentRef).toBeUndefined()
+    // @ts-expect-error -- resumeTaskAgentSessionRef is retired; call commands.task.resumeAgentSession (#647 S7)
+    expect(params.resumeTaskAgentSessionRef).toBeUndefined()
+    // @ts-expect-error -- removeTaskAgentSessionRecordRef is retired; call commands.task.removeAgentSessionRecord (#647 S7)
+    expect(params.removeTaskAgentSessionRecordRef).toBeUndefined()
+    // @ts-expect-error -- updateTaskStatusRef is retired; call commands.task.updateStatus (#647 S7)
+    expect(params.updateTaskStatusRef).toBeUndefined()
     // @ts-expect-error -- selectNode is retired; call commands.window.select (#647 S7)
     expect(params.selectNode).toBeUndefined()
     // @ts-expect-error -- convertNoteToTask is retired; call commands.note.convertToTask (#647 S7)

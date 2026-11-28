@@ -12,7 +12,7 @@ import {
   scheduledScrollbacks,
 } from '../../support/canvasNodeCommandsHarness'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
-import type { WiredCanvasNodeCommands } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeCommands'
+import type { CanvasNodeCommands } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeCommands'
 import {
   readWorkspaceDocument,
   registerWorkspaceDocumentPersistFlush,
@@ -26,9 +26,9 @@ import { useScrollbackStore } from '../../../src/contexts/workspace/presentation
 installCanvasHarnessHooks()
 
 describe('a command called with an id the document no longer holds writes nothing about it', () => {
-  // The window, terminal, note, website and role families, one row per command. `clearSelection` has no id.
+  // The window, terminal, note, website, role and task families, one row per command. `clearSelection` has no id.
   // Every row also reads the selection and the React Flow flag: they stay as they were (Invariant 2).
-  const table: Array<[string, (commands: WiredCanvasNodeCommands) => unknown]> = [
+  const table: Array<[string, (commands: CanvasNodeCommands) => unknown]> = [
     ['window.select', c => c.window.select('gone')],
     ['window.select with toggle', c => c.window.select('gone', { toggle: true })],
     ['window.close', c => c.window.close('gone')],
@@ -56,6 +56,14 @@ describe('a command called with an id the document no longer holds writes nothin
     ['role.updateProvider', c => c.role.updateProvider('gone', 'opencode')],
     ['role.run', c => c.role.run('gone')],
     ['role.run with an input', c => c.role.run('gone', 'typed')],
+    // The task family (PR 7): nothing is written, flushed, opened or launched for the window.
+    ['task.runAgent', c => c.task.runAgent('gone')],
+    ['task.resumeAgentSession', c => c.task.resumeAgentSession('gone', 'record')],
+    ['task.removeAgentSessionRecord', c => c.task.removeAgentSessionRecord('gone', 'record')],
+    ['task.openEditor', c => c.task.openEditor('gone')],
+    ['task.updateTitle', c => c.task.updateTitle('gone', 'title')],
+    ['task.updateRequirement', c => c.task.updateRequirement('gone', 'requirement')],
+    ['task.updateStatus', c => c.task.updateStatus('gone', 'done')],
     ['note.updateText', c => c.note.updateText('gone', 'text')],
     ['note.renameTitle', c => c.note.renameTitle('gone', 'title')],
     ['note.convertToTask', c => c.note.convertToTask('gone')],
@@ -110,6 +118,7 @@ describe('a command called with an id the document no longer holds writes nothin
     expect(readSelection().nodeIds).toEqual(['a'])
     expect(reactFlow.state.nodesSelectionActive).toBe(true)
     expect(readUi().nodeDeleteConfirmation).toBeNull()
+    expect(readUi().taskEditor).toBeNull()
     expect(reactFlow.setCenter).not.toHaveBeenCalled()
     // Outside the document: no IPC, and no scrollback stored or scheduled for the id.
     for (const [channel, mock] of Object.entries(ipc)) {

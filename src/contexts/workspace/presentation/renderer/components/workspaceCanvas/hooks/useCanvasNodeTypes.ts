@@ -1,14 +1,12 @@
 import { useState } from 'react'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
-import type { WiredCanvasNodeCommands } from '../nodeCommands'
-import type { WorkspaceCanvasActionRefs } from './useActionRefs'
+import type { CanvasNodeCommands } from '../nodeCommands'
 import { useWorkspaceCanvasNodeTypes } from '../nodeTypes'
 
 export function useWorkspaceCanvasComposedNodeTypes({
   workspacePath,
   onShowMessage,
   agentSettings,
-  actionRefs,
   commands,
 }: {
   workspacePath: string
@@ -17,8 +15,7 @@ export function useWorkspaceCanvasComposedNodeTypes({
     AgentSettings,
     'agentProviderOrder' | 'defaultProvider' | 'browserDefaultMode' | 'browserSearchEngine'
   >
-  actionRefs: WorkspaceCanvasActionRefs
-  commands: WiredCanvasNodeCommands
+  commands: CanvasNodeCommands
 }) {
   // The settings can arrive as a new object with equal preferences (a Worker sync): the array of
   // the order keeps its identity while its content is equal (Decision 14).
@@ -31,7 +28,6 @@ export function useWorkspaceCanvasComposedNodeTypes({
     browserDefaultMode: agentSettings.browserDefaultMode,
     browserSearchEngine: agentSettings.browserSearchEngine,
     commands,
-    ...actionRefs,
   })
 }
 

@@ -99,7 +99,6 @@
     "src/contexts/settings/infrastructure/homeWorker/homeWorkerConfig.ts": 1,
     "src/contexts/workspace/domain/workspaceNodePlacement.ts": 1,
     "src/contexts/workspace/presentation/renderer/components/terminalNode/constants.ts": 1,
-    "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/index.ts": 1,
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useTaskActions.agentSession.ts": 2,
     "src/contexts/workspace/presentation/renderer/types.ts": 4,
     "src/contexts/workspace/presentation/renderer/utils/persistence.ts": 2,

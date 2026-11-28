@@ -61,7 +61,7 @@ export interface CanvasRoleCommands {
   run(nodeId: string, inputOverride?: string): Promise<void>
 }
 
-interface CanvasTaskCommands {
+export interface CanvasTaskCommands {
   runAgent(nodeId: string): Promise<void>
   resumeAgentSession(taskNodeId: string, recordId: string): Promise<void>
   removeAgentSessionRecord(taskNodeId: string, recordId: string): void
@@ -71,7 +71,7 @@ interface CanvasTaskCommands {
   updateStatus(nodeId: string, status: TaskRuntimeStatus): void
 }
 
-/** The whole surface, as the type test reads it (no ref, no command that takes a node object). */
+/** The whole surface: six families, all wired (S7 of #647). No ref, and no command that takes a node object. */
 export interface CanvasNodeCommands {
   readonly window: CanvasWindowCommands
   readonly terminal: CanvasTerminalCommands
@@ -80,13 +80,3 @@ export interface CanvasNodeCommands {
   readonly role: CanvasRoleCommands
   readonly task: CanvasTaskCommands
 }
-
-/**
- * The families that are wired so far: window, note and website (PR 4), terminal (PR 5) and role
- * (PR 6). The task family joins in PR 7, removing its refs from the node types params; this alias
- * is replaced by `CanvasNodeCommands` then.
- */
-export type WiredCanvasNodeCommands = Pick<
-  CanvasNodeCommands,
-  'window' | 'terminal' | 'note' | 'website' | 'role'
->

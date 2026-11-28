@@ -1,75 +1,62 @@
 import { useWorkspaceCanvasTaskSupport } from './useCanvasTaskSupport'
 import { useWorkspaceCanvasTaskWindows } from './useCanvasTaskWindows'
 
+type TaskSupportParams = Parameters<typeof useWorkspaceCanvasTaskSupport>[0]
+type TaskWindowsParams = Parameters<typeof useWorkspaceCanvasTaskWindows>[0]
+
+/**
+ * The task side of the canvas: the actions, the editor and the creation of task windows. The task
+ * family's commands come out of it (`runTaskAgent`, `openTaskEditor` and the rest); the canvas
+ * composes them into its command object (S7 of #647).
+ */
 export function useWorkspaceCanvasTaskUi({
   agentTaskTagOptions,
-  updateCanvasDocument,
-  setNodes,
+  readAgentSettings,
+  readTerminalDisplayCalibration,
   createNodeForSession,
   buildAgentNodeTitle,
   launchAgentInNode,
-  agentSettings,
   workspaceId,
   workspacePath,
   environmentVariables,
-  actionRefs,
-  terminalDisplayMetrics,
   standardWindowSizeBucket,
   createTaskNode,
   closeNode,
 }: {
-  agentTaskTagOptions: Parameters<typeof useWorkspaceCanvasTaskSupport>[0]['agentTaskTagOptions']
-  updateCanvasDocument: Parameters<typeof useWorkspaceCanvasTaskSupport>[0]['updateCanvasDocument']
-  setNodes: Parameters<typeof useWorkspaceCanvasTaskSupport>[0]['setNodes']
-  createNodeForSession: Parameters<typeof useWorkspaceCanvasTaskSupport>[0]['createNodeForSession']
-  buildAgentNodeTitle: Parameters<typeof useWorkspaceCanvasTaskSupport>[0]['buildAgentNodeTitle']
-  launchAgentInNode: Parameters<typeof useWorkspaceCanvasTaskSupport>[0]['launchAgentInNode']
-  agentSettings: Parameters<typeof useWorkspaceCanvasTaskSupport>[0]['agentSettings']
-  workspaceId: Parameters<typeof useWorkspaceCanvasTaskSupport>[0]['workspaceId']
-  workspacePath: Parameters<typeof useWorkspaceCanvasTaskSupport>[0]['workspacePath']
+  agentTaskTagOptions: TaskSupportParams['agentTaskTagOptions']
+  readAgentSettings: TaskSupportParams['readAgentSettings']
+  readTerminalDisplayCalibration: TaskSupportParams['readTerminalDisplayCalibration']
+  createNodeForSession: TaskSupportParams['createNodeForSession']
+  buildAgentNodeTitle: TaskSupportParams['buildAgentNodeTitle']
+  launchAgentInNode: TaskSupportParams['launchAgentInNode']
+  workspaceId: TaskSupportParams['workspaceId']
+  workspacePath: TaskSupportParams['workspacePath']
   environmentVariables?: Record<string, string>
-  terminalDisplayMetrics: Parameters<
-    typeof useWorkspaceCanvasTaskSupport
-  >[0]['terminalDisplayMetrics']
-  actionRefs: Parameters<typeof useWorkspaceCanvasTaskSupport>[0]['actionRefs'] &
-    Parameters<typeof useWorkspaceCanvasTaskWindows>[0]['actionRefs']
-  standardWindowSizeBucket: Parameters<
-    typeof useWorkspaceCanvasTaskWindows
-  >[0]['standardWindowSizeBucket']
-  createTaskNode: Parameters<typeof useWorkspaceCanvasTaskWindows>[0]['createTaskNode']
-  closeNode: Parameters<typeof useWorkspaceCanvasTaskWindows>[0]['closeNode']
+  standardWindowSizeBucket: TaskWindowsParams['standardWindowSizeBucket']
+  createTaskNode: TaskWindowsParams['createTaskNode']
+  closeNode: TaskWindowsParams['closeNode']
 }): ReturnType<typeof useWorkspaceCanvasTaskSupport> &
   ReturnType<typeof useWorkspaceCanvasTaskWindows> {
-  const { taskTagOptions, suggestTaskTitle } = useWorkspaceCanvasTaskSupport({
+  const taskSupport = useWorkspaceCanvasTaskSupport({
     agentTaskTagOptions,
-    updateCanvasDocument,
-    setNodes,
+    readAgentSettings,
+    readTerminalDisplayCalibration,
     createNodeForSession,
     buildAgentNodeTitle,
     launchAgentInNode,
-    agentSettings,
     workspaceId,
     workspacePath,
     environmentVariables,
-    actionRefs,
-    terminalDisplayMetrics,
   })
 
   const taskWindows = useWorkspaceCanvasTaskWindows({
     workspaceId,
-    taskTagOptions,
-    setNodes,
-    updateCanvasDocument,
-    suggestTaskTitle,
+    taskTagOptions: taskSupport.taskTagOptions,
+    suggestTaskTitle: taskSupport.suggestTaskTitle,
     standardWindowSizeBucket,
     createTaskNode,
     closeNode,
-    actionRefs,
   })
 
-  return {
-    taskTagOptions,
-    suggestTaskTitle,
-    ...taskWindows,
-  }
+  return { ...taskSupport, ...taskWindows }
 }

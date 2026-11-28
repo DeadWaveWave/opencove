@@ -13,6 +13,7 @@ import type { CanvasSelectionCommands } from '../../../src/contexts/workspace/pr
 import type { CanvasUiCommands } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStore.ui'
 import { createCanvasDocumentHarness } from '../../support/canvasDocumentHarness'
 import { seedWorkspaceCanvasStore } from '../../support/workspaceCanvasStoreHarness'
+import { readWorkspaceDocument } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import {
   CanvasStoreProvider,
   useCanvasSelectionCommands,
@@ -333,21 +334,19 @@ describe('task editor through the canvas store', () => {
 
   function setupEditor(suggestTaskTitle: () => Promise<never>) {
     const wrapper = createWrapper('workspace-a')
-    const openTaskEditorRef = { current: (_nodeId: string) => undefined as void }
-    const setNodes = vi.fn()
     // The editor reads the node from the document: it is seeded into the store.
     seedWorkspaceCanvasStore({ workspaceId: 'workspace-a', nodes: [TASK_NODE] })
     const hook = renderHook(
-      () =>
-        useWorkspaceCanvasTaskEditor({
-          setNodes,
-          suggestTaskTitle,
-          taskTagOptions: [],
-          openTaskEditorRef,
-        }),
+      () => useWorkspaceCanvasTaskEditor({ suggestTaskTitle, taskTagOptions: [] }),
       { wrapper: wrapper.Wrapper },
     )
-    return { wrapper, hook, openTaskEditorRef, setNodes }
+    // The task family's `openEditor`, as the canvas composes it into its commands (S7, PR 7).
+    const openTaskEditorRef = {
+      get current() {
+        return hook.result.current.openTaskEditor
+      },
+    }
+    return { wrapper, hook, openTaskEditorRef }
   }
 
   it('opens through the store and closes through the close guard', () => {
@@ -384,7 +383,7 @@ describe('task editor through the canvas store', () => {
           resolveSuggestion = resolve
         }),
     )
-    const { wrapper, openTaskEditorRef, hook, setNodes } = setupEditor(suggestTaskTitle)
+    const { wrapper, openTaskEditorRef, hook } = setupEditor(suggestTaskTitle)
 
     act(() => openTaskEditorRef.current('task-1'))
     act(() =>
@@ -408,7 +407,10 @@ describe('task editor through the canvas store', () => {
     })
 
     expect(wrapper.recorder.current().readUi().taskEditor).toBeNull()
-    expect(setNodes).toHaveBeenCalledOnce()
+    // The save wrote the task once, with the generated title, into the document of its workspace.
+    expect(
+      readWorkspaceDocument('workspace-a')!.nodes.find(node => node.id === 'task-1'),
+    ).toMatchObject({ data: { title: 'Generated' } })
   })
 
   it('does not reopen the editor when a title generation fails after the editor was closed', async () => {

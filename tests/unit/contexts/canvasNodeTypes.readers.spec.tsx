@@ -4,7 +4,6 @@ import { ReactFlowProvider } from '@xyflow/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
-import { useWorkspaceCanvasActionRefs } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useActionRefs'
 import { useWorkspaceCanvasNodeTypes } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeTypes'
 import { WorkspaceCanvasNodeTypesProvider } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeTypes.context'
 import type { WorkspaceSpaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
@@ -106,9 +105,7 @@ function Canvas() {
   renders += 1
   const [, setTick] = useState(0)
   tick = () => setTick(value => value + 1)
-  const actions = useWorkspaceCanvasActionRefs()
   const composed = useWorkspaceCanvasNodeTypes({
-    ...actions,
     workspacePath: '/repo',
     agentProviderOrder: DEFAULT_AGENT_SETTINGS.agentProviderOrder,
     defaultProvider: DEFAULT_AGENT_SETTINGS.defaultProvider,

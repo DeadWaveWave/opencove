@@ -159,12 +159,12 @@ it.each(
     const persistFlush = vi.fn()
     const taskContext = {
       readDocument: f.readDocument,
-      setNodes: ((updater, options) => {
+      updateNodes: ((updater, options) => {
         if (options?.flush) {
           persistFlush()
         }
         f.setNodes(updater, options)
-      }) as TaskActionContext['setNodes'],
+      }) as TaskActionContext['updateNodes'],
       workspaceId: 'workspace',
       workspacePath: '/repo',
       agentSettings: DEFAULT_AGENT_SETTINGS,

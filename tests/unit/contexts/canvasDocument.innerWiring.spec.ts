@@ -83,6 +83,22 @@ describe('Inner hands the document writer of its node store to the hooks that ne
     )
   })
 
+  // The task UI takes the writer from the context, and reads the settings and the calibration
+  // through their readers when an action starts (S7, PR 7): Inner hands it the two readers, and no
+  // writer, no settings object, no geometry computed at render and no action ref. The render
+  // values are the tag options of the editor's menu and the window size of a new task.
+  it('passes the task UI the readers, and no writer, setting, geometry or action ref', () => {
+    const call = callOf('useWorkspaceCanvasTaskUi')
+    expect(call).toMatch(/\breadAgentSettings\b/)
+    expect(call).toMatch(/\breadTerminalDisplayCalibration\b/)
+    const withoutRenderValues = call
+      .replace('agentTaskTagOptions: agentSettings.taskTagOptions', '')
+      .replace('standardWindowSizeBucket: agentSettings.standardWindowSizeBucket', '')
+    expect(withoutRenderValues).not.toMatch(
+      /\b(setNodes|updateCanvasDocument|agentSettings|terminalDisplayMetrics|actionRefs)\b/,
+    )
+  })
+
   // The agent support and the runtime integrations read the document through their own readers
   // and flush through the document commands (#702, PR 10).
   it.each(['useWorkspaceCanvasAgentSupport', 'useWorkspaceCanvasRuntimeIntegrations'])(
@@ -95,8 +111,7 @@ describe('Inner hands the document writer of its node store to the hooks that ne
   )
 
   // The task UI and the role UI read the document through their own readers and flush through the
-  // document commands or on their writes (#702, PR 11). Inner keeps `setNodes` for the writes, and
-  // no longer hands the role UI the canvas state it read the Spaces from.
+  // document commands or on their writes (#702, PR 11); Inner hands the role UI no canvas state.
   it.each(['useWorkspaceCanvasTaskUi', 'useWorkspaceCanvasRoleUi'])(
     'passes none of the retired channels to %s',
     name => {

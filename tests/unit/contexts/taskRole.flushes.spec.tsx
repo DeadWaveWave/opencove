@@ -1,3 +1,4 @@
+import { setDocumentNodes } from '../../support/documentNodes'
 import { act } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -646,6 +647,36 @@ describe('the task editor flush', () => {
     expect(rendered.flushes).toHaveLength(1)
     expect(rendered.flushes[0].notificationsBefore).toBe(1)
     expect(rendered.flushes[0].document.nodes[0].data.title).toBe('After')
+    expect(rendered.view.result.current.readUi().taskEditor).toBeNull()
+  })
+
+  it('writes and flushes nothing when the task window was deleted while the editor was open', async () => {
+    const rendered = renderEditor({
+      a: { nodes: [taskNodeWith('task-a', { title: 'Before', requirement: 'Do it' })] },
+    })
+    act(() => {
+      rendered.open.ref.current('task-a')
+    })
+    act(() => {
+      rendered.view.result.current.ui.updateDialog('taskEditor', current => ({
+        ...current,
+        title: 'After',
+      }))
+    })
+    settle(rendered)
+    act(() => {
+      setDocumentNodes(A, [])
+    })
+    const flushesBefore = rendered.flushes.length
+    rendered.harness.notifications.mockClear()
+
+    await act(async () => {
+      await rendered.view.result.current.editor.saveTaskEdits()
+    })
+
+    expect(rendered.harness.notifications).not.toHaveBeenCalled()
+    expect(rendered.flushes).toHaveLength(flushesBefore)
+    // The dialog still closes.
     expect(rendered.view.result.current.readUi().taskEditor).toBeNull()
   })
 

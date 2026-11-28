@@ -5,7 +5,6 @@ import type {
   Size,
   SpaceArchiveRecord,
   TaskPriority,
-  TaskRuntimeStatus,
   TerminalNodeData,
   WorkspaceNodeKind,
   WorkspaceSpaceRect,
@@ -275,7 +274,3 @@ export interface WorkspaceCanvasQuickPreviewState {
   naturalWidth?: number | null
   naturalHeight?: number | null
 }
-
-export type QuickUpdateTaskTitle = (nodeId: string, title: string) => void
-export type QuickUpdateTaskRequirement = (nodeId: string, requirement: string) => void
-export type UpdateTaskStatus = (nodeId: string, status: TaskRuntimeStatus) => void

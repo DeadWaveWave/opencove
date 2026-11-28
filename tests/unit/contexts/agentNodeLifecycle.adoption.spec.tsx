@@ -103,7 +103,7 @@ describe('existing unowned Claude renderer launches', () => {
     })
     const taskContext = {
       readDocument: f.readDocument,
-      setNodes: f.setNodes,
+      updateNodes: f.setNodes,
       workspaceId: 'workspace',
       workspacePath: '/repo',
       agentSettings: DEFAULT_AGENT_SETTINGS,
