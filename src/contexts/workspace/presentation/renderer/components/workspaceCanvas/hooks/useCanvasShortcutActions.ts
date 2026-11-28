@@ -19,7 +19,7 @@ import type { SpatialNavigationDirection } from './spatialNavigation'
 import { useWorkspaceCanvasSelectNode } from './useSelectNode'
 import { focusPrimaryNodeContent } from '../focusPrimaryNodeContent'
 import { useCloseSelectedNodeShortcut } from './useCloseSelectedNodeShortcut'
-import type { UpdateCanvasDocument } from './useNodesStore.types'
+import { useCanvasNodeWriter } from './useCanvasNodeWriter'
 import {
   useCanvasDocumentCommands,
   useCanvasUiCommands,
@@ -119,7 +119,6 @@ export function useWorkspaceCanvasShortcutActions({
   canvasRef,
   reactFlow,
   spaceNavigationAnchorIdRef,
-  updateCanvasDocument,
   nodeCreation: { createNodeForSession, createNoteNode },
   launchAgentAtFlowPosition,
   createSpaceFromSelectedNodes,
@@ -147,7 +146,6 @@ export function useWorkspaceCanvasShortcutActions({
   canvasRef: React.RefObject<HTMLDivElement | null>
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
   spaceNavigationAnchorIdRef: React.MutableRefObject<string | null>
-  updateCanvasDocument: UpdateCanvasDocument
   nodeCreation: {
     createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
     createNoteNode: (anchor: { x: number; y: number }) => Node<TerminalNodeData> | null
@@ -164,6 +162,7 @@ export function useWorkspaceCanvasShortcutActions({
   const documentCommands = useCanvasDocumentCommands()
   const readDocument = useReadCanvasDocument()
   const readSelection = useReadCanvasSelection()
+  const { updateCanvasDocument } = useCanvasNodeWriter()
 
   useCloseSelectedNodeShortcut({
     enabled,

@@ -23,19 +23,14 @@ import {
   useReadCanvasInteraction,
   useReadCanvasSelection,
 } from '../../../store/canvasStoreContext'
-import type { UpdateCanvasDocument } from './useNodesStore.types'
+import { useCanvasNodeWriter } from './useCanvasNodeWriter'
 
 interface UseSpaceDragParams {
   workspaceId: string
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
-  updateCanvasDocument: UpdateCanvasDocument
 }
 
-export function useWorkspaceCanvasSpaceDrag({
-  workspaceId,
-  reactFlow,
-  updateCanvasDocument,
-}: UseSpaceDragParams): {
+export function useWorkspaceCanvasSpaceDrag({ workspaceId, reactFlow }: UseSpaceDragParams): {
   handleSpaceDragHandlePointerDown: (
     event: React.PointerEvent<HTMLDivElement> | React.MouseEvent<HTMLDivElement>,
     spaceId: string,
@@ -44,6 +39,7 @@ export function useWorkspaceCanvasSpaceDrag({
 } {
   const ui = useCanvasUiCommands()
   const readDocument = useReadCanvasDocument()
+  const { updateCanvasDocument } = useCanvasNodeWriter()
   const readSelection = useReadCanvasSelection()
   const readInteraction = useReadCanvasInteraction()
   const selection = useCanvasSelectionCommands()

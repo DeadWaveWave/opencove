@@ -17,7 +17,6 @@ import {
   useCanvasUiCommands,
   useReadCanvasUi,
 } from '../../../store/canvasStoreContext'
-import type { UpdateCanvasDocument } from './useNodesStore.types'
 
 interface UseWorkspaceCanvasSpacesParams {
   workspaceId: string
@@ -28,7 +27,6 @@ interface UseWorkspaceCanvasSpacesParams {
   standardWindowSizeBucket: StandardWindowSizeBucket
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
   nodes: Node<TerminalNodeData>[]
-  updateCanvasDocument: UpdateCanvasDocument
   spaces: WorkspaceSpaceState[]
   onShowMessage?: ShowWorkspaceCanvasMessage
 }
@@ -42,7 +40,6 @@ export function useWorkspaceCanvasSpaces({
   standardWindowSizeBucket,
   reactFlow,
   nodes,
-  updateCanvasDocument,
   spaces,
   onShowMessage,
 }: UseWorkspaceCanvasSpacesParams): {
@@ -122,7 +119,6 @@ export function useWorkspaceCanvasSpaces({
 
   const { createChildSpaceInParent } = useWorkspaceCanvasCreateChildSpace({
     workspacePath,
-    updateCanvasDocument,
     onShowMessage,
   })
 
@@ -136,7 +132,6 @@ export function useWorkspaceCanvasSpaces({
     workspacePath,
     standardWindowSizeBucket,
     reactFlow,
-    updateCanvasDocument,
     onShowMessage,
     createChildSpaceInParent,
   })

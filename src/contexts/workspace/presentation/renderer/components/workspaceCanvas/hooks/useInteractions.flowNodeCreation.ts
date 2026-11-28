@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import type { Point } from '../../../types'
+import { useCanvasNodeWriter } from './useCanvasNodeWriter'
 import {
   createNoteNodeAtFlowPosition,
   createNoteNodeFromPaneContextMenu,
@@ -20,7 +21,6 @@ type FlowNodeCreationParams = Pick<
   | 'createWebsiteNode'
   | 'browserDefaultMode'
   | 'websiteWindowsEnabled'
-  | 'updateCanvasDocument'
 >
 
 export function useWorkspaceCanvasFlowNodeCreation({
@@ -30,8 +30,8 @@ export function useWorkspaceCanvasFlowNodeCreation({
   createWebsiteNode,
   browserDefaultMode,
   websiteWindowsEnabled,
-  updateCanvasDocument,
 }: FlowNodeCreationParams) {
+  const { updateCanvasDocument } = useCanvasNodeWriter()
   const ui = useCanvasUiCommands()
   const readDocument = useReadCanvasDocument()
   const readUi = useReadCanvasUi()

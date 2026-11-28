@@ -19,7 +19,6 @@ import {
   getPresentedNodeSize,
 } from '../../../utils/canvasInteractionLayout'
 import { buildOwningSpaceIdByNodeId } from './workspaceLayoutPolicy'
-import type { UpdateCanvasDocument } from './useNodesStore.types'
 import { useCanvasDocumentCommands, useReadCanvasDocument } from '../../../store/canvasStoreContext'
 import { useCanvasNodeWriter } from './useCanvasNodeWriter'
 
@@ -70,7 +69,6 @@ export function useWorkspaceCanvasApplyOwnershipForDrop({
   workspaceId,
   workspacePath,
   reactFlow,
-  updateCanvasDocument,
   onShowMessage,
   resolveSpaceAtPoint,
   t,
@@ -78,13 +76,12 @@ export function useWorkspaceCanvasApplyOwnershipForDrop({
   workspaceId?: string
   workspacePath: string
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
-  updateCanvasDocument: UpdateCanvasDocument
   onShowMessage?: ShowWorkspaceCanvasMessage
   resolveSpaceAtPoint: (point: { x: number; y: number }) => WorkspaceSpaceState | null
   t: TranslateFn
 }): (input: ApplyOwnershipForDropInput, options?: { allowDirectoryMismatch?: boolean }) => void {
   const readDocument = useReadCanvasDocument()
-  const { updateNodes } = useCanvasNodeWriter()
+  const { updateNodes, updateCanvasDocument } = useCanvasNodeWriter()
   const { requestPersistFlush } = useCanvasDocumentCommands()
   return useCallback(
     (
