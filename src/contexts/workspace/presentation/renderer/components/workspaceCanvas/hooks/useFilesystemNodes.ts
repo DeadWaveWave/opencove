@@ -27,6 +27,7 @@ import {
 } from './useInteractions.spaceAssignment'
 import { findBlockingOpenDocumentForMutation } from './useSpaceExplorer.guards'
 import { useFilesystemNodePaths } from './useFilesystemNodePaths'
+import { useCanvasNodeWriter } from './useCanvasNodeWriter'
 import {
   useNativeFilesystemDrop,
   type FilesystemMaterializeOptions,
@@ -35,10 +36,7 @@ import {
 export interface FilesystemNodesParams {
   workspaceId: string
   workspacePath?: string
-  nodeStore: Pick<
-    UseWorkspaceCanvasNodesStoreResult,
-    'setNodes' | 'updateCanvasDocument' | 'createDocumentNode' | 'createFolderNode'
-  >
+  nodeStore: Pick<UseWorkspaceCanvasNodesStoreResult, 'createDocumentNode' | 'createFolderNode'>
   onShowMessage?: ShowWorkspaceCanvasMessage
 }
 
@@ -50,7 +48,8 @@ export function useFilesystemNodes({
 }: FilesystemNodesParams) {
   const { t } = useTranslation()
   const reactFlow = useReactFlow()
-  const { setNodes, updateCanvasDocument, createDocumentNode, createFolderNode } = nodeStore
+  const { createDocumentNode, createFolderNode } = nodeStore
+  const { updateNodes, updateCanvasDocument } = useCanvasNodeWriter()
   const readDocument = useReadCanvasDocument()
   const { requestPersistFlush } = useCanvasDocumentCommands()
   const { getNodePathUri, copyNodePath, isTopLevelSpaceDirectoryCandidate } =
@@ -174,7 +173,7 @@ export function useFilesystemNodes({
         return
       }
       guardNodeFromSyncOverwrite(id)
-      setNodes(
+      updateNodes(
         previous =>
           previous.map(node => {
             if (
@@ -192,7 +191,7 @@ export function useFilesystemNodes({
         { syncLayout: false, flush: true },
       )
     },
-    [readDocument, setNodes],
+    [readDocument, updateNodes],
   )
 
   const openFile = useCallback(

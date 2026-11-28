@@ -4,18 +4,18 @@ import {
   publishWorkspaceNodeCreationPrepared,
   publishWorkspaceNodeCreationCancelled,
 } from '../nodeCreationEvents'
-import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
+import { useCanvasNodeWriter, type CanvasNodeWriter } from './useCanvasNodeWriter'
 
-type SetNodes = UseWorkspaceCanvasNodesStoreResult['setNodes']
+type UpdateNodes = CanvasNodeWriter['updateNodes']
 
-/** Wrap only the creation entry points; hydration and ordinary mutations keep the original setter. */
-export function createCreatedNodePublisher(setNodes: SetNodes): SetNodes {
+/** Wrap only the creation entry points; hydration and ordinary mutations keep the original writer. */
+export function createCreatedNodePublisher(updateNodes: UpdateNodes): UpdateNodes {
   return (update, options) => {
     let addedIds: string[] = []
     let preparedIds: string[] = []
     // The workspace owner commits this updater synchronously before returning.
     try {
-      setNodes(previous => {
+      updateNodes(previous => {
         const next = update(previous)
         const previousIds = new Set(previous.map(node => node.id))
         const addedNodes = next.filter(node => !previousIds.has(node.id))
@@ -32,6 +32,11 @@ export function createCreatedNodePublisher(setNodes: SetNodes): SetNodes {
   }
 }
 
-export function useCreatedNodePublisher(setNodes: SetNodes): SetNodes {
-  return useMemo(() => createCreatedNodePublisher(setNodes), [setNodes])
+/**
+ * The creators' writer: the canvas's node writer of this render's workspace (Decision 8 of S7),
+ * publishing each created window once. A creator takes it from here, not as a parameter.
+ */
+export function useCreatedNodePublisher(): UpdateNodes {
+  const { updateNodes } = useCanvasNodeWriter()
+  return useMemo(() => createCreatedNodePublisher(updateNodes), [updateNodes])
 }

@@ -11,26 +11,19 @@ import { useReadCanvasDocument } from '../../../store/canvasStoreContext'
 import { guardNodeFromSyncOverwrite } from '../../../utils/syncNodeGuards'
 import { resolveDefaultRoleWindowSize } from '../constants'
 import type { NodePlacementOptions, ShowWorkspaceCanvasMessage } from '../types'
-import type { CanvasDocumentWriteOptions } from './useNodesStore.types'
+import { useCreatedNodePublisher } from './useCreatedNodePublisher'
 import { EMPTY_NODE_KIND_DATA } from './useNodesStore.nodeData'
 import { resolveNodesPlacement } from './useNodesStore.resolvePlacement'
-
-type SetNodes = (
-  updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-  options?: CanvasDocumentWriteOptions,
-) => void
 
 export function useWorkspaceCanvasRoleNodeCreation({
   workspaceId,
   onShowMessage,
   onNodeCreated,
-  setNodes,
   standardWindowSizeBucket,
 }: {
   workspaceId?: string
   onShowMessage?: ShowWorkspaceCanvasMessage
   onNodeCreated?: (nodeId: string) => void
-  setNodes: SetNodes
   standardWindowSizeBucket: StandardWindowSizeBucket
 }): {
   createRoleNode: (
@@ -41,6 +34,7 @@ export function useWorkspaceCanvasRoleNodeCreation({
 } {
   const { t } = useTranslation()
   const readDocument = useReadCanvasDocument()
+  const publishNodes = useCreatedNodePublisher()
 
   const createRoleNode = useCallback(
     (
@@ -104,7 +98,7 @@ export function useWorkspaceCanvasRoleNodeCreation({
       }
 
       guardNodeFromSyncOverwrite(nextNode.id, 2_500)
-      setNodes(prevNodes => [...prevNodes, nextNode], { flush: true })
+      publishNodes(prevNodes => [...prevNodes, nextNode], { flush: true })
       onNodeCreated?.(nextNode.id)
       return nextNode
     },
@@ -112,7 +106,7 @@ export function useWorkspaceCanvasRoleNodeCreation({
       onNodeCreated,
       onShowMessage,
       readDocument,
-      setNodes,
+      publishNodes,
       standardWindowSizeBucket,
       workspaceId,
       t,

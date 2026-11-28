@@ -29,6 +29,7 @@ import type {
   CreateNoteNodeOptions,
   UseWorkspaceCanvasNodeCreationParams,
 } from './useNodesStore.types'
+import { useCreatedNodePublisher } from './useCreatedNodePublisher'
 import { useWorkspaceCanvasFilesystemNodeCreation } from './useNodesStore.createFilesystemNodes'
 import { EMPTY_NODE_KIND_DATA } from './useNodesStore.nodeData'
 import { useWorkspaceCanvasWebsiteNodeCreation } from './useNodesStore.createWebsiteNode'
@@ -46,12 +47,13 @@ export function useWorkspaceCanvasNodeCreation({
   workspaceId,
   onShowMessage,
   onNodeCreated,
-  setNodes,
   standardWindowSizeBucket,
   browserDefaultMode,
   readAgentSettings,
 }: UseWorkspaceCanvasNodeCreationParams) {
   const { t } = useTranslation()
+  // Every creator writes through the publisher, which takes the writer from context.
+  const publishNodes = useCreatedNodePublisher()
   // Placement reads the committed document when a creator runs, for the workspace of this render.
   const readDocument = useReadCanvasDocument()
   const notifyNodeCreated = useCallback(
@@ -161,11 +163,11 @@ export function useWorkspaceCanvasNodeCreation({
         nextNode.data = projected
       }
       guardNodeFromSyncOverwrite(nextNode.id, 2_500)
-      setNodes(prevNodes => [...prevNodes, nextNode], { flush: true })
+      publishNodes(prevNodes => [...prevNodes, nextNode], { flush: true })
       onNodeCreated?.(nextNode.id)
       return nextNode
     },
-    [onNodeCreated, onShowMessage, readAgentSettings, readDocument, setNodes, workspaceId, t],
+    [onNodeCreated, onShowMessage, readAgentSettings, readDocument, publishNodes, workspaceId, t],
   )
   const createNoteNode = useCallback(
     (anchor: Point, options: CreateNoteNodeOptions = {}): Node<TerminalNodeData> | null => {
@@ -249,7 +251,7 @@ export function useWorkspaceCanvasNodeCreation({
       }
 
       guardNodeFromSyncOverwrite(nextNode.id, 2_500)
-      setNodes(prevNodes => [...prevNodes, nextNode], { flush: true })
+      publishNodes(prevNodes => [...prevNodes, nextNode], { flush: true })
       onNodeCreated?.(nextNode.id)
       return nextNode
     },
@@ -257,7 +259,7 @@ export function useWorkspaceCanvasNodeCreation({
       onNodeCreated,
       onShowMessage,
       readDocument,
-      setNodes,
+      publishNodes,
       standardWindowSizeBucket,
       workspaceId,
       t,
@@ -330,7 +332,7 @@ export function useWorkspaceCanvasNodeCreation({
       }
 
       guardNodeFromSyncOverwrite(nextNode.id, 2_500)
-      setNodes(prevNodes => [...prevNodes, nextNode], { flush: true })
+      publishNodes(prevNodes => [...prevNodes, nextNode], { flush: true })
       onNodeCreated?.(nextNode.id)
       return nextNode
     },
@@ -338,7 +340,7 @@ export function useWorkspaceCanvasNodeCreation({
       onNodeCreated,
       onShowMessage,
       readDocument,
-      setNodes,
+      publishNodes,
       standardWindowSizeBucket,
       workspaceId,
       t,
@@ -349,7 +351,6 @@ export function useWorkspaceCanvasNodeCreation({
     workspaceId,
     onShowMessage,
     onNodeCreated,
-    setNodes,
     standardWindowSizeBucket,
   })
 
@@ -403,7 +404,7 @@ export function useWorkspaceCanvasNodeCreation({
       }
 
       guardNodeFromSyncOverwrite(nextNode.id, 2_500)
-      setNodes(prevNodes => [...prevNodes, nextNode], { flush: true })
+      publishNodes(prevNodes => [...prevNodes, nextNode], { flush: true })
       notifyNodeCreated(nextNode.id, placementOptions?.focusViewportOnCreate)
       return nextNode
     },
@@ -411,7 +412,7 @@ export function useWorkspaceCanvasNodeCreation({
       notifyNodeCreated,
       onShowMessage,
       readDocument,
-      setNodes,
+      publishNodes,
       standardWindowSizeBucket,
       workspaceId,
       t,
@@ -420,7 +421,6 @@ export function useWorkspaceCanvasNodeCreation({
 
   const { createDocumentNode, createFolderNode } = useWorkspaceCanvasFilesystemNodeCreation({
     workspaceId,
-    setNodes,
     onShowMessage,
     onNodeCreated,
     standardWindowSizeBucket,
@@ -430,7 +430,6 @@ export function useWorkspaceCanvasNodeCreation({
     workspaceId,
     onShowMessage,
     onNodeCreated,
-    setNodes,
     standardWindowSizeBucket,
     browserDefaultMode,
   })

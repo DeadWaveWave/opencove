@@ -18,8 +18,6 @@ export type WorkspaceCanvasSpaceExplorerArgs = {
   workspaceId: string
   canvasRef: React.RefObject<HTMLDivElement | null>
   spaces: WorkspaceSpaceState[]
-  setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']
-  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
   nodeDragSession: WorkspaceCanvasNodeDragSession
   finalizeDraggedNodeDrop: (input: {

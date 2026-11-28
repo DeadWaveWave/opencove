@@ -4,22 +4,7 @@
     "src/app/renderer/browser/browserOpenCoveApi.ts": 1,
     "src/app/renderer/shell/hooks/useAppQuitPersistenceFlush.ts": 1,
     "src/contexts/plugins/presentation/renderer/PluginRuntimePreview.tsx": 5,
-    "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasSpaceExplorer.ts": 2,
-    "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCreatedNodePublisher.ts": 6,
-    "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useFilesystemNodes.ts": 4,
-    "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore.createFilesystemNodes.ts": 3,
-    "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore.createNodes.ts": 12,
-    "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore.createRoleNode.ts": 4,
-    "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore.createWebsiteNode.ts": 5,
-    "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore.ts": 2,
-    "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore.types.ts": 3,
-    "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceExplorer.materializePlacement.ts": 4,
-    "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceExplorer.quickPreviewActions.ts": 3,
-    "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceExplorer.ts": 5,
-    "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceExplorer.types.ts": 2,
-    "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useWorkspaceDocumentOpening.ts": 4,
-    "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/WorkspacePixelLayer.tsx": 10,
-    "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/WorkspaceCanvasProviders.tsx": 2
+    "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/WorkspacePixelLayer.tsx": 10
   },
   "ref-type": {
     "src/contexts/workspace/presentation/renderer/components/terminalNode/links/TerminalLinkHost.tsx": 1,

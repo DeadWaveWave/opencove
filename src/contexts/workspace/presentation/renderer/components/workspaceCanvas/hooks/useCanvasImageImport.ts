@@ -20,7 +20,7 @@ import {
   assignNodeToSpaceAndExpand,
   findContainingSpaceByAnchor,
 } from './useInteractions.spaceAssignment'
-import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
+import type { UpdateCanvasDocument } from './useNodesStore.types'
 import { useReadCanvasDocument } from '../../../store/canvasStoreContext'
 
 const DEFAULT_IMPORT_STACK_OFFSET_PX = 22
@@ -115,7 +115,7 @@ export function useWorkspaceCanvasImageImport({
   workspaceId?: string
   canvasRef: React.RefObject<HTMLDivElement | null>
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
-  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
+  updateCanvasDocument: UpdateCanvasDocument
   onShowMessage?: (message: string, tone?: 'info' | 'warning' | 'error') => void
   standardWindowSizeBucket: StandardWindowSizeBucket
   createImageNode: (

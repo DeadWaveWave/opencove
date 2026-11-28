@@ -17,7 +17,7 @@ import {
   useCanvasUiCommands,
   useReadCanvasUi,
 } from '../../../store/canvasStoreContext'
-import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
+import type { UpdateCanvasDocument } from './useNodesStore.types'
 
 interface UseWorkspaceCanvasSpacesParams {
   workspaceId: string
@@ -28,7 +28,7 @@ interface UseWorkspaceCanvasSpacesParams {
   standardWindowSizeBucket: StandardWindowSizeBucket
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
   nodes: Node<TerminalNodeData>[]
-  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
+  updateCanvasDocument: UpdateCanvasDocument
   spaces: WorkspaceSpaceState[]
   onShowMessage?: ShowWorkspaceCanvasMessage
 }

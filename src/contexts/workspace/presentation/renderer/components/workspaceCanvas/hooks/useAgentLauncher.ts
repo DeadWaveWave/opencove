@@ -22,7 +22,7 @@ import {
   resolveAgentExecutableOverride,
   resolveWorkspaceAgentLaunchBinding,
 } from './useWorkspaceAgentLaunch.shared'
-import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
+import type { UpdateCanvasDocument } from './useNodesStore.types'
 import {
   useCanvasDocumentCommands,
   useCanvasUiCommands,
@@ -36,7 +36,7 @@ interface UseAgentLauncherParams {
   workspaceId: string
   workspacePath: string
   environmentVariables?: Record<string, string>
-  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
+  updateCanvasDocument: UpdateCanvasDocument
   onShowMessage?: ShowWorkspaceCanvasMessage
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
   buildAgentNodeTitle: (

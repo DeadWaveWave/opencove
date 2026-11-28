@@ -3,7 +3,7 @@ import type { Point, TerminalNodeData } from '../../../types'
 import { findNearestFreePositionOnRight } from '../../../utils/collision'
 import type { WorkspaceDocument } from '../../../store/workspaceDocument'
 import type { NodeCreationPlacementOptions } from '../types'
-import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
+import type { CanvasNodeWriter } from './useCanvasNodeWriter'
 
 /**
  * Moves a just-created explorer node to the nearest free spot to the right of its anchor when
@@ -16,13 +16,13 @@ export function repositionCreatedExplorerNode({
   creationAnchor,
   creationPlacement,
   readDocument,
-  setNodes,
+  updateNodes,
 }: {
   created: Node<TerminalNodeData>
   creationAnchor: Point
   creationPlacement: NodeCreationPlacementOptions
   readDocument: () => WorkspaceDocument
-  setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']
+  updateNodes: CanvasNodeWriter['updateNodes']
 }): Node<TerminalNodeData> {
   if (creationPlacement.preferredDirection !== 'right' || !creationPlacement.avoidRects?.length) {
     return created
@@ -45,7 +45,7 @@ export function repositionCreatedExplorerNode({
   ) {
     return created
   }
-  setNodes(
+  updateNodes(
     previous =>
       previous.map(node => (node.id === created.id ? { ...node, position: nextPosition } : node)),
     { syncLayout: false },

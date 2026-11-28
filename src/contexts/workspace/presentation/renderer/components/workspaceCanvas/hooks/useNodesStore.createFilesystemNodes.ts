@@ -16,19 +16,20 @@ import { projectCanvasInteractionLayout } from '../../../utils/canvasInteraction
 import { resolveCanonicalNodeSize } from '../../../utils/workspaceNodeSizing'
 import { guardNodeFromSyncOverwrite } from '../../../utils/syncNodeGuards'
 import type { NodeCreationPlacementOptions } from '../types'
+import { useCreatedNodePublisher } from './useCreatedNodePublisher'
 import { EMPTY_NODE_KIND_DATA } from './useNodesStore.nodeData'
 import { resolveNodesPlacement } from './useNodesStore.resolvePlacement'
 import type { UseWorkspaceCanvasNodeCreationParams } from './useNodesStore.types'
 
 export function useWorkspaceCanvasFilesystemNodeCreation({
   workspaceId: canvasWorkspaceId,
-  setNodes,
   onShowMessage,
   onNodeCreated,
   standardWindowSizeBucket,
 }: Omit<UseWorkspaceCanvasNodeCreationParams, 'browserDefaultMode' | 'readAgentSettings'>) {
   const { t } = useTranslation()
   const readDocument = useReadCanvasDocument()
+  const publishNodes = useCreatedNodePublisher()
   const create = useCallback(
     (
       anchor: Point,
@@ -104,7 +105,7 @@ export function useWorkspaceCanvasFilesystemNodeCreation({
         }))
       }
       guardNodeFromSyncOverwrite(node.id, 2_500)
-      setNodes(previous => [...previous, node], { flush: true })
+      publishNodes(previous => [...previous, node], { flush: true })
       if (placement?.focusViewportOnCreate !== false) {
         onNodeCreated?.(node.id)
       }
@@ -113,7 +114,7 @@ export function useWorkspaceCanvasFilesystemNodeCreation({
     [
       canvasWorkspaceId,
       readDocument,
-      setNodes,
+      publishNodes,
       onShowMessage,
       onNodeCreated,
       standardWindowSizeBucket,

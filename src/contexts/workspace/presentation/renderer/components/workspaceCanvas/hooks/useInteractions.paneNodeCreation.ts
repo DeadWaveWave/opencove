@@ -36,9 +36,7 @@ import { nodeWorkerBindingForMount } from '@shared/types/nodeWorkerBinding'
 import type { CanvasUiCommands } from '../../../store/canvasStore.ui'
 import type { CanvasDocumentCommands } from '../../../store/canvasStoreContext'
 import type { WorkspaceDocument } from '../../../store/workspaceDocument'
-import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
-
-type UpdateCanvasDocument = UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
+import type { UpdateCanvasDocument } from './useNodesStore.types'
 
 export async function createTerminalNodeAtFlowPosition({
   anchor,

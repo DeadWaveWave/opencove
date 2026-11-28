@@ -50,7 +50,6 @@ export interface UseWorkspaceCanvasNodeCreationParams {
   workspacePath?: string
   onShowMessage?: ShowWorkspaceCanvasMessage
   onNodeCreated?: (nodeId: string) => void
-  setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']
   standardWindowSizeBucket: StandardWindowSizeBucket
   browserDefaultMode: BrowserMode
   /**
@@ -72,22 +71,18 @@ export interface CanvasDocumentRecipeInput {
   spaces: WorkspaceSpaceState[]
 }
 
+/**
+ * Writes nodes and Spaces in one store update, computed from the store's document as it is when
+ * this runs. The recipe must be pure: it runs under the document module's recipe guard.
+ */
+export type UpdateCanvasDocument = (
+  recipe: (document: CanvasDocumentRecipeInput) => CanvasDocumentRecipeInput,
+  options?: CanvasDocumentWriteOptions,
+) => void
+
 export interface UseWorkspaceCanvasNodesStoreResult {
   pendingScrollbackByNodeRef: React.MutableRefObject<Map<string, string>>
   isNodeDraggingRef: React.MutableRefObject<boolean>
-  setNodes: (
-    updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-    options?: CanvasDocumentWriteOptions,
-  ) => void
-  /**
-   * Writes nodes and Spaces in one store update, computed from the store's document as it is when
-   * this runs. The recipe must be pure: it runs under the document module's recipe guard.
-   */
-  updateCanvasDocument: (
-    recipe: (document: CanvasDocumentRecipeInput) => CanvasDocumentRecipeInput,
-    options?: CanvasDocumentWriteOptions,
-  ) => void
-  upsertNode: (nextNode: Node<TerminalNodeData>) => void
   bumpAgentLaunchToken: (nodeId: string) => number
   clearAgentLaunchToken: (nodeId: string) => void
   isAgentLaunchTokenCurrent: (nodeId: string, token: number) => boolean

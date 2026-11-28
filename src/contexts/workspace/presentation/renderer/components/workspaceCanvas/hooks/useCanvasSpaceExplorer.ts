@@ -27,8 +27,6 @@ export function useCanvasSpaceExplorer({
   return useWorkspaceCanvasSpaceExplorer({
     ...params,
     canvasRef: canvasState.canvasRef,
-    setNodes: nodeStore.setNodes,
-    updateCanvasDocument: nodeStore.updateCanvasDocument,
     createDocumentNode: nodeStore.createDocumentNode,
     createImageNode: nodeStore.createImageNode,
     standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,

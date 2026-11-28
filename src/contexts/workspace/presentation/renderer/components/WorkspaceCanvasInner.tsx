@@ -7,6 +7,7 @@ import type { WorkspaceCanvasInnerProps } from './workspaceCanvas/types'
 import { useCanvasCollapse } from './workspaceCanvas/collapse/useCanvasCollapse'
 import { WorkspaceCanvasProviders } from './workspaceCanvas/WorkspaceCanvasProviders'
 import { useCanvasSpaceExplorer } from './workspaceCanvas/hooks/useCanvasSpaceExplorer'
+import { useCanvasNodeWriter } from './workspaceCanvas/hooks/useCanvasNodeWriter'
 import { useWorkspaceCanvasActionBar } from './workspaceCanvas/hooks/useCanvasActionBarActions'
 import { useCanvasCommitProbe } from './shared/windowCommitProbe'
 const readNoCalibration = (): null => null
@@ -60,9 +61,11 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
     browserDefaultMode: agentSettings.browserDefaultMode,
     readAgentSettings,
   })
+  // The hooks of PR 9 still take the writer as a parameter; the node store returns none.
+  const { updateCanvasDocument } = useCanvasNodeWriter()
   const nodeDragSession = workspaceCanvasHooks.useWorkspaceCanvasNodeDragSession({ workspaceId })
   // prettier-ignore
-  const { updateSpaceDirectory, getSpaceBlockingNodes, closeNodesById } = workspaceCanvasHooks.useWorkspaceCanvasSpaceDirectoryOps({ workspacePath, updateCanvasDocument: nodeStore.updateCanvasDocument, closeNode: nodeStore.closeNode })
+  const { updateSpaceDirectory, getSpaceBlockingNodes, closeNodesById } = workspaceCanvasHooks.useWorkspaceCanvasSpaceDirectoryOps({ workspacePath, updateCanvasDocument: updateCanvasDocument, closeNode: nodeStore.closeNode })
   const spacesApi = workspaceCanvasHooks.useWorkspaceCanvasSpaces({
     workspaceId,
     activeSpaceId,
@@ -72,14 +75,14 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
     standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
     reactFlow,
     nodes: canvasState.flowNodes,
-    updateCanvasDocument: nodeStore.updateCanvasDocument,
+    updateCanvasDocument: updateCanvasDocument,
     spaces,
     onShowMessage,
   })
   const { handleSpaceDragHandlePointerDown } = workspaceCanvasHooks.useWorkspaceCanvasSpaceDrag({
     workspaceId,
     reactFlow,
-    updateCanvasDocument: nodeStore.updateCanvasDocument,
+    updateCanvasDocument: updateCanvasDocument,
   })
   const {
     finalizeDraggedNodeDrop,
@@ -96,7 +99,7 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
     reactFlow,
     nodeDragSession,
     exclusiveNodeDragAnchorIdRef,
-    updateCanvasDocument: nodeStore.updateCanvasDocument,
+    updateCanvasDocument: updateCanvasDocument,
     onShowMessage,
     hideWorktreeMismatchDropWarning: agentSettings.hideWorktreeMismatchDropWarning === true,
     nodeDragPointerAnchorRef: nodeDragSession.nodeDragPointerAnchorRef,
@@ -109,7 +112,7 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
     workspaceId,
     workspacePath,
     environmentVariables,
-    updateCanvasDocument: nodeStore.updateCanvasDocument,
+    updateCanvasDocument: updateCanvasDocument,
     onShowMessage,
     createNodeForSession: nodeStore.createNodeForSession,
   })
@@ -133,7 +136,7 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
   const inputMode = workspaceCanvasHooks.useWorkspaceCanvasInputMode({ canvasInputModeSetting: agentSettings.canvasInputMode, canvasWheelBehaviorSetting: agentSettings.canvasWheelBehavior, canvasWheelZoomModifierSetting: agentSettings.canvasWheelZoomModifier, detectedCanvasInputMode: canvasState.detectedCanvasInputMode, inputModalityStateRef: canvasState.inputModalityStateRef, setDetectedCanvasInputMode: canvasState.setDetectedCanvasInputMode, canvasRef: canvasState.canvasRef, trackpadGestureLockRef: canvasState.trackpadGestureLockRef, setIsCanvasWheelGestureCaptureActive: canvasState.setIsCanvasWheelGestureCaptureActive, viewportRef: canvasState.viewportRef, reactFlow, onViewportChange })
   // Committed nodes feed collapse read models; the actions plan from the committed document.
   // prettier-ignore
-  const collapse = useCanvasCollapse({ workspaceId, canvasRef: canvasState.canvasRef, nodes, spaces, updateCanvasDocument: nodeStore.updateCanvasDocument, reactFlow, focusNodeTargetZoom: agentSettings.focusNodeTargetZoom, nodeExpandBehavior: agentSettings.nodeExpandBehavior })
+  const collapse = useCanvasCollapse({ workspaceId, canvasRef: canvasState.canvasRef, nodes, spaces, updateCanvasDocument: updateCanvasDocument, reactFlow, focusNodeTargetZoom: agentSettings.focusNodeTargetZoom, nodeExpandBehavior: agentSettings.nodeExpandBehavior })
   // prettier-ignore
   workspaceCanvasHooks.useWorkspaceCanvasLifecycleBindings({ workspaceId, canvasState, reactFlow, viewport, agentSettings, focusSpaceId, focusNodeId, focusNodeInput, focusSequence, expandNode: collapse.expandNode, focusSpaceInViewport: spacesApi.focusSpaceInViewport, nodes: canvasState.flowNodes, isFocusNodeTargetZoomPreviewing, requestNodeDelete: taskUi.requestNodeDelete })
   // prettier-ignore
@@ -170,7 +173,7 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
     isShiftPressedRef: canvasState.isShiftPressedRef,
     selectionDraftRef: canvasState.selectionDraftRef,
     reactFlow,
-    updateCanvasDocument: nodeStore.updateCanvasDocument,
+    updateCanvasDocument: updateCanvasDocument,
     workspaceId,
     workspacePath,
     environmentVariables,
@@ -261,7 +264,7 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
     canvasRef: canvasState.canvasRef,
     reactFlow,
     spaceNavigationAnchorIdRef: canvasState.spaceNavigationAnchorIdRef,
-    updateCanvasDocument: nodeStore.updateCanvasDocument,
+    updateCanvasDocument: updateCanvasDocument,
     nodeCreation: nodeStore,
     createSpaceFromSelectedNodes: spacesApi.createSpaceFromSelectedNodes,
     launchAgentAtFlowPosition: agentSupport.launchAgentAtFlowPosition,

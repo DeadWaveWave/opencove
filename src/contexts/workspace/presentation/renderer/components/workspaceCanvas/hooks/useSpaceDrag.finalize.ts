@@ -3,7 +3,7 @@ import { clampRectInsideRect } from '@contexts/space/application/spaceContainmen
 import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
 import type { SpaceDragState } from '../types'
 import type { CanvasInteractionCommands } from '../../../store/canvasStore.interaction'
-import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
+import type { UpdateCanvasDocument } from './useNodesStore.types'
 import { type LayoutDirection } from '../../../utils/spaceLayout'
 import { projectWorkspacePushAwayLayout } from '../../../utils/workspacePushAwayProjection'
 import { projectChildSpaceWithinParent } from './useSpaceDrag.childProjection'
@@ -213,7 +213,7 @@ export function finalizeWorkspaceSpaceDrag({
   dx: number
   dy: number
   resolveResizedRect: ResolveResizedRect
-  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
+  updateCanvasDocument: UpdateCanvasDocument
   endLiveNodes: CanvasInteractionCommands['endLiveNodes']
   setSpaceDragFramePreview: CanvasInteractionCommands['setSpaceDragFramePreview']
 }): void {
