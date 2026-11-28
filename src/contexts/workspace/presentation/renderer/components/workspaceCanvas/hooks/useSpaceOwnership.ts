@@ -15,7 +15,7 @@ import {
 import { useWorkspaceCanvasApplyOwnershipForDrop } from './useSpaceOwnership.applyDrop'
 import { useWorkspaceCanvasSpaceOwnershipWorktreeWarning } from './useSpaceOwnership.worktreeWarning'
 import type { WorkspaceCanvasNodeDragSession } from './useNodeDragSession.types'
-import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
+import type { UpdateCanvasDocument } from './useNodesStore.types'
 import {
   useCanvasSelectionCommands,
   useReadCanvasDocument,
@@ -39,7 +39,7 @@ export function useWorkspaceCanvasSpaceOwnership({
     'captureDragStartSpaceSelection' | 'getDragStartSpaceSelection' | 'clearDragStartSpaceSelection'
   >
   exclusiveNodeDragAnchorIdRef: React.MutableRefObject<string | null>
-  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
+  updateCanvasDocument: UpdateCanvasDocument
   onShowMessage?: ShowWorkspaceCanvasMessage
   hideWorktreeMismatchDropWarning: boolean
   nodeDragPointerAnchorRef?: React.MutableRefObject<{

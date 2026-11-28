@@ -41,7 +41,7 @@ describe('createTerminalNodeAtFlowPosition', () => {
       readDocument: renderCanvasDocumentReader(workspaceId),
       updateSpaces: renderCanvasDocumentCommands(workspaceId).updateSpaces,
       updateCanvasDocument:
-        renderCanvasNodeStore(harness).result.current.nodeStore.updateCanvasDocument,
+        renderCanvasNodeStore(harness).result.current.writer.updateCanvasDocument,
     }
   }
 

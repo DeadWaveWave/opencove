@@ -16,7 +16,7 @@ import {
   type CollapseArrangeSnapshot,
 } from '../../../utils/canvasCollapseArrange'
 import { focusNodeInViewport } from '../helpers'
-import type { UseWorkspaceCanvasNodesStoreResult } from '../hooks/useNodesStore.types'
+import type { UpdateCanvasDocument } from '../hooks/useNodesStore.types'
 import type { WorkspaceCollapseValue } from './WorkspaceCollapseContext'
 import { planNodeExpansion } from './planNodeExpansion'
 import { useCollapseLayoutMotion } from './useCollapseLayoutMotion'
@@ -32,7 +32,7 @@ interface Params {
   canvasRef?: RefObject<HTMLElement | null>
   nodes: Node<TerminalNodeData>[]
   spaces: WorkspaceSpaceState[]
-  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
+  updateCanvasDocument: UpdateCanvasDocument
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
   focusNodeTargetZoom: number
   nodeExpandBehavior: NodeExpandBehavior

@@ -33,6 +33,13 @@ import { setDocumentNodes } from '../../support/documentNodes'
 
 const firstRender = vi.hoisted(() => ({ values: new Map<string, unknown>() }))
 vi.mock(
+  '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodeWriter',
+  async importOriginal => {
+    const { mockStableNodeWriter, writerPin } = await import('../../support/stableNodeWriter')
+    return mockStableNodeWriter(await importOriginal<never>(), () => writerPin.stable)
+  },
+)
+vi.mock(
   '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext',
   async importOriginal => {
     const original = await importOriginal<Record<string, () => unknown>>()

@@ -9,7 +9,7 @@ import {
 } from '@shared/contracts/websiteWindowCanvas'
 import type { Point, TerminalNodeData, WebsiteNodeData, WorkspaceSpaceState } from '../../../types'
 import { createWebsiteNodeAtFlowPosition } from './useInteractions.paneNodeCreation'
-import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
+import type { UpdateCanvasDocument } from './useNodesStore.types'
 
 export function useWebsiteWindowOpenUrlNodeCreation({
   workspaceId,
@@ -24,7 +24,7 @@ export function useWebsiteWindowOpenUrlNodeCreation({
   workspaceId?: string
   canvasRef: React.RefObject<HTMLDivElement | null>
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
-  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
+  updateCanvasDocument: UpdateCanvasDocument
   createWebsiteNode: (
     anchor: Point,
     website: WebsiteNodeData,

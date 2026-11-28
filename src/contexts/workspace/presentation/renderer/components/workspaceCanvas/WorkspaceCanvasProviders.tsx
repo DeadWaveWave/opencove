@@ -31,8 +31,6 @@ export function WorkspaceCanvasProviders({
   const reactFlow = useReactFlow<Node<TerminalNodeData>>()
   const documentNavigation = useWorkspaceDocumentNavigation({
     ...filesystemParams,
-    setNodes: filesystemParams.nodeStore.setNodes,
-    updateCanvasDocument: filesystemParams.nodeStore.updateCanvasDocument,
     createDocumentNode: filesystemParams.nodeStore.createDocumentNode,
     reactFlow,
     expandNode: collapse.expandNode,

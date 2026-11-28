@@ -92,7 +92,7 @@ describe.each([
     const { view, yOf } = context
 
     fromElsewhere(context, moveTo('b', 400, 700))
-    act(() => view.result.current.nodeStore.setNodes(moveTo('c', 2500, 0)))
+    act(() => view.result.current.writer.updateNodes(moveTo('c', 2500, 0)))
 
     expect(yOf.shown('b')).toBe(700)
     expect(view.result.current.shown.find(node => node.id === 'c')?.position.x).toBe(2500)
@@ -102,7 +102,7 @@ describe.each([
     const context = dragAndRemoveA()
     const { harness, view, yOf } = context
     fromElsewhere(context, moveTo('b', 400, 700))
-    act(() => view.result.current.nodeStore.setNodes(moveTo('c', 2500, 0)))
+    act(() => view.result.current.writer.updateNodes(moveTo('c', 2500, 0)))
     harness.notifications.mockClear()
 
     act(() => view.result.current.apply([{ type: 'select', id: 'c', selected: true }] as never))

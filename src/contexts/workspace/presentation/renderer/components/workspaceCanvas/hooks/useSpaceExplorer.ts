@@ -20,14 +20,13 @@ import type {
 import { useWorkspaceCanvasSpaceExplorerQuickPreviewActions } from './useSpaceExplorer.quickPreviewActions'
 import { useWorkspaceCanvasSpaceExplorerQuickPreviewDismiss } from './useSpaceExplorer.quickPreviewDismiss'
 import { resolveFilesystemApiForMount } from '../../../utils/mountAwareFilesystemApi'
+import { useCanvasNodeWriter } from './useCanvasNodeWriter'
 import { useWorkspaceDocumentOpening } from './useWorkspaceDocumentOpening'
 
 export function useWorkspaceCanvasSpaceExplorer({
   workspaceId,
   canvasRef,
   spaces,
-  setNodes,
-  updateCanvasDocument,
   reactFlow,
   nodeDragSession,
   finalizeDraggedNodeDrop,
@@ -38,11 +37,10 @@ export function useWorkspaceCanvasSpaceExplorer({
 }: WorkspaceCanvasSpaceExplorerArgs): WorkspaceCanvasSpaceExplorerResult {
   const readDocument = useReadCanvasDocument()
   const { requestPersistFlush } = useCanvasDocumentCommands()
+  const { updateNodes, updateCanvasDocument } = useCanvasNodeWriter()
   const openDocument = useWorkspaceDocumentOpening({
     workspaceId,
     expandNode,
-    setNodes,
-    updateCanvasDocument,
     reactFlow,
     createDocumentNode,
   })
@@ -306,7 +304,7 @@ export function useWorkspaceCanvasSpaceExplorer({
           creationAnchor,
           creationPlacement,
           readDocument,
-          setNodes,
+          updateNodes,
         })
 
         assignNodeToSpaceAndExpand({
@@ -328,7 +326,7 @@ export function useWorkspaceCanvasSpaceExplorer({
       createImageNode,
       readDocument,
       requestPersistFlush,
-      setNodes,
+      updateNodes,
       updateCanvasDocument,
     ],
   )
@@ -341,7 +339,6 @@ export function useWorkspaceCanvasSpaceExplorer({
       materializePreviewState,
       quickPreview,
       setQuickPreview,
-      setNodes,
       reactFlow,
       nodeDragSession,
       finalizeDraggedNodeDrop,

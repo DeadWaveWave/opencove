@@ -34,6 +34,13 @@ import { setDocumentNodes } from '../../support/documentNodes'
 
 const firstRender = vi.hoisted(() => ({ values: new Map<string, unknown>() }))
 vi.mock(
+  '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodeWriter',
+  async importOriginal => {
+    const { mockStableNodeWriter, writerPin } = await import('../../support/stableNodeWriter')
+    return mockStableNodeWriter(await importOriginal<never>(), () => writerPin.stable)
+  },
+)
+vi.mock(
   '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext',
   async importOriginal => {
     const original = await importOriginal<Record<string, () => unknown>>()
@@ -354,5 +361,67 @@ describe('the file opened from a folder node, after its awaits', () => {
       expect(writeText).toHaveBeenCalledWith('/repo/readme.md')
       vi.unstubAllGlobals()
     })
+  })
+})
+
+// S7 (PR 8): the explorer and the filesystem nodes take the node writer from context. A call made
+// by the render of A after the user switched to B writes A: a writer that followed the shown
+// workspace would write B's document, here B's Space and folder of the same ids.
+describe('the writes of a render of A after the switch to B', () => {
+  it('lands an image that the explorer materializes in A only, in its Space', async () => {
+    mocks.preview.mockResolvedValue({
+      kind: 'image',
+      naturalWidth: 40,
+      naturalHeight: 30,
+      size: { width: 200, height: 150 },
+    })
+    let finish!: (value: unknown) => void
+    const readFileBytes = vi.fn(() => new Promise(resolve => (finish = resolve)))
+    mocks.filesystem.mockReturnValue({ readFileBytes })
+    stubOpencoveApi({ workspace: { writeCanvasImage: vi.fn(async () => undefined) } })
+    const rendered = renderExplorer(
+      { a: { spaces: [spaceAt('space-a')] }, b: { spaces: [spaceAt('space-a')] } },
+      { creatorsOfRender: true },
+    )
+    act(() => {
+      rendered.view.result.current.openSpaceExplorer('space-a')
+    })
+    await act(async () => {
+      rendered.view.result.current.previewFileInSpace('space-a', 'file:///repo/picture.png')
+    })
+    await vi.waitFor(() => expect(rendered.view.result.current.quickPreview).not.toBeNull())
+    // The preview is materialized in A; its bytes are still being read when the user switches.
+    const explorerOfA = rendered.view.result.current
+    await act(async () => {
+      explorerOfA.materializeQuickPreview()
+      await vi.waitFor(() => expect(readFileBytes).toHaveBeenCalled())
+    })
+    rendered.showB()
+    const spacesOfB = documentOf(B).spaces
+
+    await act(async () => {
+      finish({ bytes: new Uint8Array(3) })
+      await vi.waitFor(() => expect(documentOf(A).nodes).toHaveLength(1))
+    })
+
+    expect(documentOf(A).nodes[0].data.kind).toBe('image')
+    expect(documentOf(A).spaces[0].nodeIds).toEqual([documentOf(A).nodes[0].id])
+    expect(documentOf(B).nodes).toEqual([])
+    expect(documentOf(B).spaces).toBe(spacesOfB)
+  })
+
+  it('updates a folder of A only', () => {
+    const uri = 'file:///repo/docs'
+    const folder = () => folderNodeAt('folder', uri, 'file:///repo', { x: 50, y: 50 })
+    const rendered = renderFilesystemNodes({ a: { nodes: [folder()] }, b: { nodes: [folder()] } })
+    const actionsOfA = rendered.view.result.current.actions
+    rendered.showB()
+
+    act(() => {
+      actionsOfA.updateFolder('folder', { ...folder().data.folder!, viewMode: 'list' })
+    })
+
+    expect(documentOf(A).nodes[0].data.folder?.viewMode).toBe('list')
+    expect(documentOf(B).nodes[0].data.folder?.viewMode).toBe('icons')
   })
 })

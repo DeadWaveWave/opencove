@@ -68,7 +68,7 @@ function fixture(workspaceId = 'workspace') {
     nodes: [terminal, remoteDocument, localDocument],
     spaces,
   })
-  const { nodesRef, spacesRef, setNodes } = storeBackedChannelsOf(workspaceId)
+  const { nodesRef, spacesRef } = storeBackedChannelsOf(workspaceId)
   const createDocumentNode = vi.fn<WorkspaceDocumentOpeningArgs['createDocumentNode']>(() => null)
   const options: WorkspaceDocumentOpeningArgs & {
     workspaceId: string
@@ -76,13 +76,6 @@ function fixture(workspaceId = 'workspace') {
     openExplorerSpaceId: string | null
   } = {
     workspaceId,
-    setNodes,
-    // The push-away writes one recipe over the nodes and the Spaces, as the node store runs it.
-    updateCanvasDocument: recipe => {
-      const next = recipe({ nodes: nodesRef.current, spaces: spacesRef.current })
-      nodesRef.current = next.nodes
-      spacesRef.current = next.spaces
-    },
     createDocumentNode,
     reactFlow: {
       getZoom: () => 1,

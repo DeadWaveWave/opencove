@@ -19,7 +19,6 @@ import { useCanvasNodeWriter } from './useCanvasNodeWriter'
 import { removeNodeWithRelations } from './useNodesStore.closeNode'
 import { resolveWorkspaceLayoutAfterNodeResize } from './useNodesStore.resolveResizeLayout'
 import { useWorkspaceCanvasNodeCreation } from './useNodesStore.createNodes'
-import { useCreatedNodePublisher } from './useCreatedNodePublisher'
 import { publishWorkspaceNodesClosed } from '../nodeClosureEvents'
 import { useWorkspaceCanvasNoteNodeMutations } from './useNodesStore.noteMutations'
 import { useWorkspaceCanvasRoleNodeMutations } from './useNodesStore.roleMutations'
@@ -46,7 +45,8 @@ export function useWorkspaceCanvasNodesStore({
   const reactFlow = useReactFlow<Node<TerminalNodeData>, Edge>()
   // What this store reads to act on a node, and its creators to place a new one, is the committed
   // document as it is when the call runs, for the workspace of this render. It writes through the
-  // canvas's node writer, `updateNodes`; the result still offers it as `setNodes` until PR 8.
+  // canvas's node writer, which it takes from context and does not return (S7, Decision 8):
+  // every consumer takes the writer from context itself.
   const readDocument = useReadCanvasDocument()
   const { requestPersistFlush } = useCanvasDocumentCommands()
   const { updateNodes, updateCanvasDocument } = useCanvasNodeWriter()
@@ -116,12 +116,6 @@ export function useWorkspaceCanvasNodesStore({
     }
   }, [nodes])
   const { updateTerminalTitle, clearTerminalAgentOverlay } = useTerminalAgentOverlayMutations()
-  const upsertNode = useCallback(
-    (nextNode: Node<TerminalNodeData>) => {
-      updateNodes(prevNodes => prevNodes.map(node => (node.id === nextNode.id ? nextNode : node)))
-    },
-    [updateNodes],
-  )
   const bumpAgentLaunchToken = useCallback((nodeId: string): number => {
     const next = (agentLaunchTokenByNodeIdRef.current.get(nodeId) ?? 0) + 1
     agentLaunchTokenByNodeIdRef.current.set(nodeId, next)
@@ -387,7 +381,6 @@ export function useWorkspaceCanvasNodesStore({
     [updateNodes],
   )
 
-  const publishCreatedNodes = useCreatedNodePublisher(updateNodes)
   const {
     createNodeForSession,
     createNoteNode,
@@ -403,7 +396,6 @@ export function useWorkspaceCanvasNodesStore({
     workspacePath,
     onShowMessage,
     onNodeCreated: onNodeCreated ?? fallbackOnNodeCreated,
-    setNodes: publishCreatedNodes,
     standardWindowSizeBucket,
     browserDefaultMode,
     readAgentSettings,
@@ -412,9 +404,6 @@ export function useWorkspaceCanvasNodesStore({
   return {
     pendingScrollbackByNodeRef,
     isNodeDraggingRef,
-    setNodes: updateNodes,
-    updateCanvasDocument,
-    upsertNode,
     bumpAgentLaunchToken,
     clearAgentLaunchToken,
     isAgentLaunchTokenCurrent,

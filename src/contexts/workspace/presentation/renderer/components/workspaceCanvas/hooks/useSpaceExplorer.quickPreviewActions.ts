@@ -3,7 +3,7 @@ import type { Edge, Node, ReactFlowInstance } from '@xyflow/react'
 import type { TerminalNodeData, WorkspaceSpaceRect } from '../../../types'
 import { useReadCanvasDocument } from '../../../store/canvasStoreContext'
 import type { WorkspaceCanvasQuickPreviewState } from '../types'
-import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
+import { useCanvasNodeWriter } from './useCanvasNodeWriter'
 import type { ExplorerPlacementPx } from './useSpaceExplorer.placement'
 import type { WorkspaceCanvasNodeDragSession } from './useNodeDragSession'
 
@@ -29,7 +29,6 @@ export function useWorkspaceCanvasSpaceExplorerQuickPreviewActions(options: {
   materializePreviewState: MaterializePreviewState
   quickPreview: WorkspaceCanvasQuickPreviewState | null
   setQuickPreview: (next: WorkspaceCanvasQuickPreviewState | null) => void
-  setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
   nodeDragSession: WorkspaceCanvasNodeDragSession
   finalizeDraggedNodeDrop: (input: {
@@ -57,6 +56,7 @@ export function useWorkspaceCanvasSpaceExplorerQuickPreviewActions(options: {
   beginQuickPreviewDrag: (event: React.MouseEvent<HTMLElement>) => void
 } {
   const readDocument = useReadCanvasDocument()
+  const { updateNodes } = useCanvasNodeWriter()
   const previewFileInSpace = React.useCallback(
     (
       spaceId: string,
@@ -166,7 +166,7 @@ export function useWorkspaceCanvasSpaceExplorerQuickPreviewActions(options: {
         }
         const dropFlowPoint = options.reactFlow.screenToFlowPosition(latestClient)
 
-        options.setNodes(
+        updateNodes(
           prevNodes => {
             const projected = options.nodeDragSession.projectNodeDrag({
               currentNodes: prevNodes,
@@ -293,7 +293,7 @@ export function useWorkspaceCanvasSpaceExplorerQuickPreviewActions(options: {
       window.addEventListener('mousemove', handleMouseMove, true)
       window.addEventListener('mouseup', handleMouseUp, true)
     },
-    [options, readDocument],
+    [options, readDocument, updateNodes],
   )
 
   return {

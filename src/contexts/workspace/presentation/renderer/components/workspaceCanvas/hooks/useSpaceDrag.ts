@@ -23,12 +23,12 @@ import {
   useReadCanvasInteraction,
   useReadCanvasSelection,
 } from '../../../store/canvasStoreContext'
-import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
+import type { UpdateCanvasDocument } from './useNodesStore.types'
 
 interface UseSpaceDragParams {
   workspaceId: string
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
-  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
+  updateCanvasDocument: UpdateCanvasDocument
 }
 
 export function useWorkspaceCanvasSpaceDrag({

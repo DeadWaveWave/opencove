@@ -5,6 +5,7 @@ import type { NodeCreationPlacementOptions } from '../types'
 import type { WorkspaceCanvasSpaceExplorerArgs } from './useSpaceExplorer.types'
 import { focusNodeInViewport } from '../helpers'
 import { useCanvasDocumentCommands, useReadCanvasDocument } from '../../../store/canvasStoreContext'
+import { useCanvasNodeWriter } from './useCanvasNodeWriter'
 import { assignNodeToSpaceAndExpand } from './useInteractions.spaceAssignment'
 import { repositionCreatedExplorerNode } from './useSpaceExplorer.materializePlacement'
 import {
@@ -14,7 +15,7 @@ import {
 
 export type WorkspaceDocumentOpeningArgs = Pick<
   WorkspaceCanvasSpaceExplorerArgs,
-  'workspaceId' | 'setNodes' | 'updateCanvasDocument' | 'reactFlow' | 'createDocumentNode'
+  'workspaceId' | 'reactFlow' | 'createDocumentNode'
 > & { expandNode?: (id: string) => Node<TerminalNodeData> | undefined }
 
 export interface WorkspaceDocumentOpenRequest {
@@ -29,14 +30,13 @@ export interface WorkspaceDocumentOpenRequest {
 /** Shared materialization route for Explorer and terminal navigation. */
 export function useWorkspaceDocumentOpening({
   workspaceId,
-  setNodes,
-  updateCanvasDocument,
   reactFlow,
   createDocumentNode,
   expandNode,
 }: WorkspaceDocumentOpeningArgs) {
   const readDocument = useReadCanvasDocument()
   const { requestPersistFlush } = useCanvasDocumentCommands()
+  const { updateNodes, updateCanvasDocument } = useCanvasNodeWriter()
   const activeWorkspaceRef = useRef(workspaceId)
   activeWorkspaceRef.current = workspaceId
   const aliveRef = useRef(true)
@@ -116,7 +116,7 @@ export function useWorkspaceDocumentOpening({
         creationAnchor: request.anchor,
         creationPlacement: placement,
         readDocument,
-        setNodes,
+        updateNodes,
       })
       if (space) {
         assignNodeToSpaceAndExpand({
@@ -136,7 +136,7 @@ export function useWorkspaceDocumentOpening({
       reactFlow,
       readDocument,
       requestPersistFlush,
-      setNodes,
+      updateNodes,
       updateCanvasDocument,
     ],
   )

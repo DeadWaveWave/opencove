@@ -47,7 +47,7 @@ describe('createTerminalNodeAtFlowPosition persisted space launch', () => {
       readDocument: renderCanvasDocumentReader(harness.workspaceId),
       updateSpaces: renderCanvasDocumentCommands(harness.workspaceId).updateSpaces,
       updateCanvasDocument:
-        renderCanvasNodeStore(harness).result.current.nodeStore.updateCanvasDocument,
+        renderCanvasNodeStore(harness).result.current.writer.updateCanvasDocument,
     }
   }
 

@@ -6,9 +6,7 @@ import { resolveInnermostSpaceAtPoint } from '@contexts/space/application/spaceC
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type { ShowWorkspaceCanvasMessage } from '../types'
 import { useCanvasUiCommands, useReadCanvasDocument } from '../../../store/canvasStoreContext'
-import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
-
-type UpdateCanvasDocument = UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
+import type { UpdateCanvasDocument } from './useNodesStore.types'
 
 function resolveNodeCenter(node: Node<TerminalNodeData>): { x: number; y: number } {
   return {

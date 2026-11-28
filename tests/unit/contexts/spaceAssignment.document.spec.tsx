@@ -5,6 +5,7 @@ import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import { useCanvasCollapseStore } from '../../../src/contexts/workspace/presentation/renderer/store/useCanvasCollapseStore'
 import { EMPTY_CANVAS_COLLAPSE } from '../../../src/contexts/workspace/presentation/renderer/utils/canvasCollapse'
 import { TERMINAL_LAYOUT_SYNC_EVENT } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/constants'
+import { useCanvasNodeWriter } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodeWriter'
 import { useWorkspaceCanvasNodesStore } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore'
 import { assignNodeToSpaceAndExpand } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useInteractions.spaceAssignment'
 import { readWorkspaceDocument } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
@@ -71,7 +72,7 @@ function assign(updateCanvasDocument: Updater, input: Omit<Assign, 'updateCanvas
 function setup(nodes: Node<TerminalNodeData>[], spaces: WorkspaceSpaceState[]) {
   const harness = createCanvasDocumentHarness({ nodes, spaces })
   const view = renderCanvasNodeStore(harness)
-  return { harness, view, update: () => view.result.current.nodeStore.updateCanvasDocument }
+  return { harness, view, update: () => view.result.current.writer.updateCanvasDocument }
 }
 
 function storedNode(
@@ -393,7 +394,7 @@ describe('assignNodeToSpaceAndExpand after a workspace switch', () => {
     const view = renderInCanvasDocument(
       () => {
         const nodes = useWorkspaceCanvasStoreNodes(shown)
-        return useWorkspaceCanvasNodesStore({
+        useWorkspaceCanvasNodesStore({
           workspaceId: shown,
           workspacePath: `/tmp/${shown}`,
           nodes,
@@ -401,6 +402,7 @@ describe('assignNodeToSpaceAndExpand after a workspace switch', () => {
           browserDefaultMode: 'iframe',
           readAgentSettings: readDefaultAgentSettings,
         })
+        return useCanvasNodeWriter()
       },
       { workspaceId: () => shown },
     )

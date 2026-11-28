@@ -5,7 +5,7 @@ import {
   assignNodeToSpaceAndExpand,
   findContainingSpaceByAnchor,
 } from './useInteractions.spaceAssignment'
-import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
+import type { UpdateCanvasDocument } from './useNodesStore.types'
 
 export function createNoteNodeAtAnchor({
   workspaceId,
@@ -27,7 +27,7 @@ export function createNoteNodeAtAnchor({
     },
   ) => Node<TerminalNodeData> | null
   readDocument: () => WorkspaceDocument
-  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
+  updateCanvasDocument: UpdateCanvasDocument
 }): void {
   const targetSpace = findContainingSpaceByAnchor(readDocument().spaces, spaceAnchor)
   const created = createNoteNode(anchor, {

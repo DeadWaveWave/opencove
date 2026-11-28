@@ -5,7 +5,7 @@ import {
   subscribeWorkspaceNodeCreationPrepared,
 } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeCreationEvents'
 import { pixelNode } from './workspacePixelLayer.fixtures'
-import type { UseWorkspaceCanvasNodesStoreResult } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore.types'
+import type { CanvasNodeWriter } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodeWriter'
 
 describe('workspace creation notifications', () => {
   it('prepares all new node kinds including native websites before commit, using one creation timestamp', () => {
@@ -36,15 +36,15 @@ describe('workspace creation notifications', () => {
   it('notifies only after a creation transaction commits, independently of viewport focus', () => {
     const events: string[] = []
     let nodes = [pixelNode()]
-    const setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes'] = update => {
+    const updateNodes: CanvasNodeWriter['updateNodes'] = update => {
       nodes = update(nodes)
     }
     const unsubscribe = subscribeWorkspaceNodeCreated(id => {
       expect(nodes.some(node => node.id === id)).toBe(true)
       events.push(id)
     })
-    const publishCreation = createCreatedNodePublisher(setNodes)
-    setNodes(previous => [...previous, { ...pixelNode(), id: 'restored' }])
+    const publishCreation = createCreatedNodePublisher(updateNodes)
+    updateNodes(previous => [...previous, { ...pixelNode(), id: 'restored' }])
     expect(events).toEqual([])
     publishCreation(previous => [...previous, { ...pixelNode({ kind: 'note' }), id: 'new' }])
     expect(events).toEqual(['new'])

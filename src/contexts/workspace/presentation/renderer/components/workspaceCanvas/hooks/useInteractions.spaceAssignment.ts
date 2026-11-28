@@ -2,7 +2,7 @@ import { resolveInnermostSpaceAtPoint } from '@contexts/space/application/spaceC
 import type { Point, WorkspaceSpaceState } from '../../../types'
 import { expandSpaceToFitOwnedNodesAndPushAway } from '../../../utils/spaceAutoResize'
 import { sanitizeSpaces } from '../helpers'
-import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
+import type { UpdateCanvasDocument } from './useNodesStore.types'
 import { useCanvasCollapseStore } from '../../../store/useCanvasCollapseStore'
 import { EMPTY_CANVAS_COLLAPSE } from '../../../utils/canvasCollapse'
 import {
@@ -45,7 +45,7 @@ export function assignNodeToSpaceAndExpand({
   targetSpaceSnapshot?: WorkspaceSpaceState | null
   targetSpaceBaseline?: WorkspaceSpaceState | null
   workspaceSpacesSnapshot?: WorkspaceSpaceState[] | null
-  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
+  updateCanvasDocument: UpdateCanvasDocument
 }): void {
   const collapse =
     (workspaceId && useCanvasCollapseStore.getState().workspaces[workspaceId]) ||

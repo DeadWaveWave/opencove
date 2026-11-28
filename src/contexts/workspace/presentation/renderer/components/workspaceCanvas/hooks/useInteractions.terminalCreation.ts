@@ -7,7 +7,7 @@ import type { Point } from '../../../types'
 import type { TerminalNodeData } from '../../../types'
 import type { CreateNodeInput } from '../types'
 import { createTerminalNodeAtFlowPosition } from './useInteractions.paneNodeCreation'
-import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
+import type { UpdateCanvasDocument } from './useNodesStore.types'
 import { bindWorkspaceCanvasCreateTerminalAtFlowPointTestAction } from '../testHarness'
 import {
   useCanvasDocumentCommands,
@@ -36,7 +36,7 @@ export function useWorkspaceCanvasTerminalCreation({
   terminalFontSize: number
   terminalDisplayMetrics: TerminalPtyGeometryDisplayMetrics
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
-  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
+  updateCanvasDocument: UpdateCanvasDocument
   onShowMessage?: (message: string, level: 'info' | 'warning' | 'error') => void
 }): {
   createTerminalNode: () => Promise<void>

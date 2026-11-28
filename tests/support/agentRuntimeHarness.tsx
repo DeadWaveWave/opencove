@@ -1,10 +1,13 @@
 import { act, type RenderHookResult } from '@testing-library/react'
-import { useCallback, useRef } from 'react'
 import type { Node } from '@xyflow/react'
 import { vi } from 'vitest'
 import { useAppStore } from '../../src/app/renderer/shell/store/useAppStore'
 import { useWorkspaceCanvasNodePublishers } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodePublishers'
 import { useWorkspaceCanvasState } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasState'
+import {
+  useCanvasNodeWriter,
+  type CanvasNodeWriter,
+} from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodeWriter'
 import { useWorkspaceCanvasNodesStore } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore'
 import {
   readWorkspaceDocument,
@@ -133,16 +136,8 @@ export interface RuntimeCanvasContext {
   nodeStore: ReturnType<typeof useWorkspaceCanvasNodesStore>
   /** The canvas's node publishers: a case that needs a live drag publishes the frame itself. */
   publishers: ReturnType<typeof useWorkspaceCanvasNodePublishers>
-  /**
-   * A writer whose identity never changes and that writes through the node store of the latest
-   * render. A case that pins a reader's place in a dependency list uses it, so that the writer
-   * changing with the workspace cannot rebuild the callback and hide a missing reader.
-   */
-  stableSetNodes: ReturnType<typeof useWorkspaceCanvasNodesStore>['setNodes']
-  /** The same for `updateCanvasDocument`. */
-  stableUpdateCanvasDocument: ReturnType<
-    typeof useWorkspaceCanvasNodesStore
-  >['updateCanvasDocument']
+  /** The canvas's node writer, from context: the node store returns none. */
+  writer: CanvasNodeWriter
 }
 
 export interface FlushRecord {
@@ -209,25 +204,13 @@ export function renderInTwoWorkspaces<Result>(
         browserDefaultMode: 'iframe',
         readAgentSettings: readDefaultAgentSettings,
       })
-      const latestSetNodes = useRef(nodeStore.setNodes)
-      latestSetNodes.current = nodeStore.setNodes
-      const stableSetNodes = useCallback<typeof nodeStore.setNodes>(
-        (updater, options) => latestSetNodes.current(updater, options),
-        [],
-      )
-      const latestUpdateCanvasDocument = useRef(nodeStore.updateCanvasDocument)
-      latestUpdateCanvasDocument.current = nodeStore.updateCanvasDocument
-      const stableUpdateCanvasDocument = useCallback<typeof nodeStore.updateCanvasDocument>(
-        (recipe, options) => latestUpdateCanvasDocument.current(recipe, options),
-        [],
-      )
+      const writer = useCanvasNodeWriter()
       return useHook({
         workspaceId,
         canvasState,
         nodeStore,
         publishers,
-        stableSetNodes,
-        stableUpdateCanvasDocument,
+        writer,
       })
     },
     { workspaceId: () => shown },

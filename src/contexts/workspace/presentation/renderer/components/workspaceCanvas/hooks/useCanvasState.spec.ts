@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, expectTypeOf, it } from 'vitest'
 import type { WorkspaceCanvasProps } from '../types'
 import type { CanvasFlowHost } from '../CanvasFlowHost'
 import type { WorkspaceCanvasViewProps } from '../WorkspaceCanvasView.types'
@@ -112,5 +112,30 @@ describe('the retired canvas channels', () => {
     expect(drag.spaceFramePreview).toBeUndefined()
     // @ts-expect-error -- spaceDragFramePreview is retired as a prop; the host reads it from the slice (#738)
     expect(hostProps.spaceDragFramePreview).toBeUndefined()
+  })
+
+  // S7 (#647), PR 8, Decision 8: the node store returns no writer. Every consumer takes the node
+  // writer from `useCanvasNodeWriter()`. Each name is pinned twice: by a directive on a read (an
+  // unused directive fails `pnpm check`) and by key, because a directive is consumed by any error on
+  // its line.
+  it('do not return the node writer from the node store', () => {
+    const store = {} as UseWorkspaceCanvasNodesStoreResult
+
+    // @ts-expect-error -- setNodes is retired; take the writer from useCanvasNodeWriter (#647 S7)
+    expect(store.setNodes).toBeUndefined()
+    // @ts-expect-error -- updateCanvasDocument is retired; take the writer from useCanvasNodeWriter (#647 S7)
+    expect(store.updateCanvasDocument).toBeUndefined()
+    // @ts-expect-error -- upsertNode is retired; it had no caller (#647 S7)
+    expect(store.upsertNode).toBeUndefined()
+
+    expectTypeOf<
+      'setNodes' extends keyof UseWorkspaceCanvasNodesStoreResult ? true : false
+    >().toEqualTypeOf<false>()
+    expectTypeOf<
+      'updateCanvasDocument' extends keyof UseWorkspaceCanvasNodesStoreResult ? true : false
+    >().toEqualTypeOf<false>()
+    expectTypeOf<
+      'upsertNode' extends keyof UseWorkspaceCanvasNodesStoreResult ? true : false
+    >().toEqualTypeOf<false>()
   })
 })

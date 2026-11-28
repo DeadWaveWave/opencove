@@ -216,7 +216,7 @@ describe('the mount repair of a terminal created from the pane', () => {
     const readDocument = renderCanvasDocumentReader(harness.workspaceId)
     const updateSpaces = renderCanvasDocumentCommands(harness.workspaceId).updateSpaces
     const updateCanvasDocument =
-      renderCanvasNodeStore(harness).result.current.nodeStore.updateCanvasDocument
+      renderCanvasNodeStore(harness).result.current.writer.updateCanvasDocument
     ;(window.opencoveApi as unknown as Record<string, unknown>).persistence = {
       readAppState: vi.fn(async () => ({
         state: {

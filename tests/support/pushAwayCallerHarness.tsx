@@ -3,6 +3,10 @@ import { ReactFlowProvider, type Node } from '@xyflow/react'
 import React, { type ReactElement } from 'react'
 import { expect, type Mock } from 'vitest'
 import { useAppStore } from '../../src/app/renderer/shell/store/useAppStore'
+import {
+  useCanvasNodeWriter,
+  type CanvasNodeWriter,
+} from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodeWriter'
 import { useWorkspaceCanvasNodesStore } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore'
 import { readWorkspaceDocument } from '../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import type { WorkspaceDocument } from '../../src/contexts/workspace/presentation/renderer/store/workspaceDocument'
@@ -60,17 +64,6 @@ export function writeCreatedNode(workspaceId: string, node: Node<TerminalNodeDat
   return node
 }
 
-/** The node writer of the specs: it writes the document of the workspace shown, as the store's does. */
-export function writeShownNodes(
-  updater: (nodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-) {
-  const document = readWorkspaceDocument(shownWorkspaceId)
-  if (!document) {
-    throw new Error(`workspace ${shownWorkspaceId} is not in the store`)
-  }
-  setDocumentNodes(shownWorkspaceId, updater(document.nodes))
-}
-
 /**
  * What the document held for the node of an assignment at the moment the assignment was called
  * (#758: the recipe takes the node from the document, so a caller must have written it first).
@@ -123,11 +116,12 @@ export function lastCall(mock: unknown): unknown[] {
   return calls[calls.length - 1] ?? []
 }
 
-export type Updater = ReturnType<typeof useWorkspaceCanvasNodesStore>['updateCanvasDocument']
+export type Updater = CanvasNodeWriter['updateCanvasDocument']
 
 export function useShownNodeStore(shown: string) {
   const nodes = useWorkspaceCanvasStoreNodes(shown)
-  return useWorkspaceCanvasNodesStore({
+  const writer = useCanvasNodeWriter()
+  const store = useWorkspaceCanvasNodesStore({
     workspaceId: shown,
     workspacePath: `/tmp/${shown}`,
     nodes,
@@ -135,6 +129,8 @@ export function useShownNodeStore(shown: string) {
     browserDefaultMode: 'iframe',
     readAgentSettings: readDefaultAgentSettings,
   })
+  // The node store returns no writer; the canvas's comes from context.
+  return { ...store, updateCanvasDocument: writer.updateCanvasDocument }
 }
 
 /**

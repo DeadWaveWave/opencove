@@ -7,7 +7,7 @@ import type { Point, TerminalNodeData, WebsiteNodeData } from '../../../types'
 import { useReadCanvasDocument } from '../../../store/canvasStoreContext'
 import { resolveDefaultWebsiteWindowSize } from '../constants'
 import type { NodePlacementOptions, ShowWorkspaceCanvasMessage } from '../types'
-import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
+import { useCreatedNodePublisher } from './useCreatedNodePublisher'
 import { EMPTY_NODE_KIND_DATA } from './useNodesStore.nodeData'
 import { resolveNodesPlacement } from './useNodesStore.resolvePlacement'
 import { HIDDEN_WEBSITE_BOUNDS } from '../../WebsiteNode.helpers'
@@ -17,14 +17,12 @@ export function useWorkspaceCanvasWebsiteNodeCreation({
   workspaceId,
   onShowMessage,
   onNodeCreated,
-  setNodes,
   standardWindowSizeBucket,
   browserDefaultMode,
 }: {
   workspaceId?: string
   onShowMessage?: ShowWorkspaceCanvasMessage
   onNodeCreated?: (nodeId: string) => void
-  setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']
   standardWindowSizeBucket: StandardWindowSizeBucket
   browserDefaultMode: BrowserMode
 }): (
@@ -34,6 +32,7 @@ export function useWorkspaceCanvasWebsiteNodeCreation({
 ) => Node<TerminalNodeData> | null {
   const { t } = useTranslation()
   const readDocument = useReadCanvasDocument()
+  const publishNodes = useCreatedNodePublisher()
 
   return useCallback(
     (anchor: Point, website: WebsiteNodeData, placementOptions?: NodePlacementOptions) => {
@@ -82,7 +81,7 @@ export function useWorkspaceCanvasWebsiteNodeCreation({
         selectable: true,
       }
 
-      setNodes(prevNodes => [...prevNodes, nextNode], { flush: true })
+      publishNodes(prevNodes => [...prevNodes, nextNode], { flush: true })
       onNodeCreated?.(nextNode.id)
 
       const normalizedUrl = websiteData.url.trim()
@@ -105,7 +104,7 @@ export function useWorkspaceCanvasWebsiteNodeCreation({
       onNodeCreated,
       onShowMessage,
       readDocument,
-      setNodes,
+      publishNodes,
       standardWindowSizeBucket,
       workspaceId,
       browserDefaultMode,

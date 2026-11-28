@@ -22,6 +22,13 @@ import { setDocumentNodes } from '../../support/documentNodes'
 // the node store read the document: the creator's flush comes first, the hook's after its last
 // write.
 
+vi.mock(
+  '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodeWriter',
+  async importOriginal => {
+    const { mockStableNodeWriter, writerPin } = await import('../../support/stableNodeWriter')
+    return mockStableNodeWriter(await importOriginal<never>(), () => writerPin.stable)
+  },
+)
 vi.mock('@app/renderer/i18n', () => {
   const translation = { t: (key: string) => key }
   return { useTranslation: () => translation }

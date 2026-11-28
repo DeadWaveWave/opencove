@@ -6,7 +6,7 @@ import {
 } from '@contexts/space/application/updateSpaceDirectory'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { useReadCanvasDocument } from '../../../store/canvasStoreContext'
-import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
+import type { UpdateCanvasDocument } from './useNodesStore.types'
 
 type UpdateSpaceDirectoryOptions = {
   markNodeDirectoryMismatch?: boolean
@@ -96,7 +96,7 @@ export function useWorkspaceCanvasSpaceDirectoryOps({
   closeNode,
 }: {
   workspacePath: string
-  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
+  updateCanvasDocument: UpdateCanvasDocument
   closeNode: (nodeId: string) => Promise<void>
 }): {
   updateSpaceDirectory: (

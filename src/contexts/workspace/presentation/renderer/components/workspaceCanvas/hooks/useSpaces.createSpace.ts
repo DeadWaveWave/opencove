@@ -21,8 +21,7 @@ import {
   useReadCanvasDocument,
   useReadCanvasSelection,
 } from '../../../store/canvasStoreContext'
-import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
-type UpdateCanvasDocument = UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
+import type { UpdateCanvasDocument } from './useNodesStore.types'
 export function useWorkspaceCanvasCreateSpace({
   workspaceId,
   workspacePath,
