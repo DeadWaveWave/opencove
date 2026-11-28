@@ -1,6 +1,4 @@
-import { useEffect, useRef } from 'react'
-import type { Edge, Node, ReactFlowInstance, Viewport } from '@xyflow/react'
-import type { TerminalNodeData } from '../../../types'
+import { useEffect } from 'react'
 import {
   createCanvasInputModalityState,
   type CanvasInputModalityState,
@@ -15,17 +13,12 @@ interface UseWorkspaceCanvasLifecycleParams {
   selectionDraftRef: React.MutableRefObject<SelectionDraftState | null>
   trackpadGestureLockRef: React.MutableRefObject<TrackpadGestureLockState | null>
   setIsCanvasWheelGestureCaptureActive: React.Dispatch<React.SetStateAction<boolean>>
-  reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
-  viewport: Viewport
-  viewportRef: React.MutableRefObject<Viewport>
   canvasInputModeSetting: 'auto' | DetectedCanvasInputMode
   inputModalityStateRef: React.MutableRefObject<CanvasInputModalityState>
   setDetectedCanvasInputMode: React.Dispatch<React.SetStateAction<DetectedCanvasInputMode>>
   isShiftPressedRef: React.MutableRefObject<boolean>
   setIsShiftPressed: React.Dispatch<React.SetStateAction<boolean>>
   requestNodeDelete: (nodeIds: readonly string[]) => void
-  focusNodeTargetZoom: number
-  isFocusNodeTargetZoomPreviewing: boolean
 }
 
 export function useWorkspaceCanvasLifecycle({
@@ -33,67 +26,20 @@ export function useWorkspaceCanvasLifecycle({
   selectionDraftRef,
   trackpadGestureLockRef,
   setIsCanvasWheelGestureCaptureActive,
-  reactFlow,
-  viewport,
-  viewportRef,
   canvasInputModeSetting,
   inputModalityStateRef,
   setDetectedCanvasInputMode,
   isShiftPressedRef,
   setIsShiftPressed,
   requestNodeDelete,
-  focusNodeTargetZoom,
-  isFocusNodeTargetZoomPreviewing,
 }: UseWorkspaceCanvasLifecycleParams): void {
   const readSelection = useReadCanvasSelection()
-  const previewSequenceRef = useRef(0)
-  const viewportBeforePreviewRef = useRef<Viewport | null>(null)
 
   useEffect(() => {
     selectionDraftRef.current = null
     trackpadGestureLockRef.current = null
     setIsCanvasWheelGestureCaptureActive(false)
   }, [selectionDraftRef, setIsCanvasWheelGestureCaptureActive, trackpadGestureLockRef, workspaceId])
-
-  useEffect(() => {
-    viewportRef.current = viewport
-  }, [viewport, viewportRef])
-
-  useEffect(() => {
-    if (!isFocusNodeTargetZoomPreviewing) {
-      const previousViewport = viewportBeforePreviewRef.current
-      if (!previousViewport) {
-        return
-      }
-
-      viewportBeforePreviewRef.current = null
-      const sequence = (previewSequenceRef.current += 1)
-
-      void reactFlow.setViewport(previousViewport, { duration: 0 }).then(() => {
-        if (previewSequenceRef.current !== sequence) {
-          return
-        }
-
-        viewportRef.current = previousViewport
-      })
-
-      return
-    }
-
-    if (!viewportBeforePreviewRef.current) {
-      viewportBeforePreviewRef.current = reactFlow.getViewport()
-    }
-
-    const sequence = (previewSequenceRef.current += 1)
-
-    void reactFlow.zoomTo(focusNodeTargetZoom, { duration: 0 }).then(() => {
-      if (previewSequenceRef.current !== sequence) {
-        return
-      }
-
-      viewportRef.current = reactFlow.getViewport()
-    })
-  }, [focusNodeTargetZoom, isFocusNodeTargetZoomPreviewing, reactFlow, viewportRef])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {

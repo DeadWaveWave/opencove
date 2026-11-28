@@ -1,5 +1,5 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { useStore, type Node, type Viewport } from '@xyflow/react'
+import { useStore, type Node } from '@xyflow/react'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import {
   createCanvasInputModalityState,
@@ -19,11 +19,9 @@ const EMPTY_ID_SET: ReadonlySet<string> = new Set()
 export function useWorkspaceCanvasState({
   nodes,
   spaces,
-  viewport,
 }: {
   nodes: Node<TerminalNodeData>[]
   spaces: WorkspaceSpaceState[]
-  viewport: Viewport
 }): {
   selectedNodeIds: readonly string[]
   syncSelectedNodeIds: (nodeIds: readonly string[]) => void
@@ -39,7 +37,6 @@ export function useWorkspaceCanvasState({
   trackpadGestureLockRef: React.MutableRefObject<CanvasWheelGestureSessionState | null>
   isCanvasWheelGestureCaptureActive: boolean
   setIsCanvasWheelGestureCaptureActive: React.Dispatch<React.SetStateAction<boolean>>
-  viewportRef: React.MutableRefObject<Viewport>
   spaceNavigationAnchorIdRef: React.MutableRefObject<string | null>
   flowNodes: Node<TerminalNodeData>[]
 } {
@@ -58,7 +55,6 @@ export function useWorkspaceCanvasState({
   const inputModalityStateRef = useRef(createCanvasInputModalityState('mouse'))
   const isShiftPressedRef = useRef(false)
   const trackpadGestureLockRef = useRef<CanvasWheelGestureSessionState | null>(null)
-  const viewportRef = useRef<Viewport>(viewport)
   const spaceNavigationAnchorIdRef = useRef<string | null>(null)
 
   // The store owns the ids and keeps an equal write as the same array, so native activation that
@@ -113,7 +109,6 @@ export function useWorkspaceCanvasState({
     trackpadGestureLockRef,
     isCanvasWheelGestureCaptureActive,
     setIsCanvasWheelGestureCaptureActive,
-    viewportRef,
     spaceNavigationAnchorIdRef,
     flowNodes,
   }

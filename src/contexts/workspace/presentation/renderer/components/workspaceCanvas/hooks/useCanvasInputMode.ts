@@ -1,5 +1,5 @@
 import type { MutableRefObject } from 'react'
-import type { Node, ReactFlowInstance, Viewport } from '@xyflow/react'
+import type { Node, ReactFlowInstance } from '@xyflow/react'
 import type {
   CanvasWheelBehavior,
   CanvasWheelZoomModifier,
@@ -22,7 +22,6 @@ interface UseWorkspaceCanvasInputModeParams {
   canvasRef: MutableRefObject<HTMLDivElement | null>
   trackpadGestureLockRef: MutableRefObject<TrackpadGestureLockState | null>
   setIsCanvasWheelGestureCaptureActive: React.Dispatch<React.SetStateAction<boolean>>
-  viewportRef: MutableRefObject<Viewport>
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
   onViewportChange: (viewport: { x: number; y: number; zoom: number }) => void
 }
@@ -37,7 +36,6 @@ export function useWorkspaceCanvasInputMode({
   canvasRef,
   trackpadGestureLockRef,
   setIsCanvasWheelGestureCaptureActive,
-  viewportRef,
   reactFlow,
   onViewportChange,
 }: UseWorkspaceCanvasInputModeParams): {
@@ -62,7 +60,6 @@ export function useWorkspaceCanvasInputMode({
     canvasRef,
     trackpadGestureLockRef,
     setIsCanvasWheelGestureCaptureActive,
-    viewportRef,
     reactFlow,
     onViewportChange,
   })

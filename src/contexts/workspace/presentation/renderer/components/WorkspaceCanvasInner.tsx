@@ -46,7 +46,6 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
   const canvasState = workspaceCanvasHooks.useWorkspaceCanvasState({
     nodes,
     spaces,
-    viewport,
   })
   const nodePublishers = workspaceCanvasHooks.useWorkspaceCanvasNodePublishers({ workspaceId })
   // prettier-ignore
@@ -126,7 +125,7 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
   // prettier-ignore
   const { runRole, ...roleUiProps } = workspaceCanvasHooks.useWorkspaceCanvasRoleUi({ workspaceId, workspacePath, environmentVariables, agentSettings, readAgentSettings, nodeStore, agentSupport, onShowMessage })
   // prettier-ignore
-  const inputMode = workspaceCanvasHooks.useWorkspaceCanvasInputMode({ canvasInputModeSetting: agentSettings.canvasInputMode, canvasWheelBehaviorSetting: agentSettings.canvasWheelBehavior, canvasWheelZoomModifierSetting: agentSettings.canvasWheelZoomModifier, detectedCanvasInputMode: canvasState.detectedCanvasInputMode, inputModalityStateRef: canvasState.inputModalityStateRef, setDetectedCanvasInputMode: canvasState.setDetectedCanvasInputMode, canvasRef: canvasState.canvasRef, trackpadGestureLockRef: canvasState.trackpadGestureLockRef, setIsCanvasWheelGestureCaptureActive: canvasState.setIsCanvasWheelGestureCaptureActive, viewportRef: canvasState.viewportRef, reactFlow, onViewportChange })
+  const inputMode = workspaceCanvasHooks.useWorkspaceCanvasInputMode({ canvasInputModeSetting: agentSettings.canvasInputMode, canvasWheelBehaviorSetting: agentSettings.canvasWheelBehavior, canvasWheelZoomModifierSetting: agentSettings.canvasWheelZoomModifier, detectedCanvasInputMode: canvasState.detectedCanvasInputMode, inputModalityStateRef: canvasState.inputModalityStateRef, setDetectedCanvasInputMode: canvasState.setDetectedCanvasInputMode, canvasRef: canvasState.canvasRef, trackpadGestureLockRef: canvasState.trackpadGestureLockRef, setIsCanvasWheelGestureCaptureActive: canvasState.setIsCanvasWheelGestureCaptureActive, reactFlow, onViewportChange })
   // Committed nodes feed collapse read models; the actions plan from the committed document.
   // prettier-ignore
   const collapse = useCanvasCollapse({ workspaceId, canvasRef: canvasState.canvasRef, nodes, spaces, reactFlow, focusNodeTargetZoom: agentSettings.focusNodeTargetZoom, nodeExpandBehavior: agentSettings.nodeExpandBehavior })
@@ -283,7 +282,6 @@ export function WorkspaceCanvasInner(props: WorkspaceCanvasInnerProps) {
     spaceUi,
   } = workspaceCanvasHooks.useWorkspaceCanvasViewModel({
     agentSettings,
-    viewportRef: canvasState.viewportRef,
     onViewportChange,
     flowNodes: canvasState.flowNodes,
     workspacePath,
