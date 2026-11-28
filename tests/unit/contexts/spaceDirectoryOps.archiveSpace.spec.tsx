@@ -102,10 +102,10 @@ describe('useWorkspaceCanvasSpaceDirectoryOps archiveSpace', () => {
     const harness = createCanvasDocumentHarness({ nodes: initialNodes, spaces: initialSpaces })
     const view = renderCanvasNodeStore(harness, {
       workspacePath: '/repo',
-      extend: function useDirectoryOpsUnderTest({ nodeStore }: CanvasNodeStoreContext) {
+      extend: function useDirectoryOpsUnderTest({ writer }: CanvasNodeStoreContext) {
         return useWorkspaceCanvasSpaceDirectoryOps({
           workspacePath: '/repo',
-          updateCanvasDocument: nodeStore.updateCanvasDocument,
+          updateCanvasDocument: writer.updateCanvasDocument,
           closeNode,
         })
       },

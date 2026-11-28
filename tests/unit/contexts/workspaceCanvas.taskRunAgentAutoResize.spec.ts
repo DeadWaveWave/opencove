@@ -106,8 +106,8 @@ describe('WorkspaceCanvas task run agent auto resize', () => {
       // The push-away writes the same store that the node is added to.
       const harness = createCanvasDocumentHarness({ nodes: [taskNode], spaces })
       const { result } = renderCanvasNodeStore(harness)
-      const { nodeStore } = result.current
-      const { setNodes } = nodeStore
+      const { writer } = result.current
+      const setNodes = writer.updateNodes
       // The run flushes once, after the push-away: the Space holds the agent by then. The flush
       // rides on the write of the task node, so it reaches the shell's registered flush.
       let spacesAtFlush: WorkspaceSpaceState[] = []
@@ -118,7 +118,7 @@ describe('WorkspaceCanvas task run agent auto resize', () => {
       await act(async () => {
         await runTaskAgentAction(taskNode.id, {
           readDocument: harness.readStoreDocument,
-          updateCanvasDocument: nodeStore.updateCanvasDocument,
+          updateCanvasDocument: writer.updateCanvasDocument,
           updateSpaces: vi.fn(),
           updateNodes: setNodes,
           createNodeForSession: async input => {
@@ -427,7 +427,7 @@ describe('WorkspaceCanvas task run agent auto resize', () => {
     ]
     const harness = createCanvasDocumentHarness({ nodes: [taskNode], spaces })
     const { result } = renderCanvasNodeStore(harness)
-    const { nodeStore } = result.current
+    const { writer } = result.current
     // The resume flushes once, after the push-away: the Space holds the agent by then. The flush
     // rides on the write of the task node, so it reaches the shell's registered flush.
     let spacesAtFlush: WorkspaceSpaceState[] = []
@@ -438,9 +438,9 @@ describe('WorkspaceCanvas task run agent auto resize', () => {
     await act(async () => {
       await resumeTaskAgentSessionAction('task-1', 'record-1', {
         readDocument: harness.readStoreDocument,
-        updateCanvasDocument: nodeStore.updateCanvasDocument,
+        updateCanvasDocument: writer.updateCanvasDocument,
         updateSpaces: vi.fn(),
-        updateNodes: nodeStore.setNodes,
+        updateNodes: writer.updateNodes,
         createNodeForSession: async input => {
           const created = {
             id: 'agent-2',
@@ -463,7 +463,7 @@ describe('WorkspaceCanvas task run agent auto resize', () => {
               note: null,
             },
           } as unknown as Node<TerminalNodeData>
-          nodeStore.setNodes(prev => [...prev, created])
+          writer.updateNodes(prev => [...prev, created])
           return created
         },
         buildAgentNodeTitle: () => 'codex · model',

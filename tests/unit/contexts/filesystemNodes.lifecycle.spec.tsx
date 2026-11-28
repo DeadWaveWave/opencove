@@ -62,12 +62,12 @@ function setup() {
   useAppStore.setState(state => ({
     workspaces: [...state.workspaces, { ...state.workspaces[0], id: 'two', nodes: [], spaces: [] }],
   }))
-  const { nodesRef, setNodes } = storeBackedChannelsOf('one', harness.flush)
+  const { nodesRef } = storeBackedChannelsOf('one', harness.flush)
   const createDocumentNode = vi.fn(() => null)
   const createFolderNode = vi.fn(() => null)
   const onShowMessage = vi.fn()
   const params: Omit<FilesystemNodesParams, 'workspaceId'> = {
-    nodeStore: { createDocumentNode, createFolderNode, setNodes, updateCanvasDocument: vi.fn() },
+    nodeStore: { createDocumentNode, createFolderNode },
     onShowMessage,
   }
   let shown = 'one'
@@ -260,20 +260,20 @@ describe('filesystem node ownership across async work', () => {
   })
 
   it('initializes collapsed presentation before publishing a folder with expanded dimensions', () => {
-    const nodesRef = { current: [] as Node<TerminalNodeData>[] }
-    let compactAtPublish = false
-    createCanvasDocumentHarness({ workspaceId: 'one' })
+    let compactAtPublish: boolean | null = null
+    const harness = createCanvasDocumentHarness({ workspaceId: 'one' })
+    // The collapse state at the first commit that holds the node, as the writer publishes it.
+    const stop = useAppStore.subscribe(() => {
+      const [first] = harness.readStoreDocument().nodes
+      if (first && compactAtPublish === null) {
+        compactAtPublish =
+          useCanvasCollapseStore.getState().workspaces.one?.collapsedNodeIds[first.id] === true
+      }
+    })
     const view = renderInCanvasDocument(
       () =>
         useWorkspaceCanvasFilesystemNodeCreation({
           standardWindowSizeBucket: 'regular',
-          setNodes: update => {
-            nodesRef.current = update(nodesRef.current)
-            compactAtPublish =
-              useCanvasCollapseStore.getState().workspaces.one?.collapsedNodeIds[
-                nodesRef.current[0].id
-              ] === true
-          },
         }),
       { workspaceId: 'one' },
     )
@@ -285,31 +285,29 @@ describe('filesystem node ownership across async work', () => {
         'one',
       )
     })
+    stop()
+    const nodes = harness.readStoreDocument().nodes
     expect(compactAtPublish).toBe(true)
-    expect(nodesRef.current[0].data.kind).toBe('folder')
-    expect(nodesRef.current[0].data.width).toBeGreaterThan(128)
-    expect(nodesRef.current[0].data.height).toBeGreaterThan(112)
+    expect(nodes[0].data.kind).toBe('folder')
+    expect(nodes[0].data.width).toBeGreaterThan(128)
+    expect(nodes[0].data.height).toBeGreaterThan(112)
   })
 
   it.each([true, false])(
     'uses visible obstacle dimensions when a sibling is collapsed=%s',
     collapsed => {
       const sibling = { ...folder(), position: { x: 100, y: 100 } }
-      const nodesRef = { current: [sibling] }
       useCanvasCollapseStore.setState({
         workspaces: {
           one: { collapsedNodeIds: collapsed ? { folder: true } : {}, collapsedSpaceIds: {} },
         },
       })
       // The creator places against the store's nodes: the sibling is seeded there too.
-      createCanvasDocumentHarness({ workspaceId: 'one', nodes: [sibling] })
+      const harness = createCanvasDocumentHarness({ workspaceId: 'one', nodes: [sibling] })
       const view = renderInCanvasDocument(
         () =>
           useWorkspaceCanvasFilesystemNodeCreation({
             standardWindowSizeBucket: 'regular',
-            setNodes: update => {
-              nodesRef.current = update(nodesRef.current)
-            },
           }),
         { workspaceId: 'one' },
       )
@@ -321,14 +319,20 @@ describe('filesystem node ownership across async work', () => {
           'one',
         )
       })
-      expect(nodesRef.current).toHaveLength(2)
+      const nodes = harness.readStoreDocument().nodes
+      expect(nodes).toHaveLength(2)
       if (collapsed) {
-        expect(nodesRef.current[1].position).toEqual({ x: 300, y: 150 })
+        expect(nodes[1].position).toEqual({ x: 300, y: 150 })
       } else {
-        expect(nodesRef.current[1].position).not.toEqual({ x: 300, y: 150 })
+        expect(nodes[1].position).not.toEqual({ x: 300, y: 150 })
       }
-      expect(nodesRef.current[0]).toBe(sibling)
-      expect(nodesRef.current[1].data.width).toBeGreaterThan(128)
+      // The writer adds the initial dimensions React Flow measures from; nothing else changes.
+      expect(nodes[0]).toMatchObject({
+        id: sibling.id,
+        position: sibling.position,
+        data: sibling.data,
+      })
+      expect(nodes[1].data.width).toBeGreaterThan(128)
     },
   )
 })

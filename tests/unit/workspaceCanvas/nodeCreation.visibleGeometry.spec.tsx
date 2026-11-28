@@ -126,7 +126,7 @@ describe('creation uses the visible geometry of every window kind', () => {
             workspaceId,
             createdNodeId: added.id,
             targetSpaceId: target.id,
-            updateCanvasDocument: result.current.nodeStore.updateCanvasDocument,
+            updateCanvasDocument: result.current.writer.updateCanvasDocument,
           })
         })
         const stored = harness.readStoreDocument()

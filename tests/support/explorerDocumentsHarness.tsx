@@ -176,8 +176,6 @@ export function renderOpening(documents?: Documents, options: ExplorerRenderOpti
     )
     return useWorkspaceDocumentOpening({
       workspaceId,
-      setNodes: context.stableSetNodes,
-      updateCanvasDocument: context.stableUpdateCanvasDocument,
       reactFlow,
       createDocumentNode: createDocumentNode,
       expandNode,
@@ -201,8 +199,6 @@ export function renderNavigation(
     )
     return useWorkspaceDocumentNavigation({
       workspaceId,
-      setNodes: context.stableSetNodes,
-      updateCanvasDocument: context.stableUpdateCanvasDocument,
       reactFlow,
       createDocumentNode: createDocumentNode,
       expandNode,
@@ -226,8 +222,6 @@ export function renderFilesystemNodes(documents?: Documents, options: ExplorerRe
       workspaceId,
       workspacePath: `/tmp/${workspaceId}`,
       nodeStore: {
-        setNodes: context.stableSetNodes,
-        updateCanvasDocument: context.stableUpdateCanvasDocument,
         createDocumentNode: createDocumentNode,
         createFolderNode,
       },
@@ -266,8 +260,6 @@ export function renderExplorer(documents?: Documents, options: ExplorerRenderOpt
       canvasRef,
       // The Spaces of the provider's workspace when this renders, as the canvas passes them.
       spaces: readDocument().spaces,
-      setNodes: context.stableSetNodes,
-      updateCanvasDocument: context.stableUpdateCanvasDocument,
       reactFlow: reactFlow as never,
       nodeDragSession: nodeDragSession as never,
       finalizeDraggedNodeDrop,

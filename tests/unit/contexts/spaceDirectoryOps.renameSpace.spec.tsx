@@ -9,10 +9,10 @@ import {
   type CanvasNodeStoreContext,
 } from '../../support/canvasDocumentHarness'
 
-function useDirectoryOpsUnderTest({ nodeStore }: CanvasNodeStoreContext) {
+function useDirectoryOpsUnderTest({ writer }: CanvasNodeStoreContext) {
   return useWorkspaceCanvasSpaceDirectoryOps({
     workspacePath: '/repo',
-    updateCanvasDocument: nodeStore.updateCanvasDocument,
+    updateCanvasDocument: writer.updateCanvasDocument,
     closeNode: vi.fn(async () => undefined),
   })
 }
@@ -57,10 +57,10 @@ describe('useWorkspaceCanvasSpaceDirectoryOps renameSpaceTo', () => {
     const harness = createCanvasDocumentHarness({ spaces: INITIAL_SPACES })
     const view = renderCanvasNodeStore(harness, {
       workspacePath: '/repo',
-      extend: function useDirectoryOps({ nodeStore }: CanvasNodeStoreContext) {
+      extend: function useDirectoryOps({ writer }: CanvasNodeStoreContext) {
         return useWorkspaceCanvasSpaceDirectoryOps({
           workspacePath: '/repo',
-          updateCanvasDocument: nodeStore.updateCanvasDocument,
+          updateCanvasDocument: writer.updateCanvasDocument,
           closeNode,
         })
       },

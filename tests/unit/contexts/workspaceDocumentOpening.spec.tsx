@@ -79,7 +79,7 @@ const remoteSpace = (): WorkspaceSpaceState =>
  */
 function fixture(workspaceId = 'workspace') {
   const harness = createCanvasDocumentHarness({ workspaceId, spaces: [remoteSpace()] })
-  const { nodesRef, spacesRef, setNodes } = storeBackedChannelsOf(workspaceId, harness.flush)
+  const { nodesRef, spacesRef } = storeBackedChannelsOf(workspaceId, harness.flush)
   const options: WorkspaceDocumentOpeningArgs & {
     nodesRef: typeof nodesRef
     spacesRef: typeof spacesRef
@@ -89,8 +89,6 @@ function fixture(workspaceId = 'workspace') {
     nodesRef,
     spacesRef,
     harness,
-    setNodes,
-    updateCanvasDocument: vi.fn(),
     createDocumentNode: vi.fn((_anchor, _document, _placement, workerBinding) => {
       const created = documentNode('new-document', workerBinding)
       nodesRef.current.push(created)
@@ -144,7 +142,8 @@ describe('shared document opening', () => {
       expect.objectContaining({
         workspaceId: 'workspace',
         targetSpaceId: 'space',
-        updateCanvasDocument: options.updateCanvasDocument,
+        // The writer of the render's workspace, from context.
+        updateCanvasDocument: expect.any(Function),
       }),
     )
     for (const channel of ['spacesRef', 'nodesRef', 'setNodes', 'onSpacesChange']) {

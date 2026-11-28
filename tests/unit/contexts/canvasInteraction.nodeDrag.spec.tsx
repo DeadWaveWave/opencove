@@ -146,7 +146,7 @@ describe('a canvas write in the middle of a gesture', () => {
     const overlay = view.result.current.readInteraction().liveNodes
 
     act(() => {
-      view.result.current.nodeStore.setNodes(retitleB)
+      view.result.current.writer.updateNodes(retitleB)
     })
     shown.push(yOf.shown('a'))
 
@@ -181,10 +181,10 @@ describe('a canvas write in the middle of a gesture', () => {
     runFrames()
     harness.flush.mockClear()
 
-    act(() => view.result.current.nodeStore.setNodes(nodes => nodes.map(node => ({ ...node }))))
+    act(() => view.result.current.writer.updateNodes(nodes => nodes.map(node => ({ ...node }))))
     expect(harness.flush).not.toHaveBeenCalled()
 
-    act(() => view.result.current.nodeStore.setNodes(retitleB, { flush: true }))
+    act(() => view.result.current.writer.updateNodes(retitleB, { flush: true }))
     expect(positionsAtFlush).toEqual([0])
   })
 
@@ -195,7 +195,7 @@ describe('a canvas write in the middle of a gesture', () => {
     const seen: Array<number | undefined> = []
 
     act(() => {
-      view.result.current.nodeStore.updateCanvasDocument(({ nodes, spaces }) => {
+      view.result.current.writer.updateCanvasDocument(({ nodes, spaces }) => {
         seen.push(nodes.find(node => node.id === 'a')?.position.y)
         return { nodes, spaces }
       })
@@ -339,7 +339,7 @@ describe('a canvas write that moves a window the gesture did not move', () => {
     act(() => view.result.current.apply(drag('a', 0, 30)))
     runFrames()
 
-    act(() => view.result.current.nodeStore.setNodes(moveC))
+    act(() => view.result.current.writer.updateNodes(moveC))
     expect(storedX()).toBe(2500)
     expect(xOf(view, 'c')).toBe(2500)
 
@@ -370,11 +370,11 @@ describe('a window created during the drag, then moved by a canvas writer', () =
     const xOf = () => harness.readStoreDocument().nodes.find(node => node.id === 'd')?.position.x
     act(() => view.result.current.apply(drag('a', 0, 30)))
     runFrames()
-    act(() => view.result.current.nodeStore.setNodes(addD))
+    act(() => view.result.current.writer.updateNodes(addD))
     act(() => view.result.current.apply(drag('a', 0, 40)))
     runFrames()
 
-    act(() => view.result.current.nodeStore.setNodes(moveD))
+    act(() => view.result.current.writer.updateNodes(moveD))
     expect(xOf()).toBe(5000)
     expect(view.result.current.shown.find(node => node.id === 'd')?.position.x).toBe(5000)
 
@@ -405,7 +405,7 @@ describe('a canvas write after a write from elsewhere, before the next frame', (
     })
     expect(yOf.shown('a')).toBe(30)
 
-    act(() => view.result.current.nodeStore.setNodes(retitle('c', 'renamed')))
+    act(() => view.result.current.writer.updateNodes(retitle('c', 'renamed')))
 
     expect(yOf.stored('a')).toBe(0)
     expect(yOf.live('a')).toBe(30)
@@ -451,7 +451,7 @@ describe('a canvas write with no gesture live', () => {
             node.id === 'c' ? { ...node, position: { x: node.position.x, y: 500 } } : node,
           ),
       )
-      view.result.current.nodeStore.setNodes(nodes =>
+      view.result.current.writer.updateNodes(nodes =>
         nodes.map(node =>
           node.id === 'b' ? { ...node, data: { ...node.data, title: 'renamed' } } : node,
         ),

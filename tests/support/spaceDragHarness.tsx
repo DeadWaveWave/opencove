@@ -47,13 +47,13 @@ export function spaceC() {
   return createSpace('space-c', { x: 700, y: 0, width: 500, height: 400 }, [])
 }
 
-function useDragUnderTest({ workspaceId, nodeStore }: CanvasNodeStoreContext) {
+function useDragUnderTest({ workspaceId, writer }: CanvasNodeStoreContext) {
   const flow = useReactFlow<Node<TerminalNodeData>>()
   return {
     drag: useWorkspaceCanvasSpaceDrag({
       workspaceId,
       reactFlow: { ...flow, screenToFlowPosition: point => point, getZoom: () => 1 },
-      updateCanvasDocument: nodeStore.updateCanvasDocument,
+      updateCanvasDocument: writer.updateCanvasDocument,
     }),
     selection: useCanvasSelectionCommands(),
     readSelection: useReadCanvasSelection(),

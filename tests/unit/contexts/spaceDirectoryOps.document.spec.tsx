@@ -63,7 +63,7 @@ function renderOps(documents: Parameters<typeof renderInTwoWorkspaces>[1] = {}) 
     (context: RuntimeCanvasContext) =>
       useWorkspaceCanvasSpaceDirectoryOps({
         workspacePath: '/repo',
-        updateCanvasDocument: context.nodeStore.updateCanvasDocument,
+        updateCanvasDocument: context.writer.updateCanvasDocument,
         closeNode,
       }),
     documents,

@@ -62,7 +62,7 @@ describe('assignNodeToSpaceAndExpand', () => {
         workspaceId: harness.workspaceId,
         createdNodeId: createdTerminal.id,
         targetSpaceId: space.id,
-        updateCanvasDocument: view.result.current.nodeStore.updateCanvasDocument,
+        updateCanvasDocument: view.result.current.writer.updateCanvasDocument,
         ...({ createdNode: staleCallerCopy } as object),
       })
     })
@@ -102,7 +102,7 @@ describe('assignNodeToSpaceAndExpand', () => {
           workspaceId: harness.workspaceId,
           createdNodeId: created.id,
           targetSpaceId: space.id,
-          updateCanvasDocument: view.result.current.nodeStore.updateCanvasDocument,
+          updateCanvasDocument: view.result.current.writer.updateCanvasDocument,
         })
       }
     })

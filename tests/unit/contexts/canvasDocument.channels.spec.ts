@@ -17,6 +17,10 @@ const CANVAS_DIR = 'src/contexts/workspace/presentation/renderer/components/work
 // stand-in, and the shell's quit handler. The names after it are retired by #738: no file names
 // them again.
 const ALLOWED_FILES: Record<string, readonly string[]> = {
+  // Retired by S7 (PR 8): the node store returns no writer, and every consumer takes it from
+  // `useCanvasNodeWriter()`. What is left is the plugin preview's own `useState` setter, which is
+  // not the canvas's.
+  setNodes: ['src/contexts/plugins/presentation/renderer/PluginRuntimePreview.tsx'],
   nodesRef: ['~/view/WorkspacePixelLayer.tsx'],
   spacesRef: [],
   onSpacesChange: [],
@@ -371,34 +375,20 @@ const HOOKS_WITH_WRITER_PARAMETERS: readonly string[] = [
   '~/hooks/useCanvasAgentSupport.ts#useWorkspaceCanvasAgentSupport:updateCanvasDocument',
   '~/hooks/useCanvasImageImport.ts#useWorkspaceCanvasImageImport:updateCanvasDocument',
   '~/hooks/useCanvasShortcutActions.ts#useWorkspaceCanvasShortcutActions:updateCanvasDocument',
-  '~/hooks/useCanvasSpaceExplorer.ts#useCanvasSpaceExplorer:setNodes',
-  '~/hooks/useCanvasSpaceExplorer.ts#useCanvasSpaceExplorer:updateCanvasDocument',
-  '~/hooks/useCreatedNodePublisher.ts#useCreatedNodePublisher:setNodes',
-  '~/hooks/useFilesystemNodes.ts#useFilesystemNodes:setNodes',
-  '~/hooks/useFilesystemNodes.ts#useFilesystemNodes:updateCanvasDocument',
   '~/hooks/useInteractions.flowNodeCreation.ts#useWorkspaceCanvasFlowNodeCreation:updateCanvasDocument',
   '~/hooks/useInteractions.pasteHandlers.ts#useWorkspaceCanvasPasteHandlers:updateCanvasDocument',
   '~/hooks/useInteractions.quickMenuActions.ts#useWorkspaceCanvasQuickMenuActions:updateCanvasDocument',
   '~/hooks/useInteractions.terminalCreation.ts#useWorkspaceCanvasTerminalCreation:updateCanvasDocument',
   '~/hooks/useInteractions.ts#useWorkspaceCanvasInteractions:updateCanvasDocument',
   '~/hooks/useInteractions.websiteContextMenu.ts#useWebsiteNodeContextMenuCreation:updateCanvasDocument',
-  '~/hooks/useNodesStore.createFilesystemNodes.ts#useWorkspaceCanvasFilesystemNodeCreation:setNodes',
-  '~/hooks/useNodesStore.createNodes.ts#useWorkspaceCanvasNodeCreation:setNodes',
-  '~/hooks/useNodesStore.createRoleNode.ts#useWorkspaceCanvasRoleNodeCreation:setNodes',
-  '~/hooks/useNodesStore.createWebsiteNode.ts#useWorkspaceCanvasWebsiteNodeCreation:setNodes',
   '~/hooks/useSpaceDirectoryOps.ts#useWorkspaceCanvasSpaceDirectoryOps:updateCanvasDocument',
   '~/hooks/useSpaceDrag.ts#useWorkspaceCanvasSpaceDrag:updateCanvasDocument',
-  '~/hooks/useSpaceExplorer.quickPreviewActions.ts#useWorkspaceCanvasSpaceExplorerQuickPreviewActions:setNodes',
-  '~/hooks/useSpaceExplorer.ts#useWorkspaceCanvasSpaceExplorer:setNodes',
-  '~/hooks/useSpaceExplorer.ts#useWorkspaceCanvasSpaceExplorer:updateCanvasDocument',
   '~/hooks/useSpaceOwnership.applyDrop.ts#useWorkspaceCanvasApplyOwnershipForDrop:updateCanvasDocument',
   '~/hooks/useSpaceOwnership.ts#useWorkspaceCanvasSpaceOwnership:updateCanvasDocument',
   '~/hooks/useSpaces.createChildSpace.ts#useWorkspaceCanvasCreateChildSpace:updateCanvasDocument',
   '~/hooks/useSpaces.createSpace.ts#useWorkspaceCanvasCreateSpace:updateCanvasDocument',
   '~/hooks/useSpaces.ts#useWorkspaceCanvasSpaces:updateCanvasDocument',
   '~/hooks/useWebsiteWindowOpenUrlNodeCreation.ts#useWebsiteWindowOpenUrlNodeCreation:updateCanvasDocument',
-  '~/hooks/useWorkspaceDocumentOpening.ts#useWorkspaceDocumentOpening:setNodes',
-  '~/hooks/useWorkspaceDocumentOpening.ts#useWorkspaceDocumentOpening:updateCanvasDocument',
 ]
 
 describe('hooks do not take the node writer as a parameter', () => {
@@ -468,22 +458,21 @@ describe('hooks do not take the node writer as a parameter', () => {
     ])
   })
 
-  // The three hooks that still receive the writer inside a `nodeStore` or an options object, which
-  // the first version of the check did not see (found in review). They are in the list because
-  // later pull requests remove them. `useWorkspaceCanvasRuntimeIntegrations` left it in PR 5, and
+  // The hook that still receives the writer inside an options object, which the first version of
+  // the check did not see (found in review). It is in the list because PR 9 removes it.
+  // `useFilesystemNodes` and `useCanvasSpaceExplorer` left it in PR 8. `useWorkspaceCanvasRuntimeIntegrations` left it in PR 5, and
   // `useWorkspaceCanvasRoleUi` in PR 6.
-  it.each([
-    ['hooks/useFilesystemNodes.ts', 'useFilesystemNodes'],
-    ['hooks/useCanvasSpaceExplorer.ts', 'useCanvasSpaceExplorer'],
-    ['hooks/useInteractions.quickMenuActions.ts', 'useWorkspaceCanvasQuickMenuActions'],
-  ])('finds the writer that %s receives inside an object parameter', (file, hook) => {
-    const found = hooksDeclaringWriterParameters(readFileSync(CANVAS_DIR + file, 'utf8'), file)
+  it.each([['hooks/useInteractions.quickMenuActions.ts', 'useWorkspaceCanvasQuickMenuActions']])(
+    'finds the writer that %s receives inside an object parameter',
+    (file, hook) => {
+      const found = hooksDeclaringWriterParameters(readFileSync(CANVAS_DIR + file, 'utf8'), file)
 
-    expect(found.some(entry => entry.startsWith(`${hook}:`))).toBe(true)
-    expect(HOOKS_WITH_WRITER_PARAMETERS.some(entry => entry.startsWith(`~/${file}#${hook}:`))).toBe(
-      true,
-    )
-  })
+      expect(found.some(entry => entry.startsWith(`${hook}:`))).toBe(true)
+      expect(
+        HOOKS_WITH_WRITER_PARAMETERS.some(entry => entry.startsWith(`~/${file}#${hook}:`)),
+      ).toBe(true)
+    },
+  )
 
   it('does not flag what Decision 8 allows', () => {
     const flagged = (source: string) => hooksDeclaringWriterParameters(source)

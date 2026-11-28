@@ -4,7 +4,7 @@ import { repositionCreatedExplorerNode } from '../../../src/contexts/workspace/p
 import type { WorkspaceDocument } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocument'
 import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
 import type { NodeCreationPlacementOptions } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/types'
-import type { UseWorkspaceCanvasNodesStoreResult } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore.types'
+import type { CanvasNodeWriter } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodeWriter'
 
 function createdNode(position: { x: number; y: number }): Node<TerminalNodeData> {
   return {
@@ -23,21 +23,21 @@ function run({
   nodes: Node<TerminalNodeData>[]
   placement: NodeCreationPlacementOptions
 }) {
-  const setNodes = vi.fn()
+  const updateNodes = vi.fn()
   const returned = repositionCreatedExplorerNode({
     created,
     creationAnchor: { ...created.position },
     creationPlacement: placement,
     readDocument: () => ({ nodes }) as unknown as WorkspaceDocument,
-    setNodes: setNodes as unknown as UseWorkspaceCanvasNodesStoreResult['setNodes'],
+    updateNodes: updateNodes as unknown as CanvasNodeWriter['updateNodes'],
   })
-  return { returned, setNodes }
+  return { returned, updateNodes }
 }
 
 describe('repositionCreatedExplorerNode', () => {
   it('returns the node as stored after the reposition moves it', () => {
     const created = createdNode({ x: 10, y: 10 })
-    const { returned, setNodes } = run({
+    const { returned, updateNodes } = run({
       created,
       nodes: [created],
       placement: {
@@ -49,8 +49,8 @@ describe('repositionCreatedExplorerNode', () => {
     // holds x and scans y first (down before up, one 24px grid step at a time), landing at
     // y = 10 + 5 * 24 = 130, clear of the rect's bottom edge at 110.
     expect(returned.position).toEqual({ x: 10, y: 130 })
-    expect(setNodes).toHaveBeenCalledOnce()
-    const updater = setNodes.mock.calls[0][0] as (
+    expect(updateNodes).toHaveBeenCalledOnce()
+    const updater = updateNodes.mock.calls[0][0] as (
       previous: Node<TerminalNodeData>[],
     ) => Node<TerminalNodeData>[]
     expect(updater([created]).find(node => node.id === 'created')?.position).toEqual({
@@ -61,7 +61,7 @@ describe('repositionCreatedExplorerNode', () => {
 
   it('returns the created node unchanged when its position is already free', () => {
     const created = createdNode({ x: 10, y: 10 })
-    const { returned, setNodes } = run({
+    const { returned, updateNodes } = run({
       created,
       nodes: [created],
       placement: {
@@ -70,12 +70,12 @@ describe('repositionCreatedExplorerNode', () => {
       },
     })
     expect(returned).toBe(created)
-    expect(setNodes).not.toHaveBeenCalled()
+    expect(updateNodes).not.toHaveBeenCalled()
   })
 
   it('returns the created node unchanged when the placement does not ask for a move', () => {
     const created = createdNode({ x: 10, y: 10 })
-    const { returned, setNodes } = run({
+    const { returned, updateNodes } = run({
       created,
       nodes: [created],
       placement: {
@@ -84,6 +84,6 @@ describe('repositionCreatedExplorerNode', () => {
       },
     })
     expect(returned).toBe(created)
-    expect(setNodes).not.toHaveBeenCalled()
+    expect(updateNodes).not.toHaveBeenCalled()
   })
 })

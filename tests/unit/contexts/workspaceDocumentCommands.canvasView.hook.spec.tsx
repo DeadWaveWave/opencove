@@ -8,6 +8,7 @@ import {
 } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
+import { useCanvasNodeWriter } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodeWriter'
 import { useWorkspaceCanvasNodesStore } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore'
 import type {
   TerminalNodeData,
@@ -54,6 +55,7 @@ function renderCanvasNodesStore() {
         browserDefaultMode: 'iframe',
         readAgentSettings: readDefaultAgentSettings,
       }),
+      writer: useCanvasNodeWriter(),
       selection: useCanvasSelectionCommands(),
       interaction: useCanvasInteractionCommands(),
     }),
@@ -85,7 +87,7 @@ describe('workspace document commands: the canvas view of the store', () => {
     let seen: Node<TerminalNodeData>[] = []
 
     act(() => {
-      view.result.current.store.setNodes(prev => {
+      view.result.current.writer.updateNodes(prev => {
         seen = prev
         return prev
       })
@@ -109,14 +111,14 @@ describe('workspace document commands: the canvas view of the store', () => {
     const unsubscribe = useAppStore.subscribe(listener)
 
     act(() => {
-      view.result.current.store.setNodes(prev => prev)
+      view.result.current.writer.updateNodes(prev => prev)
     })
 
     expect(listener).not.toHaveBeenCalled()
     expect(useAppStore.getState().workspaces[0].nodes).toBe(stored)
 
     act(() => {
-      view.result.current.store.setNodes(prev =>
+      view.result.current.writer.updateNodes(prev =>
         prev.map(node =>
           node.id === 'n2' ? { ...node, data: { ...node.data, title: 'changed' } } : node,
         ),
@@ -153,7 +155,7 @@ describe('workspace document commands: the canvas view of the store', () => {
       let seenX: number | null = null
 
       act(() => {
-        view.result.current.store.setNodes(prev => {
+        view.result.current.writer.updateNodes(prev => {
           seenX = prev.find(node => node.id === 't1')?.position.x ?? null
           return prev.map(node =>
             node.id === 'n2' ? { ...node, data: { ...node.data, title: 'changed' } } : node,

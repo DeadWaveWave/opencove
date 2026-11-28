@@ -9,11 +9,7 @@ import { readNativeDroppedFiles } from '@contexts/workspace/presentation/rendere
 import { useWorkspaceCanvasFilesystemNodeCreation } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore.createFilesystemNodes'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import { useCanvasCollapseStore } from '@contexts/workspace/presentation/renderer/store/useCanvasCollapseStore'
-import type { Node } from '@xyflow/react'
-import type {
-  TerminalNodeData,
-  WorkspaceSpaceState,
-} from '@contexts/workspace/presentation/renderer/types'
+import type { WorkspaceSpaceState } from '@contexts/workspace/presentation/renderer/types'
 import {
   createCanvasDocumentHarness,
   renderInCanvasDocument,
@@ -71,8 +67,6 @@ function setup({ twoSpaces = [] as WorkspaceSpaceState[] } = {}) {
   }))
   const params: Omit<FilesystemNodesParams, 'workspaceId'> = {
     nodeStore: {
-      setNodes: vi.fn(),
-      updateCanvasDocument: vi.fn(),
       createDocumentNode,
       createFolderNode,
     },
@@ -341,20 +335,20 @@ describe('native filesystem drops', () => {
   it.each([false, true])(
     'publishes document collapsed=%s while preserving durable expanded size',
     collapsed => {
-      const nodesRef = { current: [] as Node<TerminalNodeData>[] }
-      let collapsedAtPublish = false
-      createCanvasDocumentHarness({ workspaceId: 'one' })
+      let collapsedAtPublish: boolean | null = null
+      const harness = createCanvasDocumentHarness({ workspaceId: 'one' })
+      // The collapse state at the first commit that holds the node, as the writer publishes it.
+      const stop = useAppStore.subscribe(() => {
+        const [first] = harness.readStoreDocument().nodes
+        if (first && collapsedAtPublish === null) {
+          collapsedAtPublish =
+            useCanvasCollapseStore.getState().workspaces.one?.collapsedNodeIds[first.id] === true
+        }
+      })
       const hook = renderInCanvasDocument(
         () =>
           useWorkspaceCanvasFilesystemNodeCreation({
             standardWindowSizeBucket: 'regular',
-            setNodes: update => {
-              nodesRef.current = update(nodesRef.current)
-              collapsedAtPublish =
-                useCanvasCollapseStore.getState().workspaces.one?.collapsedNodeIds[
-                  nodesRef.current[0].id
-                ] === true
-            },
           }),
         { workspaceId: 'one' },
       )
@@ -367,10 +361,12 @@ describe('native filesystem drops', () => {
           collapsed ? { workspaceId: 'one', collapsed: true } : undefined,
         )
       })
+      stop()
+      const nodes = harness.readStoreDocument().nodes
       expect(collapsedAtPublish).toBe(collapsed)
-      expect(nodesRef.current[0].position).toEqual({ x: 100, y: 100 })
-      expect(nodesRef.current[0].data.width).toBeGreaterThan(128)
-      expect(nodesRef.current[0].data.height).toBeGreaterThan(112)
+      expect(nodes[0].position).toEqual({ x: 100, y: 100 })
+      expect(nodes[0].data.width).toBeGreaterThan(128)
+      expect(nodes[0].data.height).toBeGreaterThan(112)
     },
   )
 })

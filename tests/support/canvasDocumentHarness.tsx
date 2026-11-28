@@ -5,6 +5,10 @@ import { afterEach, vi, type Mock } from 'vitest'
 import { useAppStore } from '../../src/app/renderer/shell/store/useAppStore'
 import { useWorkspaceCanvasNodePublishers } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodePublishers'
 import { useWorkspaceCanvasState } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasState'
+import {
+  useCanvasNodeWriter,
+  type CanvasNodeWriter,
+} from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodeWriter'
 import { useWorkspaceCanvasNodesStore } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore'
 import {
   readWorkspaceDocument,
@@ -139,6 +143,8 @@ export interface CanvasNodeStoreContext {
   workspaceId: string
   canvasState: ReturnType<typeof useWorkspaceCanvasState>
   nodeStore: ReturnType<typeof useWorkspaceCanvasNodesStore>
+  /** The canvas's node writer, from context: the node store returns none (S7, Decision 8). */
+  writer: CanvasNodeWriter
   publishers: ReturnType<typeof useWorkspaceCanvasNodePublishers>
   nodes: Node<TerminalNodeData>[]
   spaces: WorkspaceSpaceState[]
@@ -193,10 +199,12 @@ export function renderCanvasNodeStore<Extra extends object = Record<never, never
         readAgentSettings: readDefaultAgentSettings,
         ...nodeStoreOptions,
       })
+      const writer = useCanvasNodeWriter()
       const context = {
         workspaceId: harness.workspaceId,
         canvasState,
         nodeStore,
+        writer,
         publishers,
         nodes,
         spaces,

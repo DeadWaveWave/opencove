@@ -5,6 +5,10 @@ import { vi } from 'vitest'
 import { useAppStore } from '../../src/app/renderer/shell/store/useAppStore'
 import { useWorkspaceCanvasNodePublishers } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodePublishers'
 import { useWorkspaceCanvasState } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasState'
+import {
+  useCanvasNodeWriter,
+  type CanvasNodeWriter,
+} from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodeWriter'
 import { useWorkspaceCanvasNodesStore } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore'
 import {
   readWorkspaceDocument,
@@ -138,11 +142,11 @@ export interface RuntimeCanvasContext {
    * render. A case that pins a reader's place in a dependency list uses it, so that the writer
    * changing with the workspace cannot rebuild the callback and hide a missing reader.
    */
-  stableSetNodes: ReturnType<typeof useWorkspaceCanvasNodesStore>['setNodes']
+  stableSetNodes: CanvasNodeWriter['updateNodes']
   /** The same for `updateCanvasDocument`. */
-  stableUpdateCanvasDocument: ReturnType<
-    typeof useWorkspaceCanvasNodesStore
-  >['updateCanvasDocument']
+  stableUpdateCanvasDocument: CanvasNodeWriter['updateCanvasDocument']
+  /** The canvas's node writer, from context: the node store returns none. */
+  writer: CanvasNodeWriter
 }
 
 export interface FlushRecord {
@@ -209,15 +213,16 @@ export function renderInTwoWorkspaces<Result>(
         browserDefaultMode: 'iframe',
         readAgentSettings: readDefaultAgentSettings,
       })
-      const latestSetNodes = useRef(nodeStore.setNodes)
-      latestSetNodes.current = nodeStore.setNodes
-      const stableSetNodes = useCallback<typeof nodeStore.setNodes>(
+      const writer = useCanvasNodeWriter()
+      const latestSetNodes = useRef(writer.updateNodes)
+      latestSetNodes.current = writer.updateNodes
+      const stableSetNodes = useCallback<CanvasNodeWriter['updateNodes']>(
         (updater, options) => latestSetNodes.current(updater, options),
         [],
       )
-      const latestUpdateCanvasDocument = useRef(nodeStore.updateCanvasDocument)
-      latestUpdateCanvasDocument.current = nodeStore.updateCanvasDocument
-      const stableUpdateCanvasDocument = useCallback<typeof nodeStore.updateCanvasDocument>(
+      const latestUpdateCanvasDocument = useRef(writer.updateCanvasDocument)
+      latestUpdateCanvasDocument.current = writer.updateCanvasDocument
+      const stableUpdateCanvasDocument = useCallback<CanvasNodeWriter['updateCanvasDocument']>(
         (recipe, options) => latestUpdateCanvasDocument.current(recipe, options),
         [],
       )
@@ -228,6 +233,7 @@ export function renderInTwoWorkspaces<Result>(
         publishers,
         stableSetNodes,
         stableUpdateCanvasDocument,
+        writer,
       })
     },
     { workspaceId: () => shown },

@@ -3,6 +3,10 @@ import { ReactFlowProvider, type Node } from '@xyflow/react'
 import React, { type ReactElement } from 'react'
 import { expect, type Mock } from 'vitest'
 import { useAppStore } from '../../src/app/renderer/shell/store/useAppStore'
+import {
+  useCanvasNodeWriter,
+  type CanvasNodeWriter,
+} from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodeWriter'
 import { useWorkspaceCanvasNodesStore } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore'
 import { readWorkspaceDocument } from '../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import type { WorkspaceDocument } from '../../src/contexts/workspace/presentation/renderer/store/workspaceDocument'
@@ -123,11 +127,12 @@ export function lastCall(mock: unknown): unknown[] {
   return calls[calls.length - 1] ?? []
 }
 
-export type Updater = ReturnType<typeof useWorkspaceCanvasNodesStore>['updateCanvasDocument']
+export type Updater = CanvasNodeWriter['updateCanvasDocument']
 
 export function useShownNodeStore(shown: string) {
   const nodes = useWorkspaceCanvasStoreNodes(shown)
-  return useWorkspaceCanvasNodesStore({
+  const writer = useCanvasNodeWriter()
+  const store = useWorkspaceCanvasNodesStore({
     workspaceId: shown,
     workspacePath: `/tmp/${shown}`,
     nodes,
@@ -135,6 +140,8 @@ export function useShownNodeStore(shown: string) {
     browserDefaultMode: 'iframe',
     readAgentSettings: readDefaultAgentSettings,
   })
+  // The node store returns no writer; the canvas's comes from context.
+  return { ...store, updateCanvasDocument: writer.updateCanvasDocument }
 }
 
 /**
