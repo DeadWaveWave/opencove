@@ -40,7 +40,6 @@ describe('canvas selection prune', () => {
         useWorkspaceCanvasState({
           nodes,
           spaces,
-          viewport: { x: 0, y: 0, zoom: 1 },
         })
         return { readSelection: useReadCanvasSelection(), selection: useCanvasSelectionCommands() }
       },
@@ -63,7 +62,6 @@ describe('canvas selection prune', () => {
         useWorkspaceCanvasState({
           nodes,
           spaces,
-          viewport: { x: 0, y: 0, zoom: 1 },
         })
         return { readSelection: useReadCanvasSelection(), selection: useCanvasSelectionCommands() }
       },
@@ -85,7 +83,6 @@ describe('canvas selection prune', () => {
         useWorkspaceCanvasState({
           nodes,
           spaces,
-          viewport: { x: 0, y: 0, zoom: 1 },
         })
         return { readSelection: useReadCanvasSelection(), selection: useCanvasSelectionCommands() }
       },
@@ -112,7 +109,6 @@ describe('canvas selection prune of removed nodes', () => {
         useWorkspaceCanvasState({
           nodes,
           spaces,
-          viewport: { x: 0, y: 0, zoom: 1 },
         })
         return { readSelection: useReadCanvasSelection(), selection: useCanvasSelectionCommands() }
       },

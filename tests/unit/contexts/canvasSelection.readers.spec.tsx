@@ -49,9 +49,6 @@ afterEach(() => {
 describe('Delete key in useWorkspaceCanvasLifecycle', () => {
   function setup(nodeIds: string[]) {
     const requestNodeDelete = vi.fn()
-    const reactFlow = {
-      getViewport: () => ({ x: 0, y: 0, zoom: 1 }),
-    } as unknown as ReactFlowInstance<Node<TerminalNodeData>, Edge>
     const hook = renderHook(
       () => {
         useWorkspaceCanvasLifecycle({
@@ -59,17 +56,12 @@ describe('Delete key in useWorkspaceCanvasLifecycle', () => {
           selectionDraftRef: { current: null },
           trackpadGestureLockRef: { current: null },
           setIsCanvasWheelGestureCaptureActive: vi.fn(),
-          reactFlow,
-          viewport: { x: 0, y: 0, zoom: 1 },
-          viewportRef: { current: { x: 0, y: 0, zoom: 1 } },
           canvasInputModeSetting: 'mouse',
           inputModalityStateRef: { current: createCanvasInputModalityState('mouse') },
           setDetectedCanvasInputMode: vi.fn(),
           isShiftPressedRef: { current: false },
           setIsShiftPressed: vi.fn(),
           requestNodeDelete,
-          focusNodeTargetZoom: 1,
-          isFocusNodeTargetZoomPreviewing: false,
         })
         return useSelectionProbe()
       },

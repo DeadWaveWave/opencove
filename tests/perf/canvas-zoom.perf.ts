@@ -6,7 +6,7 @@ import { clearAndSeedWorkspace, launchApp } from '../e2e/workspace-canvas.helper
 /**
  * The P0 stress scene: 100 windows, 20 of them terminals printing about 15 lines a second, zoomed
  * 1 → 0.12 → 1 three times at display rate, with far view on and off. Reports frame intervals,
- * long animation frames and window commits (the phase 4.3 probe).
+ * long animation frames, window commits (the phase 4.3 probe) and canvas commits (#647 S8).
  */
 const COLUMNS = 10
 const TERMINALS = 20
@@ -120,6 +120,8 @@ async function sweep(window: Page) {
       p99: Math.round(at(0.99) * 10) / 10,
       longFrameMs: Math.round(longFrames.reduce((sum, value) => sum + value, 0)),
       windowCommits: api.getWindowCommitCounts(),
+      // Inner's commits during the sweep (the test-only probe `canvas-drag.perf.ts` reads too).
+      canvasCommits: api.getCanvasCommitCounts(),
     }
   })
 }
