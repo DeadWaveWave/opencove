@@ -23,6 +23,7 @@ import {
   type RuntimeCanvasContext,
   type TwoWorkspaces,
 } from './agentRuntimeHarness'
+import { writerPin } from './stableNodeWriter'
 
 // Renders the explorer, the document opening, the document navigation and the filesystem nodes in
 // two workspaces, as the canvas wires them: the real node store of the shown workspace supplies
@@ -140,10 +141,19 @@ export interface ExplorerRenderOptions {
   createDocumentNode?: WorkspaceDocumentOpeningArgs['createDocumentNode']
   /** The same for the image creator of the explorer. */
   createImageNode?: () => Node<TerminalNodeData> | null
+  /**
+   * The explorer gets the creators of each render, not ones that call the latest render's: a call
+   * of the render of A after a switch to B then creates in A, as the canvas's callback does.
+   */
+  creatorsOfRender?: boolean
 }
 
 function shownId(context: RuntimeCanvasContext, { fixedWorkspaceId }: ExplorerRenderOptions) {
   return fixedWorkspaceId ? A : context.workspaceId
+}
+function pinWriter({ fixedWorkspaceId }: ExplorerRenderOptions): void {
+  // A case that has to see the reader change on its own keeps the writer still too.
+  writerPin.stable = fixedWorkspaceId === true
 }
 
 /** A function that keeps its identity and calls the latest one, so that it cannot rebuild a callback. */
@@ -166,6 +176,7 @@ function stableExpandNode() {
 }
 
 export function renderOpening(documents?: Documents, options: ExplorerRenderOptions = {}) {
+  pinWriter(options)
   const reactFlow = reactFlowStub()
   const expandNode = stableExpandNode()
   const rendered = renderInTwoWorkspaces(context => {
@@ -188,6 +199,7 @@ export function renderNavigation(
   documents?: Documents,
   options: ExplorerRenderOptions & { openExplorerSpaceId?: string | null } = {},
 ) {
+  pinWriter(options)
   const reactFlow = reactFlowStub()
   const expandNode = stableExpandNode()
   const openSpaceExplorer = vi.fn()
@@ -210,6 +222,7 @@ export function renderNavigation(
 }
 
 export function renderFilesystemNodes(documents?: Documents, options: ExplorerRenderOptions = {}) {
+  pinWriter(options)
   const onShowMessage = vi.fn()
   const rendered = renderInTwoWorkspaces(context => {
     const workspaceId = shownId(context, options)
@@ -232,6 +245,7 @@ export function renderFilesystemNodes(documents?: Documents, options: ExplorerRe
 }
 
 export function renderExplorer(documents?: Documents, options: ExplorerRenderOptions = {}) {
+  pinWriter(options)
   const reactFlow = reactFlowStub()
   const canvasRef = { current: document.createElement('div') }
   const nodeDragSession = {
@@ -254,7 +268,12 @@ export function renderExplorer(documents?: Documents, options: ExplorerRenderOpt
     const createDocumentNode = useStable(
       options.createDocumentNode ?? context.nodeStore.createDocumentNode,
     )
-    const createImageNode = useStable(options.createImageNode ?? context.nodeStore.createImageNode)
+    const stableCreateImageNode = useStable(
+      options.createImageNode ?? context.nodeStore.createImageNode,
+    )
+    const createImageNode = options.creatorsOfRender
+      ? (options.createImageNode ?? context.nodeStore.createImageNode)
+      : stableCreateImageNode
     return useWorkspaceCanvasSpaceExplorer({
       workspaceId,
       canvasRef,

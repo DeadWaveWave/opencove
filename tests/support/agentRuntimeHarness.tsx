@@ -1,5 +1,4 @@
 import { act, type RenderHookResult } from '@testing-library/react'
-import { useCallback, useRef } from 'react'
 import type { Node } from '@xyflow/react'
 import { vi } from 'vitest'
 import { useAppStore } from '../../src/app/renderer/shell/store/useAppStore'
@@ -137,14 +136,6 @@ export interface RuntimeCanvasContext {
   nodeStore: ReturnType<typeof useWorkspaceCanvasNodesStore>
   /** The canvas's node publishers: a case that needs a live drag publishes the frame itself. */
   publishers: ReturnType<typeof useWorkspaceCanvasNodePublishers>
-  /**
-   * A writer whose identity never changes and that writes through the node store of the latest
-   * render. A case that pins a reader's place in a dependency list uses it, so that the writer
-   * changing with the workspace cannot rebuild the callback and hide a missing reader.
-   */
-  stableSetNodes: CanvasNodeWriter['updateNodes']
-  /** The same for `updateCanvasDocument`. */
-  stableUpdateCanvasDocument: CanvasNodeWriter['updateCanvasDocument']
   /** The canvas's node writer, from context: the node store returns none. */
   writer: CanvasNodeWriter
 }
@@ -214,25 +205,11 @@ export function renderInTwoWorkspaces<Result>(
         readAgentSettings: readDefaultAgentSettings,
       })
       const writer = useCanvasNodeWriter()
-      const latestSetNodes = useRef(writer.updateNodes)
-      latestSetNodes.current = writer.updateNodes
-      const stableSetNodes = useCallback<CanvasNodeWriter['updateNodes']>(
-        (updater, options) => latestSetNodes.current(updater, options),
-        [],
-      )
-      const latestUpdateCanvasDocument = useRef(writer.updateCanvasDocument)
-      latestUpdateCanvasDocument.current = writer.updateCanvasDocument
-      const stableUpdateCanvasDocument = useCallback<CanvasNodeWriter['updateCanvasDocument']>(
-        (recipe, options) => latestUpdateCanvasDocument.current(recipe, options),
-        [],
-      )
       return useHook({
         workspaceId,
         canvasState,
         nodeStore,
         publishers,
-        stableSetNodes,
-        stableUpdateCanvasDocument,
         writer,
       })
     },

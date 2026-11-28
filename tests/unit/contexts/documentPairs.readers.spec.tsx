@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import { useCanvasCollapse } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/collapse/useCanvasCollapse'
 import { useWorkspaceCanvasMenuActions } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasMenuActions'
+import type { UpdateCanvasDocument } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore.types'
 import { useCanvasNodeWriter } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodeWriter'
 import { useWorkspaceCanvasNodesStore } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore'
 import { useWorkspaceCanvasSpaceUi } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceUi'
@@ -106,10 +107,7 @@ function readDocument(workspaceId: string) {
  * node store's writer of that workspace, as the canvas hands it down.
  */
 function renderInTwoWorkspaces<Result>(
-  useHook: (input: {
-    workspaceId: string
-    updateCanvasDocument: ReturnType<typeof useWorkspaceCanvasNodesStore>['updateCanvasDocument']
-  }) => Result,
+  useHook: (input: { workspaceId: string; updateCanvasDocument: UpdateCanvasDocument }) => Result,
   documents: Record<
     'a' | 'b',
     { nodes?: Node<TerminalNodeData>[]; spaces?: WorkspaceSpaceState[] }

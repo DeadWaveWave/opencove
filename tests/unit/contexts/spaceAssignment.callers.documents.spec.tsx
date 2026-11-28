@@ -22,7 +22,6 @@ import {
   expectsWriterOfTheRender,
   lastCall,
   recordAssignmentsAgainst,
-  writeShownNodes,
 } from '../../support/pushAwayCallerHarness'
 
 // The callers in the explorer, the document opening and the filesystem nodes hand the push-away the
@@ -109,8 +108,6 @@ vi.mock(
 const assignMock = assignNodeToSpaceAndExpand as unknown as Mock
 const assignArgs = () => lastCall(assignMock)[0] as Record<string, unknown> | undefined
 
-// Writes the document of the workspace shown, so that the reposition of the explorer is in it.
-const setNodes = vi.fn(writeShownNodes)
 const onShowMessage = vi.fn()
 const createDocumentNode = vi.fn(() => createdInShownDocument())
 const createImageNode = vi.fn(() => createdInShownDocument())
@@ -142,13 +139,11 @@ describe('the push-away of the document opening', () => {
   it('gives the opened document its workspace writer and flushes once after it', async () => {
     await expectsWriterOfTheRender({
       assign: assignMock,
-      useHook: updateCanvasDocument =>
+      useHook: () =>
         useWorkspaceDocumentOpening({
           workspaceId: 'workspace',
-          setNodes,
           reactFlow,
           createDocumentNode,
-          updateCanvasDocument,
         } as never),
       invoke: ({ hook }) => hook(request),
       argsOf: assignArgs,
@@ -166,19 +161,17 @@ describe('the push-away of the explorer', () => {
     })
     await expectsWriterOfTheRender({
       assign: assignMock,
-      useHook: updateCanvasDocument =>
+      useHook: () =>
         useWorkspaceCanvasSpaceExplorer({
           workspaceId: 'workspace',
           canvasRef,
           spaces: [TARGET],
-          setNodes,
           reactFlow,
           nodeDragSession: {},
           finalizeDraggedNodeDrop: vi.fn(),
           createDocumentNode,
           createImageNode,
           standardWindowSizeBucket: 'regular',
-          updateCanvasDocument,
         } as never),
       invoke: async ({ hook }) => {
         const before = assignMock.mock.calls.length
@@ -214,19 +207,17 @@ describe('the push-away of the explorer after the reposition moves the created n
       .mockReturnValueOnce(movedPlacement)
     await expectsWriterOfTheRender({
       assign: assignMock,
-      useHook: updateCanvasDocument =>
+      useHook: () =>
         useWorkspaceCanvasSpaceExplorer({
           workspaceId: 'workspace',
           canvasRef,
           spaces: [TARGET],
-          setNodes,
           reactFlow,
           nodeDragSession: {},
           finalizeDraggedNodeDrop: vi.fn(),
           createDocumentNode,
           createImageNode,
           standardWindowSizeBucket: 'regular',
-          updateCanvasDocument,
         } as never),
       invoke: async ({ hook }) => {
         const before = assignMock.mock.calls.length
@@ -257,19 +248,17 @@ describe('the push-away of a text file opened from the explorer', () => {
     }
     await expectsWriterOfTheRender({
       assign: assignMock,
-      useHook: updateCanvasDocument =>
+      useHook: () =>
         useWorkspaceCanvasSpaceExplorer({
           workspaceId: 'workspace',
           canvasRef,
           spaces: [TARGET],
-          setNodes,
           reactFlow,
           nodeDragSession: {},
           finalizeDraggedNodeDrop: vi.fn(),
           createDocumentNode,
           createImageNode,
           standardWindowSizeBucket: 'regular',
-          updateCanvasDocument,
         } as never),
       invoke: async ({ hook }) => {
         vi.mocked(resolveSpaceExplorerPreviewDisplay).mockResolvedValueOnce(documentPreview)
@@ -305,7 +294,7 @@ describe('the push-away of a document opened from a terminal link, through the P
     await expectsWriterOfTheRender<WorkspaceDocumentNavigation>({
       assign: assignMock,
       seed: { nodes: [source], spaces: [sourceSpace] },
-      element: (updateCanvasDocument, store, capture) => (
+      element: (_writer, _store, capture) => (
         <WorkspaceCanvasProviders
           nodeTypesParameters={{} as never}
           collapse={{ expandNode: vi.fn() } as never}
@@ -313,7 +302,7 @@ describe('the push-away of a document opened from a terminal link, through the P
           openExplorerSpaceId={null}
           workspaceId="workspace"
           workspacePath="/repo"
-          nodeStore={{ ...store, updateCanvasDocument, createDocumentNode, createFolderNode }}
+          nodeStore={{ createDocumentNode, createFolderNode }}
           onShowMessage={onShowMessage}
         >
           <NavigationProbe capture={capture} />
@@ -345,13 +334,11 @@ describe('the push-away through the explorer carrier of the canvas', () => {
     const agentSettings = { standardWindowSizeBucket: 'regular' }
     await expectsWriterOfTheRender({
       assign: assignMock,
-      useHook: updateCanvasDocument =>
+      useHook: () =>
         useCanvasSpaceExplorer({
           workspaceId: 'workspace',
           canvasState,
           nodeStore: {
-            setNodes,
-            updateCanvasDocument,
             createDocumentNode,
             createImageNode,
           },
@@ -389,11 +376,11 @@ describe('the push-away of the filesystem nodes', () => {
     await expectsWriterOfTheRender({
       assign: assignMock,
       seed: { nodes: [folder], spaces: [TARGET] },
-      useHook: updateCanvasDocument =>
+      useHook: () =>
         useFilesystemNodes({
           workspaceId: 'workspace',
           workspacePath: '/repo',
-          nodeStore: { setNodes, createDocumentNode, createFolderNode, updateCanvasDocument },
+          nodeStore: { createDocumentNode, createFolderNode },
           onShowMessage,
         } as never),
       invoke: async ({ hook }) => {

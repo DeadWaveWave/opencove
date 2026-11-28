@@ -64,17 +64,6 @@ export function writeCreatedNode(workspaceId: string, node: Node<TerminalNodeDat
   return node
 }
 
-/** The node writer of the specs: it writes the document of the workspace shown, as the store's does. */
-export function writeShownNodes(
-  updater: (nodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-) {
-  const document = readWorkspaceDocument(shownWorkspaceId)
-  if (!document) {
-    throw new Error(`workspace ${shownWorkspaceId} is not in the store`)
-  }
-  setDocumentNodes(shownWorkspaceId, updater(document.nodes))
-}
-
 /**
  * What the document held for the node of an assignment at the moment the assignment was called
  * (#758: the recipe takes the node from the document, so a caller must have written it first).

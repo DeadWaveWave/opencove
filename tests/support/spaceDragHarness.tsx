@@ -5,7 +5,7 @@ import { useReactFlow, type Node } from '@xyflow/react'
 import { vi } from 'vitest'
 import { useAppStore } from '../../src/app/renderer/shell/store/useAppStore'
 import { useWorkspaceCanvasSpaceDrag } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceDrag'
-import type { UseWorkspaceCanvasNodesStoreResult } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore.types'
+import type { UpdateCanvasDocument } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore.types'
 import type { CanvasInteractionState } from '../../src/contexts/workspace/presentation/renderer/store/canvasStore.interaction'
 import {
   useCanvasInteractionCommands,
@@ -32,8 +32,6 @@ import { createRowNodes, createSpace } from './canvasSelectionFixtures'
 
 export const SPACE_A_RECT = { x: 0, y: 0, width: 600, height: 400 }
 export const INSIDE_A = { x: 300, y: 200 }
-
-type UpdateCanvasDocument = UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
 
 export function nodeAt(id: string, x: number, y: number): Node<TerminalNodeData> {
   return { ...createRowNodes([id])[0], position: { x, y } }

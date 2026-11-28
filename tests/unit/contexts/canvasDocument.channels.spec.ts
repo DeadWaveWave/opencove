@@ -246,6 +246,10 @@ function declaredWriterNames(
         found.add('updateNodes')
         found.add('updateCanvasDocument')
       }
+      // The exported alias of the writer's document write (S7 PR 8).
+      if (node.typeName.text === 'UpdateCanvasDocument') {
+        found.add('updateCanvasDocument')
+      }
       // A parameter typed by an interface or alias of the same file: its members are declared too.
       const declaration = localTypes.get(node.typeName.text)
       if (declaration) {
@@ -428,6 +432,9 @@ describe('hooks do not take the node writer as a parameter', () => {
     ])
     expect(flagged("export function useA({ commit }: { commit: Store['setNodes'] }) {}")).toEqual([
       'useA:setNodes',
+    ])
+    expect(flagged('export function useA(write: UpdateCanvasDocument) {}')).toEqual([
+      'useA:updateCanvasDocument',
     ])
     expect(flagged('export function useA(writer: CanvasNodeWriter) {}')).toEqual([
       'useA:updateCanvasDocument',

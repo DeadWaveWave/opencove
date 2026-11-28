@@ -1,4 +1,4 @@
-import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react'
+import React, { forwardRef, useImperativeHandle } from 'react'
 import type { Node } from '@xyflow/react'
 import { act, render } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
@@ -12,10 +12,7 @@ import {
 } from '../../support/canvasStoreTestHarness'
 import { seedWorkspaceCanvasStore } from '../../support/workspaceCanvasStoreHarness'
 import type { CreateNodeInput } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/types'
-import type {
-  CreateNoteNodeOptions,
-  UseWorkspaceCanvasNodesStoreResult,
-} from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore.types'
+import type { CreateNoteNodeOptions } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore.types'
 import { useWorkspaceCanvasNodeCreation } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore.createNodes'
 import { createArrangeItemsForCanvasRootNodes } from '../../../src/contexts/workspace/presentation/renderer/utils/workspaceArrange.ordering'
 import { readDefaultAgentSettings } from '../../support/agentSettingsReader'
@@ -61,18 +58,8 @@ function makeNoteNode({
 
 function renderHarness(): HarnessApi {
   const Harness = forwardRef<HarnessApi>(function Harness(_props, ref): React.JSX.Element {
-    const nodesRef = useRef<Node<TerminalNodeData>[]>([])
-    const [, setNodesState] = useState<Node<TerminalNodeData>[]>([])
-
-    const setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes'] = updater => {
-      const next = updater(nodesRef.current)
-      nodesRef.current = next
-      setNodesState(next)
-    }
-
     const { createNodeForSession, createNoteNode } = useWorkspaceCanvasNodeCreation({
       defaultTerminalWindowScalePercent: 100,
-      setNodes,
       readAgentSettings: readDefaultAgentSettings,
     })
 

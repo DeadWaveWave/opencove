@@ -10,6 +10,7 @@ import {
   CanvasStoreTestProvider,
   CANVAS_STORE_TEST_WORKSPACE_ID,
 } from '../../support/canvasStoreTestHarness'
+import { readWorkspaceDocument } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import { seedWorkspaceCanvasStore } from '../../support/workspaceCanvasStoreHarness'
 import { compatibilityFixture, context } from './managedClaudeLaunchCompatibility.helpers'
 import { readDefaultAgentSettings } from '../../support/agentSettingsReader'
@@ -55,13 +56,11 @@ function fixture(cleanupSupport = false) {
     placement: { x: 0, y: 0 },
     canPlace: false,
   })
-  const setNodes = vi.fn(),
-    message = vi.fn()
+  const message = vi.fn()
   seedWorkspaceCanvasStore({ workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID })
   const hook = renderHook(
     () =>
       useWorkspaceCanvasNodeCreation({
-        setNodes,
         workspaceId: 'workspace',
         onShowMessage: message,
         readAgentSettings: readDefaultAgentSettings,
@@ -84,7 +83,9 @@ function fixture(cleanupSupport = false) {
     invoke,
     cleanup,
     kill,
-    setNodes,
+    // The nodes the document holds: the creation hook writes the store through the writer of its
+    // context, so a failed placement that wrote a node anyway shows here.
+    storedNodes: () => readWorkspaceDocument(CANVAS_STORE_TEST_WORKSPACE_ID)?.nodes,
     message,
     dispose: () => {
       geometry.mockRestore()
@@ -105,7 +106,7 @@ it('cleans a flag-off Claude launch when real placement fails against an older W
     })
     expect(f.kill).toHaveBeenCalledExactlyOnceWith({ sessionId: 'replacement' })
     expect(f.invoke).not.toHaveBeenCalled()
-    expect(f.setNodes).not.toHaveBeenCalled()
+    expect(f.storedNodes()).toEqual([])
     expect(f.message).toHaveBeenCalledWith(expect.any(String), 'warning')
   } finally {
     f.dispose()
