@@ -3,10 +3,7 @@ import { ReactFlowProvider, type Node } from '@xyflow/react'
 import React, { type ReactElement } from 'react'
 import { expect, type Mock } from 'vitest'
 import { useAppStore } from '../../src/app/renderer/shell/store/useAppStore'
-import {
-  useCanvasNodeWriter,
-  type CanvasNodeWriter,
-} from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodeWriter'
+import type { CanvasNodeWriter } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodeWriter'
 import { useWorkspaceCanvasNodesStore } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore'
 import { readWorkspaceDocument } from '../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import type { WorkspaceDocument } from '../../src/contexts/workspace/presentation/renderer/store/workspaceDocument'
@@ -116,12 +113,9 @@ export function lastCall(mock: unknown): unknown[] {
   return calls[calls.length - 1] ?? []
 }
 
-export type Updater = CanvasNodeWriter['updateCanvasDocument']
-
 export function useShownNodeStore(shown: string) {
   const nodes = useWorkspaceCanvasStoreNodes(shown)
-  const writer = useCanvasNodeWriter()
-  const store = useWorkspaceCanvasNodesStore({
+  return useWorkspaceCanvasNodesStore({
     workspaceId: shown,
     workspacePath: `/tmp/${shown}`,
     nodes,
@@ -129,22 +123,19 @@ export function useShownNodeStore(shown: string) {
     browserDefaultMode: 'iframe',
     readAgentSettings: readDefaultAgentSettings,
   })
-  // The node store returns no writer; the canvas's comes from context.
-  return { ...store, updateCanvasDocument: writer.updateCanvasDocument }
 }
 
 /**
- * `renderHook` under the canvas store provider of the workspace shown. `useHook` gets the document
- * writer of the node store of that render, as the canvas hands it to its hooks; `switchTo` shows
- * another workspace and renders again.
+ * `renderHook` under the canvas store provider of the workspace shown. The hook under test takes the
+ * writer of its render from context; `switchTo` shows another workspace and renders again.
  */
-export function renderCaller<Result>(useHook: (updateCanvasDocument: Updater) => Result) {
+export function renderCaller<Result>(useHook: () => Result) {
   let shown = 'workspace-a'
   shownWorkspaceId = shown
   const view = renderInCanvasDocument(
     () => {
-      const store = useShownNodeStore(shown)
-      return { ui: useCanvasUiCommands(), hook: useHook(store.updateCanvasDocument) }
+      useShownNodeStore(shown)
+      return { ui: useCanvasUiCommands(), hook: useHook() }
     },
     { workspaceId: () => shown },
   )
@@ -163,15 +154,11 @@ export function renderCaller<Result>(useHook: (updateCanvasDocument: Updater) =>
 type NodeStore = ReturnType<typeof useShownNodeStore>
 
 /**
- * Like `renderCaller`, for a component under test: `element` builds it from the writer of the node
- * store of the shown workspace, and calls `capture` with what the test then invokes.
+ * Like `renderCaller`, for a component under test: `element` builds it from the node store of the
+ * shown workspace, and calls `capture` with what the test then invokes.
  */
 function renderElementCaller<Result>(
-  element: (
-    updateCanvasDocument: Updater,
-    store: NodeStore,
-    capture: (value: Result) => void,
-  ) => ReactElement,
+  element: (store: NodeStore, capture: (value: Result) => void) => ReactElement,
 ) {
   let shown = 'workspace-a'
   shownWorkspaceId = shown
@@ -181,7 +168,7 @@ function renderElementCaller<Result>(
   function Harness(): ReactElement {
     const store = useShownNodeStore(shown)
     const ui = useCanvasUiCommands()
-    return element(store.updateCanvasDocument, store, hook => {
+    return element(store, hook => {
       result.current = { hook, ui }
     })
   }
@@ -242,7 +229,7 @@ export async function expectsWriterOfTheRender<Result>({
   flush,
   assign,
 }: {
-  useHook?: (updateCanvasDocument: Updater) => Result
+  useHook?: () => Result
   /** A component under test instead of a hook. */
   element?: Parameters<typeof renderElementCaller<Result>>[0]
   /** The nodes and Spaces both workspaces start with: the target Space unless told otherwise. */
@@ -275,7 +262,9 @@ export async function expectsWriterOfTheRender<Result>({
     for (const channel of absent) {
       expect(Object.keys(args!)).not.toContain(channel)
     }
-    const writer = args!.updateCanvasDocument as Updater | undefined
+    const writer = args!.updateCanvasDocument as
+      | CanvasNodeWriter['updateCanvasDocument']
+      | undefined
     expect(writer).toEqual(expect.any(Function))
     act(() => {
       writer!(({ nodes, spaces }) => ({ nodes, spaces: [...spaces, mark(id)] }))

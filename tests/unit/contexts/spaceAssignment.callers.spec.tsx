@@ -43,7 +43,6 @@ import {
   expectsEveryAssignedNodeInTheDocument,
   recordAssignmentsAgainst,
   writeCreatedNode,
-  type Updater,
 } from '../../support/pushAwayCallerHarness'
 import { createStoreBackedChannels } from '../../support/workspaceCanvasStoreHarness'
 import type { WorkspaceDocument } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocument'
@@ -143,7 +142,6 @@ const PANE_MENU = { kind: 'pane', x: 20, y: 20, flowX: 400, flowY: 300 } as cons
 
 // Arguments are built once, as the canvas's are, so that a callback is rebuilt only when its own
 // dependencies change and a missing writer shows.
-const setNodes = vi.fn()
 const onSpacesChange = vi.fn()
 const onShowMessage = vi.fn()
 const onRequestPersistFlush = vi.fn()
@@ -221,8 +219,7 @@ describe('the push-away of the interactions as the canvas composes them', () => 
     createWebsiteNode,
     onShowMessage,
   }
-  const useInteractionsUnderTest = (updateCanvasDocument: Updater) =>
-    useWorkspaceCanvasInteractions({ ...interactionParams, updateCanvasDocument } as never)
+  const useInteractionsUnderTest = () => useWorkspaceCanvasInteractions(interactionParams as never)
 
   it('gives the note created by a double click its workspace writer', async () => {
     await expectsWriterOfTheRender({
@@ -315,8 +312,7 @@ describe('the push-away of the interaction callers', () => {
   it('gives the note at a flow point its workspace writer', async () => {
     await expectsWriterOfTheRender({
       assign: assignMock,
-      useHook: updateCanvasDocument =>
-        useWorkspaceCanvasFlowNodeCreation({ ...flowParams, updateCanvasDocument } as never),
+      useHook: () => useWorkspaceCanvasFlowNodeCreation(flowParams as never),
       invoke: ({ hook }) => hook.createNoteNodeAtFlowPoint({ x: 400, y: 300 }),
       argsOf: assignArgs,
     })
@@ -325,8 +321,7 @@ describe('the push-away of the interaction callers', () => {
   it('gives the website at a flow point its workspace writer', async () => {
     await expectsWriterOfTheRender({
       assign: assignMock,
-      useHook: updateCanvasDocument =>
-        useWorkspaceCanvasFlowNodeCreation({ ...flowParams, updateCanvasDocument } as never),
+      useHook: () => useWorkspaceCanvasFlowNodeCreation(flowParams as never),
       invoke: ({ hook }) => hook.createWebsiteNodeAtFlowPoint({ x: 400, y: 300 }),
       argsOf: assignArgs,
     })
@@ -335,8 +330,7 @@ describe('the push-away of the interaction callers', () => {
   it('gives the note from the pane menu its workspace writer', async () => {
     await expectsWriterOfTheRender({
       assign: assignMock,
-      useHook: updateCanvasDocument =>
-        useWorkspaceCanvasFlowNodeCreation({ ...flowParams, updateCanvasDocument } as never),
+      useHook: () => useWorkspaceCanvasFlowNodeCreation(flowParams as never),
       invoke: ({ hook, ui }) => {
         ui.openContextMenu(PANE_MENU)
         return hook.createNoteNodeFromContextMenu()
@@ -348,8 +342,7 @@ describe('the push-away of the interaction callers', () => {
   it('gives the website from the pane menu its workspace writer', async () => {
     await expectsWriterOfTheRender({
       assign: assignMock,
-      useHook: updateCanvasDocument =>
-        useWebsiteNodeContextMenuCreation({ ...flowParams, updateCanvasDocument } as never),
+      useHook: () => useWebsiteNodeContextMenuCreation(flowParams as never),
       invoke: ({ hook, ui }) => {
         ui.openContextMenu(PANE_MENU)
         return hook()
@@ -371,8 +364,7 @@ describe('the push-away of the interaction callers', () => {
   it('gives the quick URL command its workspace writer', async () => {
     await expectsWriterOfTheRender({
       assign: assignMock,
-      useHook: updateCanvasDocument =>
-        useWorkspaceCanvasQuickMenuActions({ ...quickParams, updateCanvasDocument } as never),
+      useHook: () => useWorkspaceCanvasQuickMenuActions(quickParams as never),
       invoke: ({ hook, ui }) => {
         ui.openContextMenu(PANE_MENU)
         return hook.runQuickCommand({
@@ -388,8 +380,7 @@ describe('the push-away of the interaction callers', () => {
   it('gives the quick phrase its workspace writer', async () => {
     await expectsWriterOfTheRender({
       assign: assignMock,
-      useHook: updateCanvasDocument =>
-        useWorkspaceCanvasQuickMenuActions({ ...quickParams, updateCanvasDocument } as never),
+      useHook: () => useWorkspaceCanvasQuickMenuActions(quickParams as never),
       invoke: ({ hook, ui }) => {
         ui.openContextMenu(PANE_MENU)
         return hook.insertQuickPhrase({ content: 'hello' } as never)
@@ -401,8 +392,7 @@ describe('the push-away of the interaction callers', () => {
   it('gives the quick terminal command its workspace writer', async () => {
     await expectsWriterOfTheRender({
       assign: assignMock,
-      useHook: updateCanvasDocument =>
-        useWorkspaceCanvasQuickMenuActions({ ...quickParams, updateCanvasDocument } as never),
+      useHook: () => useWorkspaceCanvasQuickMenuActions(quickParams as never),
       invoke: ({ hook, ui }) => {
         ui.openContextMenu(PANE_MENU)
         return hook.runQuickCommand({ kind: 'command', command: 'ls', title: 'ls' } as never)
@@ -414,7 +404,7 @@ describe('the push-away of the interaction callers', () => {
   it('gives the pane terminal creation its workspace writer', async () => {
     await expectsWriterOfTheRender({
       assign: assignMock,
-      useHook: updateCanvasDocument =>
+      useHook: () =>
         useWorkspaceCanvasTerminalCreation({
           ...flowParams,
           workspacePath: '/repo',
@@ -423,7 +413,6 @@ describe('the push-away of the interaction callers', () => {
           terminalDisplayMetrics: metrics,
           createNodeForSession,
           onShowMessage,
-          updateCanvasDocument,
         } as never),
       invoke: ({ hook }) => hook.createTerminalNodeAtFlowPoint({ x: 1, y: 2 }),
       argsOf: terminalArgs,
@@ -440,14 +429,13 @@ describe('the push-away of the interaction callers', () => {
     }
     await expectsWriterOfTheRender({
       assign: assignMock,
-      useHook: updateCanvasDocument =>
+      useHook: () =>
         useWorkspaceCanvasPasteHandlers({
           ...flowParams,
           canvasRef,
           reactFlow,
           createImageNode,
           websiteWindowPasteEnabled: true,
-          updateCanvasDocument,
         } as never),
       invoke: ({ hook }) => hook.handleCanvasPaste(event as never),
       argsOf: assignArgs,
@@ -457,13 +445,12 @@ describe('the push-away of the interaction callers', () => {
   it('gives the website opened from a website window its workspace writer', async () => {
     await expectsWriterOfTheRender({
       assign: assignMock,
-      useHook: updateCanvasDocument =>
+      useHook: () =>
         useWebsiteWindowOpenUrlNodeCreation({
           ...flowParams,
           canvasRef,
           reactFlow,
           enabled: true,
-          updateCanvasDocument,
         } as never),
       invoke: () =>
         window.dispatchEvent(
@@ -499,16 +486,13 @@ describe('the push-away of the interaction callers', () => {
       api.opencoveApi = { workspace: { writeCanvasImage: vi.fn(async () => undefined) } }
       await expectsWriterOfTheRender({
         assign: assignMock,
-        useHook: updateCanvasDocument =>
+        useHook: () =>
           useWorkspaceCanvasImageImport({
             workspaceId: 'workspace',
             canvasRef,
             reactFlow,
-            setNodes,
-            onSpacesChange,
             createImageNode,
             standardWindowSizeBucket: 'regular',
-            updateCanvasDocument,
           } as never),
         invoke: async ({ hook }) => {
           const before = assignMock.mock.calls.length
@@ -546,14 +530,13 @@ describe('the push-away of the interaction callers', () => {
     }
     await expectsWriterOfTheRender({
       assign: assignMock,
-      useHook: updateCanvasDocument =>
+      useHook: () =>
         useWorkspaceCanvasPasteHandlers({
           ...flowParams,
           canvasRef,
           reactFlow,
           createImageNode,
           websiteWindowPasteEnabled: true,
-          updateCanvasDocument,
         } as never),
       invoke: async ({ hook }) => {
         const before = assignMock.mock.calls.length
@@ -565,7 +548,7 @@ describe('the push-away of the interaction callers', () => {
   })
 
   describe('the shortcuts', () => {
-    function shortcutParams(updateCanvasDocument: Updater) {
+    function shortcutParams() {
       return {
         closeNode: vi.fn(),
         enabled: true,
@@ -578,7 +561,6 @@ describe('the push-away of the interaction callers', () => {
         reactFlow,
         spaceNavigationAnchorIdRef: { current: null },
         onSpacesChange,
-        updateCanvasDocument,
         nodeCreation: { createNodeForSession, createNoteNode },
         launchAgentAtFlowPosition: vi.fn(),
         createSpaceFromSelectedNodes: vi.fn(),
@@ -598,8 +580,7 @@ describe('the push-away of the interaction callers', () => {
     it('gives the note shortcut its workspace writer', async () => {
       await expectsWriterOfTheRender({
         assign: assignMock,
-        useHook: updateCanvasDocument =>
-          useWorkspaceCanvasShortcutActions(shortcutParams(updateCanvasDocument)),
+        useHook: () => useWorkspaceCanvasShortcutActions(shortcutParams()),
         invoke: () => shortcutArgs().createNoteAtViewportCenter(),
         argsOf: assignArgs,
       })
@@ -608,8 +589,7 @@ describe('the push-away of the interaction callers', () => {
     it('gives the terminal shortcut its workspace writer', async () => {
       await expectsWriterOfTheRender({
         assign: assignMock,
-        useHook: updateCanvasDocument =>
-          useWorkspaceCanvasShortcutActions(shortcutParams(updateCanvasDocument)),
+        useHook: () => useWorkspaceCanvasShortcutActions(shortcutParams()),
         invoke: () => shortcutArgs().createTerminalAtViewportCenter(),
         argsOf: terminalArgs,
       })
@@ -877,7 +857,7 @@ describe('the push-away through the carriers of the canvas', () => {
   it('gives the launched agent of the agent support its workspace writer', async () => {
     await expectsWriterOfTheRender({
       assign: assignMock,
-      useHook: updateCanvasDocument =>
+      useHook: () =>
         useWorkspaceCanvasAgentSupport({
           bumpAgentLaunchToken: () => 1,
           isAgentLaunchTokenCurrent: () => true,
@@ -885,7 +865,6 @@ describe('the push-away through the carriers of the canvas', () => {
           readTerminalDisplayCalibration: () => null,
           workspaceId: 'workspace',
           workspacePath: '/repo',
-          updateCanvasDocument,
           onShowMessage,
           createNodeForSession,
         } as never),
@@ -900,7 +879,7 @@ describe('the push-away of the agent launcher', () => {
   it('gives the launched agent its workspace writer and flushes once after it', async () => {
     await expectsWriterOfTheRender({
       assign: assignMock,
-      useHook: updateCanvasDocument =>
+      useHook: () =>
         useWorkspaceCanvasAgentLauncher({
           readAgentSettings,
           workspaceId: 'workspace',
@@ -908,7 +887,6 @@ describe('the push-away of the agent launcher', () => {
           onShowMessage,
           createNodeForSession,
           buildAgentNodeTitle,
-          updateCanvasDocument,
         } as never),
       invoke: ({ hook }) => hook.launchAgentAtFlowPosition({ x: 400, y: 300 }),
       argsOf: assignArgs,

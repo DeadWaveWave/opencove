@@ -172,13 +172,14 @@ describe('canvas document channels', () => {
 })
 
 // Decision 7 and 8 of S7 (#647): a hook gets the node writer from `useCanvasNodeWriter()`, not as a
-// parameter. Plain (non-hook) action functions keep taking it. The hooks that still declare one are
+// parameter. Plain (non-hook) action functions keep taking it. The hooks that declared one were
 // listed; each pull request of the slice shortened the list, and PR 9 left it empty. The check
 // reads what a hook declares, not what it is called: a parameter, a property of a destructured
 // parameter (under whatever local name), a property read from an object parameter (`props.x`,
 // `nodeStore.x` on a destructured `nodeStore`, `const { x } = props`), a member of a parameter type
 // (inline, or an interface or alias of the same file, with its `extends`), or a parameter type that
-// names a writer: `Store['setNodes']`, `Pick<Store, 'setNodes'>`, `CanvasNodeWriter`. So
+// names a writer: `Store['setNodes']`, `Pick<Store, 'setNodes'>`, `CanvasNodeWriter`,
+// `UpdateCanvasDocument`, `ReturnType<typeof useCanvasNodeWriter>`. So
 // `const write = props.updateCanvasDocument`, `{ updateCanvasDocument: write }` and
 // `write: CanvasNodeWriter['updateNodes']` are caught like `updateCanvasDocument`.
 const WRITER_NAMES = new Set(['setNodes', 'updateNodes', 'updateCanvasDocument'])
@@ -255,6 +256,15 @@ function declaredWriterNames(
       if (declaration) {
         visitType(declaration)
       }
+    }
+    // `ReturnType<typeof useCanvasNodeWriter>` is the writer too.
+    if (
+      ts.isTypeQueryNode(node) &&
+      ts.isIdentifier(node.exprName) &&
+      node.exprName.text === 'useCanvasNodeWriter'
+    ) {
+      found.add('updateNodes')
+      found.add('updateCanvasDocument')
     }
     // `interface P extends Q`, with `Q` of the same file.
     if (ts.isExpressionWithTypeArguments(node) && ts.isIdentifier(node.expression)) {
@@ -371,14 +381,16 @@ function hooksDeclaringWriterParameters(source: string, fileName = 'source.ts'):
   return hooks.sort()
 }
 
-// The hooks under `workspaceCanvas/` that take the node writer as a parameter, as
-// `~/<file>#<hook>:<name>`. S7 PR 9 emptied the list: every hook takes the writer from
+// The hooks under the renderer tree that take the node writer as a parameter, as
+// `<file>#<hook>:<name>` (`~/` stands for `workspaceCanvas/`). S7 PR 9 emptied the list: every hook takes the writer from
 // `useCanvasNodeWriter()` (or `useCanvasDocumentCommands()`), so a parameter cannot come back.
 // Do not add a line.
 const HOOKS_WITH_WRITER_PARAMETERS: readonly string[] = []
 
+const RENDERER_DIR = 'src/contexts/workspace/presentation/renderer/'
+
 describe('hooks do not take the node writer as a parameter', () => {
-  const canvasFiles = trackedSourceFiles().filter(file => file.startsWith(CANVAS_DIR))
+  const canvasFiles = trackedSourceFiles().filter(file => file.startsWith(RENDERER_DIR))
 
   it('flags a parameter, a destructured property, an alias and an inline type', () => {
     const flagged = (source: string) => hooksDeclaringWriterParameters(source)
@@ -418,6 +430,9 @@ describe('hooks do not take the node writer as a parameter', () => {
     expect(flagged('export function useA(write: UpdateCanvasDocument) {}')).toEqual([
       'useA:updateCanvasDocument',
     ])
+    expect(
+      flagged('export function useA(writer: ReturnType<typeof useCanvasNodeWriter>) {}'),
+    ).toEqual(['useA:updateCanvasDocument', 'useA:updateNodes'])
     expect(flagged('export function useA(writer: CanvasNodeWriter) {}')).toEqual([
       'useA:updateCanvasDocument',
       'useA:updateNodes',
@@ -479,12 +494,13 @@ describe('hooks do not take the node writer as a parameter', () => {
     expect(flagged('export function useA(props: P) { return props.other }')).toEqual([])
   })
 
-  it('finds no hook under workspaceCanvas that declares one', () => {
+  it('finds no hook under the renderer tree that declares one', () => {
     expect(canvasFiles.length).toBeGreaterThan(300)
 
     const declared = canvasFiles.flatMap(file =>
       hooksDeclaringWriterParameters(readFileSync(file, 'utf8'), file).map(
-        hook => `~/${file.slice(CANVAS_DIR.length)}#${hook}`,
+        hook =>
+          `${file.startsWith(CANVAS_DIR) ? `~/${file.slice(CANVAS_DIR.length)}` : file}#${hook}`,
       ),
     )
 

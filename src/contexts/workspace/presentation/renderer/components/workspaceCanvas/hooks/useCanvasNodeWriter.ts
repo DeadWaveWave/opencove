@@ -6,21 +6,15 @@ import { commitCanvasDocument, isActiveWorkspace } from '../../../store/workspac
 import { useCanvasWorkspaceId } from '../../../store/canvasStoreContext'
 import { TERMINAL_LAYOUT_SYNC_EVENT } from '../../terminalNode/constants'
 import { syncWorkspaceCanvasTestStateInTestWindow } from '../testHarness'
-import type { CanvasDocumentRecipeInput, CanvasDocumentWriteOptions } from './useNodesStore.types'
+import type { CanvasDocumentWriteOptions, UpdateCanvasDocument } from './useNodesStore.types'
 
 export interface CanvasNodeWriter {
   updateNodes: (
     updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
     options?: CanvasDocumentWriteOptions,
   ) => void
-  /**
-   * Writes nodes and Spaces in one store update, computed from the store's document as it is when
-   * this runs. The recipe must be pure: it runs under the document module's recipe guard.
-   */
-  updateCanvasDocument: (
-    recipe: (document: CanvasDocumentRecipeInput) => CanvasDocumentRecipeInput,
-    options?: CanvasDocumentWriteOptions,
-  ) => void
+  /** One store update of nodes and Spaces; see `UpdateCanvasDocument`. */
+  updateCanvasDocument: UpdateCanvasDocument
 }
 
 /**
