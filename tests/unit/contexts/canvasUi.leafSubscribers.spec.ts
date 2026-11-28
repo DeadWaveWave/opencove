@@ -253,8 +253,14 @@ describe('canvas interaction subscriptions', () => {
   // namespace call (`context.useCanvasInteraction(`), a re-export from a barrel.
   it('names useCanvasInteraction only in the store context and the four subscribers', () => {
     const mentioning = trackedSourceFiles().filter(file => {
+      const text = readFileSync(file, 'utf8')
+      // An identifier is in the tree only where its name is in the text, so parse only those files:
+      // the result is the same, and the check no longer parses the whole tree against the timeout.
+      if (!text.includes('useCanvasInteraction')) {
+        return false
+      }
       let found = false
-      walk(parse(readFileSync(file, 'utf8'), file), node => {
+      walk(parse(text, file), node => {
         if (ts.isIdentifier(node) && node.text === 'useCanvasInteraction') {
           found = true
         }

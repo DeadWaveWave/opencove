@@ -583,9 +583,15 @@ describe('canvas-only fields are set only where the view is derived', () => {
 
   it('finds them only in the decoration and the collapse projection', () => {
     const holders = trackedSourceFiles()
-      .filter(
-        file => canvasOnlyFieldsSetBySpreadLiterals(readFileSync(file, 'utf8'), file).length > 0,
-      )
+      .filter(file => {
+        const text = readFileSync(file, 'utf8')
+        // A spread literal that sets a field has `...` and the field's name in its text, so parse
+        // only those files: the result is the same, and the check does not parse the whole tree.
+        if (!text.includes('...') || ![...CANVAS_ONLY_FIELDS].some(field => text.includes(field))) {
+          return false
+        }
+        return canvasOnlyFieldsSetBySpreadLiterals(text, file).length > 0
+      })
       .sort()
 
     expect(holders).toEqual(CANVAS_VIEW_FILES)
