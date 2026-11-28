@@ -395,5 +395,46 @@ describe('useWorkspaceCanvasTrackpadGestures', () => {
       ])
       expect(mounted.camera()).toEqual({ x: -150, y: 0, zoom: 1 })
     })
+
+    // the zoom path has its own settle timer; it commits the live camera too.
+    it('commits the camera React Flow shows when a zoom settle timer fires', async () => {
+      const mounted = mountGestures()
+
+      mounted.wheel(mounted.canvas, { deltaY: -10, ctrlKey: true, clientX: 100, clientY: 50 })
+      mounted.moveCamera({ x: 500, y: 7, zoom: 1.5 })
+
+      await vi.advanceTimersByTimeAsync(VIEWPORT_INTERACTION_SETTLE_MS)
+
+      expect(mounted.onViewportChange).toHaveBeenCalledTimes(1)
+      expect(mounted.onViewportChange).toHaveBeenCalledWith({ x: 500, y: 7, zoom: 1.5 })
+    })
+
+    // a pinch reads React Flow's camera at its start, then scales that camera;
+    // each change is relative to the start, so several changes do not compound, and the flow point
+    // first under the fingers follows them.
+    it('scales a pinch from the camera at its start across several changes', () => {
+      const mounted = mountGestures({ inputMode: 'auto', wheelBehavior: 'zoom', modality: 'mouse' })
+
+      dispatchGesture(mounted.canvas, 'gesturestart', { scale: 1, clientX: 100, clientY: 50 })
+      dispatchGesture(mounted.canvas, 'gesturechange', { scale: 1.2, clientX: 100, clientY: 50 })
+      dispatchGesture(mounted.canvas, 'gesturechange', { scale: 1.5, clientX: 120, clientY: 50 })
+
+      // The flow point (100, 50) was under the fingers at the start; at zoom 1.5 it sits under them
+      // where they are now (120, 50).
+      expect(mounted.camera()).toEqual({ x: 120 - 100 * 1.5, y: 50 - 50 * 1.5, zoom: 1.5 })
+    })
+
+    // consecutive events of different kinds chain too; a pan divides its delta
+    // by the zoom the previous zoom event left in React Flow's store.
+    it('pans after a zoom by the zoom React Flow shows', () => {
+      const mounted = mountGestures()
+
+      mounted.wheel(mounted.canvas, { deltaY: -50, ctrlKey: true, timeStamp: 100 })
+      const zoomed = mounted.camera()
+      mounted.wheel(mounted.canvas, { deltaX: 100, timeStamp: 400 })
+
+      expect(zoomed.zoom).not.toBe(1)
+      expect(mounted.camera().x).toBeCloseTo(zoomed.x - 50 / zoomed.zoom, 6)
+    })
   })
 })
